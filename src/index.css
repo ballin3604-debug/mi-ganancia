@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MI GANANCIA · iOS Style 🍎
+   Diseño minimalista inspirado en Apple — claro, universal
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Fondos (modo claro Fintech) ── */
+  --mg-bg-base: #f4f6fa;          /* Fondo gris claro moderno */
+  --mg-bg-surface: #ffffff;        /* Blanco puro para tarjetas de contenido */
+  --mg-bg-elevated: #f8fafc;       /* Hover sutil */
+  --mg-bg-input: #ffffff;
+  --mg-bg-section: #f1f5f9;
+
+  /* ── Bordes ── */
+  --mg-border: rgba(60, 60, 67, 0.12);
+  --mg-border-hover: rgba(60, 60, 67, 0.18);
+  --mg-border-focus: #007aff;
+  --mg-separator: rgba(60, 60, 67, 0.1);
+
+  /* ── Texto (jerarquía iOS) ── */
+  --mg-text-primary: #000000;
+  --mg-text-secondary: #3c3c43;
+  --mg-text-muted: rgba(60, 60, 67, 0.6);
+  --mg-text-faint: rgba(60, 60, 67, 0.3);
+
+  /* ── MARCA: AZUL BANCA DIGITAL ── */
+  --mg-accent: #1670C2;
+  --mg-accent-hover: #0f5c9e;
+  --mg-accent-bg: rgba(22, 112, 194, 0.08);
+  --mg-accent-bg-soft: rgba(22, 112, 194, 0.04);
+  --mg-accent-border: rgba(22, 112, 194, 0.25);
+  --mg-accent-text: #1670C2;
+
+  /* ── Semánticos iOS ── */
+  --mg-success: #34c759;          /* iOS green */
+  --mg-success-bg: rgba(52, 199, 89, 0.1);
+  --mg-success-text: #248a3d;
+  --mg-danger: #ff3b30;           /* iOS red */
+  --mg-danger-bg: rgba(255, 59, 48, 0.1);
+  --mg-warning: #ff9500;          /* iOS orange */
+  --mg-warning-bg: rgba(255, 149, 0, 0.1);
+  --mg-info: #5ac8fa;             /* iOS light blue */
+  --mg-info-bg: rgba(90, 200, 250, 0.1);
+
+  /* ── Sombras iOS (muy sutiles) ── */
+  --mg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mg-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --mg-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* ── Tipografía ── */
+  --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--mg-bg-base);
+}
+
+body {
+  font-family: var(--font-system);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--mg-text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Scrollbars iOS ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+::selection {
+  background: var(--mg-accent-bg);
+  color: var(--mg-text-primary);
+}
+
+/* ── Clases utilitarias estilo iOS ── */
+@layer components {
+  /* Card Fintech — superficie blanca, redondeada, con sombra sutil */
+  .mg-surface {
+    @apply bg-[var(--mg-bg-surface)] rounded-[20px] shadow-sm;
+  }
+
+  .mg-surface-bordered {
+    @apply bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-[20px];
+  }
+
+  /* Lista agrupada estilo Fintech */
+  .mg-list {
+    @apply bg-[var(--mg-bg-surface)] rounded-[20px] overflow-hidden divide-y divide-[var(--mg-separator)];
+  }
+
+  /* Input iOS */
+  .mg-input {
+    @apply bg-[var(--mg-bg-surface)] border border-[var(--mg-border)]
+           text-[var(--mg-text-primary)] placeholder:text-[var(--mg-text-muted)]
+           rounded-xl px-4 py-3 w-full transition-all
+           focus:outline-none focus:border-[var(--mg-accent)]
+           focus:ring-2 focus:ring-[var(--mg-accent-bg)];
+  }
+
+  /* Botón primario iOS — azul sólido */
+  .mg-btn-primary {
+    @apply bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)]
+           text-white font-semibold px-4 py-3.5 rounded-xl
+           transition-all active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botón secundario iOS — fondo translúcido azul */
+  .mg-btn-secondary {
+    @apply bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)]
+           text-[var(--mg-accent)] font-semibold px-4 py-3.5 rounded-xl
+           transition-all active:scale-[0.97];
+  }
+
+  /* Botón terciario iOS — fondo gris muy claro */
+  .mg-btn-tertiary {
+    @apply bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)]
+           border border-[var(--mg-border)]
+           text-[var(--mg-text-primary)] font-semibold px-4 py-3.5 rounded-xl
+           transition-all active:scale-[0.97];
+  }
+
+  /* Badge iOS */
+  .mg-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold;
+  }
+
+  /* Sección con encabezado iOS Settings-style */
+  .mg-section-title {
+    @apply text-xs uppercase tracking-wider text-[var(--mg-text-muted)] font-semibold px-4 mb-2 mt-6;
+  }
+
+  /* Animaciones */
+  .mg-fade-in { animation: mgFadeIn 0.4s ease-out; }
+  .mg-slide-up { animation: mgSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+  .mg-pulse-dot { animation: mgPulse 2s ease-in-out infinite; }
+}
+
+@keyframes mgFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mgSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mgPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
+}

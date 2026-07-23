@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth() && request.auth.uid == 'kTq5i9FK8JZ2CeTEcT53skzGwrF3';
+    }
+
+    function callerDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function callerBusinessId() {
+      return callerDoc().businessId;
+    }
+
+    function isActiveUser() {
+      // Use .get() so a missing 'status' field doesn't error out the rule.
+      return callerDoc().get('status', '') == 'active';
+    }
+
+    function isOwner() {
+      // An active user is treated as owner unless explicitly a cashier.
+      // Mirrors the client logic (role === 'cashier' ? 'cashier' : 'owner')
+      // so users approved before a role field was stored aren't locked out.
+      // .get('role', 'owner') avoids a denial when the doc has no 'role' field.
+      return isActiveUser() && callerDoc().get('role', 'owner') != 'cashier';
+    }
+
+    function sameBusinessAsMe(bid) {
+      return callerBusinessId() == bid;
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Any active member of the same business can read teammates
+      allow read: if isAuth() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (isActiveUser() && resource.data.businessId == callerBusinessId())
+      );
+      // User creates own doc (on join/setup)
+      allow create: if isAuth() && request.auth.uid == userId;
+      // User edits own doc OR an owner can change role of a teammate
+      allow update: if isAuth() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (isOwner() && resource.data.businessId == callerBusinessId())
+      );
+    }
+
+    // ── Businesses ──────────────────────────────────────────────────────────
+    match /businesses/{businessId} {
+      allow read: if isAuth() && (sameBusinessAsMe(businessId) || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAuth() && (
+        isAdmin() ||
+        (isOwner() && sameBusinessAsMe(businessId))
+      );
+    }
+
+    // ── Subscription requests ───────────────────────────────────────────────
+    match /subscription_requests/{requestId} {
+      allow read: if isAuth() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+    }
+
+    // ── Business settings ───────────────────────────────────────────────────
+    match /business_settings/{businessId} {
+      allow read: if isAuth() && (sameBusinessAsMe(businessId) || isAdmin());
+      allow write: if isAuth() && (
+        (isOwner() && sameBusinessAsMe(businessId)) || isAdmin()
+      );
+    }
+
+    // ── Products ────────────────────────────────────────────────────────────
+    match /products/{productId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isOwner() && sameBusinessAsMe(request.resource.data.businessId);
+      // Owner: full update
+      allow update: if isAuth() && isOwner() && sameBusinessAsMe(resource.data.businessId);
+      // Cashier: only stock + updatedAt (discount from sale)
+      allow update: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt']);
+      allow delete: if isAuth() && isOwner() && sameBusinessAsMe(resource.data.businessId);
+    }
+
+    // ── Sales ───────────────────────────────────────────────────────────────
+    match /sales/{saleId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isActiveUser() && sameBusinessAsMe(request.resource.data.businessId);
+      allow update: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+    }
+
+    // ── Sale items ──────────────────────────────────────────────────────────
+    match /sale_items/{itemId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isActiveUser() && sameBusinessAsMe(request.resource.data.businessId);
+    }
+
+    // ── Debts / CxC ─────────────────────────────────────────────────────────
+    match /debts/{debtId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isActiveUser() && sameBusinessAsMe(request.resource.data.businessId);
+      allow update: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow delete: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+    }
+
+    // ── Replenishments ──────────────────────────────────────────────────────
+    match /replenishments/{repId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isActiveUser() && sameBusinessAsMe(request.resource.data.businessId);
+    }
+
+    // ── Expenses (owner-only write) ─────────────────────────────────────────
+    match /expenses/{expenseId} {
+      allow read: if isAuth() && isOwner() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isOwner() && sameBusinessAsMe(request.resource.data.businessId);
+      allow delete: if isAuth() && isOwner() && sameBusinessAsMe(resource.data.businessId);
+    }
+
+    // ── Business join codes ─────────────────────────────────────────────────
+    match /business_join_codes/{code} {
+      allow read: if isAuth();
+      allow create: if isAdmin() || (isAuth() && isOwner() && sameBusinessAsMe(request.resource.data.businessId));
+      allow delete: if isAdmin() || (isAuth() && isOwner() && sameBusinessAsMe(resource.data.businessId));
+    }
+    // ── Clientes ────────────────────────────────────────────────────────────
+    match /clientes/{clienteId} {
+      allow read: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow create: if isAuth() && isActiveUser() && sameBusinessAsMe(request.resource.data.businessId);
+      allow update: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+      allow delete: if isAuth() && isActiveUser() && sameBusinessAsMe(resource.data.businessId);
+    }
+
+
+
+
+
+  }
+}

@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.web.tuganancia.twa",
+        "sha256_cert_fingerprints": ["6B:99:F7:5F:65:E8:CB:8F:05:64:74:4F:C7:95:9A:55:E6:9E:70:81:F8:29:47:60:15:42:7B:F7:15:CE:C1:17"]
+      }
+    }]

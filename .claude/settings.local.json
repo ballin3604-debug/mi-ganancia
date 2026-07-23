@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command ':*)",
+      "Bash(npx firebase *)",
+      "Bash(node \"C:/Users/HP/AppData/Local/Temp/claude/C--TugananciA/bc7cb54d-cf8a-4202-bd38-598272afde3f/scratchpad/diag.cjs\")",
+      "Bash(node _diag_tmp.cjs)",
+      "Bash(node _fix_role.cjs)",
+      "PowerShell(\\(Get-Command firebase -ErrorAction SilentlyContinue\\).Source; \\(Get-Command npx -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(npm run build)",
+      "PowerShell(firebase deploy --only hosting)"
+    ]
+  }
+}
