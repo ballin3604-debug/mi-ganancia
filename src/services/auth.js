@@ -25,6 +25,20 @@ export async function signInWithPassword(email, password) {
   return data.user;
 }
 
+// Login con Google (OAuth). redirectTo apunta al origen actual para que, tras
+// autenticarse, el usuario vuelva a esta misma app — funciona igual en local
+// (localhost) que en producción sin cambios.
+// IMPORTANTE: el proveedor debe estar habilitado y configurado en el panel
+// de Supabase (Authentication → Providers) para que esto funcione.
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
