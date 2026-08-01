@@ -5,6 +5,7 @@ import { useBusiness } from '../context/BusinessContext';
 import { saveBusinessSettings } from '../services/businessSettings';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { signOut } from '../services/auth';
+import { exportFullBackup } from '../services/backup';
 import { getCategoryById } from '../config/businessCategories';
 import {
   regenerateJoinCode, regenerateOwnerCode, createOwnerCode,
@@ -32,6 +33,24 @@ export default function Settings() {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [roleUpdating, setRoleUpdating] = useState(null);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupMsg, setBackupMsg] = useState('');
+
+  async function handleBackup() {
+    setBackupLoading(true);
+    setBackupMsg('');
+    try {
+      const counts = await exportFullBackup(businessId, business?.name || settings?.businessName || '');
+      setBackupMsg(`✓ Respaldo descargado: ${counts.productos} productos, ${counts.ventas} ventas, ${counts.compras} compras, ${counts.fiados} fiados, ${counts.egresos} egresos.`);
+    } catch (err) {
+      console.error(err);
+      setBackupMsg(err.code === 'OFFLINE'
+        ? '⚠️ ' + err.message
+        : '⚠️ No se pudo generar el respaldo. Revisá tu conexión e intentá de nuevo.');
+    } finally {
+      setBackupLoading(false);
+    }
+  }
 
   const logoRef = useRef(null);
   const qrRef = useRef(null);
@@ -442,6 +461,48 @@ export default function Settings() {
       >
         {saving ? 'Guardando...' : saved ? '✓ ¡Guardado correctamente!' : 'Guardar configuración'}
       </button>
+
+      {/* Respaldo / Exportar todo */}
+      <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border border-[var(--mg-border)] space-y-3">
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-xl bg-[var(--mg-gold-bg)] border border-[var(--mg-gold-border)] text-[var(--mg-gold-text)] flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </span>
+          <div className="min-w-0">
+            <p className="font-bold text-[var(--mg-text-primary)] text-sm">Respaldo de tus datos</p>
+            <p className="text-[var(--mg-text-muted)] text-xs">Descargá una copia completa de tu negocio.</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-[var(--mg-text-faint)] leading-relaxed">
+          Baja a tu celular un archivo con todo: productos, ventas, compras, fiados, egresos y clientes.
+          Guardalo en un lugar seguro (WhatsApp, correo, Drive). Te recomendamos hacerlo cada semana.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleBackup}
+          disabled={backupLoading}
+          className="w-full bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-bold py-3 rounded-xl text-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+        >
+          {backupLoading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Preparando respaldo…
+            </>
+          ) : (
+            <>📥 Exportar todo</>
+          )}
+        </button>
+
+        {backupMsg && (
+          <p className={`text-xs font-semibold leading-relaxed ${backupMsg.startsWith('✓') ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-warning)]'}`}>
+            {backupMsg}
+          </p>
+        )}
+      </div>
 
       {/* Panel Admin (solo visible para admin) */}
       {admin && (
