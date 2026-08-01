@@ -137,7 +137,6 @@ export async function triggerSync(businessId) {
 
     const allOps = await db.pending_operations.orderBy('created_at').toArray();
     const ops = allOps.filter((op) => belongsToBusiness(op, businessId));
-    let processedAny = false;
 
     for (const op of ops) {
       if (op.status === 'error') continue; // Skip permanently failed operations
@@ -154,7 +153,6 @@ export async function triggerSync(businessId) {
       try {
         await processOperation(op, businessId);
         await db.pending_operations.delete(op.id);
-        processedAny = true;
       } catch (err) {
         const errorMessage = err?.message || err?.details || err?.hint || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Error de sincronización.';
         console.error(`[SyncEngine Error] Operation ${op.id} (${op.operation_type}) - Attempt ${(op.retry_count || 0) + 1}:`, errorMessage, err);
@@ -183,9 +181,12 @@ export async function triggerSync(businessId) {
       await updatePendingCount(businessId);
     }
 
-    if (processedAny) {
-      await syncCacheFromServer(businessId);
-    }
+    // Antes esto solo corría si processedAny era true, es decir, solo si
+    // ESTE dispositivo tenía algo propio para enviar. Eso significa que un
+    // dispositivo sin cambios pendientes (el caso normal) nunca volvía a
+    // bajar cambios hechos en OTRO dispositivo hasta recargar la página.
+    // Ahora se sincroniza siempre que haya conexión, haya o no ops propias.
+    await syncCacheFromServer(businessId);
   } catch (err) {
     console.error('Error during synchronization run:', err);
   } finally {
@@ -376,6 +377,23 @@ async function safeSyncTable(table, serverData, isPendingFn, isEligibleFn = () =
   await db.transaction('rw', table, async () => {
     const localRecords = await table.toArray();
     const serverKeys = new Set(serverData.map((item) => item.id));
+    const eligibleLocalCount = localRecords.filter(isEligibleFn).length;
+
+    // Red de seguridad: si el servidor "no devolvió nada" pero localmente sí
+    // había registros elegibles, NO se borra nada. Con RLS, una consulta que
+    // debería traer filas puede devolver 0 filas sin ningún error (sesión a
+    // punto de expirar, una policy mal aplicada, etc. — ya pasó en este
+    // proyecto). Sin esta protección, ese 0 silencioso se interpretaba como
+    // "el servidor los borró todos" y se vaciaba la caché local completa
+    // (clientes, deudas, productos...) aunque los datos siguieran intactos
+    // en la base de datos real. El único costo es que, si alguna vez borrás
+    // TODOS los registros de una tabla hasta dejarla en cero, la caché local
+    // tarda hasta el próximo registro nuevo en reflejarlo — un precio bajo
+    // comparado con perder de vista datos de clientes por un glitch.
+    if (serverData.length === 0 && eligibleLocalCount > 0) {
+      console.warn('[SyncEngine] Sincronización de caché omitida: el servidor devolvió 0 registros pero había datos locales. Se preservó la caché local por seguridad.');
+      return;
+    }
 
     // Delete local records that are not on the server and are not pending sync
     const recordsToDelete = localRecords.filter(

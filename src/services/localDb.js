@@ -73,6 +73,25 @@ db.version(5).stores({
   cart_drafts: 'id, business_id, user_id'
 });
 
+// Version 6 schema: adds purchase_drafts table, análogo a cart_drafts pero
+// para una compra en curso (Compras) — antes, salir de la app a mitad de
+// registrar una compra (p.ej. abrir la calculadora del celular) perdía todo
+// lo tipeado porque nada se persistía hasta el submit final.
+db.version(6).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id'
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
