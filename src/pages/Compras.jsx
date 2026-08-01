@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { subscribeToProducts, subscribeToReplenishments } from '../services/products';
 import { subscribeToCategories } from '../services/categories';
+import { getPurchaseDraft } from '../services/purchaseDraft';
 import PurchaseForm from '../components/PurchaseForm';
 import DataTable from '../components/DataTable';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
@@ -21,7 +22,7 @@ function formatDate(dateLike) {
 }
 
 export default function Compras() {
-  const { businessId } = useAuth();
+  const { businessId, user } = useAuth();
   const { settings } = useBusiness();
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
@@ -35,6 +36,9 @@ export default function Compras() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [purchaseDraft, setPurchaseDraft] = useState(null);
+  const [restoreNotice, setRestoreNotice] = useState('');
+  const hasTriedRestoreRef = useRef(false);
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -74,12 +78,39 @@ export default function Compras() {
     };
   }, [businessId]);
 
+  // Recupera una compra en curso si el usuario salió de la app a mitad de
+  // registrarla (p.ej. abrió la calculadora del celular) — mismo mecanismo
+  // que ya existe en Ventas para el carrito.
+  useEffect(() => {
+    if (!businessId || !user?.uid || products.length === 0) return;
+    if (hasTriedRestoreRef.current || selectedProduct) return;
+    hasTriedRestoreRef.current = true;
+
+    getPurchaseDraft(businessId, user.uid).then((draft) => {
+      if (!draft) return;
+      const prod = products.find((p) => p.id === draft.productId);
+      if (!prod) return;
+      setSelectedProduct(prod);
+      setShowMobilePanel(true);
+      setPurchaseDraft(draft);
+      setRestoreNotice('Recuperamos tu compra en curso.');
+    });
+  }, [businessId, user?.uid, products, selectedProduct]);
+
+  useEffect(() => {
+    if (!restoreNotice) return;
+    const t = setTimeout(() => setRestoreNotice(''), 5000);
+    return () => clearTimeout(t);
+  }, [restoreNotice]);
+
   function handleSelectProduct(product) {
+    setPurchaseDraft(null);
     setSelectedProduct(product);
     setShowMobilePanel(true);
   }
 
   function handleCloseSelection() {
+    setPurchaseDraft(null);
     setSelectedProduct(null);
     setShowMobilePanel(false);
   }
@@ -107,6 +138,21 @@ export default function Compras() {
       const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
       return db - da;
     }), [replenishments, start, end]);
+
+  // Última compra por producto: sirve para que el modal "aprenda" cómo se
+  // suele comprar cada producto (por unidad o por caja de N) y se abra ya
+  // preconfigurado. Se deduce del historial de reposiciones — sin columnas
+  // nuevas en la base de datos.
+  const lastPurchaseByProduct = useMemo(() => {
+    const map = {};
+    replenishments.forEach((r) => {
+      const t = r.createdAt?.toDate ? r.createdAt.toDate().getTime() : new Date(r.createdAt).getTime();
+      if (!map[r.productId] || t > map[r.productId].t) {
+        map[r.productId] = { t, purchaseUnitType: r.purchaseUnitType, packageSize: r.packageSize };
+      }
+    });
+    return map;
+  }, [replenishments]);
 
   // N° Compra: correlativo estable, asignado por orden cronológico de TODO
   // el historial del negocio (no cambia si se mueve el filtro de fechas).
@@ -233,6 +279,13 @@ export default function Compras() {
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-full lg:overflow-hidden relative">
+      {restoreNotice && (
+        <div className="fixed top-0 inset-x-0 z-50 flex justify-center px-4 pt-2 pointer-events-none">
+          <div className="bg-[var(--mg-accent)] text-white rounded-2xl px-4 py-3 shadow-lg max-w-md w-full text-sm font-semibold text-center pointer-events-auto">
+            🛍️ {restoreNotice}
+          </div>
+        </div>
+      )}
       {/* Columna Izquierda */}
       <div className="flex-1 flex flex-col min-h-0 lg:pr-4">
         <div className="p-4 space-y-3 flex-1 flex flex-col min-h-0">
@@ -360,8 +413,10 @@ export default function Compras() {
             <PurchaseForm
               businessId={businessId}
               product={selectedProduct}
-              onClose={() => setSelectedProduct(null)}
-              onSaved={() => setSelectedProduct(null)}
+              initialDraft={purchaseDraft}
+              lastPurchase={lastPurchaseByProduct[selectedProduct.id] || null}
+              onClose={handleCloseSelection}
+              onSaved={handleCloseSelection}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-[var(--mg-text-faint)] p-6">
@@ -387,6 +442,8 @@ export default function Compras() {
             <PurchaseForm
               businessId={businessId}
               product={selectedProduct}
+              initialDraft={purchaseDraft}
+              lastPurchase={lastPurchaseByProduct[selectedProduct.id] || null}
               onClose={handleCloseSelection}
               onSaved={handleCloseSelection}
             />
