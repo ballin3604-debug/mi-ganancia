@@ -1,6 +1,7 @@
 import { db } from './localDb';
-import { enqueueOperation } from './syncEngine';
+import { enqueueOperation, buildOutboxOp } from './syncEngine';
 import { supabase } from './supabaseClient';
+import { notifyProductChanges } from './products';
 
 export const DEFAULT_CATEGORIES = [
   'Bebidas', 'Lácteos', 'Panadería', 'Carnes', 'Frutas y Verduras',
@@ -90,6 +91,50 @@ export async function addCategory(businessId, name) {
   // Enqueue outbox operation with partial payload (only changed field)
   await enqueueOperation('SAVE_BUSINESS_SETTINGS', { business_id: businessId, categories: next }, businessId);
   notifyCategoryChanges(businessId);
+}
+
+// Renombra una categoría. Como los productos guardan su categoría por NOMBRE
+// (no por id), hay que arrastrar el cambio a todos los productos de esa
+// categoría — si no, quedan apuntando a un nombre que ya no existe en la
+// lista (huérfanos: no aparecen en los filtros ni se agrupan bien).
+export async function renameCategory(businessId, oldName, newName) {
+  const trimmed = (newName || '').trim();
+  if (!trimmed || trimmed === oldName) return;
+
+  const current = await getCategories(businessId);
+  if (!current.includes(oldName)) throw new Error('La categoría ya no existe.');
+  // No permitir chocar con otra categoría existente (insensible a mayúsculas).
+  if (current.some((c) => c !== oldName && c.toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error(`La categoría "${trimmed}" ya existe.`);
+  }
+
+  const next = current.map((c) => (c === oldName ? trimmed : c));
+
+  // 1) Actualizar la lista de categorías (local + outbox).
+  const existing = await db.business_settings.get(businessId);
+  await db.business_settings.put({ business_id: businessId, ...existing, categories: next });
+  await enqueueOperation('SAVE_BUSINESS_SETTINGS', { business_id: businessId, categories: next }, businessId);
+
+  // 2) Cascada: reasignar los productos de la categoría vieja a la nueva.
+  //    Se usa un UPDATE parcial (solo el campo category) para no tocar stock
+  //    ni ningún otro dato del producto.
+  const all = await db.products.where('business_id').equals(businessId).toArray();
+  const affected = all.filter((p) => p.category === oldName);
+  if (affected.length > 0) {
+    const now = new Date().toISOString();
+    await db.transaction('rw', db.products, db.pending_operations, async () => {
+      for (const p of affected) {
+        await db.products.update(p.id, { category: trimmed, updated_at: now });
+        await db.pending_operations.add(
+          buildOutboxOp('UPDATE_PRODUCT', { id: p.id, category: trimmed, updated_at: now }, businessId)
+        );
+      }
+    });
+    notifyProductChanges(businessId);
+  }
+
+  notifyCategoryChanges(businessId);
+  return affected.length; // cuántos productos se reasignaron
 }
 
 export async function removeCategory(businessId, name) {

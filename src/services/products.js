@@ -64,7 +64,7 @@ function mapReplenishment(r) {
 const productListeners = new Set();
 const replenishmentListeners = new Set();
 
-function notifyProductChanges(businessId) {
+export function notifyProductChanges(businessId) {
   getProducts(businessId).then((prods) => {
     productListeners.forEach((callback) => callback(prods));
   });
