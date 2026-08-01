@@ -1,204 +1,137 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+
+// Recorrido de bienvenida que se muestra una sola vez tras crear el negocio.
+// Antes intentaba "resaltar" elementos del menú con data-tutorial, pero en
+// celular esos elementos viven dentro del cajón de menú (cerrado durante el
+// tutorial), así que no se encontraba nada y todos los pasos salían centrados
+// sin resaltar. Ahora es un recorrido centrado, robusto en cualquier pantalla,
+// con el mapa real de la app actual.
 
 const STEPS = [
   {
-    title: 'Tu inicio',
-    description: 'Aquí ves todo lo importante: ventas del día, alertas y resumen del mes.',
-    targetSelector: '[data-tutorial="dashboard"]',
-    placement: 'bottom',
+    color: '#1670C2',
+    title: 'Tu Inicio',
+    description: 'Tu resumen del día: lo que vendiste, tu ganancia del mes y las alertas de stock, todo en una sola pantalla.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
   },
   {
-    title: 'Hacer ventas',
-    description: 'Toca aquí para registrar una nueva venta. Es lo que más vas a usar.',
-    targetSelector: '[data-tutorial="sales"]',
-    placement: 'top',
+    color: '#d99a2b',
+    title: 'Vender rápido',
+    description: 'Cobrá en segundos: en efectivo, con QR o al fiado. Y lo mejor: funciona aunque te quedes sin internet.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
   },
   {
-    title: 'Tu inventario',
-    description: 'Agrega tus productos con foto, precio y stock. La app cuenta por ti.',
-    targetSelector: '[data-tutorial="inventory"]',
-    placement: 'top',
+    color: '#34c759',
+    title: 'Reponer stock (Compras)',
+    description: 'Cuando te llega mercadería, registrá la compra al proveedor. La app calcula sola tu costo real y cuánto vas a ganar por unidad.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
   },
   {
-    title: 'Egresos del negocio',
-    description: 'Anota cuánto gastas en compras y servicios para saber tu ganancia real.',
-    targetSelector: '[data-tutorial="expenses"]',
-    placement: 'top',
+    color: '#0c3457',
+    title: 'Fiados (CxC)',
+    description: 'Se acabó el cuaderno mojado. La app te dice quién te debe, cuánto y desde cuándo. Cobrás sin perder de vista a nadie.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
   },
   {
-    title: '¡Listo!',
-    description: 'Ya conoces lo básico. Si necesitas ayuda, todo está en Ajustes.',
-    targetSelector: null,
-    placement: 'center',
+    color: '#1670C2',
+    title: 'Reportes de verdad',
+    description: 'Ganancias diarias, costo de lo vendido y tus productos más vendidos. Dejás de adivinar y ves cómo va tu negocio.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
+    color: '#34c759',
+    title: '¡Todo listo!',
+    description: 'Tus datos se guardan solos y se sincronizan entre tus dispositivos. Si alguna vez necesitás ayuda, todo está en Ajustes.',
+    icon: (
+      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    ),
   },
 ];
 
 export default function Tutorial({ onFinish }) {
   const [step, setStep] = useState(0);
-  const [targetRect, setTargetRect] = useState(null);
-
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
-  const isCenter = current.placement === 'center';
 
-  useEffect(() => {
-    // 1. Al cambiar de paso, hacemos scroll hacia el elemento una sola vez
-    if (current.targetSelector) {
-      const el = document.querySelector(current.targetSelector);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    // 2. Calculamos sus coordenadas exactas en la pantalla
-    function updateRect() {
-      if (!current.targetSelector) {
-        setTargetRect(null);
-        return;
-      }
-      const el = document.querySelector(current.targetSelector);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        setTargetRect({
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        });
-      }
-    }
-
-    // Pequeño delay para que el DOM se acomode inicialmente
-    const t = setTimeout(updateRect, 100);
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
-    };
-  }, [step, current.targetSelector]);
-
-  function next() {
-    if (isLast) {
-      try { localStorage.setItem('mg_tutorial_done', '1'); } catch { }
-      onFinish();
-    } else {
-      setStep(step + 1);
-    }
-  }
-
-  function skip() {
-    try { localStorage.setItem('mg_tutorial_done', '1'); } catch { }
+  function finish() {
+    try { localStorage.setItem('mg_tutorial_done', '1'); } catch { /* ignore */ }
     onFinish();
   }
 
-  // Calcular posición de la tarjeta del tooltip
-  function getTooltipStyle() {
-    if (isCenter || !targetRect) {
-      return {
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      };
-    }
-    const padding = 16;
-    if (current.placement === 'bottom') {
-      return {
-        top: `${targetRect.top + targetRect.height + padding}px`,
-        left: '50%',
-        transform: 'translateX(-50%)',
-      };
-    }
-    // top placement
-    return {
-      bottom: `${window.innerHeight - targetRect.top + padding}px`,
-      left: '50%',
-      transform: 'translateX(-50%)',
-    };
+  function next() {
+    if (isLast) finish();
+    else setStep(step + 1);
   }
 
   return (
-    <div className="fixed inset-0 z-[60]" style={{ pointerEvents: 'auto' }}>
-      {/* Overlay oscuro con "agujero" sobre el target */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ width: '100vw', height: '100vh' }}
-      >
-        <defs>
-          <mask id="tutorial-mask">
-            <rect width="100%" height="100%" fill="white" />
-            {targetRect && !isCenter && (
-              <rect
-                x={targetRect.left - 6}
-                y={targetRect.top - 6}
-                width={targetRect.width + 12}
-                height={targetRect.height + 12}
-                rx="16"
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tutorial-mask)" />
-      </svg>
-
-      {/* Anillo brillante alrededor del target */}
-      {targetRect && !isCenter && (
-        <div
-          className="absolute pointer-events-none rounded-2xl"
-          style={{
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
-            boxShadow: '0 0 0 3px rgba(0, 122, 255, 0.6), 0 0 30px rgba(0, 122, 255, 0.4)',
-            animation: 'tutorialPulse 2s ease-in-out infinite',
-          }}
-        />
-      )}
-
-      <style>{`
-        @keyframes tutorialPulse {
-          0%, 100% { box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.6), 0 0 30px rgba(0, 122, 255, 0.4); }
-          50% { box-shadow: 0 0 0 5px rgba(0, 122, 255, 0.8), 0 0 40px rgba(0, 122, 255, 0.6); }
-        }
-      `}</style>
-
-      {/* Tarjeta del tooltip */}
-      <div
-        className="absolute bg-white rounded-3xl shadow-2xl p-6 w-[calc(100%-2rem)] max-w-sm mg-fade-in"
-        style={getTooltipStyle()}
-      >
-        {/* Pasos arriba */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-[var(--mg-accent)] uppercase tracking-wider">
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 mg-backdrop-in">
+      <div className="bg-[var(--mg-bg-surface)] rounded-3xl shadow-2xl w-full max-w-sm p-6 mg-modal-in">
+        {/* Encabezado: paso + saltar */}
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-xs font-bold text-[var(--mg-accent)] uppercase tracking-wider">
             Paso {step + 1} de {STEPS.length}
           </span>
-          <button
-            onClick={skip}
-            className="text-gray-400 hover:text-gray-600 text-sm font-medium"
-          >
-            Saltar tutorial
-          </button>
+          {!isLast && (
+            <button
+              onClick={finish}
+              className="text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)] text-sm font-semibold"
+            >
+              Saltar
+            </button>
+          )}
         </div>
 
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{current.title}</h3>
-        <p className="text-gray-600 text-base leading-relaxed">{current.description}</p>
+        {/* Contenido — se reanima en cada paso */}
+        <div key={step} className="text-center mg-fade-in">
+          <div
+            className="w-24 h-24 rounded-[28px] flex items-center justify-center mx-auto mb-6 text-white"
+            style={{
+              background: `linear-gradient(135deg, ${current.color} 0%, ${current.color}cc 100%)`,
+              boxShadow: `0 16px 36px ${current.color}55`,
+            }}
+          >
+            {current.icon}
+          </div>
 
-        {/* Progreso visual */}
-        <div className="flex gap-1.5 my-5">
+          <h3 className="text-xl font-black text-[var(--mg-text-primary)] mb-2">{current.title}</h3>
+          <p className="text-[var(--mg-text-secondary)] text-[15px] leading-relaxed">{current.description}</p>
+        </div>
+
+        {/* Progreso (puntos) */}
+        <div className="flex justify-center gap-1.5 my-6">
           {STEPS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i <= step ? 'bg-[var(--mg-accent)]' : 'bg-gray-200'
-                }`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === step ? 'w-6 bg-[var(--mg-accent)]' : i < step ? 'w-1.5 bg-[var(--mg-accent-border)]' : 'w-1.5 bg-gray-200'
+              }`}
             />
           ))}
         </div>
 
-        <button
-          onClick={next}
-          className="mg-btn-primary w-full"
-        >
+        <button onClick={next} className="mg-btn-primary w-full">
           {isLast ? '¡Empezar a usar la app!' : 'Continuar'}
         </button>
       </div>

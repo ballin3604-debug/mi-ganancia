@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 200];
 
@@ -22,10 +22,20 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState(null); // { key, dir: 'asc' | 'desc' }
 
   useEffect(() => {
     setPage(1);
-  }, [rows.length, pageSize]);
+  }, [rows.length, pageSize, sort]);
+
+  function toggleSort(col) {
+    if (!col.sortable) return;
+    setSort((prev) => {
+      if (!prev || prev.key !== col.key) return { key: col.key, dir: 'asc' };
+      if (prev.dir === 'asc') return { key: col.key, dir: 'desc' };
+      return null; // tercer clic: vuelve al orden original
+    });
+  }
 
   useEffect(() => {
     if (!storageKey) return;
@@ -45,10 +55,28 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
   }
 
   const visibleColumns = columns.filter((c) => visibleKeys.includes(c.key));
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows;
+    const col = columns.find((c) => c.key === sort.key);
+    if (!col) return rows;
+    const getValue = col.sortValue || ((row) => row[col.key]);
+    const withValue = rows.map((row, i) => ({ row, i, value: getValue(row) }));
+    withValue.sort((a, b) => {
+      if (a.value == null && b.value == null) return a.i - b.i;
+      if (a.value == null) return 1;
+      if (b.value == null) return -1;
+      if (typeof a.value === 'number' && typeof b.value === 'number') return a.value - b.value || a.i - b.i;
+      return String(a.value).localeCompare(String(b.value), 'es') || a.i - b.i;
+    });
+    const ordered = withValue.map((w) => w.row);
+    return sort.dir === 'desc' ? ordered.reverse() : ordered;
+  }, [rows, sort, columns]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const startIdx = (safePage - 1) * pageSize;
-  const pageRows = rows.slice(startIdx, startIdx + pageSize);
+  const pageRows = sortedRows.slice(startIdx, startIdx + pageSize);
 
   return (
     <div className="space-y-3">
@@ -129,11 +157,19 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
               {visibleColumns.map((c) => (
                 <th
                   key={c.key}
-                  className={`bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap ${
+                  onClick={() => toggleSort(c)}
+                  className={`bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
                     c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
-                  } ${c.width || ''}`}
+                  } ${c.width || ''} ${c.sortable ? 'cursor-pointer hover:bg-blue-100 transition-colors' : ''}`}
                 >
-                  {c.label}
+                  <span className={`inline-flex items-center gap-1 ${c.align === 'right' ? 'flex-row-reverse' : ''}`}>
+                    {c.label}
+                    {c.sortable && (
+                      <span className="text-[10px] opacity-50">
+                        {sort?.key === c.key ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}
+                      </span>
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>

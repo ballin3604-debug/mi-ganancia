@@ -32,10 +32,19 @@
   /* ── MARCA: AZUL BANCA DIGITAL ── */
   --mg-accent: #1670C2;
   --mg-accent-hover: #0f5c9e;
+  --mg-accent-deep: #0c3457;
+  --mg-accent-mid: #0f4d85;
   --mg-accent-bg: rgba(22, 112, 194, 0.08);
   --mg-accent-bg-soft: rgba(22, 112, 194, 0.04);
   --mg-accent-border: rgba(22, 112, 194, 0.25);
   --mg-accent-text: #1670C2;
+
+  /* ── MARCA: DORADO (flecha de crecimiento del logo) ── */
+  --mg-gold: #d99a2b;
+  --mg-gold-hover: #c1861f;
+  --mg-gold-bg: rgba(217, 154, 43, 0.1);
+  --mg-gold-border: rgba(217, 154, 43, 0.28);
+  --mg-gold-text: #a4670f;
 
   /* ── Semánticos iOS ── */
   --mg-success: #34c759;          /* iOS green */
@@ -153,23 +162,104 @@ input[type="number"]::-webkit-outer-spin-button {
     @apply text-xs uppercase tracking-wider text-[var(--mg-text-muted)] font-semibold px-4 mb-2 mt-6;
   }
 
-  /* Animaciones */
+  /* ── Animaciones ── */
   .mg-fade-in { animation: mgFadeIn 0.4s ease-out; }
   .mg-slide-up { animation: mgSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
   .mg-pulse-dot { animation: mgPulse 2s ease-in-out infinite; }
+
+  /* Entrada de modales/pop-ups con rebote sutil — centraliza la animación
+     que antes estaba repetida inline en Sales y PurchaseForm */
+  .mg-modal-in { animation: mgScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  .mg-backdrop-in { animation: mgFade 0.25s ease-out forwards; }
+
+  /* Check animado del modal de éxito (también centralizado) */
+  .mg-draw-check {
+    stroke-dasharray: 50;
+    stroke-dashoffset: 50;
+    animation: mgDrawCheck 0.4s ease-out forwards 0.15s;
+  }
+
+  /* Entrada escalonada para listas/grillas: se pone en el contenedor y cada
+     hijo entra con un pequeño retraso incremental */
+  .mg-stagger > * {
+    opacity: 0;
+    animation: mgFadeIn 0.45s ease-out forwards;
+  }
+  .mg-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+  .mg-stagger > *:nth-child(2) { animation-delay: 0.06s; }
+  .mg-stagger > *:nth-child(3) { animation-delay: 0.10s; }
+  .mg-stagger > *:nth-child(4) { animation-delay: 0.14s; }
+  .mg-stagger > *:nth-child(5) { animation-delay: 0.18s; }
+  .mg-stagger > *:nth-child(6) { animation-delay: 0.22s; }
+  .mg-stagger > *:nth-child(7) { animation-delay: 0.26s; }
+  .mg-stagger > *:nth-child(8) { animation-delay: 0.30s; }
+  .mg-stagger > *:nth-child(n+9) { animation-delay: 0.34s; }
+
+  /* Tarjeta con leve elevación al pasar el cursor */
+  .mg-hover-lift {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  }
+  .mg-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--mg-shadow-lg);
+  }
+
+  /* Esqueleto de carga (shimmer) */
+  .mg-skeleton {
+    background: linear-gradient(100deg, var(--mg-bg-elevated) 30%, #eef2f7 50%, var(--mg-bg-elevated) 70%);
+    background-size: 200% 100%;
+    animation: mgShimmer 1.4s ease-in-out infinite;
+    border-radius: 12px;
+  }
 }
 
 @keyframes mgFadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes mgFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @keyframes mgSlideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes mgScaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes mgDrawCheck {
+  to { stroke-dashoffset: 0; }
+}
 @keyframes mgPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+@keyframes mgShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Transiciones suaves y consistentes en todo lo interactivo */
+button, a, [role="button"], select, .mg-tappable {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s ease, color 0.2s ease,
+              border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+button:not(:disabled):active, [role="button"]:active, .mg-tappable:active {
+  transform: scale(0.97);
+}
+
+/* Respeto por usuarios que prefieren menos movimiento (accesibilidad).
+   Desactiva animaciones y transiciones sin romper la funcionalidad. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (display-mode: standalone) {

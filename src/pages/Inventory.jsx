@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getProducts, addProduct, updateProduct, deleteProduct, subscribeToReplenishments, updateReplenishmentExpiry } from '../services/products';
-import { getCategories, subscribeToCategories, addCategory, removeCategory } from '../services/categories';
+import { getCategories, subscribeToCategories, addCategory, removeCategory, renameCategory } from '../services/categories';
 import { useImageUpload } from '../hooks/useImageUpload';
-import SwipeableCard from '../components/SwipeableCard';
+import DataTable from '../components/DataTable';
 import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
 
 function formatBs(amount) {
@@ -18,6 +18,7 @@ const EMPTY_FORM = {
 };
 
 const EXPIRY_WARNING_DAYS = 30;
+const RECENT_PURCHASE_DAYS = 14;
 
 // Devuelve el lote de compra con el vencimiento más próximo (fecha + el id
 // de ESE replenishment) — se necesita el id para poder editarlo después,
@@ -80,11 +81,16 @@ export default function Inventory() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('Todas');
+  const [filterExpiry, setFilterExpiry] = useState('todos'); // 'todos' | 'porVencer' | 'vencidos'
+  const [filterRecent, setFilterRecent] = useState(false);
 
   // Category management
   const [showCatManager, setShowCatManager] = useState(() => searchParams.get('action') === 'categorias');
   const [newCatName, setNewCatName] = useState('');
   const [savingCat, setSavingCat] = useState(false);
+  const [editingCat, setEditingCat] = useState(null); // nombre original en edición
+  const [editCatValue, setEditCatValue] = useState('');
+  const [savingRename, setSavingRename] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!businessId) return;
@@ -243,13 +249,165 @@ export default function Inventory() {
     }
   }
 
+  function startEditCategory(cat) {
+    setEditingCat(cat);
+    setEditCatValue(cat);
+  }
+
+  function cancelEditCategory() {
+    setEditingCat(null);
+    setEditCatValue('');
+  }
+
+  async function handleRenameCategory(e) {
+    e.preventDefault();
+    const oldName = editingCat;
+    const newName = editCatValue.trim();
+    if (!oldName || !newName || newName === oldName) { cancelEditCategory(); return; }
+    setSavingRename(true);
+    try {
+      const affected = await renameCategory(businessId, oldName, newName);
+      await fetchAll();
+      if (filterCategory === oldName) setFilterCategory(newName);
+      cancelEditCategory();
+      if (affected > 0) {
+        // Aviso discreto de que la cascada se aplicó.
+        console.log(`Categoría renombrada. ${affected} producto(s) reasignado(s).`);
+      }
+    } catch (err) {
+      console.error('Error al renombrar categoría:', err);
+      alert(`No se pudo renombrar la categoría.\n\n${err?.message || err}`);
+    } finally {
+      setSavingRename(false);
+    }
+  }
+
   const allCategories = ['Todas', ...categories];
+
+  // Vencimiento más próximo por producto (una sola pasada, no una por fila)
+  const productExpiry = useMemo(() => {
+    const map = {};
+    products.forEach((p) => { map[p.id] = getNearestExpiry(replenishments, p.id); });
+    return map;
+  }, [products, replenishments]);
+
+  // Productos con una compra registrada en los últimos RECENT_PURCHASE_DAYS días
+  const recentlyPurchasedIds = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - RECENT_PURCHASE_DAYS);
+    const ids = new Set();
+    replenishments.forEach((r) => {
+      const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+      if (d >= cutoff) ids.add(r.productId);
+    });
+    return ids;
+  }, [replenishments]);
+
   const filtered = products
     .filter((p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.brand || '').toLowerCase().includes(search.toLowerCase())
     )
-    .filter((p) => filterCategory === 'Todas' || p.category === filterCategory);
+    .filter((p) => filterCategory === 'Todas' || p.category === filterCategory)
+    .filter((p) => {
+      if (filterExpiry === 'todos') return true;
+      const exp = productExpiry[p.id];
+      if (!exp) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = Math.ceil((exp.date - today) / (1000 * 60 * 60 * 24));
+      if (filterExpiry === 'vencidos') return daysLeft < 0;
+      return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
+    })
+    .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id));
+
+  const dataColumns = [
+    {
+      key: 'foto', label: '', align: 'center', width: 'w-14',
+      render: (p) => <ProductImage imageData={p.imageData} name={p.name} size="sm" />,
+    },
+    {
+      key: 'nombre', label: 'Producto', align: 'left', sortable: true,
+      sortValue: (p) => p.name,
+      render: (p) => (
+        <div>
+          <p className="font-semibold text-[var(--mg-text-primary)]">{p.name}</p>
+          {p.brand && <p className="text-xs text-[var(--mg-text-faint)]">{p.brand}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'categoria', label: 'Categoría', align: 'left', width: 'w-32', sortable: true,
+      sortValue: (p) => p.category,
+      render: (p) => (
+        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getCatColor(categories, p.category)}`}>
+          {p.category}
+        </span>
+      ),
+    },
+    {
+      key: 'precioVenta', label: 'Precio Venta', align: 'right', width: 'w-28', sortable: true,
+      sortValue: (p) => p.price,
+      render: (p) => <span className="font-bold text-[var(--mg-accent)]">{formatBs(p.price)}</span>,
+    },
+    {
+      key: 'precioCompra', label: 'Precio Compra', align: 'right', width: 'w-28', sortable: true,
+      sortValue: (p) => p.supplierPrice || 0,
+      render: (p) => (p.supplierPrice ? formatBs(p.supplierPrice) : <span className="text-gray-300">—</span>),
+    },
+    {
+      key: 'stock', label: 'Stock', align: 'right', width: 'w-24', sortable: true,
+      sortValue: (p) => p.stock,
+      render: (p) => {
+        const isOut = p.stock === 0;
+        const isLow = p.stock <= (p.minStock || 5);
+        return (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+            isOut ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : isLow ? 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)]' : 'bg-green-100 text-green-700'
+          }`}>
+            {isOut ? '❌ Agotado' : isLow ? `⚠️ ${p.stock}` : `✓ ${p.stock}`}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'vencimiento', label: 'Vencimiento', align: 'center', width: 'w-32', sortable: true,
+      sortValue: (p) => productExpiry[p.id]?.date?.getTime() ?? Infinity,
+      render: (p) => {
+        const exp = productExpiry[p.id];
+        if (!exp) return <span className="text-gray-300">—</span>;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysLeft = Math.ceil((exp.date - today) / (1000 * 60 * 60 * 24));
+        const label = exp.date.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+        const color = daysLeft < 0 ? 'text-red-500' : daysLeft <= EXPIRY_WARNING_DAYS ? 'text-amber-600' : 'text-[var(--mg-text-secondary)]';
+        return <span className={`font-mono text-xs font-semibold ${color}`}>{label}</span>;
+      },
+    },
+    {
+      key: 'acciones', label: '', align: 'center', width: 'w-24',
+      render: (p) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => openEdit(p)}
+            className="w-8 h-8 hover:bg-[var(--mg-accent-bg)] rounded-lg flex items-center justify-center text-gray-500 hover:text-[var(--mg-accent)] active:scale-95 transition-all"
+            title="Editar producto"
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(p)}
+            className="w-8 h-8 hover:bg-red-50 rounded-lg flex items-center justify-center text-gray-400 hover:text-[var(--mg-danger)] active:scale-95 transition-all"
+            title="Eliminar producto"
+          >
+            🗑️
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   if (loading) {
     return (
@@ -316,103 +474,48 @@ export default function Inventory() {
         ))}
       </div>
 
-      {/* Swipe hint */}
-      {filtered.length > 0 && (
-        <p className="text-gray-300 text-xs text-center">← Desliza un producto para editar o borrar</p>
-      )}
-
-      {/* Products List with swipe */}
-      <div className="space-y-2">
-        {filtered.map((product) => {
-          const isLow = product.stock <= (product.minStock || 5);
-          const isOut = product.stock === 0;
-          const catColor = getCatColor(categories, product.category);
-          const nearestExpiry = getNearestExpiry(replenishments, product.id);
-          let expiryDaysLeft = null;
-          if (nearestExpiry) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            expiryDaysLeft = Math.ceil((nearestExpiry.date - today) / (1000 * 60 * 60 * 24));
-          }
-          const showExpiryBadge = expiryDaysLeft !== null && expiryDaysLeft <= EXPIRY_WARNING_DAYS;
-          const expiryDateLabel = nearestExpiry?.date.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-          return (
-            <SwipeableCard
-              key={product.id}
-              onEdit={() => openEdit(product)}
-              onDelete={() => handleDelete(product)}
-            >
-              <div className={`group bg-[var(--mg-bg-surface)] p-3 border-2 flex items-center justify-between gap-3 rounded-2xl ${
-                isOut ? 'border-[var(--mg-danger)]' : isLow ? 'border-[var(--mg-warning)]' : 'border-[var(--mg-border)]'
-              }`}>
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <ProductImage imageData={product.imageData} name={product.name} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[var(--mg-text-primary)] truncate text-sm">
-                      {product.name} {product.unit && product.unit !== 'Unidad' ? `(${product.unit})` : ''}
-                    </p>
-                    {product.brand && (
-                      <p className="text-[var(--mg-text-faint)] text-xs truncate">{product.brand}</p>
-                    )}
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${catColor}`}>
-                        {product.category}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        isOut ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : isLow ? 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)]' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {isOut ? '❌ Agotado' : isLow ? `⚠️ ${product.stock}` : `✓ ${product.stock}`}
-                      </span>
-                      {showExpiryBadge && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          expiryDaysLeft < 0 ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)]'
-                        }`}>
-                          {expiryDaysLeft < 0 ? `⏰ Vencido (${expiryDateLabel})` : `⏰ Vence ${expiryDateLabel}`}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[var(--mg-accent)] font-bold text-sm mt-1">{formatBs(product.price)}</p>
-                  </div>
-                </div>
-
-                {/* Acciones directas (visibles siempre en móvil, hover en desktop) */}
-                <div className="flex items-center gap-1 shrink-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(product);
-                    }}
-                    className="w-9 h-9 hover:bg-[var(--mg-accent-bg)] rounded-xl flex items-center justify-center text-gray-500 hover:text-[var(--mg-accent)] active:scale-95 transition-all shrink-0"
-                    title="Editar producto"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(product);
-                    }}
-                    className="w-9 h-9 hover:bg-red-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0"
-                    title="Eliminar producto"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </SwipeableCard>
-          );
-        })}
+      {/* Filtros de vencimiento y compra reciente */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+        <button
+          onClick={() => setFilterExpiry((v) => (v === 'porVencer' ? 'todos' : 'porVencer'))}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+            filterExpiry === 'porVencer'
+              ? 'bg-[var(--mg-warning)] text-white shadow-sm'
+              : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+          }`}
+        >
+          ⏰ Por vencer
+        </button>
+        <button
+          onClick={() => setFilterExpiry((v) => (v === 'vencidos' ? 'todos' : 'vencidos'))}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+            filterExpiry === 'vencidos'
+              ? 'bg-[var(--mg-danger)] text-white shadow-sm'
+              : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+          }`}
+        >
+          ❌ Vencidos
+        </button>
+        <button
+          onClick={() => setFilterRecent((v) => !v)}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+            filterRecent
+              ? 'bg-[var(--mg-accent)] text-white shadow-sm'
+              : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+          }`}
+        >
+          🆕 Recién comprado
+        </button>
       </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-[var(--mg-text-faint)]">
-          <p className="text-5xl mb-3">📦</p>
-          <p className="font-semibold">{search ? 'No encontrado' : 'Sin productos'}</p>
-          {!search && <p className="text-sm mt-1">Toca "Agregar" para empezar</p>}
-        </div>
-      )}
+      {/* Tabla de productos */}
+      <DataTable
+        storageKey="mg-inventario-columns"
+        columns={dataColumns}
+        rows={filtered}
+        getRowKey={(p) => p.id}
+        emptyMessage={search ? 'No encontrado' : 'Sin productos que coincidan con los filtros.'}
+      />
 
 
       {/* === MODAL: Agregar/Editar Producto === */}
@@ -656,17 +759,54 @@ export default function Inventory() {
               {/* Lista de categorías */}
               <div className="space-y-2">
                 {categories.map((cat, i) => (
-                  <div key={cat} className="flex items-center justify-between bg-[var(--mg-bg-elevated)] rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-3 h-3 rounded-full ${CATEGORY_COLORS[i % CATEGORY_COLORS.length].split(' ')[0].replace('bg-', 'bg-').replace('-100', '-400')}`} />
-                      <span className="text-sm font-semibold text-[var(--mg-text-secondary)]">{cat}</span>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveCategory(cat)}
-                      className="text-red-400 text-sm active:scale-95 font-semibold px-2"
-                    >
-                      Eliminar
-                    </button>
+                  <div key={cat} className="bg-[var(--mg-bg-elevated)] rounded-xl px-4 py-3">
+                    {editingCat === cat ? (
+                      <form onSubmit={handleRenameCategory} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editCatValue}
+                          onChange={(e) => setEditCatValue(e.target.value)}
+                          autoFocus
+                          maxLength={40}
+                          className="flex-1 min-w-0 border-2 border-[var(--mg-accent-border)] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-[var(--mg-accent)]"
+                        />
+                        <button
+                          type="submit"
+                          disabled={savingRename || !editCatValue.trim()}
+                          className="bg-[var(--mg-accent)] text-white text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 disabled:opacity-50 shrink-0"
+                        >
+                          {savingRename ? '...' : 'Guardar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditCategory}
+                          className="text-[var(--mg-text-muted)] text-xs font-semibold px-1.5 shrink-0"
+                        >
+                          Cancelar
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-3 h-3 rounded-full shrink-0 ${CATEGORY_COLORS[i % CATEGORY_COLORS.length].split(' ')[0].replace('-100', '-400')}`} />
+                          <span className="text-sm font-semibold text-[var(--mg-text-secondary)] truncate">{cat}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => startEditCategory(cat)}
+                            className="text-[var(--mg-accent)] text-sm active:scale-95 font-semibold px-2"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleRemoveCategory(cat)}
+                            className="text-red-400 text-sm active:scale-95 font-semibold px-2"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

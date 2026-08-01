@@ -123,16 +123,16 @@ function DonutChart({ data, totalLabel, isCurrency }) {
   );
 }
 
-function LineChart({ data }) {
+function LineChart({ data, labelEvery = 4 }) {
   const maxVal = Math.max(...data.map(d => d.total), 1);
-  const height = 140;
-  const width = 360;
-  const padding = 20;
-  
+  const height = 160;
+  const width = 640;
+  const padding = 24;
+
   const points = data.map((d, i) => {
-    const x = padding + (i / 23) * (width - 2 * padding);
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
     const y = height - padding - (d.total / maxVal) * (height - 2 * padding);
-    return { x, y, hour: d.hour, total: d.total };
+    return { x, y, index: i, label: d.label, total: d.total };
   });
 
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -182,9 +182,9 @@ function LineChart({ data }) {
         ))}
 
         {/* X Axis Labels */}
-        {points.filter(p => p.hour % 4 === 0).map((p, i) => (
-          <text key={i} x={p.x} y={height - 2} fontSize="7" fontWeight="semibold" fill="var(--mg-text-muted)" textAnchor="middle">
-            {`${String(p.hour).padStart(2, '0')}:00`}
+        {points.filter(p => p.index % labelEvery === 0).map((p, i) => (
+          <text key={i} x={p.x} y={height - 4} fontSize="7.5" fontWeight="semibold" fill="var(--mg-text-muted)" textAnchor="middle">
+            {p.label}
           </text>
         ))}
       </svg>
@@ -407,12 +407,17 @@ export default function Dashboard() {
   }, [salesItemsMap]);
 
   const hourlyTrendData = useMemo(() => {
-    const trend = Array.from({ length: 24 }, (_, i) => ({ hour: i, total: 0 }));
+    // 48 franjas de 30 minutos (00:00, 00:30, 01:00, ... 23:30)
+    const trend = Array.from({ length: 48 }, (_, i) => ({
+      slot: i,
+      label: `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`,
+      total: 0,
+    }));
     visibleSales.forEach(s => {
       if (!s.createdAt) return;
       const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-      const hr = d.getHours();
-      trend[hr].total += s.total || 0;
+      const slot = d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0);
+      trend[slot].total += s.total || 0;
     });
     return trend;
   }, [visibleSales]);
@@ -423,14 +428,19 @@ export default function Dashboard() {
       if (!s.createdAt) return;
       const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
       const hr = d.getHours();
-      const label = `${String(hr).padStart(2, '0')}:00 - ${String(hr + 1).padStart(2, '0')}:00`;
-      if (!bands[hr]) {
-        bands[hr] = { label, count: 0, total: 0, hr };
+      const isSecondHalf = d.getMinutes() >= 30;
+      const slot = hr * 2 + (isSecondHalf ? 1 : 0);
+      const startLabel = `${String(hr).padStart(2, '0')}:${isSecondHalf ? '30' : '00'}`;
+      const endHr = isSecondHalf ? (hr + 1) % 24 : hr;
+      const endLabel = `${String(endHr).padStart(2, '0')}:${isSecondHalf ? '00' : '30'}`;
+      const label = `${startLabel} - ${endLabel}`;
+      if (!bands[slot]) {
+        bands[slot] = { label, count: 0, total: 0, slot };
       }
-      bands[hr].count += 1;
-      bands[hr].total += s.total || 0;
+      bands[slot].count += 1;
+      bands[slot].total += s.total || 0;
     });
-    return Object.values(bands).sort((a, b) => a.hr - b.hr);
+    return Object.values(bands).sort((a, b) => a.slot - b.slot);
   }, [visibleSales]);
 
   const lowStock = products.filter((p) => p.stock <= (p.minStock || 5));
@@ -459,6 +469,7 @@ export default function Dashboard() {
   const maxTotal = visibleSales.length > 0 ? Math.max(...visibleSales.map((s) => s.total)) : 1;
   const totalMonthExpenses = monthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
   const monthProfit = monthIncome - totalMonthExpenses;
+  const monthMargin = monthIncome > 0 ? (monthProfit / monthIncome) * 100 : null;
 
   // Totales por método de pago (con soporte para mixtos y excluyendo fiados)
   const totalQr = visibleSales.reduce((sum, s) => {
@@ -548,8 +559,16 @@ export default function Dashboard() {
   return (
     <div className="p-4 space-y-4">
       {/* BANNER PRINCIPAL (ESTILO BANCA DIGITAL) */}
-      <div className="bg-[#1670C2] text-white rounded-[24px] p-5 shadow-md -mx-4 sm:mx-0">
-        <div className="flex items-center justify-between mb-5">
+      <div
+        className="relative text-white rounded-[24px] p-5 shadow-lg -mx-4 sm:mx-0 overflow-hidden"
+        style={{ background: 'linear-gradient(155deg, var(--mg-accent) 0%, var(--mg-accent-mid) 55%, var(--mg-accent-deep) 100%)' }}
+      >
+        {/* Halo dorado sutil — eco de la flecha del logo */}
+        <div
+          className="absolute -top-16 -right-20 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(217,154,43,0.28) 0%, transparent 70%)' }}
+        />
+        <div className="relative flex items-center justify-between mb-5">
           <div>
             <p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider">{today}</p>
             <h2 className="text-xl font-black mt-0.5">
@@ -576,13 +595,13 @@ export default function Dashboard() {
         </div>
 
         {/* Balance / Resumen de Ventas del día */}
-        <div className="bg-white/10 backdrop-blur-md rounded-[20px] p-4 border border-white/15">
+        <div className="relative bg-white/10 backdrop-blur-md rounded-[20px] p-4 border border-white/15">
           <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider">Ventas de Hoy (Total Cobrado)</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight">{formatBs(totalHoy)}</span>
+            <span className="text-3xl font-black tracking-tight" style={{ color: '#f2c15c' }}>{formatBs(totalHoy)}</span>
             <span className="text-blue-100 text-xs font-semibold">({paidSalesCount} {paidSalesCount === 1 ? 'venta cobrada' : 'ventas cobradas'})</span>
           </div>
-          
+
           {/* Desglose de Ventas por Método de Pago */}
           <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
@@ -608,24 +627,25 @@ export default function Dashboard() {
       </div>
 
       {/* ACCESOS RÁPIDOS (ESTILO SOBRIO Y PROFESIONAL) */}
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mg-stagger">
         <button
           onClick={() => navigate('/ventas')}
-          className="flex flex-col items-center p-3 bg-white border border-[var(--mg-border)] rounded-[20px] active:scale-95 transition-all shadow-sm hover:bg-gray-50 group"
+          className="flex flex-col items-center p-3 rounded-[20px] active:scale-95 transition-all shadow-md group text-white"
+          style={{ background: 'linear-gradient(155deg, var(--mg-accent) 0%, var(--mg-accent-mid) 100%)' }}
         >
-          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <span className="text-[10px] font-bold text-[var(--mg-text-secondary)]">Vender</span>
+          <span className="text-[10px] font-bold">Vender</span>
         </button>
 
         <button
           onClick={() => navigate('/inventario')}
           className="flex flex-col items-center p-3 bg-white border border-[var(--mg-border)] rounded-[20px] active:scale-95 transition-all shadow-sm hover:bg-gray-50 group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] flex items-center justify-center mb-1.5 border border-[var(--mg-gold-border)] group-hover:scale-105 transition-transform">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
@@ -637,7 +657,7 @@ export default function Dashboard() {
           onClick={() => navigate('/egresos')}
           className="flex flex-col items-center p-3 bg-white border border-[var(--mg-border)] rounded-[20px] active:scale-95 transition-all shadow-sm hover:bg-gray-50 group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center mb-1.5 border border-red-100 group-hover:scale-105 transition-transform">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -646,10 +666,10 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={() => navigate('/reportes')}
+          onClick={() => navigate('/reportes?type=profit')}
           className="flex flex-col items-center p-3 bg-white border border-[var(--mg-border)] rounded-[20px] active:scale-95 transition-all shadow-sm hover:bg-gray-50 group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] flex items-center justify-center mb-1.5 border border-[var(--mg-accent-border)] group-hover:scale-105 transition-transform">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
             </svg>
@@ -661,7 +681,7 @@ export default function Dashboard() {
           onClick={() => setShowQr(true)}
           className="flex flex-col items-center p-3 bg-white border border-[var(--mg-border)] rounded-[20px] active:scale-95 transition-all shadow-sm hover:bg-gray-50 group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center mb-1.5 border border-gray-200 group-hover:scale-105 transition-transform">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
             </svg>
@@ -671,14 +691,14 @@ export default function Dashboard() {
       </div>
 
       {/* TARJETAS DE ESTADÍSTICAS DEL INVENTARIO Y CATÁLOGO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mg-stagger">
         {/* Productos en catálogo */}
         <div className="bg-white border border-[var(--mg-border)] rounded-2xl p-6 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--mg-text-muted)]">Productos en Catálogo</span>
             <p className="text-3xl font-black text-[var(--mg-text-primary)] mt-1">{products.length}</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-200 text-gray-500 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-[var(--mg-accent-bg)] flex items-center justify-center border border-[var(--mg-accent-border)] text-[var(--mg-accent)] shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
@@ -691,7 +711,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--mg-text-muted)]">Valor Total Inventario</span>
             <p className="text-3xl font-black text-[var(--mg-text-primary)] mt-1">{formatBs(inventoryValue)}</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-200 text-gray-500 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-[var(--mg-gold-bg)] flex items-center justify-center border border-[var(--mg-gold-border)] text-[var(--mg-gold-text)] shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -744,7 +764,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--mg-text-muted)]">Más Vendido Hoy</span>
             <p className="text-xl font-black text-[var(--mg-text-primary)] mt-1.5 truncate">{topProductToday}</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-200 text-gray-500 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-[var(--mg-success-bg)] flex items-center justify-center border border-green-200 text-[var(--mg-success-text)] shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
@@ -768,8 +788,15 @@ export default function Dashboard() {
       {/* Monthly summary (dueño) / Mis ventas por método de pago (cajero) */}
       {isOwner ? (
         <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--mg-border)]">
+          <div className="px-4 py-3 border-b border-[var(--mg-border)] flex items-center justify-between">
             <p className="font-bold text-[var(--mg-text-secondary)] text-sm">Resumen del mes</p>
+            {monthMargin !== null && (
+              <span className={`text-[11px] font-black px-2.5 py-1 rounded-full ${
+                monthMargin >= 0 ? 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]' : 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
+              }`}>
+                {monthMargin >= 0 ? '▲' : '▼'} {Math.abs(monthMargin).toFixed(0)}% margen
+              </span>
+            )}
           </div>
           <div className="p-4 space-y-3">
             <div>
@@ -802,6 +829,25 @@ export default function Dashboard() {
                 {monthProfit >= 0 ? '+' : ''}{formatBs(monthProfit)}
               </span>
             </div>
+
+            {/* Fiado pendiente — dinero por cobrar, no realizado todavía */}
+            {totalPendingDebts > 0 && (
+              <button
+                onClick={() => navigate('/cxc')}
+                className="w-full flex items-center gap-3 bg-[var(--mg-gold-bg)] border border-[var(--mg-gold-border)] rounded-xl px-3.5 py-3 mt-1 active:scale-[0.98] transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center text-[var(--mg-gold-text)] shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--mg-gold-text)]">Fiado pendiente</p>
+                  <p className="text-[11px] text-[var(--mg-text-muted)]">{uniqueClientsCount} {uniqueClientsCount === 1 ? 'cliente' : 'clientes'} te deben</p>
+                </div>
+                <span className="text-base font-black text-[var(--mg-gold-text)] shrink-0">{formatBs(totalPendingDebts)}</span>
+              </button>
+            )}
           </div>
           <button
             onClick={() => navigate('/egresos')}
@@ -891,29 +937,29 @@ export default function Dashboard() {
       {/* Sección de Dashboard con Gráficos */}
       {visibleSales.length > 0 && (
         <div className="space-y-6 mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Gráfico 1: Productos más vendidos */}
             <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-5 shadow-sm">
               <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">🍩 Productos más vendidos (unidades)</h4>
               <DonutChart data={topProductsChartData} totalLabel="Unidades" isCurrency={false} />
             </div>
-            
+
             {/* Gráfico 2: Ventas por Categoría */}
             <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-5 shadow-sm">
               <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">🍩 Ventas por Categoría (Bs)</h4>
               <DonutChart data={categorySalesChartData} totalLabel="Total" isCurrency={true} />
             </div>
 
-            {/* Gráfico 3: Tendencia por Hora */}
-            <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-5 shadow-sm flex flex-col justify-between">
-              <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">📈 Ventas por Hora (Bs)</h4>
-              <LineChart data={hourlyTrendData} />
+            {/* Gráfico 3: Tendencia por Media Hora — más ancho para apreciar mejor los datos */}
+            <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-5 shadow-sm flex flex-col justify-between">
+              <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">📈 Ventas por Media Hora (Bs)</h4>
+              <LineChart data={hourlyTrendData} labelEvery={4} />
             </div>
           </div>
 
-          {/* Tabla de Franja Horaria */}
+          {/* Tabla de Franja Horaria (cada 30 min) */}
           <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-5 shadow-sm">
-            <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">⏰ Ventas por Franja Horaria</h4>
+            <h4 className="text-sm font-bold text-[var(--mg-text-secondary)] mb-3">⏰ Ventas por Franja Horaria (cada 30 min)</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>

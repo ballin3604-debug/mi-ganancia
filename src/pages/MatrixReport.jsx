@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToSales, subscribeToSaleItems } from '../services/sales';
 import { subscribeToExpenses } from '../services/expenses';
@@ -11,36 +11,23 @@ import ReportHeader from '../components/ReportHeader';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
 
-const PRICE_RANGES = [
-    { label: "hasta Bs 50", max: 50 },
-    { label: "Bs 51 - 100", max: 100 },
-    { label: "Bs 101 - 200", max: 200 },
-    { label: "Bs 201 - 300", max: 300 },
-    { label: "Bs 301 - 400", max: 400 },
-    { label: "Bs 401 - 500", max: 500 },
-    { label: "Bs 501 - 700", max: 700 },
-    { label: "Bs 701 - 1000", max: 1000 },
-    { label: "Bs 1001 - 1500", max: 1500 },
-    { label: "Bs 1501 - 2000", max: 2000 },
-    { label: "Bs 2001 - 3000", max: 3000 },
-    { label: "Bs 3001 - 4000", max: 4000 },
-    { label: "Bs 4001 - 5000", max: 5000 },
-    { label: "Más de 5000", max: Infinity }
-];
+function getExpenseFlow(e) {
+    return (e.expense_type === 'fixed' || e.expenseType === 'fixed') ? 'fixed' : 'daily';
+}
 
-const VALID_REPORT_TYPES = ['products', 'ranges', 'ranking', 'expenses', 'inventory', 'profit'];
+const VALID_REPORT_TYPES = ['ranking', 'expenses', 'inventory', 'profit', 'costoVendido'];
 const REPORT_TYPE_META = {
-    products: { icon: '🥖', title: 'Productos Llevados', subtitle: 'Detalle de productos llevados por cada cliente en el periodo.' },
-    ranges: { icon: '💰', title: 'Inversión por Cliente', subtitle: 'Cuánto invirtió cada cliente, agrupado por rango de precio.' },
     ranking: { icon: '🏆', title: 'Ranking de Productos', subtitle: 'Productos más vendidos por unidades e ingresos.' },
     expenses: { icon: '💵', title: 'Reporte de Egresos', subtitle: 'Egresos registrados y su distribución por categoría.' },
     inventory: { icon: '📦', title: 'Reporte de Inventario', subtitle: 'Stock actual, valorización y movimientos de entrada/salida.' },
     profit: { icon: '📈', title: 'Ganancias Diarias', subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.' },
+    costoVendido: { icon: '📦', title: 'Costo de lo Vendido', subtitle: 'Costo de proveedor de cada producto vendido en el periodo.' },
 };
 
 export default function MatrixReport() {
     const { businessId } = useAuth();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [sales, setSales] = useState([]);
     const [saleItems, setSaleItems] = useState([]);
     const [expenses, setExpenses] = useState([]);
@@ -49,7 +36,11 @@ export default function MatrixReport() {
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const requestedType = searchParams.get('type');
-    const reportType = VALID_REPORT_TYPES.includes(requestedType) ? requestedType : 'products'; // 'products' | 'ranges' | 'ranking' | 'expenses' | 'inventory' | 'profit'
+    const reportType = VALID_REPORT_TYPES.includes(requestedType) ? requestedType : 'profit'; // 'ranking' | 'expenses' | 'inventory' | 'profit' | 'costoVendido'
+    // Solo aplica al reporte de Egresos: llegar con ?flow=daily (desde el
+    // botón "Gastos Diarios" de Ganancias Diarias) lo filtra a solo egresos
+    // diarios, excluyendo los fijos.
+    const flowFilter = searchParams.get('flow');
     const [selectedDayDetail, setSelectedDayDetail] = useState(null);
 
     useEffect(() => {
@@ -107,22 +98,56 @@ export default function MatrixReport() {
         if (reportType === 'expenses') {
             const rows = filteredExpenses.map((exp) => {
                 const d = exp.createdAt?.toDate ? exp.createdAt.toDate() : new Date(exp.createdAt);
-                return [d.toLocaleDateString('es-BO'), exp.description || '', exp.supplier || '', exp.category || 'Otros', `Bs ${Number(exp.amount || 0).toFixed(2)}`];
+                const isFixed = getExpenseFlow(exp) === 'fixed';
+                return [d.toLocaleDateString('es-BO'), exp.description || '', exp.supplier || '', exp.category || 'Otros', isFixed ? 'Fijo' : 'Diario', `Bs ${Number(exp.amount || 0).toFixed(2)}`];
             });
             exportReportToPDF({
                 businessName: settings?.businessName,
-                title: 'Reporte de Egresos',
-                subtitle: 'Egresos registrados y su distribución por categoría.',
+                title: flowFilter === 'daily' ? 'Gastos Diarios' : 'Reporte de Egresos',
+                subtitle: flowFilter === 'daily' ? 'Egresos diarios (no fijos) registrados en el periodo.' : 'Egresos registrados y su distribución por categoría.',
                 periodLabel: periodLabel(),
                 columns: [
                     { label: 'Fecha' },
                     { label: 'Descripción' },
                     { label: 'Proveedor' },
                     { label: 'Categoría' },
+                    { label: 'Tipo' },
                     { label: 'Monto', align: 'right' },
                 ],
                 rows,
-                totals: { values: { 4: `Bs ${totalExpenses.toFixed(2)}` } },
+                totals: { values: { 5: `Bs ${totalExpenses.toFixed(2)}` } },
+            });
+            return;
+        }
+        if (reportType === 'costoVendido') {
+            const rows = costOfGoodsRows.map((r) => {
+                const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                return [
+                    d.toLocaleDateString('es-BO'),
+                    `#${String(r.saleNumber).padStart(4, '0')}`,
+                    r.productName,
+                    r.category,
+                    r.quantity,
+                    r.unitCost !== null ? `Bs ${r.unitCost.toFixed(2)}` : 'Sin costo',
+                    r.costTotal !== null ? `Bs ${r.costTotal.toFixed(2)}` : 'Sin costo',
+                ];
+            });
+            exportReportToPDF({
+                businessName: settings?.businessName,
+                title: 'Costo de lo Vendido',
+                subtitle: 'Costo de proveedor de cada producto vendido en el periodo.',
+                periodLabel: periodLabel(),
+                columns: [
+                    { label: 'Fecha' },
+                    { label: 'N° Venta' },
+                    { label: 'Producto' },
+                    { label: 'Categoría' },
+                    { label: 'Cantidad', align: 'right' },
+                    { label: 'Costo Unitario', align: 'right' },
+                    { label: 'Costo Total', align: 'right' },
+                ],
+                rows,
+                totals: { values: { 6: `Bs ${totalCostOfGoodsRows.toFixed(2)}` } },
             });
             return;
         }
@@ -185,70 +210,21 @@ export default function MatrixReport() {
             });
             return;
         }
-        if (reportType === 'ranges') {
-            const rows = matrix.map((row) => [
-                row.clientName,
-                ...activePriceRanges.map((r) => `Bs ${Number(row.ranges[r.originalIndex] || 0).toFixed(2)}`),
-                `Bs ${Number(row.totalSpent || 0).toFixed(2)}`,
-            ]);
-            const rangeTotalsValues = {};
-            activePriceRanges.forEach((r, i) => {
-                rangeTotalsValues[1 + i] = `Bs ${matrix.reduce((sum, row) => sum + Number(row.ranges[r.originalIndex] || 0), 0).toFixed(2)}`;
-            });
-            rangeTotalsValues[1 + activePriceRanges.length] = `Bs ${matrix.reduce((sum, row) => sum + Number(row.totalSpent || 0), 0).toFixed(2)}`;
-            exportReportToPDF({
-                businessName: settings?.businessName,
-                title: 'Inversión por Cliente',
-                subtitle: 'Cuánto invirtió cada cliente, agrupado por rango de precio.',
-                periodLabel: periodLabel(),
-                columns: [
-                    { label: 'Cliente' },
-                    ...activePriceRanges.map((r) => ({ label: r.label, align: 'right' })),
-                    { label: 'Total General', align: 'right' },
-                ],
-                rows,
-                totals: { values: rangeTotalsValues },
-            });
-            return;
-        }
-        if (reportType === 'products') {
-            const rows = productsMatrix.rows.map((row) => [
-                row.clientName,
-                ...productsMatrix.columns.map((col) => (row.products[col] ? row.products[col].qty : 0)),
-                row.totalQty,
-                `Bs ${Number(row.totalSpent || 0).toFixed(2)}`,
-            ]);
-            const productTotalsValues = {};
-            productsMatrix.columns.forEach((col, i) => {
-                productTotalsValues[1 + i] = productsMatrix.rows.reduce((sum, row) => sum + Number(row.products[col]?.qty || 0), 0);
-            });
-            productTotalsValues[1 + productsMatrix.columns.length] = productsMatrix.rows.reduce((sum, row) => sum + Number(row.totalQty || 0), 0);
-            productTotalsValues[2 + productsMatrix.columns.length] = `Bs ${productsMatrix.rows.reduce((sum, row) => sum + Number(row.totalSpent || 0), 0).toFixed(2)}`;
-            exportReportToPDF({
-                businessName: settings?.businessName,
-                title: 'Productos Llevados',
-                subtitle: 'Detalle de productos llevados por cada cliente en el periodo.',
-                periodLabel: periodLabel(),
-                columns: [
-                    { label: 'Cliente' },
-                    ...productsMatrix.columns.map((col) => ({ label: col, align: 'right' })),
-                    { label: 'Total Unidades', align: 'right' },
-                    { label: 'Total Gastado', align: 'right' },
-                ],
-                rows,
-                totals: { values: productTotalsValues },
-            });
-        }
     }
 
-    // Fechas por defecto: inicio del mes actual hasta hoy (en hora local)
+    // Fechas por defecto: inicio del mes actual hasta hoy (en hora local) —
+    // salvo que se llegue acá con ?start=&end= desde otro reporte (p.ej. los
+    // botones de Ganancias Diarias), en cuyo caso se respeta ese rango para
+    // que los números coincidan sin que el usuario tenga que reajustarlo.
     const [startDate, setStartDate] = useState(() => {
+        const fromUrl = searchParams.get('start');
+        if (fromUrl) return fromUrl;
         const d = new Date();
         d.setDate(1);
         return toLocalISODate(d);
     });
     const [endDate, setEndDate] = useState(() => {
-        return toLocalISODate(new Date());
+        return searchParams.get('end') || toLocalISODate(new Date());
     });
 
     useEffect(() => {
@@ -306,64 +282,6 @@ export default function MatrixReport() {
         };
     }, [businessId]);
 
-    // Lógica para agrupar ventas reales en la matriz
-    const matrix = useMemo(() => {
-        const start = new Date(`${startDate}T00:00:00`);
-        const end = new Date(`${endDate}T23:59:59.999`);
-
-        const filtered = sales.filter(s => {
-            if (!s.createdAt) return false;
-            const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-            return d >= start && d <= end;
-        });
-
-        const clientTotals = {};
-
-        filtered.forEach(sale => {
-            const clientName = sale.clientName?.trim() || 'Cliente Casual';
-            const total = sale.total || 0;
-
-            let rangeIdx = PRICE_RANGES.length - 1;
-            for (let i = 0; i < PRICE_RANGES.length; i++) {
-                if (total <= PRICE_RANGES[i].max) {
-                    rangeIdx = i;
-                    break;
-                }
-            }
-
-            if (!clientTotals[clientName]) {
-                clientTotals[clientName] = {};
-            }
-            clientTotals[clientName][rangeIdx] = (clientTotals[clientName][rangeIdx] || 0) + total;
-        });
-
-        const rows = Object.keys(clientTotals).map(clientName => {
-            const ranges = clientTotals[clientName];
-            const totalSpent = Object.values(ranges).reduce((a, b) => a + b, 0);
-            return { clientName, ranges, totalSpent };
-        });
-
-        // Ordenar clientes por los que más gastaron en total
-        rows.sort((a, b) => b.totalSpent - a.totalSpent);
-
-        return rows;
-    }, [sales, startDate, endDate]);
-
-    // Lógica para calcular qué rangos tienen al menos un valor mayor a cero
-    const activePriceRanges = useMemo(() => {
-        const usedIndices = new Set();
-        matrix.forEach(row => {
-            Object.keys(row.ranges).forEach(rIdx => {
-                if (row.ranges[rIdx] > 0) {
-                    usedIndices.add(Number(rIdx));
-                }
-            });
-        });
-        return PRICE_RANGES
-            .map((r, i) => ({ ...r, originalIndex: i }))
-            .filter((r) => usedIndices.has(r.originalIndex));
-    }, [matrix]);
-
     // Lógica para el ranking de productos más vendidos
     const rankingMatrix = useMemo(() => {
         const start = new Date(`${startDate}T00:00:00`);
@@ -398,51 +316,6 @@ export default function MatrixReport() {
         return ranking;
     }, [sales, saleItems, startDate, endDate]);
 
-    // Lógica para el reporte de Productos Llevados
-    const productsMatrix = useMemo(() => {
-        const start = new Date(`${startDate}T00:00:00`);
-        const end = new Date(`${endDate}T23:59:59.999`);
-
-        // Mapa de las ventas válidas en estas fechas
-        const validSalesMap = new Map();
-        sales.forEach(s => {
-            if (!s.createdAt) return;
-            const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-            if (d >= start && d <= end) {
-                validSalesMap.set(s.id, s.clientName?.trim() || 'Cliente Casual');
-            }
-        });
-
-        const clientTotals = {};
-        const productStats = {};
-
-        saleItems.forEach(item => {
-            if (!validSalesMap.has(item.saleId)) return;
-            const clientName = validSalesMap.get(item.saleId);
-            const pName = item.productName || 'Desconocido';
-
-            if (!clientTotals[clientName]) clientTotals[clientName] = { products: {}, totalQty: 0, totalSpent: 0 };
-            if (!clientTotals[clientName].products[pName]) clientTotals[clientName].products[pName] = { qty: 0, subtotal: 0 };
-
-            clientTotals[clientName].products[pName].qty += item.quantity;
-            clientTotals[clientName].products[pName].subtotal += item.subtotal;
-            clientTotals[clientName].totalQty += item.quantity;
-            clientTotals[clientName].totalSpent += item.subtotal;
-
-            if (!productStats[pName]) productStats[pName] = 0;
-            productStats[pName] += item.quantity;
-        });
-
-        const columns = Object.keys(productStats).sort((a, b) => productStats[b] - productStats[a]);
-
-        const rows = Object.keys(clientTotals).map(clientName => ({
-            clientName, ...clientTotals[clientName]
-        }));
-        rows.sort((a, b) => b.totalSpent - a.totalSpent);
-
-        return { rows, columns };
-    }, [sales, saleItems, startDate, endDate]);
-
     // -- Lógica para Reporte de Egresos --
     const start = useMemo(() => new Date(`${startDate}T00:00:00`), [startDate]);
     const end = useMemo(() => new Date(`${endDate}T23:59:59.999`), [endDate]);
@@ -451,9 +324,11 @@ export default function MatrixReport() {
         return expenses.filter(e => {
             if (!e.createdAt) return false;
             const d = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
-            return d >= start && d <= end;
+            if (d < start || d > end) return false;
+            if (flowFilter && getExpenseFlow(e) !== flowFilter) return false;
+            return true;
         });
-    }, [expenses, start, end]);
+    }, [expenses, start, end, flowFilter]);
 
     const totalExpenses = useMemo(() => {
         return filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -650,6 +525,71 @@ export default function MatrixReport() {
         };
     }, [sales, replenishments, expenses, saleItems, startDate, endDate]);
 
+    // N° Venta: correlativo estable por orden cronológico de TODO el
+    // historial (no cambia si se mueve el filtro de fechas) — mismo criterio
+    // que usa el Reporte de Ventas, para que el número sea consistente entre
+    // reportes.
+    const saleNumberById = useMemo(() => {
+        const map = {};
+        sales
+            .slice()
+            .sort((a, b) => {
+                const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return da - db;
+            })
+            .forEach((s, i) => { map[s.id] = i + 1; });
+        return map;
+    }, [sales]);
+
+    // Detalle línea por línea del Costo de lo Vendido — misma fuente y misma
+    // resolución de costo (supplier_price / supplierPrice / sin costo) que
+    // profitReportData.costoVendido, para que el total de esta tabla siempre
+    // coincida exactamente con la tarjeta "Costo de lo Vendido".
+    const costOfGoodsRows = useMemo(() => {
+        const start = new Date(`${startDate}T00:00:00`);
+        const end = new Date(`${endDate}T23:59:59.999`);
+
+        const saleById = {};
+        sales.forEach(s => {
+            if (!s.createdAt) return;
+            const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+            if (d >= start && d <= end) saleById[s.id] = s;
+        });
+
+        return saleItems
+            .filter(item => saleById[item.saleId])
+            .map(item => {
+                const s = saleById[item.saleId];
+                const hasCost = (item.supplier_price !== undefined && item.supplier_price !== null)
+                    || (item.supplierPrice !== undefined && item.supplierPrice !== null);
+                const unitCost = item.supplier_price !== undefined && item.supplier_price !== null
+                    ? Number(item.supplier_price)
+                    : (item.supplierPrice !== undefined && item.supplierPrice !== null ? Number(item.supplierPrice) : null);
+                const quantity = Number(item.quantity || 0);
+                return {
+                    rowKey: item.id,
+                    createdAt: s.createdAt,
+                    saleNumber: saleNumberById[s.id],
+                    productName: item.productName,
+                    category: item.category || 'Otros',
+                    quantity,
+                    unitCost,
+                    costTotal: hasCost ? unitCost * quantity : null,
+                };
+            })
+            .sort((a, b) => {
+                const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return db - da;
+            });
+    }, [sales, saleItems, saleNumberById, startDate, endDate]);
+
+    const totalCostOfGoodsRows = useMemo(
+        () => costOfGoodsRows.reduce((sum, r) => sum + (r.costTotal || 0), 0),
+        [costOfGoodsRows]
+    );
+
     if (loading) return <LoadingSpinner />;
 
     const meta = REPORT_TYPE_META[reportType];
@@ -660,8 +600,7 @@ export default function MatrixReport() {
             case 'expenses': return filteredExpenses.length > 0;
             case 'inventory': return products.length > 0;
             case 'ranking': return rankingMatrix.length > 0;
-            case 'ranges': return matrix.length > 0;
-            case 'products': return productsMatrix.rows.length > 0;
+            case 'costoVendido': return costOfGoodsRows.length > 0;
             default: return true;
         }
     })();
@@ -670,8 +609,8 @@ export default function MatrixReport() {
         <div className="p-4 lg:p-6 pb-24 mg-fade-in w-full mx-auto">
             <ReportHeader
                 icon={meta?.icon}
-                title={meta?.title || 'Reportes y Estadísticas'}
-                subtitle={meta?.subtitle}
+                title={reportType === 'expenses' && flowFilter === 'daily' ? 'Gastos Diarios' : (meta?.title || 'Reportes y Estadísticas')}
+                subtitle={reportType === 'expenses' && flowFilter === 'daily' ? 'Egresos diarios (no fijos) registrados en el periodo.' : meta?.subtitle}
                 startDate={startDate}
                 endDate={endDate}
                 onStartDateChange={setStartDate}
@@ -688,7 +627,9 @@ export default function MatrixReport() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                                 <div>
-                                    <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Total Egresos en Periodo</p>
+                                    <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">
+                                        {flowFilter === 'daily' ? 'Total Gastos Diarios en Periodo' : 'Total Egresos en Periodo'}
+                                    </p>
                                     <h3 className="text-3xl font-black text-[#1670C2]">Bs {totalExpenses.toFixed(2)}</h3>
                                 </div>
                                 <span className="text-4xl">💵</span>
@@ -742,6 +683,9 @@ export default function MatrixReport() {
                                         <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-36">
                                             Categoría
                                         </th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-24">
+                                            Tipo
+                                        </th>
                                         <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-36">
                                             Monto
                                         </th>
@@ -749,9 +693,10 @@ export default function MatrixReport() {
                                 </thead>
                                 <tbody>
                                     {filteredExpenses.map((exp, idx) => {
-                                        const dateStr = exp.createdAt?.toDate 
+                                        const dateStr = exp.createdAt?.toDate
                                             ? exp.createdAt.toDate().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
                                             : new Date(exp.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        const isFixed = getExpenseFlow(exp) === 'fixed';
                                         return (
                                             <tr key={exp.id || idx} className="hover:bg-blue-50/20 transition-colors">
                                                 <td className="p-3 border border-[var(--mg-border)] font-mono text-[var(--mg-text-primary)]">
@@ -768,6 +713,11 @@ export default function MatrixReport() {
                                                         {exp.category || 'Otros'}
                                                     </span>
                                                 </td>
+                                                <td className="p-3 border border-[var(--mg-border)] text-center">
+                                                    <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-full ${isFixed ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                        {isFixed ? 'Fijo' : 'Diario'}
+                                                    </span>
+                                                </td>
                                                 <td className="p-3 border border-[var(--mg-border)] text-right font-black text-[#1670C2]">
                                                     Bs {Number(exp.amount || 0).toFixed(2)}
                                                 </td>
@@ -776,12 +726,89 @@ export default function MatrixReport() {
                                     })}
                                     {filteredExpenses.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
+                                            <td colSpan={6} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
                                                 No se encontraron egresos en el rango de fechas seleccionado.
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : reportType === 'costoVendido' ? (
+                    <div className="space-y-6">
+                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 flex items-center justify-between shadow-sm max-w-md">
+                            <div>
+                                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-700 mb-1">Total Costo de lo Vendido</p>
+                                <h3 className="text-3xl font-black text-orange-700">Bs {totalCostOfGoodsRows.toFixed(2)}</h3>
+                            </div>
+                            <span className="text-4xl">📦</span>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
+                            <table className="w-full text-sm min-w-[720px] border-collapse bg-white">
+                                <thead>
+                                    <tr>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-28">Fecha</th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-24">N° Venta</th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">Producto</th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-32">Categoría</th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-24">Cantidad</th>
+                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-32">Costo Unitario</th>
+                                        <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-32">Costo Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {costOfGoodsRows.map((r) => {
+                                        const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                                        const dateStr = d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        return (
+                                            <tr key={r.rowKey} className="hover:bg-blue-50/20 transition-colors">
+                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-xs text-[var(--mg-text-primary)]">{dateStr}</td>
+                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-xs font-bold text-[var(--mg-text-primary)]">{`#${String(r.saleNumber).padStart(4, '0')}`}</td>
+                                                <td className="p-3 border border-[var(--mg-border)] text-[var(--mg-text-primary)] font-medium">{r.productName}</td>
+                                                <td className="p-3 border border-[var(--mg-border)] text-center">
+                                                    <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full">{r.category}</span>
+                                                </td>
+                                                <td className="p-3 border border-[var(--mg-border)] text-right">{r.quantity}</td>
+                                                {r.unitCost !== null ? (
+                                                    <>
+                                                        <td className="p-3 border border-[var(--mg-border)] text-right">Bs {r.unitCost.toFixed(2)}</td>
+                                                        <td className="p-3 border border-[var(--mg-border)] text-right font-black text-orange-700">Bs {r.costTotal.toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="p-3 border border-[var(--mg-border)] text-right">
+                                                            <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 text-xs font-semibold">Sin costo</span>
+                                                        </td>
+                                                        <td className="p-3 border border-[var(--mg-border)] text-right">
+                                                            <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 text-xs font-semibold">Sin costo</span>
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
+                                    {costOfGoodsRows.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
+                                                No se encontraron productos vendidos en el rango de fechas seleccionado.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                                {costOfGoodsRows.length > 0 && (
+                                    <tfoot>
+                                        <tr>
+                                            <td colSpan={6} className="p-3 border border-[var(--mg-border)] text-right font-bold text-[var(--mg-text-secondary)] bg-gray-50">
+                                                Total Costo de lo Vendido
+                                            </td>
+                                            <td className="p-3 border border-[var(--mg-border)] text-right font-black text-orange-700 bg-gray-50">
+                                                Bs {totalCostOfGoodsRows.toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </div>
@@ -886,34 +913,58 @@ export default function MatrixReport() {
                         {/* Tarjetas de ganancias destacadas */}
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/ventas?tab=reporte&start=${startDate}&end=${endDate}`)}
+                                    title="Ver el detalle de ventas que justifica este total"
+                                    className="text-left bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:brightness-[0.98] active:scale-[0.98] transition-all cursor-pointer"
+                                >
                                     <div>
                                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Total Vendido</p>
                                         <h3 className="text-xl lg:text-2xl font-black text-[#1670C2]">Bs {profitReportData.totalVendido.toFixed(2)}</h3>
+                                        <p className="text-[10px] font-bold text-[#1670C2]/60 mt-1">Ver Reporte de Ventas ›</p>
                                     </div>
                                     <span className="text-2xl">💰</span>
-                                </div>
-                                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/reportes?type=costoVendido&start=${startDate}&end=${endDate}`)}
+                                    title="Ver el detalle de costos que justifica este total"
+                                    className="text-left bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:brightness-[0.98] active:scale-[0.98] transition-all cursor-pointer"
+                                >
                                     <div>
                                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-700 mb-1">Costo de lo Vendido</p>
                                         <h3 className="text-xl lg:text-2xl font-black text-orange-700">Bs {profitReportData.totalCostoVendido.toFixed(2)}</h3>
+                                        <p className="text-[10px] font-bold text-orange-700/60 mt-1">Ver detalle de costos ›</p>
                                     </div>
                                     <span className="text-2xl">📦</span>
-                                </div>
-                                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/ventas?tab=reporte&start=${startDate}&end=${endDate}`)}
+                                    title="Ver el detalle de ventas y ganancia por producto que justifica este total"
+                                    className="text-left bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:brightness-[0.98] active:scale-[0.98] transition-all cursor-pointer"
+                                >
                                     <div>
                                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 mb-1">Ganancia Bruta</p>
                                         <h3 className="text-xl lg:text-2xl font-black text-emerald-700">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</h3>
+                                        <p className="text-[10px] font-bold text-emerald-700/60 mt-1">Ver Reporte de Ventas ›</p>
                                     </div>
                                     <span className="text-2xl">📈</span>
-                                </div>
-                                <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/reportes?type=expenses&flow=daily&start=${startDate}&end=${endDate}`)}
+                                    title="Ver el detalle de egresos que justifica este total"
+                                    className="text-left bg-purple-50 border border-purple-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md hover:brightness-[0.98] active:scale-[0.98] transition-all cursor-pointer"
+                                >
                                     <div>
                                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-purple-700 mb-1">Gastos Diarios</p>
                                         <h3 className="text-xl lg:text-2xl font-black text-purple-700">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</h3>
+                                        <p className="text-[10px] font-bold text-purple-700/60 mt-1">Ver detalle de gastos ›</p>
                                     </div>
                                     <span className="text-2xl">💸</span>
-                                </div>
+                                </button>
                             </div>
 
                             {/* Tarjeta Ganancia Neta Real (Destacada con Desglose) */}
@@ -1040,178 +1091,66 @@ export default function MatrixReport() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
-                        <table className="w-full text-sm min-w-[900px] border-collapse bg-white">
-                            {reportType === 'ranking' ? (
-                                <>
-                                    <thead>
-                                        <tr>
-                                            <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-20">
-                                                Posición
-                                            </th>
-                                            <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">
-                                                Nombre del Producto
-                                            </th>
-                                            <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-32">
-                                                Unidades Vendidas
-                                            </th>
-                                            <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-40">
-                                                Monto Total Generado
-                                            </th>
+                        <table className="w-full text-sm min-w-[600px] border-collapse bg-white">
+                            <thead>
+                                <tr>
+                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-20">
+                                        Posición
+                                    </th>
+                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">
+                                        Nombre del Producto
+                                    </th>
+                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-32">
+                                        Unidades Vendidas
+                                    </th>
+                                    <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-40">
+                                        Monto Total Generado
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rankingMatrix.map((item, index) => {
+                                    const pos = index + 1;
+                                    const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
+                                    const isTop3 = pos <= 3;
+                                    return (
+                                        <tr key={index} className={`hover:bg-blue-50/20 transition-colors group ${isTop3 ? 'bg-blue-50/5' : ''}`}>
+                                            <td className="p-3 border border-[var(--mg-border)] text-center font-bold text-base whitespace-nowrap">
+                                                {isTop3 ? (
+                                                    <span className="text-xl" title={`Puesto ${pos}`}>{medal}</span>
+                                                ) : (
+                                                    <span className="text-gray-400 font-semibold">{medal}</span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 border border-[var(--mg-border)] font-bold text-[var(--mg-text-primary)]">
+                                                {item.productName}
+                                            </td>
+                                            <td className="p-3 border border-[var(--mg-border)] text-center font-black text-sm text-[var(--mg-text-primary)]">
+                                                {item.quantity} und.
+                                            </td>
+                                            <td className="p-3 border border-[var(--mg-border)] text-right font-black text-[#1670C2] text-[14px]">
+                                                Bs {item.totalRevenue.toFixed(2)}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {rankingMatrix.map((item, index) => {
-                                            const pos = index + 1;
-                                            const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
-                                            const isTop3 = pos <= 3;
-                                            return (
-                                                <tr key={index} className={`hover:bg-blue-50/20 transition-colors group ${isTop3 ? 'bg-blue-50/5' : ''}`}>
-                                                    <td className="p-3 border border-[var(--mg-border)] text-center font-bold text-base whitespace-nowrap">
-                                                        {isTop3 ? (
-                                                            <span className="text-xl" title={`Puesto ${pos}`}>{medal}</span>
-                                                        ) : (
-                                                            <span className="text-gray-400 font-semibold">{medal}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-3 border border-[var(--mg-border)] font-bold text-[var(--mg-text-primary)]">
-                                                        {item.productName}
-                                                    </td>
-                                                    <td className="p-3 border border-[var(--mg-border)] text-center font-black text-sm text-[var(--mg-text-primary)]">
-                                                        {item.quantity} und.
-                                                    </td>
-                                                    <td className="p-3 border border-[var(--mg-border)] text-right font-black text-[#1670C2] text-[14px]">
-                                                        Bs {item.totalRevenue.toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                        {rankingMatrix.length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                                    No hay productos vendidos en este periodo.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </>
-                            ) : reportType === 'ranges' ? (
-                                <>
-                                    <thead>
-                                        <tr>
-                                            <th className="sticky left-0 bg-[#1670C2] text-white font-bold p-3.5 border border-[var(--mg-border)] border-r-2 border-r-[var(--mg-border)] z-10 text-left whitespace-nowrap min-w-[160px]">
-                                                👥 Clientes
-                                            </th>
-                                            {activePriceRanges.map((r, i) => (
-                                                <th key={i} className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap text-center">
-                                                    {r.label}
-                                                </th>
-                                            ))}
-                                            <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap text-center">
-                                                Total General
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {matrix.map((row, i) => (
-                                            <tr key={i} className="hover:bg-blue-50/20 transition-colors group">
-                                                <td className="sticky left-0 bg-white text-[var(--mg-text-primary)] font-bold p-3 border border-[var(--mg-border)] border-r-2 border-r-[var(--mg-border)] z-10 whitespace-nowrap group-hover:bg-blue-50/40 transition-colors">
-                                                    {row.clientName}
-                                                </td>
-                                                {activePriceRanges.map((r) => {
-                                                    const val = row.ranges[r.originalIndex] || 0;
-                                                    return (
-                                                        <td key={r.originalIndex} className="p-2 border border-[var(--mg-border)] text-center transition-all">
-                                                            {val > 0 ? (
-                                                                <span className={`inline-block px-3 py-1.5 rounded-2xl font-bold text-[13px] ${val > 500 ? 'bg-blue-50 text-[#1670C2] shadow-sm' : 'text-[var(--mg-text-primary)] bg-gray-50'}`}>
-                                                                    Bs {val.toFixed(2)}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-gray-300 text-lg leading-none flex items-center justify-center h-full">•</span>
-                                                            )}
-                                                        </td>
-                                                    )
-                                                })}
-                                                <td className="p-2 border border-[var(--mg-border)] text-center bg-blue-50/30 font-black text-[#1670C2] text-[14px]">
-                                                    Bs {row.totalSpent.toFixed(2)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {matrix.length === 0 && (
-                                            <tr>
-                                                <td colSpan={activePriceRanges.length + 2} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                                    No hay ventas registradas en este periodo de tiempo.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </>
-                            ) : (
-                                <>
-                                    <thead>
-                                        <tr>
-                                            <th className="sticky left-0 bg-[#1670C2] text-white font-bold p-3.5 border border-[var(--mg-border)] border-r-2 border-r-[var(--mg-border)] z-10 text-left whitespace-nowrap min-w-[160px]">
-                                                👥 Clientes
-                                            </th>
-                                            {productsMatrix.columns.map((col, i) => (
-                                                <th key={i} className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap text-center min-w-[100px]">
-                                                    {col}
-                                                </th>
-                                            ))}
-                                            <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap text-center">
-                                                Total General
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {productsMatrix.rows.map((row, i) => (
-                                            <tr key={i} className="hover:bg-blue-50/20 transition-colors group">
-                                                <td className="sticky left-0 bg-white text-[var(--mg-text-primary)] font-bold p-3 border border-[var(--mg-border)] border-r-2 border-r-[var(--mg-border)] z-10 whitespace-nowrap group-hover:bg-blue-50/40 transition-colors">
-                                                    {row.clientName}
-                                                </td>
-                                                {productsMatrix.columns.map((col, cIdx) => {
-                                                    const val = row.products[col];
-                                                    return (
-                                                        <td key={cIdx} className="p-2 border border-[var(--mg-border)] text-center transition-all">
-                                                            {val ? (
-                                                                <div className="flex flex-col items-center justify-center">
-                                                                    <span className="font-bold text-[var(--mg-text-primary)] text-[13px]">{val.qty} und.</span>
-                                                                    <span className="text-[var(--mg-text-muted)] text-[10px]">Bs {val.subtotal.toFixed(2)}</span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-300 text-lg leading-none flex items-center justify-center h-full">•</span>
-                                                            )}
-                                                        </td>
-                                                    )
-                                                })}
-                                                <td className="p-2 border border-[var(--mg-border)] text-center bg-blue-50/30">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="font-black text-[#1670C2] text-[14px]">{row.totalQty} und.</span>
-                                                        <span className="font-bold text-[#1670C2] text-[11px]">Bs {row.totalSpent.toFixed(2)}</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {productsMatrix.rows.length === 0 && (
-                                            <tr>
-                                                <td colSpan={productsMatrix.columns.length + 2} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                                    No hay productos vendidos en este periodo.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </>
-                            )}
+                                    );
+                                })}
+                                {rankingMatrix.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
+                                            No hay productos vendidos en este periodo.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
                         </table>
                     </div>
                 )}
 
                 <div className="mt-8 text-center text-xs text-[var(--mg-text-muted)] border-t border-dashed border-[var(--mg-border)] pt-5 flex justify-center gap-6 flex-wrap">
-                    {reportType === 'ranges'
-                        ? <span>🍞 Cada celda representa el dinero total invertido en ese rango de precios.</span>
-                        : reportType === 'products'
-                        ? <span>🍞 Cada celda muestra la cantidad de pan/productos llevados y su dinero equivalente.</span>
-                        : reportType === 'ranking'
+                    {reportType === 'ranking'
                         ? <span>🏆 Ranking ordenado de los productos con mayor demanda física e ingresos totales.</span>
+                        : reportType === 'costoVendido'
+                        ? <span>📦 Costo de proveedor de cada producto vendido — su suma es el "Costo de lo Vendido" de Ganancias Diarias.</span>
                         : reportType === 'expenses'
                         ? <span>💵 Resumen detallado y desglose de egresos en tu negocio en el periodo.</span>
                         : reportType === 'profit'

@@ -7,6 +7,7 @@ function escapeHtml(str) {
 export function printReceipt({
   business,
   settings,
+  type = 'sale',
   saleId,
   items,
   total,
@@ -17,7 +18,10 @@ export function printReceipt({
   paymentMethod,
   montoRecibido,
   cambio,
+  supplier,
+  extraCostRows,
 }) {
+  const isPurchase = type === 'purchase';
   const d = date instanceof Date ? date : new Date();
 
   const pad = (n) => String(n).padStart(2, '0');
@@ -26,20 +30,24 @@ export function printReceipt({
   const year = d.getFullYear();
   const time = d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
 
-  // Basado en el id real de la venta (no en la hora de impresión) — así
-  // reimprimir el mismo recibo siempre muestra el mismo número, y no puede
-  // colisionar con otra venta como pasaba con un número basado en Date.now().
+  // Basado en el id real de la venta/compra (no en la hora de impresión) —
+  // así reimprimir el mismo recibo siempre muestra el mismo número, y no
+  // puede colisionar con otro registro como pasaba con Date.now().
   const receiptNum = saleId
     ? saleId.replace(/-/g, '').slice(-8).toUpperCase()
     : String(d.getTime()).slice(-6);
   const payLabels = { qr: '📲 QR / Transferencia', mixto: '🔀 Mixto', fiado: '⏳ Fiado (CxC)', cash: '💵 Efectivo' };
   const payLabel = payLabels[paymentMethod] || '💵 Efectivo';
 
+  const cleanExtraRows = Array.isArray(extraCostRows) ? extraCostRows.filter((r) => Number(r.amount) > 0) : [];
+  const extraTotal = cleanExtraRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const productsSubtotal = Number(total) - extraTotal;
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
-  <title>Recibo N° ${receiptNum}</title>
+  <title>${isPurchase ? 'Comprobante de Compra' : 'Recibo'} N° ${receiptNum}</title>
   <style>
     @page {
       size: 80mm auto;
@@ -152,7 +160,7 @@ export function printReceipt({
 
   <!-- META INFO -->
   <div class="info-row">
-    <span>Nº Venta:</span>
+    <span>${isPurchase ? 'Nº Compra:' : 'Nº Venta:'}</span>
     <span class="info-val">${receiptNum}</span>
   </div>
   <div class="info-row">
@@ -160,12 +168,19 @@ export function printReceipt({
     <span class="info-val">${day}/${month}/${year} ${time}</span>
   </div>
   <div class="info-row">
-    <span>Cajero:</span>
+    <span>${isPurchase ? 'Registrado por:' : 'Cajero:'}</span>
     <span class="info-val">${escapeHtml(sellerName || '—')}</span>
   </div>
 
   <div class="separator"></div>
 
+  ${isPurchase ? `
+  <!-- SUPPLIER INFO -->
+  <div class="info-row">
+    <span>Proveedor:</span>
+    <span class="info-val">${escapeHtml(supplier || 'Sin proveedor')}</span>
+  </div>
+  ` : `
   <!-- CLIENT INFO -->
   <div class="info-row">
     <span>Cliente:</span>
@@ -175,6 +190,7 @@ export function printReceipt({
     <span>CI / NIT:</span>
     <span class="info-val">${escapeHtml(clientNit || '0')}</span>
   </div>
+  `}
 
   <div class="separator"></div>
 
@@ -182,7 +198,7 @@ export function printReceipt({
   <div class="table-header">
     <span class="col-qty">Cant</span>
     <span class="col-desc">Producto</span>
-    <span class="col-price">P.U.</span>
+    <span class="col-price">${isPurchase ? 'Costo U.' : 'P.U.'}</span>
     <span class="col-subtotal">Subt</span>
   </div>
 
@@ -206,6 +222,22 @@ export function printReceipt({
 
   <!-- TOTALS -->
   <div class="totals">
+    ${isPurchase ? `
+    <div class="total-row">
+      <span>Subtotal productos:</span>
+      <span>Bs ${productsSubtotal.toFixed(2)}</span>
+    </div>
+    ${cleanExtraRows.map((r) => `
+    <div class="total-row">
+      <span>${escapeHtml(r.concept)}:</span>
+      <span>Bs ${Number(r.amount).toFixed(2)}</span>
+    </div>
+    `).join('')}
+    <div class="total-row main-total">
+      <span>TOTAL COMPRA:</span>
+      <span>Bs ${Number(total).toFixed(2)}</span>
+    </div>
+    ` : `
     <div class="total-row">
       <span>Subtotal:</span>
       <span>Bs ${Number(total).toFixed(2)}</span>
@@ -222,7 +254,8 @@ export function printReceipt({
       <span>TOTAL A PAGAR:</span>
       <span>Bs ${Number(total).toFixed(2)}</span>
     </div>
-    ${montoRecibido !== undefined && montoRecibido !== null ? `
+    `}
+    ${!isPurchase && montoRecibido !== undefined && montoRecibido !== null ? `
     <div class="total-row" style="margin-top: 1.5mm;">
       <span>Efectivo Recibido:</span>
       <span>Bs ${Number(montoRecibido).toFixed(2)}</span>
@@ -236,7 +269,7 @@ export function printReceipt({
 
   <!-- FOOTER -->
   <div class="footer">
-    <p class="thanks">¡Gracias por su compra!</p>
+    <p class="thanks">${isPurchase ? 'Compra registrada' : '¡Gracias por su compra!'}</p>
     <p>Desarrollado por Mi Ganancia</p>
   </div>
 

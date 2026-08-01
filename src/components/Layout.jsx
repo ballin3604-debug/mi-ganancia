@@ -110,8 +110,10 @@ const NAV_ITEMS = [
     label: 'Reportes', Icon: ChartIcon, ownerOnly: true, key: 'reports', basePath: '/reportes',
     children: [
       { to: '/reportes?type=profit', label: 'Ganancias Diarias', key: 'reports-profit' },
+      { to: '/reportes?type=costoVendido', label: 'Costo de lo Vendido', key: 'reports-costo' },
+      { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'reports-sales' },
+      { to: '/compras?tab=historial', label: 'Reporte de Compras', key: 'reports-purchases' },
       { to: '/reportes?type=ranking', label: 'Ranking de Productos', key: 'reports-ranking' },
-      { to: '/reportes?type=ranges', label: 'Inversión por Cliente', key: 'reports-ranges' },
       { to: '/reportes?type=expenses', label: 'Reporte de Egresos', key: 'reports-expenses' },
       { to: '/reportes?type=inventory', label: 'Reporte de Inventario', key: 'reports-inventory' },
     ],
@@ -393,8 +395,11 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className={`flex-1 overflow-y-auto pb-24 lg:pb-0 lg:w-full lg:mx-auto lg:px-6 ${location.pathname === '/ventas' || location.pathname === '/compras' ? 'lg:max-w-[1800px]' : 'lg:max-w-[1400px]'}`}>
-          <Outlet />
+        <main className={`flex-1 overflow-y-auto pb-24 lg:pb-0 lg:w-full lg:mx-auto lg:px-6 ${location.pathname === '/ventas' || location.pathname === '/compras' || location.pathname === '/' ? 'lg:max-w-[1800px]' : 'lg:max-w-[1400px]'}`}>
+          {/* key por ruta: reproduce el fade de entrada en cada navegación */}
+          <div key={location.pathname} className="mg-fade-in h-full">
+            <Outlet />
+          </div>
         </main>
 
         {/* Bottom tab bar estilo iOS */}
@@ -453,12 +458,12 @@ export default function Layout() {
 
       {/* Drawer flotante móvil (bottom sheet) */}
       {showMenuDrawer && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-xs transition-opacity duration-300"
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-xs mg-backdrop-in"
           onClick={() => setShowMenuDrawer(false)}
         >
-          <div 
-            className="fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)] rounded-t-[32px] p-6 z-50 shadow-2xl transition-transform duration-300 transform translate-y-0"
+          <div
+            className="fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)] rounded-t-[32px] p-6 z-50 shadow-2xl mg-slide-up"
             onClick={(e) => e.stopPropagation()}
             style={{
               paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))'

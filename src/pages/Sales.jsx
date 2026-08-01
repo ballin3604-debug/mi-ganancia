@@ -132,6 +132,7 @@ function CartItemRow({ product, quantity, onUpdate }) {
 }
 
 const CUSTOM_CLIENT_VALUE = '__custom__';
+const RECENT_CATEGORY = '🕐 Recientes';
 
 export default function Sales() {
   const { businessId, user, sellerName } = useAuth();
@@ -140,12 +141,18 @@ export default function Sales() {
   const activeTab = searchParams.get('tab') === 'reporte' ? 'reporte' : 'venta';
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
+  // Si se llega acá desde otro reporte (p.ej. "Total Vendido" en Ganancias
+  // Diarias) con ?start=&end=, se respeta ese rango en vez del default de
+  // mes-a-la-fecha — así el usuario no tiene que volver a fijarse si las
+  // fechas coinciden con el reporte del que vino.
   const [reportStartDate, setReportStartDate] = useState(() => {
+    const fromUrl = searchParams.get('start');
+    if (fromUrl) return fromUrl;
     const d = new Date();
     d.setDate(1);
     return toLocalISODate(d);
   });
-  const [reportEndDate, setReportEndDate] = useState(() => toLocalISODate(new Date()));
+  const [reportEndDate, setReportEndDate] = useState(() => searchParams.get('end') || toLocalISODate(new Date()));
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState({});
   const [search, setSearch] = useState('');
@@ -418,12 +425,41 @@ export default function Sales() {
   }
 
   const availableProducts = products.filter((p) => p.stock > 0);
+
+  // Productos vendidos recientemente (últimos 20, más reciente primero) —
+  // para encontrar rápido lo que más se repite sin buscar por categoría.
+  const recentProductIds = useMemo(() => {
+    const saleDateById = {};
+    salesList.forEach((s) => {
+      saleDateById[s.id] = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+    });
+    const seen = new Set();
+    const ordered = [];
+    saleItemsList
+      .map((item) => ({ productId: item.productId, date: saleDateById[item.saleId] }))
+      .filter((x) => x.date)
+      .sort((a, b) => b.date - a.date)
+      .forEach((x) => {
+        if (!seen.has(x.productId)) {
+          seen.add(x.productId);
+          ordered.push(x.productId);
+        }
+      });
+    return ordered.slice(0, 20);
+  }, [salesList, saleItemsList]);
+
   const filtered = availableProducts
     .filter((p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.brand || '').toLowerCase().includes(search.toLowerCase())
     )
-    .filter((p) => filterCategory === 'Todas' || p.category === filterCategory);
+    .filter((p) => {
+      if (filterCategory === RECENT_CATEGORY) return recentProductIds.includes(p.id);
+      return filterCategory === 'Todas' || p.category === filterCategory;
+    });
+  if (filterCategory === RECENT_CATEGORY) {
+    filtered.sort((a, b) => recentProductIds.indexOf(a.id) - recentProductIds.indexOf(b.id));
+  }
 
   const cartItems = Object.entries(cart)
     .map(([id, qty]) => ({ product: products.find((p) => p.id === id), quantity: qty }))
@@ -1020,7 +1056,7 @@ export default function Sales() {
 
           {/* Filtro por Categorías */}
           <div className="flex gap-2 overflow-x-auto pb-1.5 -mx-4 px-4 scrollbar-hide shrink-0">
-            {['Todas', ...categories].map((cat) => (
+            {['Todas', RECENT_CATEGORY, ...categories].map((cat) => (
               <button
                 key={cat}
                 type="button"
@@ -1088,8 +1124,14 @@ export default function Sales() {
             ) : (
               <div className="text-center py-12 text-[var(--mg-text-faint)]">
                 <p className="text-5xl mb-3">📦</p>
-                <p className="font-semibold">{search ? 'No encontrado' : 'Sin productos disponibles'}</p>
-                {!search && <p className="text-sm mt-1">Ve a Inventario para agregar</p>}
+                <p className="font-semibold">
+                  {search
+                    ? 'No encontrado'
+                    : filterCategory === RECENT_CATEGORY
+                      ? 'Todavía no hay ventas recientes'
+                      : 'Sin productos disponibles'}
+                </p>
+                {!search && filterCategory !== RECENT_CATEGORY && <p className="text-sm mt-1">Ve a Inventario para agregar</p>}
               </div>
             )}
           </div>
@@ -1170,36 +1212,18 @@ export default function Sales() {
       {/* MODAL DE CONFIRMACIÓN DE ÉXITO */}
       {showSuccessModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 cursor-pointer mg-backdrop-in"
           onClick={closeSuccessModal}
         >
           <div
-            className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl relative cursor-default animate-modal-in"
+            className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl relative cursor-default mg-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <style>{`
-              @keyframes drawCheck {
-                to { stroke-dashoffset: 0; }
-              }
-              @keyframes scaleUp {
-                from { transform: scale(0.85); opacity: 0; }
-                to { transform: scale(1); opacity: 1; }
-              }
-              .animate-draw-check {
-                stroke-dasharray: 50;
-                stroke-dashoffset: 50;
-                animation: drawCheck 0.4s ease-out forwards 0.2s;
-              }
-              .animate-modal-in {
-                animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-              }
-            `}</style>
-            
             {/* Check Icon animado */}
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border-2 border-green-200">
                 <svg className="w-9 h-9 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" className="animate-draw-check" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" className="mg-draw-check" />
                 </svg>
               </div>
             </div>

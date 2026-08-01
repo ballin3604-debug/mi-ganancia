@@ -9,41 +9,47 @@ import { BUSINESS_CATEGORIES, DEFAULT_CATEGORY_ID } from '../config/businessCate
 // ── Mode selector shown to regular (non-admin) new users ─────────────────────
 function ModeSelector({ onSelect }) {
   return (
-    <div className="min-h-screen bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm mg-fade-in">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-[var(--mg-accent)] rounded-3xl flex items-center justify-center mx-auto mb-4 text-4xl shadow-sm">
-            🏪
-          </div>
-          <h1 className="text-2xl font-bold text-[var(--mg-text-primary)]">¡Bienvenido!</h1>
-          <p className="text-[var(--mg-text-muted)] mt-2 text-sm">¿Qué deseas hacer?</p>
+          <img
+            src="/logo-icon.png"
+            alt="Mi Ganancia"
+            className="w-20 h-20 rounded-[22px] object-contain mx-auto mb-4 bg-white p-1 shadow-lg"
+            style={{ boxShadow: '0 16px 40px rgba(22,112,194,0.25)' }}
+          />
+          <h1 className="text-2xl font-black text-[var(--mg-text-primary)]">¡Bienvenido!</h1>
+          <p className="text-[var(--mg-text-muted)] mt-1.5 text-sm">¿Qué querés hacer?</p>
         </div>
 
         <div className="space-y-3">
           <button
             onClick={() => onSelect('new')}
-            className="w-full bg-[var(--mg-accent)] text-white font-bold py-5 rounded-2xl text-base active:scale-95 transition-all shadow-md flex items-center gap-4 px-5"
+            className="w-full text-white font-bold py-4 rounded-2xl active:scale-[0.98] transition-all shadow-md flex items-center gap-4 px-4"
+            style={{ background: 'linear-gradient(135deg, var(--mg-accent) 0%, var(--mg-accent-mid) 100%)' }}
           >
-            <span className="text-3xl">🏪</span>
-            <div className="text-left">
+            <span className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-2xl shrink-0">🏪</span>
+            <div className="text-left flex-1 min-w-0">
               <p className="font-black">Crear mi negocio</p>
-              <p className="text-[var(--mg-accent)] text-xs font-normal mt-0.5">Registra un nuevo negocio</p>
+              <p className="text-blue-100 text-xs font-medium mt-0.5">Registra un negocio nuevo</p>
             </div>
+            <span className="text-white/60 text-xl">›</span>
           </button>
 
           <button
             onClick={() => onSelect('join')}
-            className="w-full bg-gradient-to-r from-[#1670C2] to-[#0c4e8c] text-white font-bold py-5 rounded-2xl text-base active:scale-95 transition-all shadow-md flex items-center gap-4 px-5"
+            className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] text-[var(--mg-text-primary)] font-bold py-4 rounded-2xl active:scale-[0.98] transition-all shadow-sm flex items-center gap-4 px-4 hover:border-[var(--mg-accent-border)]"
           >
-            <span className="text-3xl">🔑</span>
-            <div className="text-left">
+            <span className="w-12 h-12 rounded-xl bg-[var(--mg-gold-bg)] border border-[var(--mg-gold-border)] flex items-center justify-center text-2xl shrink-0">🔑</span>
+            <div className="text-left flex-1 min-w-0">
               <p className="font-black">Unirse con código</p>
-              <p className="text-blue-100 text-xs font-normal mt-0.5">Para cajeros y dueños adicionales</p>
+              <p className="text-[var(--mg-text-muted)] text-xs font-medium mt-0.5">Para cajeros y dueños adicionales</p>
             </div>
+            <span className="text-[var(--mg-text-faint)] text-xl">›</span>
           </button>
         </div>
 
-        <button type="button" onClick={signOut} className="w-full text-[var(--mg-text-faint)] text-sm py-4 mt-4">
+        <button type="button" onClick={signOut} className="w-full text-[var(--mg-text-faint)] text-sm py-4 mt-4 font-medium">
           Cambiar de cuenta
         </button>
       </div>
@@ -75,15 +81,18 @@ function JoinWithCode({ user, onBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm mg-fade-in">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-[var(--mg-info-bg)] rounded-3xl flex items-center justify-center mx-auto mb-4 text-4xl shadow-sm">
+          <div
+            className="w-20 h-20 rounded-[22px] flex items-center justify-center mx-auto mb-4 text-4xl text-white shadow-lg"
+            style={{ background: 'linear-gradient(135deg, var(--mg-gold) 0%, var(--mg-gold-hover) 100%)', boxShadow: '0 16px 40px rgba(217,154,43,0.28)' }}
+          >
             🔑
           </div>
-          <h1 className="text-2xl font-bold text-[var(--mg-text-primary)]">Unirse al negocio</h1>
-          <p className="text-[var(--mg-text-muted)] mt-2 text-sm">
-            Ingresa el código que te dio el dueño del negocio
+          <h1 className="text-2xl font-black text-[var(--mg-text-primary)]">Unirse al negocio</h1>
+          <p className="text-[var(--mg-text-muted)] mt-1.5 text-sm">
+            Ingresá el código que te dio el dueño del negocio
           </p>
         </div>
 
@@ -151,25 +160,31 @@ function CategoryPicker({ selected, onSelect }) {
         ¿Qué tipo de negocio es? *
       </label>
       <div className="grid grid-cols-2 gap-2">
-        {BUSINESS_CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => onSelect(cat.id)}
-            className={`flex items-center gap-2 px-3 py-3 rounded-2xl border-2 text-left transition-all active:scale-95 ${
-              selected === cat.id
-                ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent)]'
-                : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] hover:border-gray-300'
-            }`}
-          >
-            <span className="text-2xl shrink-0">{cat.emoji}</span>
-            <div className="min-w-0">
-              <p className={`text-xs font-bold leading-tight ${selected === cat.id ? 'text-[var(--mg-accent)]' : 'text-[var(--mg-text-secondary)]'}`}>
-                {cat.name}
-              </p>
-            </div>
-          </button>
-        ))}
+        {BUSINESS_CATEGORIES.map((cat) => {
+          const isSel = selected === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onSelect(cat.id)}
+              className={`relative flex items-center gap-2 px-3 py-3 rounded-2xl border-2 text-left transition-all active:scale-95 ${
+                isSel
+                  ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]'
+                  : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] hover:border-gray-300'
+              }`}
+            >
+              <span className="text-2xl shrink-0">{cat.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className={`text-xs font-bold leading-tight ${isSel ? 'text-[var(--mg-accent)]' : 'text-[var(--mg-text-secondary)]'}`}>
+                  {cat.name}
+                </p>
+              </div>
+              {isSel && (
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--mg-accent)] text-white flex items-center justify-center text-[10px] font-black">✓</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -220,17 +235,20 @@ export default function Setup({ isAdmin = false }) {
 
   return (
     <div className="min-h-screen bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm mg-fade-in">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-[var(--mg-accent)] rounded-3xl flex items-center justify-center mx-auto mb-4 text-4xl shadow-sm">
+          <div
+            className="w-20 h-20 rounded-[22px] flex items-center justify-center mx-auto mb-4 text-4xl text-white shadow-lg transition-all"
+            style={{ background: 'linear-gradient(135deg, var(--mg-accent) 0%, var(--mg-accent-mid) 100%)', boxShadow: '0 16px 40px rgba(22,112,194,0.25)' }}
+          >
             {isAdmin ? '👑' : selectedCat?.emoji || '🏪'}
           </div>
-          <h1 className="text-2xl font-bold text-[var(--mg-text-primary)]">
-            {isAdmin ? 'Configura tu negocio' : 'Registra tu negocio'}
+          <h1 className="text-2xl font-black text-[var(--mg-text-primary)]">
+            {isAdmin ? 'Configurá tu negocio' : 'Registrá tu negocio'}
           </h1>
-          <p className="text-[var(--mg-text-muted)] mt-2 text-sm">
+          <p className="text-[var(--mg-text-muted)] mt-1.5 text-sm">
             Hola, <span className="font-semibold text-[var(--mg-text-secondary)]">{user?.displayName?.split(' ')[0]}</span>.
-            {isAdmin ? ' Crea tu negocio principal.' : ' Solicita acceso a Mi Ganancia.'}
+            {isAdmin ? ' Creá tu negocio principal.' : ' Solicitá acceso a Mi Ganancia.'}
           </p>
         </div>
 
