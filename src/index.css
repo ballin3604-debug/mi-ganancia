@@ -204,6 +204,15 @@ input[type="number"]::-webkit-outer-spin-button {
     box-shadow: var(--mg-shadow-lg);
   }
 
+  /* Carrusel horizontal sin barra de desplazamiento visible */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Esqueleto de carga (shimmer) */
   .mg-skeleton {
     background: linear-gradient(100deg, var(--mg-bg-elevated) 30%, #eef2f7 50%, var(--mg-bg-elevated) 70%);
