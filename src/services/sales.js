@@ -2,6 +2,7 @@ import { db, generateUUID } from './localDb';
 import { buildOutboxOp, refreshOutboxState } from './syncEngine';
 import { forceProductRefresh } from './products';
 import { notifyIncomeChanges } from './expenses';
+import { notifyBranchStock } from './branchStock';
 
 function mapSale(s) {
   if (!s) return s;
@@ -11,6 +12,7 @@ function mapSale(s) {
     itemCount: s.item_count,
     montoEfectivo: s.monto_efectivo,
     montoQR: s.monto_qr,
+    branchId: s.branch_id || null,
     createdAt: s.created_at ? { toDate: () => new Date(s.created_at) } : null,
   };
 }
@@ -23,6 +25,9 @@ function mapSaleItem(item) {
     productId: item.product_id,
     productName: item.product_name,
     productBrand: item.product_brand,
+    presentation: item.presentation || '',
+    presentationFactor: Number(item.presentation_factor || 1),
+    variant: item.variant || '',
   };
 }
 
@@ -66,8 +71,13 @@ export async function registerSale(
 ) {
   const saleId = generateUUID();
   const now = new Date().toISOString();
+  // Sede operativa (Fase 1 sucursales): viaja en extraFields para no cambiar
+  // la firma. El RPC no la conoce: se estampa en el servidor post-RPC.
+  const branchId = extraFields.branchId || null;
+  // Totales por PRESENTACIÓN: precio de la presentación × cantidad.
+  // factor = unidades base por presentación (1 en unidad, N en paquete).
   const total = cartItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity, 0
+    (sum, item) => sum + Number(item.unitPrice ?? item.product.price) * Number(item.quantity), 0
   );
 
   const localSale = {
@@ -79,7 +89,8 @@ export async function registerSale(
     client_nit: clientNit || '',
     payment_method: paymentMethod || 'cash',
     total,
-    item_count: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    branch_id: branchId,
+    item_count: cartItems.reduce((sum, item) => sum + Number(item.quantity) * Number(item.factor || 1), 0),
     created_at: now,
     client_generated_id: saleId,
     monto_efectivo: extraFields.montoEfectivo !== undefined ? Number(extraFields.montoEfectivo) : null,
@@ -92,6 +103,7 @@ export async function registerSale(
       : (item.product.supplier_price !== undefined && item.product.supplier_price !== null
         ? Number(item.product.supplier_price)
         : null);
+    const factor = Number(item.factor || 1);
 
     return {
       product_id: item.product.id,
@@ -99,10 +111,20 @@ export async function registerSale(
       product_brand: item.product.brand || '',
       category: item.product.category || 'Otros',
       quantity: Number(item.quantity),
-      price: Number(item.product.price),
+      price: Number(item.unitPrice ?? item.product.price),
       supplier_price: supplierPrice
     };
   });
+
+  // Factores para la compensación de stock en el servidor (no se envían al RPC).
+  const p_factors = cartItems.map((item) => ({
+    product_id: item.product.id,
+    quantity: Number(item.quantity),
+    factor: Number(item.factor || 1),
+    price: Number(item.unitPrice ?? item.product.price),
+    presentation: item.presLabel || '',
+    variant: item.variant || '',
+  }));
 
   const outboxPayload = {
     business_id: businessId,
@@ -111,9 +133,10 @@ export async function registerSale(
     payment_method: paymentMethod || 'cash',
     total,
     p_items,
+    p_factors,
     extraFields,
     client_generated_id: saleId,
-    item_count: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    item_count: cartItems.reduce((sum, item) => sum + Number(item.quantity) * Number(item.factor || 1), 0),
     seller_name: sellerName || '',
     created_by: userId,
   };
@@ -125,7 +148,12 @@ export async function registerSale(
   // crash mid-loop left a partial sale (mismatched items/stock) with no
   // outbox entry, and a retry after an enqueue failure created a duplicate
   // sale with stock decremented twice for the same physical transaction.
-  await db.transaction('rw', db.sales, db.sale_items, db.products, db.pending_operations, async () => {
+  const saleBranchId = extraFields.branchId || null;
+  const hasBranchRows = saleBranchId
+    ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
+    : false;
+
+  await db.transaction('rw', db.sales, db.sale_items, db.products, db.branch_stock, db.pending_operations, async () => {
     await db.sales.put(localSale);
 
     for (const item of cartItems) {
@@ -135,6 +163,9 @@ export async function registerSale(
         : (item.product.supplier_price !== undefined && item.product.supplier_price !== null
           ? Number(item.product.supplier_price)
           : null);
+      const factor = Number(item.factor || 1);
+      const unitPrice = Number(item.unitPrice ?? item.product.price);
+      const qty = Number(item.quantity);
 
       const localItem = {
         id: itemId,
@@ -145,20 +176,39 @@ export async function registerSale(
         product_brand: item.product.brand || '',
         category: item.product.category || '',
         image_url: item.product.imageData || '',
-        quantity: item.quantity,
-        price: item.product.price,
-        subtotal: item.product.price * item.quantity,
+        quantity: qty,
+        price: unitPrice,
+        subtotal: unitPrice * qty,
         supplier_price: supplierPrice,
+        presentation: item.presLabel || '',
+        presentation_factor: factor,
+        variant: item.variant || '',
       };
       await db.sale_items.put(localItem);
 
       const prod = await db.products.get(item.product.id);
       if (prod) {
-        const updatedStock = Math.max(0, prod.stock - item.quantity);
+        // El stock vive en unidades base: 1 paquete descuenta N
+        const baseQty = qty * factor;
+        const updatedStock = Math.max(0, prod.stock - baseQty);
         await db.products.update(item.product.id, {
           stock: updatedStock,
           updated_at: now
         });
+        // Fase 2: descontar también de la sede (si hay filas por sede)
+        if (saleBranchId && hasBranchRows) {
+          const rowId = `${saleBranchId}:${item.product.id}`;
+          const row = await db.branch_stock.get(rowId);
+          const cur = row ? Number(row.stock || 0) : 0;
+          await db.branch_stock.put({
+            id: rowId,
+            business_id: businessId,
+            branch_id: saleBranchId,
+            product_id: item.product.id,
+            stock: Math.max(0, cur - baseQty),
+            updated_at: now,
+          });
+        }
       }
     }
 
@@ -168,6 +218,7 @@ export async function registerSale(
   // Refresh lists (after commit — side effects, not part of the atomic unit)
   notifySaleChanges(businessId);
   forceProductRefresh(businessId);
+  notifyBranchStock(businessId);
   try {
     notifyIncomeChanges(businessId);
   } catch (err) {
@@ -264,12 +315,13 @@ export async function exportDetailedCSV(businessId) {
       ].join(','));
     } else {
       saleItems.forEach((item, idx) => {
+        const pres = item.presentation ? ` [${item.presentation}]` : '';
         rows.push([
           fechaStr, horaStr,
           `"${sale.sellerName || ''}"`,
           `"${sale.clientName || ''}"`,
           sale.paymentMethod || '',
-          `"${item.productName || ''}"`,
+          `"${(item.productName || '') + pres}"`,
           item.quantity || 0,
           item.price || 0,
           item.subtotal || 0,

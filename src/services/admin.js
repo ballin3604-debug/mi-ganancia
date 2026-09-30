@@ -70,10 +70,69 @@ export async function getAllBusinesses() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data.map((b) => ({
+  const businesses = (data || []).map((b) => ({
     ...b,
     createdAt: b.created_at ? { toDate: () => new Date(b.created_at) } : null,
   }));
+
+  // Enriquecer con correo/nombre del dueño para mostrarlo en el panel.
+  // Fuente 1: profiles (por owner_id). Fuente 2 (fallback): subscription_requests
+  // (tiene el email aunque el profile no lo tenga).
+  try {
+    const ownerIds = [...new Set(businesses.map((b) => b.owner_id).filter(Boolean))];
+    const bizIds = businesses.map((b) => b.id).filter(Boolean);
+    let profilesById = {};
+    let reqByUserId = {};
+    let reqByBizId = {};
+
+    if (ownerIds.length > 0) {
+      const { data: profs, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', ownerIds);
+      if (!profErr && profs) {
+        profs.forEach((p) => { profilesById[p.id] = p; });
+      }
+    }
+
+    if (bizIds.length > 0) {
+      const { data: reqs } = await supabase
+        .from('subscription_requests')
+        .select('email,user_id,business_id,display_name')
+        .in('business_id', bizIds);
+      (reqs || []).forEach((r) => {
+        if (r.business_id) reqByBizId[r.business_id] = r;
+        if (r.user_id) reqByUserId[r.user_id] = r;
+      });
+    }
+
+    // Fallback extra: requests por user_id para negocios viejos sin business_id
+    if (ownerIds.length > 0) {
+      const missingOwners = ownerIds.filter((id) => !reqByUserId[id]);
+      if (missingOwners.length > 0) {
+        const { data: reqs2 } = await supabase
+          .from('subscription_requests')
+          .select('email,user_id,business_id,display_name')
+          .in('user_id', missingOwners);
+        (reqs2 || []).forEach((r) => {
+          if (r.user_id && !reqByUserId[r.user_id]) reqByUserId[r.user_id] = r;
+        });
+      }
+    }
+
+    return businesses.map((b) => {
+      const prof = profilesById[b.owner_id] || {};
+      const req = reqByBizId[b.id] || reqByUserId[b.owner_id] || {};
+      return {
+        ...b,
+        ownerEmail: prof.email || req.email || '',
+        ownerName: prof.name || req.display_name || '',
+      };
+    });
+  } catch (enrichErr) {
+    console.error('getAllBusinesses: no se pudo enriquecer dueños:', enrichErr);
+    return businesses;
+  }
 }
 
 export async function approveRequest(request, adminNote = '') {
@@ -164,12 +223,25 @@ export async function suspendBusiness(businessId, userId) {
 
   if (bizErr) throw bizErr;
 
-  const { error: profErr } = await supabase
+  // Suspender a TODOS los miembros del negocio (dueño + cajeros).
+  // Antes solo se suspendía al owner y los cajeros seguían entrando.
+  const { error: membersErr } = await supabase
     .from('profiles')
     .update({ status: 'suspended' })
-    .eq('id', userId);
+    .eq('business_id', businessId);
 
-  if (profErr) throw profErr;
+  if (membersErr) console.error('suspendBusiness: no se pudo suspender miembros:', membersErr);
+
+  // Compat: si se pasó el userId del dueño, asegurar su suspensión aunque
+  // su profile no tenga business_id seteado.
+  if (userId) {
+    const { error: profErr } = await supabase
+      .from('profiles')
+      .update({ status: 'suspended' })
+      .eq('id', userId);
+
+    if (profErr) console.error('suspendBusiness: no se pudo suspender owner:', profErr);
+  }
 }
 
 export async function reactivateBusiness(businessId, userId) {
@@ -180,10 +252,122 @@ export async function reactivateBusiness(businessId, userId) {
 
   if (bizErr) throw bizErr;
 
-  const { error: profErr } = await supabase
+  const { error: membersErr } = await supabase
     .from('profiles')
     .update({ status: 'active' })
-    .eq('id', userId);
+    .eq('business_id', businessId);
 
-  if (profErr) throw profErr;
+  if (membersErr) console.error('reactivateBusiness: no se pudo reactivar miembros:', membersErr);
+
+  if (userId) {
+    const { error: profErr } = await supabase
+      .from('profiles')
+      .update({ status: 'active' })
+      .eq('id', userId);
+
+    if (profErr) console.error('reactivateBusiness: no se pudo reactivar owner:', profErr);
+  }
+}
+
+// ── Eliminación total de un negocio ──────────────────────────────────────
+// Vía Edge Function `delete-business` (service_role + auditoría). Si la
+// función aún no está desplegada, usa el borrado local como respaldo.
+export async function deleteBusiness(businessId) {
+  if (!businessId) throw new Error('Falta el ID del negocio.');
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-business', {
+      body: { businessId },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return { saleIds: 0, warnings: data?.warnings || [], via: 'edge-function' };
+  } catch (fnErr) {
+    console.warn('deleteBusiness: Edge Function no disponible, usando borrado local:', fnErr);
+    return deleteBusinessLocal(businessId);
+  }
+}
+
+async function deleteBusinessLocal(businessId) {
+  if (!businessId) throw new Error('Falta el ID del negocio.');
+
+  const errors = [];
+  async function tryDelete(label, fn) {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`deleteBusiness [${label}]:`, err);
+      errors.push(`${label}: ${err?.message || err}`);
+    }
+  }
+
+  // 1. Items de ventas (necesitan los sale_ids primero)
+  let saleIds = [];
+  try {
+    const { data, error } = await supabase
+      .from('sales')
+      .select('id')
+      .eq('business_id', businessId);
+    if (error) throw error;
+    saleIds = (data || []).map((s) => s.id);
+  } catch (err) {
+    console.error('deleteBusiness [fetch sales]:', err);
+    errors.push(`ventas (listar): ${err?.message || err}`);
+  }
+
+  if (saleIds.length > 0) {
+    // Borrar en lotes de 100 porque .in() tiene límite práctico
+    for (let i = 0; i < saleIds.length; i += 100) {
+      const chunk = saleIds.slice(i, i + 100);
+      await tryDelete(`sale_items (${i / 100 + 1})`, async () => {
+        const { error } = await supabase.from('sale_items').delete().in('sale_id', chunk);
+        if (error) throw error;
+      });
+    }
+  }
+
+  // 2. Tablas operativas con business_id directo
+  const tables = [
+    'sales',
+    'products',
+    'clientes',
+    'debts',
+    'expenses',
+    'replenishments',
+    'stock_alerts',
+    'business_settings',
+    'business_join_codes',
+  ];
+  for (const table of tables) {
+    await tryDelete(table, async () => {
+      const { error } = await supabase.from(table).delete().eq('business_id', businessId);
+      if (error) throw error;
+    });
+  }
+
+  // 3. Perfiles: eliminarlos para liberar a los usuarios (dueño + cajeros).
+  // Al no tener profile, AuthContext los manda a Setup como usuario nuevo.
+  await tryDelete('profiles', async () => {
+    const { error } = await supabase.from('profiles').delete().eq('business_id', businessId);
+    if (error) throw error;
+  });
+
+  // 4. Finalmente el negocio
+  const { error: bizErr } = await supabase
+    .from('businesses')
+    .delete()
+    .eq('id', businessId);
+
+  if (bizErr) {
+    throw new Error(
+      `No se pudo eliminar el negocio (${bizErr.message}). ` +
+      (errors.length ? `Limpieza parcial: ${errors.join(' · ')}` : '') +
+      ' Revisa las políticas RLS de DELETE para el rol admin.'
+    );
+  }
+
+  if (errors.length > 0) {
+    console.warn('deleteBusiness completado con advertencias:', errors);
+  }
+
+  return { saleIds: saleIds.length, warnings: errors };
 }

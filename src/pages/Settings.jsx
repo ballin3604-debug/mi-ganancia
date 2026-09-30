@@ -17,13 +17,19 @@ import {
 
 // Subcomponentes de Ajustes
 import { BusinessHeaderCard } from '../components/settings/BusinessHeaderCard';
+import { ReceiptFormatCard } from '../components/settings/ReceiptFormatCard';
 import { TeamSection } from '../components/settings/TeamSection';
 import { BackupSection } from '../components/settings/BackupSection';
 import { UnsavedChangesBar } from '../components/settings/UnsavedChangesBar';
+import BranchManager from '../components/BranchManager';
+import PlanBanner from '../components/PlanBanner';
+import UpgradeScreen, { PremiumGate } from '../components/UpgradeScreen';
 
 const TABS = [
   { id: 'negocio', icon: '🏪', label: 'Mi negocio' },
+  { id: 'sucursales', icon: '🏬', label: 'Sucursales' },
   { id: 'equipo', icon: '👥', label: 'Equipo' },
+  { id: 'plan', icon: '🚀', label: 'Plan' },
   { id: 'respaldo', icon: '📥', label: 'Respaldo' },
 ];
 
@@ -252,6 +258,8 @@ export default function Settings() {
         </p>
       </div>
 
+      <PlanBanner onVerPlanes={() => setActiveTab('plan')} />
+
       {/* Pestañas */}
       <div
         role="tablist"
@@ -303,6 +311,34 @@ export default function Settings() {
               onImagePick={handleImagePick}
               onQRPick={handleQRPick}
             />
+
+            <ReceiptFormatCard />
+          </motion.div>
+        )}
+
+        {/* PESTAÑA 2 — SUCURSALES Y ALMACENES */}
+        {activeTab === 'sucursales' && (
+          <motion.div
+            key="sucursales"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            <BranchManager />
+          </motion.div>
+        )}
+
+        {/* PESTAÑA 3 — PLAN */}
+        {activeTab === 'plan' && (
+          <motion.div
+            key="plan"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            <UpgradeScreen />
           </motion.div>
         )}
 
@@ -315,6 +351,7 @@ export default function Settings() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
           >
+            <PremiumGate feature="multiUser" title="El equipo (cajeros) es Pro">
             <TeamSection
               members={members}
               membersLoading={membersLoading}
@@ -331,6 +368,7 @@ export default function Settings() {
               onRegenerateOwnerCode={handleOwnerCode}
               onToggleRole={handleToggleRole}
             />
+            </PremiumGate>
           </motion.div>
         )}
 

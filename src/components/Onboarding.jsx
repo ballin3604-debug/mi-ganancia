@@ -1,35 +1,36 @@
 import { useState } from 'react';
 
+// Onboarding: primera vez que alguien abre la app (antes de crear cuenta).
+// Lenguaje de tienda, cero tecnicismos. Si cambias un texto aquí,
+// mantén 1 título corto + 1 frase + 1 ejemplo.
 const SLIDES = [
   {
-    icon: (
-      <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    ),
+    emoji: '🛒',
     title: 'Vende en segundos',
-    description: 'Toca un producto, agrégalo al carrito y cobra. Tan simple como contar billetes.',
-    color: '#007aff',
+    description: 'Toca el producto, cóbralo en efectivo, QR o fiado. La app te calcula el cambio sola.',
+    example: 'Vendes Bs 75, te pagan con Bs 100 → te dice: devuelve Bs 25.',
+    color: '#1670C2',
   },
   {
-    icon: (
-      <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    ),
-    title: 'Controla tu inventario',
-    description: 'Sabe cuánto te queda de cada producto. Te avisa cuando algo está por acabarse.',
+    emoji: '📖',
+    title: 'Adiós cuaderno de fiados',
+    description: 'La app anota quién te debe, cuánto y desde cuándo. Los vencidos salen en rojo.',
+    example: 'Don Juan te debe Bs 120 desde el lunes. Lo cobras en 1 clic.',
+    color: '#d99a2b',
+  },
+  {
+    emoji: '📈',
+    title: 'Sabrás cuánto ganas de verdad',
+    description: 'No solo cuánto vendiste. Resta lo que te costó y tus gastos: esa es tu ganancia neta.',
+    example: 'Vendiste Bs 1.000, tu ganancia real fue Bs 220. Ahí entiendes tu negocio.',
     color: '#34c759',
   },
   {
-    icon: (
-      <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-    title: 'Mira cuánto ganas',
-    description: 'Reportes diarios, semanales y mensuales. Ve crecer tu negocio día a día.',
-    color: '#ff9500',
+    emoji: '📶',
+    title: 'Funciona sin internet',
+    description: 'Vende en el mercado o con corte de luz. Todo se guarda y se sube solo cuando vuelve la señal.',
+    example: 'Vendes sin señal y al volver al WiFi todo aparece en tus reportes.',
+    color: '#0c3457',
   },
 ];
 
@@ -39,7 +40,6 @@ export default function Onboarding({ onFinish }) {
 
   function next() {
     if (isLast) {
-      // Marcar onboarding como visto
       try { localStorage.setItem('mg_onboarding_done', '1'); } catch {}
       onFinish();
     } else {
@@ -56,7 +56,6 @@ export default function Onboarding({ onFinish }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
-      {/* Header con botón saltar */}
       <div className="flex justify-end p-5 pt-12">
         {!isLast && (
           <button
@@ -68,33 +67,31 @@ export default function Onboarding({ onFinish }) {
         )}
       </div>
 
-      {/* Contenido del slide */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center mg-fade-in" key={current}>
-        {/* Icono grande con fondo de color */}
         <div
-          className="w-40 h-40 rounded-[40px] flex items-center justify-center mb-10 shadow-2xl"
+          className="w-36 h-36 rounded-[36px] flex items-center justify-center mb-8 text-7xl"
           style={{
             background: `linear-gradient(135deg, ${slide.color} 0%, ${slide.color}dd 100%)`,
             boxShadow: `0 20px 50px ${slide.color}40`,
-            color: 'white',
           }}
         >
-          {slide.icon}
+          {slide.emoji}
         </div>
 
-        {/* Título */}
-        <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-4">
+        <h2 className="text-[26px] font-extrabold text-gray-900 tracking-tight mb-3">
           {slide.title}
         </h2>
 
-        {/* Descripción */}
-        <p className="text-gray-500 text-lg leading-relaxed max-w-sm">
+        <p className="text-gray-600 text-[16px] leading-relaxed max-w-sm">
           {slide.description}
+        </p>
+
+        <p className="text-gray-400 text-[13px] leading-relaxed max-w-sm mt-3 italic bg-gray-50 rounded-2xl px-4 py-2.5">
+          Ej: {slide.example}
         </p>
       </div>
 
-      {/* Indicadores de página (puntitos) */}
-      <div className="flex justify-center gap-2 mb-8">
+      <div className="flex justify-center items-center gap-2 mb-4">
         {SLIDES.map((_, i) => (
           <div
             key={i}
@@ -104,8 +101,10 @@ export default function Onboarding({ onFinish }) {
           />
         ))}
       </div>
+      <p className="text-center text-xs text-gray-400 font-semibold mb-4">
+        {current + 1} de {SLIDES.length}
+      </p>
 
-      {/* Botón continuar */}
       <div className="px-6 pb-12 pt-2">
         <button
           onClick={next}

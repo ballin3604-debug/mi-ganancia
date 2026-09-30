@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { BusinessProvider } from './context/BusinessContext.jsx';
+import { BranchProvider } from './context/BranchContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import './index.css';
 
@@ -118,9 +119,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <BusinessProvider>
+          <BranchProvider>
           <ThemeProvider>
             <App />
           </ThemeProvider>
+          </BranchProvider>
         </BusinessProvider>
       </AuthProvider>
     </BrowserRouter>

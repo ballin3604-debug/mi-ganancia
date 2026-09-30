@@ -1,8 +1,19 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../services/auth';
 
 export default function PendingApproval({ status }) {
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
+  const [checking, setChecking] = useState(false);
+
+  async function handleCheck() {
+    setChecking(true);
+    try {
+      await refreshSession();
+    } finally {
+      setChecking(false);
+    }
+  }
 
   const isRejected = status === 'rejected';
   const isSuspended = status === 'suspended';
@@ -56,6 +67,25 @@ export default function PendingApproval({ status }) {
           <p className="font-semibold text-[var(--mg-text-secondary)] text-sm">{user?.displayName}</p>
           <p className="text-[var(--mg-text-faint)] text-xs">{user?.email}</p>
         </div>
+
+        <p className="text-[11px] text-[var(--mg-text-faint)] leading-relaxed">
+          💡 Deja esta pantalla abierta: en cuanto el administrador apruebe, entras automáticamente.
+        </p>
+
+        <button
+          onClick={handleCheck}
+          disabled={checking}
+          className="w-full bg-[var(--mg-accent)] text-white font-bold py-3.5 rounded-2xl text-sm active:scale-95 disabled:opacity-60"
+        >
+          {checking ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Revisando…
+            </span>
+          ) : (
+            '✓ Ya me aprobaron · Revisar estado'
+          )}
+        </button>
 
         <button
           onClick={signOut}

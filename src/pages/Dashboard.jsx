@@ -113,12 +113,14 @@ export default function Dashboard() {
     });
   }, [visibleSales, businessId]);
 
-  // Datos del gráfico de productos más vendidos
+  // Datos del gráfico de productos más vendidos (cantidades en UNIDADES BASE:
+  // los paquetes suman × su factor)
   const topProductsChartData = useMemo(() => {
     const productsCount = {};
     Object.values(salesItemsMap).flat().forEach((item) => {
       const name = item.productName || 'Desconocido';
-      productsCount[name] = (productsCount[name] || 0) + (item.quantity || 0);
+      const factor = Number(item.presentation_factor ?? item.presentationFactor ?? 1);
+      productsCount[name] = (productsCount[name] || 0) + (Number(item.quantity || 0) * factor);
     });
 
     const sorted = Object.entries(productsCount)
@@ -253,7 +255,10 @@ export default function Dashboard() {
         business,
         settings,
         saleId: sale.id,
-        items,
+        items: items.map((it) => ({
+          ...it,
+          productName: it.presentation ? `${it.productName} · ${it.presentation}` : it.productName,
+        })),
         total: sale.total,
         date,
         clientName: sale.clientName || 'S/N',

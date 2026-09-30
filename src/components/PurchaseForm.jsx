@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { addReplenishment, updateProduct } from '../services/products';
+import { addReplenishment } from '../services/products';
+import { applyPurchaseStock } from '../services/branchStock';
 import { getReplenishmentConcepts, addReplenishmentConcepts } from '../services/replenishmentConcepts';
 import { subscribeToSuppliers, addSupplier } from '../services/suppliers';
 import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
+import { useBranches } from '../context/BranchContext';
 import { printReceipt } from './Receipt';
 import { savePurchaseDraft, clearPurchaseDraft } from '../services/purchaseDraft';
 
@@ -32,6 +34,9 @@ const CUSTOM_SUPPLIER_VALUE = '__custom__';
 export default function PurchaseForm({ businessId, product, initialDraft, lastPurchase, onClose, onSaved }) {
   const { user } = useAuth();
   const { business, settings } = useBusiness();
+  const { branches, activeBranchId } = useBranches();
+  // Sede donde ENTRA la mercadería (Fase 2). Por defecto la operativa.
+  const [purchaseBranchId, setPurchaseBranchId] = useState(activeBranchId);
   const [successDetails, setSuccessDetails] = useState(null);
   const [salePrice, setSalePrice] = useState(String(product.price || ''));
   const [supplierPrice, setSupplierPrice] = useState(String(product.supplierPrice || ''));
@@ -73,6 +78,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
       : []);
     setSupplier(draft?.supplier || '');
     setIsCustomSupplier(!!draft?.isCustomSupplier);
+    if (!draft) setPurchaseBranchId(activeBranchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
@@ -222,22 +228,26 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
       const newStock = (product.stock || 0) + qtyVal;
 
-      // Stock y costo del producto: responsabilidad del caller (ver fix de Prioridad 1)
-      await updateProduct(product.id, {
-        name: product.name,
-        price: salePriceVal,
-        stock: newStock,
-        expectedStock: product.stock,
-        minStock: product.minStock || 5,
-        brand: product.brand || '',
-        category: product.category || 'Otros',
-        description: product.description || '',
-        imageData: product.imageData || '',
-        supplierPrice: costoUnitarioReal,
-        unit: product.unit || 'Unidad',
-        // Persistimos el tamaño de caja para que la próxima compra ya lo
-        // traiga prellenado. En modo unidad no se pisa el valor existente.
-        packageSize: purchaseUnitType === 'package' ? packageSizeVal : (product.packageSize || null),
+      // Stock por sede (Fase 2): suma a la sede elegida y al total.
+      await applyPurchaseStock({
+        businessId,
+        product,
+        branchId: purchaseBranchId || activeBranchId,
+        qty: qtyVal,
+        fields: {
+          name: product.name,
+          price: salePriceVal,
+          minStock: product.minStock || 5,
+          brand: product.brand || '',
+          category: product.category || 'Otros',
+          description: product.description || '',
+          imageData: product.imageData || '',
+          supplierPrice: costoUnitarioReal,
+          unit: product.unit || 'Unidad',
+          // Persistimos el tamaño de caja para que la próxima compra ya lo
+          // traiga prellenado. En modo unidad no se pisa el valor existente.
+          packageSize: purchaseUnitType === 'package' ? packageSizeVal : (product.packageSize || null),
+        },
       });
 
       const replenishment = await addReplenishment(businessId, {
@@ -390,7 +400,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               <p className="text-xs text-[var(--mg-text-muted)] font-semibold uppercase tracking-wider">Producto seleccionado</p>
               <p className="font-black text-[var(--mg-text-primary)] text-base truncate mt-0.5">{product.name}</p>
               <p className="text-xs text-[var(--mg-text-faint)] font-semibold mt-0.5">
-                {product.brand && `${product.brand} · `}Stock actual: <strong className="text-[var(--mg-text-secondary)]">{product.stock} und.</strong>
+                {product.brand && `${product.brand} · `}Stock{branches.length > 1 ? ` en ${(branches.find((b) => b.id === (purchaseBranchId || activeBranchId))?.name) || 'sede'}` : ''}: <strong className="text-[var(--mg-text-secondary)]">{product.stock} und.</strong>
               </p>
               {lastPurchase && (
                 <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1">
@@ -403,6 +413,28 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Sede donde entra la mercadería (solo si hay varias) */}
+            {branches.length > 1 && (
+              <div>
+                <label className="text-sm font-bold text-[var(--mg-text-primary)] block mb-2">¿A qué sede entra?</label>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {branches.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setPurchaseBranchId(b.id)}
+                      className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                        (purchaseBranchId || activeBranchId) === b.id
+                          ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                          : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'
+                      }`}
+                    >
+                      {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* ¿Cómo te vendió el proveedor? — tarjetas seleccionables */}
             <div>
               <label className="text-sm font-bold text-[var(--mg-text-primary)] block mb-2">¿Cómo te vendió el proveedor?</label>
@@ -672,6 +704,12 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                   </strong></>
                 )}
               </p>
+              {/* Lo que realmente importa: ganancia total si vende TODO */}
+              {salePriceVal > 0 && qtyVal > 0 && (
+                <div className={`mt-2.5 rounded-xl px-3 py-2.5 text-center font-black text-sm ${profitMontoVal >= 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                  💰 Si vendés {purchaseUnitType === 'package' ? 'todo' : `las ${qtyVal} unidades}`} — {profitMontoVal >= 0 ? 'ganás' : 'perdés'} {formatBs(Math.abs(profitMontoVal) * qtyVal)} en total
+                </div>
+              )}
             </div>
 
             {/* Alerta de venta a pérdida (advertencia, no bloqueo) */}

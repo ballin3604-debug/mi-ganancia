@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   getAllRequests, getAllBusinesses,
   approveRequest, rejectRequest,
-  suspendBusiness, reactivateBusiness,
+  suspendBusiness, reactivateBusiness, deleteBusiness,
 } from '../services/admin';
 import { signOut } from '../services/auth';
 import {
@@ -14,6 +14,7 @@ import { generateUUID } from '../services/localDb';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { DEFAULT_CATEGORIES } from '../services/categories';
 import ProductCatalogCard from '../components/ProductCatalogCard';
+import PaymentsTab from '../components/admin/PaymentsTab';
 import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
 
 const EMPTY_CATALOG_FORM = {
@@ -351,6 +352,13 @@ export default function AdminPanel() {
   const catalogNameRef = useRef(null);
   const [importBusiness, setImportBusiness] = useState(null);
 
+  // ── Negocios: buscador, filtro y eliminación ──
+  const [bizSearch, setBizSearch] = useState('');
+  const [bizStatusFilter, setBizStatusFilter] = useState('all'); // all | active | suspended
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingBiz, setDeletingBiz] = useState(false);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     const [reqs, biz, cat] = await Promise.all([getAllRequests(), getAllBusinesses(), getMasterProducts()]);
@@ -412,9 +420,6 @@ export default function AdminPanel() {
     }
   }
 
-  const pending  = requests.filter((r) => r.status === 'pending');
-  const reviewed = requests.filter((r) => r.status !== 'pending');
-
   async function handleApprove(req, note) {
     setProcessing(req.id);
     try {
@@ -434,7 +439,7 @@ export default function AdminPanel() {
   async function handleSuspend(biz, note) {
     setProcessing(biz.id);
     try {
-      await suspendBusiness(biz.id, biz.ownerId);
+      await suspendBusiness(biz.id, biz.owner_id || biz.ownerId);
       await fetchAll();
     } finally { setProcessing(''); setConfirm(null); }
   }
@@ -442,11 +447,57 @@ export default function AdminPanel() {
   async function handleReactivate(biz) {
     setProcessing(biz.id);
     try {
-      await reactivateBusiness(biz.id, biz.ownerId);
+      await reactivateBusiness(biz.id, biz.owner_id || biz.ownerId);
       await fetchAll();
     } finally { setProcessing(''); }
   }
 
+  function openDelete(biz) {
+    setDeleteTarget(biz);
+    setDeleteConfirmText('');
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return;
+    if (deleteConfirmText.trim() !== (deleteTarget.name || '').trim()) return;
+    setDeletingBiz(true);
+    try {
+      const targetName = deleteTarget.name;
+      const res = await deleteBusiness(deleteTarget.id);
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+      await fetchAll();
+      alert(
+        `Negocio "${targetName}" eliminado.` +
+        (res?.warnings?.length ? `\nAdvertencias: ${res.warnings.join(' · ')}` : '')
+      );
+    } catch (err) {
+      console.error(err);
+      alert(`No se pudo eliminar.\n\n${err?.message || err}`);
+    } finally {
+      setDeletingBiz(false);
+    }
+  }
+
+  const pending  = requests.filter((r) => r.status === 'pending');
+  const reviewed = requests.filter((r) => r.status !== 'pending');
+
+  const activeCount = businesses.filter((b) => (b.status || 'active') === 'active').length;
+  const suspendedCount = businesses.filter((b) => b.status === 'suspended').length;
+
+  const filteredBusinesses = businesses
+    .filter((b) => bizStatusFilter === 'all' || (b.status || 'active') === bizStatusFilter)
+    .filter((b) => {
+      const q = bizSearch.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (b.name || '').toLowerCase().includes(q) ||
+        (b.ownerEmail || '').toLowerCase().includes(q) ||
+        (b.ownerName || '').toLowerCase().includes(q) ||
+        (b.id || '').toLowerCase().includes(q) ||
+        String(b.owner_id || b.ownerId || '').toLowerCase().includes(q)
+      );
+    });
   return (
     <div className="min-h-screen bg-[var(--mg-bg-elevated)]">
       {/* Header */}
@@ -476,29 +527,32 @@ export default function AdminPanel() {
             <p className="text-2xl font-black text-amber-600">{pending.length}</p>
             <p className="text-xs text-amber-500 font-semibold">Pendientes</p>
           </div>
-          <div className="bg-[var(--mg-accent)] border-2 border-[var(--mg-accent-border)] rounded-2xl p-3 text-center">
-            <p className="text-2xl font-black text-[var(--mg-accent)]">
-              {businesses.filter((b) => b.status === 'active').length}
+          <div className="bg-[#1670C2] border-2 border-[#0f5c9e] rounded-2xl p-3 text-center shadow-sm">
+            <p className="text-2xl font-black text-white">
+              {activeCount}
             </p>
-            <p className="text-xs text-[var(--mg-accent)] font-semibold">Activos</p>
+            <p className="text-xs text-blue-100 font-semibold">Activos{suspendedCount > 0 ? ` · ${suspendedCount} susp.` : ''}</p>
           </div>
-          <div className="bg-[var(--mg-bg-elevated)] border-2 border-[var(--mg-border)] rounded-2xl p-3 text-center">
-            <p className="text-2xl font-black text-[var(--mg-text-secondary)]">{businesses.length}</p>
+          <div className="bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-2xl p-3 text-center">
+            <p className="text-2xl font-black text-[var(--mg-text-primary)]">{businesses.length}</p>
             <p className="text-xs text-[var(--mg-text-muted)] font-semibold">Total negocios</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-[var(--mg-border)] rounded-2xl p-1">
+        <div className="flex bg-[var(--mg-bg-section)] rounded-2xl p-1 gap-1 overflow-x-auto">
           {[
             { key: 'requests', label: `Solicitudes (${pending.length})` },
             { key: 'businesses', label: `Negocios (${businesses.length})` },
+            { key: 'payments', label: 'Pagos 💳' },
             { key: 'catalog', label: `Catálogo (${masterProducts.length})` },
             { key: 'history', label: 'Historial' },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                tab === key ? 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] shadow-sm' : 'text-[var(--mg-text-muted)]'
+              className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border-2 ${
+                tab === key
+                  ? 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] shadow-sm border-[var(--mg-text-primary)]'
+                  : 'text-[var(--mg-text-muted)] border-transparent'
               }`}>
               {label}
             </button>
@@ -559,15 +613,52 @@ export default function AdminPanel() {
               </div>
             )}
 
-            {/* ── NEGOCIOS ACTIVOS ── */}
+            {/* ── NEGOCIOS ── */}
             {tab === 'businesses' && (
               <div className="space-y-3">
+                {/* Buscador + filtro */}
+                <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-3 border border-[var(--mg-border)] space-y-2">
+                  <input
+                    type="text"
+                    value={bizSearch}
+                    onChange={(e) => setBizSearch(e.target.value)}
+                    placeholder="🔍 Buscar por nombre, correo o ID..."
+                    className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--mg-accent-border)]"
+                  />
+                  <div className="flex gap-2">
+                    {[
+                      { key: 'all', label: `Todos (${businesses.length})` },
+                      { key: 'active', label: `Activos (${activeCount})` },
+                      { key: 'suspended', label: `Suspendidos (${suspendedCount})` },
+                    ].map((f) => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setBizStatusFilter(f.key)}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                          bizStatusFilter === f.key
+                            ? 'bg-[var(--mg-text-primary)] text-white'
+                            : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {businesses.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
                     <p className="text-4xl mb-3">🏪</p>
                     <p className="font-semibold">Sin negocios aún</p>
                   </div>
-                ) : businesses.map((biz) => (
+                ) : filteredBusinesses.length === 0 ? (
+                  <div className="text-center py-12 text-[var(--mg-text-faint)]">
+                    <p className="text-4xl mb-3">🔍</p>
+                    <p className="font-semibold">Sin resultados</p>
+                    <p className="text-xs mt-1">Prueba con otro nombre o limpia el filtro.</p>
+                  </div>
+                ) : filteredBusinesses.map((biz) => (
                   <div key={biz.id}
                     className={`bg-[var(--mg-bg-surface)] rounded-2xl p-4 border-2 shadow-sm ${
                       biz.status === 'suspended' ? 'border-[var(--mg-danger)]' : 'border-[var(--mg-border)]'
@@ -575,7 +666,11 @@ export default function AdminPanel() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-[var(--mg-text-primary)] text-base truncate">{biz.name}</p>
-                        <p className="text-[var(--mg-text-faint)] text-xs mt-0.5">ID: {biz.id.slice(0, 10)}...</p>
+                        <p className="text-[13px] text-[var(--mg-text-secondary)] truncate mt-0.5">
+                          {biz.ownerEmail ? `✉️ ${biz.ownerEmail}` : '✉️ sin correo'}
+                          {biz.ownerName ? ` · ${biz.ownerName}` : ''}
+                        </p>
+                        <p className="text-[var(--mg-text-faint)] text-xs mt-0.5 font-mono">ID: {biz.id.slice(0, 13)}...</p>
                         <p className="text-[var(--mg-text-faint)] text-xs">Creado: {formatDate(biz.createdAt)}</p>
                       </div>
                       <Badge status={biz.status || 'active'} />
@@ -604,6 +699,13 @@ export default function AdminPanel() {
                       className="w-full mt-2 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-sm active:scale-95"
                     >
                       📦 Importar catálogo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openDelete(biz)}
+                      className="w-full mt-2 text-[var(--mg-danger)] font-semibold py-2 rounded-xl text-xs active:scale-95 hover:bg-[var(--mg-danger-bg)] transition-all"
+                    >
+                      🗑️ Eliminar negocio permanentemente
                     </button>
                   </div>
                 ))}
@@ -706,6 +808,9 @@ export default function AdminPanel() {
               </div>
             )}
 
+            {/* ── PAGOS ── */}
+            {tab === 'payments' && <PaymentsTab />}
+
             {/* ── HISTORIAL ── */}
             {tab === 'history' && (
               <div className="space-y-2">
@@ -760,11 +865,60 @@ export default function AdminPanel() {
       )}
       {confirm?.type === 'suspend' && (
         <ConfirmModal
-          message={`¿Suspender acceso a "${confirm.data.name}"?`}
+          message={`¿Suspender acceso a "${confirm.data.name}"? Se bloqueará al dueño y sus cajeros.`}
           placeholder="Motivo de suspensión (opcional)"
           onConfirm={(note) => handleSuspend(confirm.data, note)}
           onCancel={() => setConfirm(null)}
         />
+      )}
+
+      {/* Eliminar negocio — confirmación escribiendo el nombre */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
+          <div className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] flex items-center justify-center text-2xl">
+              🗑️
+            </div>
+            <div>
+              <p className="font-black text-[var(--mg-text-primary)] text-base">
+                ¿Eliminar "{deleteTarget.name}"?
+              </p>
+              <p className="text-[13px] text-[var(--mg-text-secondary)] mt-1.5 leading-relaxed">
+                Se borrarán <b>ventas, productos, fiados, gastos, compras y usuarios</b> de este negocio.
+                Esta acción <b>no se puede deshacer</b>.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-[var(--mg-text-secondary)] block mb-1.5">
+                Escribe <span className="font-mono bg-[var(--mg-bg-elevated)] px-1.5 py-0.5 rounded">"{deleteTarget.name}"</span> para confirmar
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteTarget.name}
+                autoFocus
+                className="w-full border-2 border-[var(--mg-danger)] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}
+                disabled={deletingBiz}
+                className="flex-1 bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] font-bold py-3 rounded-2xl text-sm active:scale-95 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirmed}
+                disabled={deletingBiz || deleteConfirmText.trim() !== (deleteTarget.name || '').trim()}
+                className="flex-1 bg-[var(--mg-danger)] text-white font-bold py-3 rounded-2xl text-sm active:scale-95 disabled:opacity-40"
+              >
+                {deletingBiz ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {importBusiness && (

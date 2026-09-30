@@ -5,6 +5,11 @@ function mapProduct(p) {
   if (!p) return p;
   return {
     ...p,
+    barcode: p.barcode || '',
+    unitLabel: p.unit_label || '',
+    packLabel: p.pack_label || '',
+    packPrice: p.pack_price !== undefined && p.pack_price !== null ? Number(p.pack_price) : '',
+    packPriceHot: p.pack_price_hot !== undefined && p.pack_price_hot !== null ? Number(p.pack_price_hot) : '',
     minStock: p.min_stock,
     supplierPrice: p.supplier_price,
     imageData: p.image_url,
@@ -112,6 +117,11 @@ export async function addProduct(businessId, data) {
     id,
     business_id: businessId,
     name: data.name.trim(),
+    barcode: (data.barcode || '').trim() || null,
+    unit_label: (data.unitLabel || '').trim() || null,
+    pack_label: (data.packLabel || '').trim() || null,
+    pack_price: data.packPrice !== undefined && data.packPrice !== '' ? Number(data.packPrice) : null,
+    pack_price_hot: data.packPriceHot !== undefined && data.packPriceHot !== '' ? Number(data.packPriceHot) : null,
     price: Number(data.price),
     stock: Number(data.stock),
     min_stock: Number(data.minStock || 5),
@@ -167,6 +177,21 @@ export async function updateProduct(productId, data) {
   }
   if (data.unit !== undefined) {
     updateData.unit = data.unit;
+  }
+  if (data.barcode !== undefined) {
+    updateData.barcode = data.barcode ? String(data.barcode).trim() || null : null;
+  }
+  if (data.unitLabel !== undefined) {
+    updateData.unit_label = data.unitLabel ? String(data.unitLabel).trim() || null : null;
+  }
+  if (data.packLabel !== undefined) {
+    updateData.pack_label = data.packLabel ? String(data.packLabel).trim() || null : null;
+  }
+  if (data.packPrice !== undefined) {
+    updateData.pack_price = data.packPrice !== '' && data.packPrice !== null ? Number(data.packPrice) : null;
+  }
+  if (data.packPriceHot !== undefined) {
+    updateData.pack_price_hot = data.packPriceHot !== '' && data.packPriceHot !== null ? Number(data.packPriceHot) : null;
   }
   if (data.packageSize !== undefined) {
     updateData.package_size = data.packageSize !== '' ? Number(data.packageSize) : null;

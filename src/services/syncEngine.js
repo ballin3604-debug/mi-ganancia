@@ -210,24 +210,144 @@ export async function discardOperation(opId, businessId) {
   await updatePendingCount(businessId);
 }
 
+// ── Capacidades del servidor (migraciones SQL pendientes o no) ─────────
+// Si el usuario aún no corrió una migración (barcode, presentaciones), las
+// columnas no existen y el insert/update fallaría para SIEMPRE dejando la
+// cola trabada. Probamos una vez por sesión y, si faltan, se recortan esas
+// claves del payload: la app sigue sincronizando lo demás y gana fidelidad
+// total en cuanto se corre el SQL.
+let serverCaps = null;
+
+async function getServerCaps() {
+  if (serverCaps) return serverCaps;
+  serverCaps = { productPres: true, productBarcode: true, itemPres: true, salesBranch: true };
+  try {
+    const { error } = await supabase.from('products').select('unit_label').limit(0);
+    if (error) serverCaps.productPres = false;
+  } catch {
+    serverCaps.productPres = false;
+  }
+  try {
+    const { error } = await supabase.from('products').select('barcode').limit(0);
+    if (error) serverCaps.productBarcode = false;
+  } catch {
+    serverCaps.productBarcode = false;
+  }
+  try {
+    const { error } = await supabase.from('sale_items').select('presentation').limit(0);
+    if (error) serverCaps.itemPres = false;
+  } catch {
+    serverCaps.itemPres = false;
+  }
+  try {
+    const { error } = await supabase.from('sales').select('branch_id').limit(0);
+    if (error) serverCaps.salesBranch = false;
+  } catch {
+    serverCaps.salesBranch = false;
+  }
+  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.itemPres || !serverCaps.salesBranch) {
+    console.warn('syncEngine: columnas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
+  }
+  return serverCaps;
+}
+
+const NEW_PRES_KEYS = ['unit_label', 'pack_label', 'pack_price', 'pack_price_hot'];
+
+async function stripUnknownProductKeys(obj) {
+  const caps = await getServerCaps();
+  if (!obj || typeof obj !== 'object') return obj;
+  if (caps.productPres && caps.productBarcode) return obj;
+  const copy = { ...obj };
+  if (!caps.productPres) NEW_PRES_KEYS.forEach((k) => { delete copy[k]; });
+  if (!caps.productBarcode) delete copy.barcode;
+  return copy;
+}
+
+function isMissingColumnError(err) {
+  const msg = String(err?.message || '').toLowerCase();
+  return err?.code === 'PGRST204' || msg.includes('column') || msg.includes('columna');
+}
+
 async function processOperation(op, businessId) {
   const { operation_type, payload } = op;
 
   switch (operation_type) {
     case 'ADD_PRODUCT': {
-      const { error } = await supabase.from('products').insert(payload);
+      const body = await stripUnknownProductKeys(payload);
+      const { error } = await supabase.from('products').insert(body);
       if (error) throw error;
       break;
     }
     case 'UPDATE_PRODUCT': {
       const { id, ...updateData } = payload;
-      const { error } = await supabase.from('products').update(updateData).eq('id', id);
+      const body = await stripUnknownProductKeys(updateData);
+      const { error } = await supabase.from('products').update(body).eq('id', id);
       if (error) throw error;
       break;
     }
     case 'DELETE_PRODUCT': {
       const { error } = await supabase.from('products').delete().eq('id', payload.id);
       if (error) throw error;
+      break;
+    }
+    case 'SET_BRANCH_STOCK': {
+      // Upsert tolerante del stock de una sede (Fase 2)
+      try {
+        const { error } = await supabase.from('branch_stock').upsert({
+          branch_id: payload.branch_id,
+          product_id: payload.product_id,
+          business_id: businessId,
+          stock: Number(payload.stock || 0),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'branch_id,product_id' });
+        if (error) throw error;
+      } catch (err) {
+        if (isMissingColumnError(err) || String(err?.message || '').includes('branch_stock')) {
+          const caps = await getServerCaps();
+          caps.branchTables = false;
+        } else throw err;
+      }
+      break;
+    }
+    case 'TRANSFER_STOCK': {
+      // Traspaso en el servidor: idempotente por transfer_id
+      try {
+        const { data: done } = await supabase
+          .from('transfers')
+          .select('id')
+          .eq('id', payload.transfer_id)
+          .maybeSingle();
+        if (!done) {
+          const qty = Number(payload.quantity || 0);
+          const fromRow = await supabase.from('branch_stock')
+            .select('stock').eq('branch_id', payload.from_branch_id).eq('product_id', payload.product_id)
+            .maybeSingle();
+          const toRow = await supabase.from('branch_stock')
+            .select('stock').eq('branch_id', payload.to_branch_id).eq('product_id', payload.product_id)
+            .maybeSingle();
+          const fromStock = Math.max(0, Number(fromRow?.data?.stock || 0) - qty);
+          const toStock = Number(toRow?.data?.stock || 0) + qty;
+          await supabase.from('branch_stock').upsert([
+            { branch_id: payload.from_branch_id, product_id: payload.product_id, business_id: businessId, stock: fromStock, updated_at: new Date().toISOString() },
+            { branch_id: payload.to_branch_id, product_id: payload.product_id, business_id: businessId, stock: toStock, updated_at: new Date().toISOString() },
+          ], { onConflict: 'branch_id,product_id' });
+          const { error: tErr } = await supabase.from('transfers').insert({
+            id: payload.transfer_id,
+            business_id: businessId,
+            product_id: payload.product_id,
+            from_branch_id: payload.from_branch_id,
+            to_branch_id: payload.to_branch_id,
+            quantity: qty,
+            created_by: payload.created_by || null,
+          });
+          if (tErr) throw tErr;
+        }
+      } catch (err) {
+        if (isMissingColumnError(err) || String(err?.message || '').includes('branch_stock') || String(err?.message || '').includes('transfers')) {
+          const caps = await getServerCaps();
+          caps.branchTables = false;
+        } else throw err;
+      }
       break;
     }
     case 'REGISTER_SALE': {
@@ -238,32 +358,36 @@ async function processOperation(op, businessId) {
         .eq('id', payload.client_generated_id)
         .maybeSingle();
 
-      if (existing) {
+      // Solo se compensa stock si el RPC realmente creó la venta ahora.
+      // En reintentos (ya sincronizada) se omite para no descontar doble.
+      let didCreate = false;
+
+      if (!existing) {
+        // 2. Call the server side RPC transaction
+        const { data: saleId, error } = await supabase.rpc('registrar_venta', {
+          p_client_generated_id: payload.client_generated_id,
+          p_business_id: payload.business_id,
+          p_client_name: payload.client_name,
+          p_client_nit: payload.client_nit,
+          p_payment_method: payload.payment_method,
+          p_total: Number(payload.total),
+          p_item_count: Number(payload.item_count || 0),
+          p_seller_name: payload.seller_name || '',
+          p_created_by: payload.created_by || null,
+          p_items: payload.p_items
+        });
+        if (error) throw error;
+        didCreate = true;
+      } else {
         console.log(`Sale ${payload.client_generated_id} already synced.`);
-        break;
       }
 
-      // 2. Call the server side RPC transaction
-      const { data: saleId, error } = await supabase.rpc('registrar_venta', {
-        p_client_generated_id: payload.client_generated_id,
-        p_business_id: payload.business_id,
-        p_client_name: payload.client_name,
-        p_client_nit: payload.client_nit,
-        p_payment_method: payload.payment_method,
-        p_total: Number(payload.total),
-        p_item_count: Number(payload.item_count || 0),
-        p_seller_name: payload.seller_name || '',
-        p_created_by: payload.created_by || null,
-        p_items: payload.p_items
-      });
-      if (error) throw error;
-
-      // 3. Write extra mixed payment fields if applicable
+      // 3. Write extra mixed payment fields if applicable (idempotente)
       if (payload.extraFields && Object.keys(payload.extraFields).length > 0) {
         const updateData = {};
         if (payload.extraFields.montoEfectivo !== undefined) updateData.monto_efectivo = Number(payload.extraFields.montoEfectivo);
         if (payload.extraFields.montoQR !== undefined) updateData.monto_qr = Number(payload.extraFields.montoQR);
-        
+
         const { error: updErr } = await supabase
           .from('sales')
           .update(updateData)
@@ -271,8 +395,118 @@ async function processOperation(op, businessId) {
         if (updErr) throw updErr;
       }
 
-      // 4. Verify stock levels to raise negative stock alerts
-      for (const item of payload.p_items) {
+      // 3b. Compensación de stock por paquetes (solo si se creó ahora).      // El RPC descuenta `quantity` por ítem; en paquetes eso son paquetes,
+      // no unidades base. Se descuenta la diferencia qty×(factor−1) y se
+      // estampan los datos de presentación en los ítems del servidor
+      // (tolerante si aún no corrieron la migración SQL).
+      if (didCreate && Array.isArray(payload.p_factors)) {
+        const caps = await getServerCaps();
+        for (const f of payload.p_factors) {
+          const factor = Number(f.factor || 1);
+          const qty = Number(f.quantity || 0);
+          if (factor > 1 && qty > 0) {
+            try {
+              const { data: srv } = await supabase
+                .from('products')
+                .select('stock')
+                .eq('id', f.product_id)
+                .single();
+              if (srv) {
+                const extra = qty * (factor - 1);
+                await supabase
+                  .from('products')
+                  .update({ stock: Math.max(0, Number(srv.stock || 0) - extra) })
+                  .eq('id', f.product_id);
+              }
+            } catch (compErr) {
+              console.error('syncEngine: compensación de stock por paquete falló:', compErr);
+            }
+          }
+        }
+        if (caps.itemPres) {
+          for (const f of payload.p_factors || []) {
+            const factor = Number(f?.factor || 1);
+            if (factor <= 1) continue;
+            try {
+              const { error: presErr } = await supabase
+                .from('sale_items')
+                .update({
+                  presentation: f.presentation || '',
+                  presentation_factor: factor,
+                  variant: f.variant || '',
+                })
+                .eq('sale_id', payload.client_generated_id)
+                .eq('product_id', f.product_id)
+                .eq('quantity', Number(f.quantity))
+                .eq('price', Number(f.price));
+              if (presErr) {
+                if (isMissingColumnError(presErr)) {
+                  serverCaps.itemPres = false;
+                  break;
+                }
+                throw presErr;
+              }
+            } catch (presErr) {
+              if (isMissingColumnError(presErr)) {
+                serverCaps.itemPres = false;
+                break;
+              }
+              throw presErr;
+            }
+          }
+        }
+      }
+
+      // 3c. Stock por sede en el servidor (Fase 2): descuenta las unidades
+      // base de la sede de la venta. Tolerante si faltan las tablas.
+      if (didCreate && payload.extraFields?.branchId && (await getServerCaps()).branchTables !== false) {
+        try {
+          const byProduct = {};
+          for (const f of payload.p_factors || []) {
+            const pid = f.product_id;
+            byProduct[pid] = (byProduct[pid] || 0) + Number(f.quantity || 0) * Number(f.factor || 1);
+          }
+          for (const [pid, baseQty] of Object.entries(byProduct)) {
+            const { data: row } = await supabase.from('branch_stock')
+              .select('stock').eq('branch_id', payload.extraFields.branchId).eq('product_id', pid)
+              .maybeSingle();
+            const cur = Number(row?.stock || 0);
+            const { error: bsErr } = await supabase.from('branch_stock').upsert({
+              branch_id: payload.extraFields.branchId,
+              product_id: pid,
+              business_id: payload.business_id,
+              stock: Math.max(0, cur - baseQty),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'branch_id,product_id' });
+            if (bsErr) throw bsErr;
+          }
+        } catch (bsErr) {
+          if (isMissingColumnError(bsErr) || String(bsErr?.message || '').includes('branch_stock')) {
+            (await getServerCaps()).branchTables = false;
+          } else throw bsErr;
+        }
+      }
+
+      // 3d. Sello de sucursal en la venta del servidor (tolerante a migración:
+      // sin columna, la venta queda sin sede en la nube pero local sí la tiene).
+      if (didCreate && payload.extraFields?.branchId && (await getServerCaps()).salesBranch) {
+        try {
+          const { error: brErr } = await supabase
+            .from('sales')
+            .update({ branch_id: payload.extraFields.branchId })
+            .eq('id', payload.client_generated_id);
+          if (brErr) {
+            if (isMissingColumnError(brErr)) serverCaps.salesBranch = false;
+            else throw brErr;
+          }
+        } catch (brErr) {
+          if (isMissingColumnError(brErr)) serverCaps.salesBranch = false;
+          else throw brErr;
+        }
+      }
+
+      // 4. Verify stock levels to raise negative stock alerts (solo al crear)
+      if (didCreate) for (const item of payload.p_items) {
         const { data: prod } = await supabase
           .from('products')
           .select('name, stock')
@@ -286,7 +520,7 @@ async function processOperation(op, businessId) {
             product_id: item.product_id,
             product_name: prod.name,
             current_stock: prod.stock,
-            sale_id: saleId,
+            sale_id: payload.client_generated_id,
             message: `Stock negativo detected para ${prod.name} (Cantidad: ${prod.stock}) tras sincronización offline.`
           });
         }
@@ -439,6 +673,12 @@ export async function syncCacheFromServer(businessId) {
               if (item.product_id) pendingIds.add(item.product_id);
             });
           }
+          // Proteger también las filas de stock por sede tocadas por la venta
+          if (op.payload.extraFields?.branchId && Array.isArray(op.payload.p_factors)) {
+            op.payload.p_factors.forEach(f => {
+              if (f.product_id) pendingIds.add(`${op.payload.extraFields.branchId}:${f.product_id}`);
+            });
+          }
           break;
         case 'ADD_REPLENISHMENT':
         case 'UPDATE_REPLENISHMENT':
@@ -450,6 +690,20 @@ export async function syncCacheFromServer(businessId) {
           if (op.payload.id) pendingIds.add(op.payload.id);
           if (op.payload.sale_id) pendingIds.add(op.payload.sale_id);
           if (op.payload.saleId) pendingIds.add(op.payload.saleId);
+          break;
+        case 'SET_BRANCH_STOCK':
+          if (op.payload.branch_id && op.payload.product_id) {
+            pendingIds.add(`${op.payload.branch_id}:${op.payload.product_id}`);
+          }
+          break;
+        case 'TRANSFER_STOCK':
+          if (op.payload.from_branch_id && op.payload.product_id) {
+            pendingIds.add(`${op.payload.from_branch_id}:${op.payload.product_id}`);
+          }
+          if (op.payload.to_branch_id && op.payload.product_id) {
+            pendingIds.add(`${op.payload.to_branch_id}:${op.payload.product_id}`);
+          }
+          if (op.payload.transfer_id) pendingIds.add(op.payload.transfer_id);
           break;
         case 'PAY_DEBT':
           if (op.payload.debtId) pendingIds.add(op.payload.debtId);
@@ -494,6 +748,22 @@ export async function syncCacheFromServer(businessId) {
     const { data: reps } = await supabase.from('replenishments').select('*').eq('business_id', businessId);
     if (reps) {
       await safeSyncTable(db.replenishments, reps, (item) => pendingIds.has(item.id), belongsToBiz);
+    }
+
+    // Fase 2: stock por sede + traspasos (tolerante si faltan las tablas).
+    // branch_stock usa PK compuesta: se normaliza con id local antes de comparar.
+    try {
+      const { data: bs } = await supabase.from('branch_stock').select('*').eq('business_id', businessId);
+      if (bs) {
+        const norm = bs.map((r) => ({ ...r, id: `${r.branch_id}:${r.product_id}` }));
+        await safeSyncTable(db.branch_stock, norm, (item) => pendingIds.has(item.id), belongsToBiz);
+      }
+      const { data: trs } = await supabase.from('transfers').select('*').eq('business_id', businessId).order('created_at', { ascending: false }).limit(200);
+      if (trs) {
+        await safeSyncTable(db.transfers, trs, (item) => pendingIds.has(item.id), belongsToBiz);
+      }
+    } catch (e) {
+      console.warn('syncEngine: sin tablas de Fase 2 en el servidor (corre la migración):', e?.message || e);
     }
 
     const today = new Date();

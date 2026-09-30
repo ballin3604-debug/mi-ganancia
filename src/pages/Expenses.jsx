@@ -1,20 +1,15 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import {
-  getRecentExpenses, addExpense, deleteExpense, EXPENSE_CATEGORIES,
+  getRecentExpenses, deleteExpense, EXPENSE_CATEGORIES
 } from '../services/expenses';
-import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
-
-function formatBs(amount) {
-  return `Bs ${Number(amount || 0).toFixed(2)}`;
-}
-
-function formatDate(ts) {
-  if (!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+import { formatBs } from '../utils/currency';
+import { AddExpenseModal } from '../components/expenses/AddExpenseModal';
+import { ExpenseFilters } from '../components/expenses/ExpenseFilters';
+import { ExpensesSkeleton } from '../components/expenses/ExpensesSkeleton';
+import { ConfirmModal } from '../components/settings/ConfirmModal';
 
 const CATEGORY_ICONS = {
   'Mercadería': '📦',
@@ -25,221 +20,84 @@ const CATEGORY_ICONS = {
   'Otros': '📝',
 };
 
-// ── Add expense modal ─────────────────────────────────────────────────────────
-function AddExpenseModal({ businessId, onSaved, onClose }) {
-  const [description, setDescription] = useState('');
-  const [supplier, setSupplier] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Mercadería');
-  const [expenseType, setExpenseType] = useState('daily');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!description.trim() || !amount || Number(amount) <= 0) {
-      setError('Completa descripción y monto.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    try {
-      await addExpense(businessId, { description, supplier, amount, category, expenseType });
-      onSaved();
-    } catch (err) {
-      console.error(err);
-      setError('Error al guardar. Intenta de nuevo.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center" onClick={onClose}>
-      <div
-        className="bg-[var(--mg-bg-surface)] rounded-t-3xl w-full max-w-md shadow-2xl"
-        style={{ maxHeight: '90vh' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-5 overflow-y-auto" style={{ maxHeight: '90vh' }}>
-          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-[var(--mg-text-primary)] mb-4">Registrar egreso</h3>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Category */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--mg-text-muted)] uppercase tracking-wide block mb-1">
-                Categoría
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {EXPENSE_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`flex flex-col items-center py-2 px-1 rounded-xl text-xs font-semibold border-2 transition-all active:scale-95 ${
-                      category === cat
-                        ? 'border-[#1670C2] bg-blue-50 text-[#1670C2]'
-                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
-                    }`}
-                  >
-                    <span className="text-xl mb-0.5">{CATEGORY_ICONS[cat] || '📝'}</span>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tipo de Gasto */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--mg-text-muted)] uppercase tracking-wide block mb-1">
-                Tipo de Gasto
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setExpenseType('daily')}
-                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
-                    expenseType === 'daily'
-                      ? 'border-[#1670C2] bg-blue-50 text-[#1670C2]'
-                      : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
-                  }`}
-                >
-                  ☀️ Diario (Operativo)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpenseType('fixed')}
-                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
-                    expenseType === 'fixed'
-                      ? 'border-[#1670C2] bg-blue-50 text-[#1670C2]'
-                      : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
-                  }`}
-                >
-                  📅 Fijo / Mensual
-                </button>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--mg-text-muted)] uppercase tracking-wide block mb-1">
-                Descripción *
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ej: Compra de mercadería, pago de luz..."
-                className="w-full border-2 border-[var(--mg-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-[#1670C2] text-base"
-                maxLength={100}
-                required
-              />
-            </div>
-
-            {/* Supplier */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--mg-text-muted)] uppercase tracking-wide block mb-1">
-                Proveedor / Origen (opcional)
-              </label>
-              <input
-                type="text"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                placeholder="Ej: Distribuidora Norte, Mercado..."
-                className="w-full border-2 border-[var(--mg-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-[#1670C2] text-base"
-                maxLength={80}
-              />
-            </div>
-
-            {/* Amount */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--mg-text-muted)] uppercase tracking-wide block mb-1">
-                Monto (Bs) *
-              </label>
-              <div className="flex items-center border-2 border-[var(--mg-border)] rounded-xl overflow-hidden focus-within:border-[#1670C2]">
-                <span className="px-4 py-3 bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-semibold border-r border-[var(--mg-border)]">Bs</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => setAmount(clampNumberInput(e.target.value, { max: 999999 }))}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                  className="flex-1 px-4 py-3 focus:outline-none text-xl font-bold text-[var(--mg-text-primary)]"
-                  min="0.01"
-                  max="999999"
-                  step="0.01"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && <p className="text-[var(--mg-danger)] text-sm text-center">{error}</p>}
-
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] font-bold py-3.5 rounded-2xl active:scale-95"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 bg-[#1670C2] hover:bg-[#0f5c9e] text-white font-bold py-3.5 rounded-2xl active:scale-95 disabled:opacity-50 transition-colors"
-              >
-                {saving ? 'Guardando...' : 'Registrar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-// ── Main Expenses page ────────────────────────────────────────────────────────
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+};
+
 export default function Expenses() {
   const { businessId } = useAuth();
   const [searchParams] = useSearchParams();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(() => searchParams.get('action') === 'nuevo');
-  const [deletingId, setDeletingId] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(() => searchParams.get('action') === 'nuevo');
+  
+  // Filter States
+  const [selectedDays, setSelectedDays] = useState(30);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('all'); // 'all' | 'daily' | 'fixed'
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  async function load() {
+  // Confirm Modal state for deletion
+  const [deletingExpense, setDeletingExpense] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadExpenses = useCallback(async () => {
     if (!businessId) return;
     setLoading(true);
     try {
-      const data = await getRecentExpenses(businessId, 30);
+      const data = await getRecentExpenses(businessId, selectedDays);
       setExpenses(data);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [businessId, selectedDays]);
 
-  useEffect(() => { load(); }, [businessId]);
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
 
-  async function handleDelete(id) {
-    if (!window.confirm('¿Eliminar este egreso?')) return;
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!deletingExpense) return;
+    setDeleting(true);
     try {
-      await deleteExpense(id);
-      setExpenses((prev) => prev.filter((e) => e.id !== id));
+      await deleteExpense(deletingExpense.id);
+      setExpenses((prev) => prev.filter((e) => e.id !== deletingExpense.id));
+      setDeletingExpense(null);
     } catch (err) {
       console.error(err);
-      alert('Error al eliminar.');
+      alert('Error al eliminar el egreso. Intentá de nuevo.');
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
-  }
+  };
 
-  // Totals
-  const totalMonth = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Metric Totals
+  const totalPeriod = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const dailyExpenses = expenses.filter((e) => (e.expense_type || e.expenseType || 'daily') === 'daily');
+  const totalDaily = dailyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  // Group by category
+  const fixedExpenses = expenses.filter((e) => (e.expense_type || e.expenseType) === 'fixed');
+  const totalFixed = fixedExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  // Grouping by Category for Chart
   const byCategory = EXPENSE_CATEGORIES.map((cat) => ({
     cat,
     total: expenses.filter((e) => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0),
@@ -247,114 +105,281 @@ export default function Expenses() {
 
   const maxCat = byCategory.length > 0 ? byCategory[0].total : 1;
 
+  // Filtered Expenses List
+  const filteredExpenses = expenses.filter((exp) => {
+    // Search query match
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = !query ||
+      exp.description.toLowerCase().includes(query) ||
+      (exp.supplier && exp.supplier.toLowerCase().includes(query));
+
+    // Type match
+    const expType = exp.expense_type || exp.expenseType || 'daily';
+    const matchesType = selectedType === 'all' || expType === selectedType;
+
+    // Category match
+    const matchesCategory = selectedCategory === 'all' || exp.category === selectedCategory;
+
+    return matchesSearch && matchesType && matchesCategory;
+  });
+
   return (
-    <div className="p-4 lg:p-6 pb-24 mg-fade-in w-full mx-auto space-y-4">
+    <div className="p-3.5 sm:p-5 lg:p-6 pb-24 mg-fade-in w-full mx-auto space-y-3.5 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl lg:text-2xl font-black text-[#1670C2]">Egresos</h2>
-          <p className="text-[var(--mg-text-faint)] text-xs">Últimos 30 días</p>
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
+            Gestión de Egresos
+          </h2>
+          <p className="text-[var(--mg-text-muted)] text-xs font-semibold mt-0.5">
+            Registro de gastos operativos y costos fijos de tu negocio
+          </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="w-11 h-11 bg-[#1670C2] hover:bg-[#0f5c9e] rounded-[16px] flex items-center justify-center text-white text-2xl shadow-md active:scale-95 transition-all"
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={() => setShowAddModal(true)}
+          className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white px-4 py-2.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0 min-h-[42px]"
         >
-          +
-        </button>
+          <span className="text-lg leading-none">+</span>
+          <span className="hidden sm:inline">Registrar</span> Egreso
+        </motion.button>
       </div>
 
-      {/* Total card */}
-      <div className="bg-[#1670C2] rounded-[20px] p-5 text-white shadow-sm">
-        <p className="text-blue-100 text-xs uppercase tracking-wide font-bold">Total egresos (30 días)</p>
-        <p className="text-4xl font-black mt-1">{formatBs(totalMonth)}</p>
-        <p className="text-blue-200 text-sm mt-0.5 font-medium">{expenses.length} registros</p>
-      </div>
-
-      {/* By category */}
-      {byCategory.length > 0 && (
-        <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-4 shadow-sm">
-          <p className="text-xs font-bold text-[var(--mg-text-faint)] uppercase tracking-wide mb-3">Por categoría</p>
-          <div className="space-y-3">
-            {byCategory.map(({ cat, total }) => {
-              const pct = Math.max(8, (total / maxCat) * 100);
-              return (
-                <div key={cat} className="flex items-center gap-2">
-                  <span className="text-base w-6 text-center shrink-0">{CATEGORY_ICONS[cat] || '📝'}</span>
-                  <p className="text-xs text-[var(--mg-text-muted)] w-20 truncate shrink-0">{cat}</p>
-                  <div className="flex-1 bg-[var(--mg-bg-elevated)] rounded-full h-3 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full bg-[#1670C2] transition-all duration-700"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <p className="text-xs font-black text-[var(--mg-text-secondary)] w-16 text-right shrink-0">{formatBs(total)}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Expense list */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-4 border-[#1670C2] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : expenses.length === 0 ? (
-        <div className="text-center py-16 bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] shadow-sm">
-          <p className="text-5xl mb-3">💸</p>
-          <p className="font-bold text-[var(--mg-text-muted)]">Sin egresos registrados</p>
-          <p className="text-sm text-[var(--mg-text-faint)] mt-1">Toca + para agregar un egreso</p>
-        </div>
+        <ExpensesSkeleton />
       ) : (
-        <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
-          <div className="px-4 py-3.5 border-b border-[var(--mg-border)]">
-            <p className="font-bold text-[var(--mg-text-secondary)] text-sm">Historial</p>
-          </div>
-          <div className="divide-y divide-[var(--mg-separator)]">
-            {expenses.map((exp) => (
-              <div key={exp.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50/50 transition-colors">
-                <div className="w-10 h-10 bg-blue-50 text-[#1670C2] rounded-xl flex items-center justify-center text-xl shrink-0">
-                  {CATEGORY_ICONS[exp.category] || '📝'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-bold text-[var(--mg-text-primary)] text-sm truncate">{exp.description}</p>
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase shrink-0 ${
-                      exp.expense_type === 'fixed' || exp.expenseType === 'fixed'
-                        ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                        : 'bg-green-100 text-green-700 border border-green-200'
-                    }`}>
-                      {exp.expense_type === 'fixed' || exp.expenseType === 'fixed' ? 'Fijo' : 'Diario'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--mg-text-faint)] truncate mt-0.5">
-                    {exp.supplier ? `${exp.supplier} · ` : ''}{exp.category} · {formatDate(exp.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <p className="font-black text-gray-900 text-sm">- {formatBs(exp.amount)}</p>
-                  <button
-                    onClick={() => handleDelete(exp.id)}
-                    disabled={deletingId === exp.id}
-                    className="w-7 h-7 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg flex items-center justify-center text-xs active:scale-95 disabled:opacity-40 transition-colors font-bold"
-                  >
-                    ×
-                  </button>
+        <>
+          {/* Top Metric Cards */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+          >
+            {/* 1. Total General */}
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ y: -3, transition: { duration: 0.18 } }}
+              className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                  Total Egresos ({selectedDays}d)
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[var(--mg-accent)] flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform border border-blue-100">
+                  💸
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+              <p className="text-2xl sm:text-3xl font-black text-[var(--mg-text-primary)] tracking-tight">
+                {formatBs(totalPeriod)}
+              </p>
+              <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
+                {expenses.length} {expenses.length === 1 ? 'registro' : 'registros'} en el período
+              </p>
+            </motion.div>
+
+            {/* 2. Total Gastos Diarios */}
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ y: -3, transition: { duration: 0.18 } }}
+              className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                  Gastos Diarios (Operativos)
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform border border-emerald-100">
+                  ☀️
+                </div>
+              </div>
+              <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">
+                {formatBs(totalDaily)}
+              </p>
+              <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
+                {dailyExpenses.length} compras del día
+              </p>
+            </motion.div>
+
+            {/* 3. Total Gastos Fijos */}
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ y: -3, transition: { duration: 0.18 } }}
+              className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                  Gastos Fijos (Mensuales)
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform border border-purple-100">
+                  📅
+                </div>
+              </div>
+              <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight">
+                {formatBs(totalFixed)}
+              </p>
+              <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
+                {fixedExpenses.length} servicios / alquileres
+              </p>
+            </motion.div>
+          </motion.div>
+
+          {/* Desglose Por Categoría (Grid compacto) */}
+          {byCategory.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-4 shadow-xs space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
+                  Distribución por Categoría
+                </span>
+                <span className="text-[11px] font-extrabold text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] px-2.5 py-0.5 rounded-full border border-[var(--mg-accent-border)]">
+                  {byCategory.length} {byCategory.length === 1 ? 'categoría' : 'categorías'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                {byCategory.map(({ cat, total }) => {
+                  const pct = Math.max(8, (total / maxCat) * 100);
+                  return (
+                    <div key={cat} className="flex items-center gap-2 text-xs">
+                      <span className="text-sm w-5 text-center shrink-0">{CATEGORY_ICONS[cat] || '📝'}</span>
+                      <p className="font-bold text-[var(--mg-text-secondary)] w-28 truncate shrink-0">{cat}</p>
+                      <div className="flex-1 bg-[var(--mg-bg-elevated)] rounded-full h-2.5 overflow-hidden border border-[var(--mg-separator)]">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.5, ease: 'easeOut' }}
+                          className="h-full rounded-full bg-[var(--mg-accent)]"
+                        />
+                      </div>
+                      <p className="font-black text-[var(--mg-text-primary)] w-20 text-right shrink-0">{formatBs(total)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Filtros */}
+          <ExpenseFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedDays={selectedDays}
+            onDaysChange={setSelectedDays}
+            selectedType={selectedType}
+            onTypeChange={setSelectedType}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+          />
+
+          {/* Lista de Egresos */}
+          {filteredExpenses.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-10 bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] shadow-xs p-6"
+            >
+              <p className="text-4xl mb-2">💸</p>
+              <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Sin egresos registrados</p>
+              <p className="text-xs text-[var(--mg-text-muted)] mt-1">
+                {expenses.length === 0
+                  ? 'No hay egresos en los últimos ' + selectedDays + ' días. Toca "+ Registrar Egreso" para comenzar.'
+                  : 'No se encontraron resultados con los filtros aplicados.'}
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] overflow-hidden shadow-xs hover:shadow-md transition-all"
+            >
+              <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between">
+                <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+                  Historial ({filteredExpenses.length})
+                </p>
+                <p className="text-[11px] font-black text-[var(--mg-text-primary)]">
+                  Total: {formatBs(filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0))}
+                </p>
+              </div>
+
+              <div className="divide-y divide-[var(--mg-separator)]">
+                {filteredExpenses.map((exp) => {
+                  const isFixed = (exp.expense_type || exp.expenseType) === 'fixed';
+                  return (
+                    <div
+                      key={exp.id}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--mg-bg-elevated)] transition-colors group"
+                    >
+                      <div className="w-9 h-9 bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] rounded-xl flex items-center justify-center text-lg shrink-0 font-bold border border-[var(--mg-accent-border)] group-hover:scale-105 transition-transform">
+                        {CATEGORY_ICONS[exp.category] || '📝'}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-extrabold text-[var(--mg-text-primary)] text-xs sm:text-sm truncate">{exp.description}</p>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                              isFixed
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {isFixed ? 'Fijo' : 'Diario'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--mg-text-muted)] truncate mt-0.5 font-medium">
+                          {exp.supplier ? `${exp.supplier} · ` : ''}{exp.category} · {formatDate(exp.createdAt)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <p className="font-black text-[var(--mg-text-primary)] text-sm sm:text-base">
+                          - {formatBs(exp.amount)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingExpense(exp)}
+                          className="w-7 h-7 bg-[var(--mg-danger-bg)] hover:bg-red-100 text-[var(--mg-danger)] rounded-lg flex items-center justify-center text-xs font-black transition-all active:scale-95 border border-red-200 min-h-[28px]"
+                          title="Eliminar egreso"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
 
-      {showModal && (
-        <AddExpenseModal
-          businessId={businessId}
-          onSaved={() => { setShowModal(false); load(); }}
-          onClose={() => setShowModal(false)}
-        />
-      )}
+      {/* Modal Agregar Egreso */}
+      <AddExpenseModal
+        businessId={businessId}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSaved={() => {
+          setShowAddModal(false);
+          loadExpenses();
+        }}
+      />
+
+      {/* Modal Confirmación de Borrado */}
+      <ConfirmModal
+        isOpen={!!deletingExpense}
+        onClose={() => setDeletingExpense(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar egreso?"
+        message={`¿Estás seguro de eliminar "${deletingExpense?.description}" por ${formatBs(deletingExpense?.amount)}?`}
+        danger={true}
+        loading={deleting}
+        confirmText="Eliminar Egreso"
+      />
     </div>
   );
 }
+

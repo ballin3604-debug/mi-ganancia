@@ -14,11 +14,13 @@ import AdminPanel from './pages/AdminPanel';
 import MatrixReport from './pages/MatrixReport';
 import PendingApproval from './pages/PendingApproval';
 import Debts from './pages/Debts';
+import Vet from './pages/Vet';
 import LoadingSpinner from './components/LoadingSpinner';
 import SplashScreen from './components/SplashScreen';
 import Onboarding from './components/Onboarding';
 import WelcomeScreen from './components/WelcomeScreen';
 import Tutorial from './components/Tutorial';
+import { PremiumGate } from './components/UpgradeScreen';
 
 const splashShown = { done: false };
 
@@ -161,9 +163,10 @@ export default function App() {
             <Route path="compras" element={<Compras />} />
             <Route path="inventario" element={<Inventory />} />
             <Route path="egresos" element={<Expenses />} />
-            <Route path="reportes" element={<MatrixReport />} />
+            <Route path="reportes" element={<PremiumGate feature="advancedReports" title="Los reportes avanzados son Pro"><MatrixReport /></PremiumGate>} />
             <Route path="configuracion" element={<Settings />} />
             <Route path="cxc" element={<Debts />} />
+            <Route path="mascotas" element={<Vet />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
@@ -191,9 +194,10 @@ export default function App() {
           <Route path="compras" element={<Compras />} />
           <Route path="inventario" element={<Inventory />} />
           <Route path="egresos" element={<Expenses />} />
-          <Route path="reportes" element={<MatrixReport />} />
+          <Route path="reportes" element={<PremiumGate feature="advancedReports" title="Los reportes avanzados son Pro"><MatrixReport /></PremiumGate>} />
           <Route path="configuracion" element={<Settings />} />
           <Route path="cxc" element={<Debts />} />
+            <Route path="mascotas" element={<Vet />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
+import { useBranches } from '../context/BranchContext';
+import { usePlan } from '../hooks/usePlan';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { SyncErrorPanel } from './SyncErrorPanel';
+import { LogoutModal } from './LogoutModal';
+import Ayuda from './Ayuda';
 
 // ── Icons (estilo iOS — outline, stroke 1.8) ─────────────────────────────
 function HomeIcon() {
@@ -63,6 +67,16 @@ function BagIcon() {
     </svg>
   );
 }
+function PawIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <circle cx="7.5" cy="9" r="1.8" />
+      <circle cx="12" cy="7" r="1.8" />
+      <circle cx="16.5" cy="9" r="1.8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5c-2.8 0-5.5 2.2-5.5 4.7 0 1.4 1.1 2.3 2.5 2.3 1 0 1.9-.5 3-.5s2 .5 3 .5c1.4 0 2.5-.9 2.5-2.3 0-2.5-2.7-4.7-5.5-4.7z" />
+    </svg>
+  );
+}
 
 const NAV_ITEMS = [
   {
@@ -76,6 +90,7 @@ const NAV_ITEMS = [
     children: [
       { to: '/ventas?tab=venta', label: 'Nueva Venta', key: 'sales-new' },
       { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'sales-report' },
+      { to: '/ventas?tab=cajeros', label: 'Por Cajero', key: 'sales-cashier' },
     ],
   },
   {
@@ -90,6 +105,13 @@ const NAV_ITEMS = [
     children: [
       { to: '/cxc?tab=pending', label: 'Pendientes', key: 'cxc-pending' },
       { to: '/cxc?tab=paid', label: 'Cobros', key: 'cxc-paid' },
+    ],
+  },
+  {
+    label: 'Mascotas', Icon: PawIcon, ownerOnly: false, key: 'vet', basePath: '/mascotas',
+    children: [
+      { to: '/mascotas?tab=pacientes', label: 'Pacientes', key: 'vet-patients' },
+      { to: '/mascotas?tab=recordatorios', label: 'Recordatorios', key: 'vet-reminders' },
     ],
   },
   {
@@ -112,6 +134,7 @@ const NAV_ITEMS = [
       { to: '/reportes?type=profit', label: 'Ganancias Diarias', key: 'reports-profit' },
       { to: '/reportes?type=costoVendido', label: 'Costo de lo Vendido', key: 'reports-costo' },
       { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'reports-sales' },
+      { to: '/ventas?tab=cajeros', label: 'Reporte por Cajero', key: 'reports-cashier' },
       { to: '/compras?tab=historial', label: 'Reporte de Compras', key: 'reports-purchases' },
       { to: '/reportes?type=ranking', label: 'Ranking de Productos', key: 'reports-ranking' },
       { to: '/reportes?type=expenses', label: 'Reporte de Egresos', key: 'reports-expenses' },
@@ -138,12 +161,64 @@ function isChildActive(location, childTo) {
   return true;
 }
 
+// Selector de sede operativa (solo visible si hay más de una).
+// Las ventas se etiquetan con la sede elegida para reportes por sucursal.
+function BranchSelect({ className = '' }) {
+  const { branches, activeBranchId, selectBranch } = useBranches();
+  if (!branches || branches.length <= 1) return null;
+  return (
+    <select
+      value={activeBranchId || ''}
+      onChange={(e) => selectBranch(e.target.value)}
+      title="Sede operativa"
+      aria-label="Sede operativa"
+      className={`bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-lg text-[11px] font-bold text-[var(--mg-text-secondary)] px-1.5 py-1 max-w-full focus:outline-none focus:border-[var(--mg-accent-border)] ${className}`}
+    >
+      {branches.map((b) => (
+        <option key={b.id} value={b.id}>
+          {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Aviso de plan: prueba por vencer o período terminado. Silencioso si
+// el billing no está activo (modo legacy) o si ya es premium.
+function PlanNudge() {
+  const { planId, isTrial, trialDaysLeft, periodDaysLeft, subscription, loading, billingReady } = usePlan();
+  if (loading || !billingReady || !subscription) return null;
+  const expired = (subscription.status === 'trial' || subscription.status === 'active')
+    && (periodDaysLeft || 0) <= 0;
+  const trialSoon = isTrial && trialDaysLeft <= 3 && trialDaysLeft > 0;
+  if (!expired && !trialSoon) return null;
+  return (
+    <Link
+      to="/configuracion"
+      className={`mx-4 lg:mx-6 mt-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 text-xs font-bold border transition-all active:scale-[0.99] ${
+        expired
+          ? 'bg-amber-50 border-amber-200 text-amber-800'
+          : 'bg-[var(--mg-accent-bg-soft)] border-[var(--mg-accent-border)] text-[var(--mg-accent)]'
+      }`}
+    >
+      <span className="text-base">{expired ? '⏳' : '⭐'}</span>
+      <span className="flex-1">
+        {expired
+          ? 'Tu período Pro terminó. Activa tu plan para recuperar todo.'
+          : `Tu prueba Pro termina en ${trialDaysLeft} día${trialDaysLeft === 1 ? '' : 's'}. Actívala.`}
+      </span>
+      <span className="shrink-0 underline">Ver planes</span>
+    </Link>
+  );
+}
+
 export default function Layout() {
   const { user, role } = useAuth();
   const { business, settings } = useBusiness();
   const { online, pendingCount, errorCount } = useSyncStatus();
   const location = useLocation();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
@@ -250,6 +325,7 @@ export default function Layout() {
                     <span>⚠️ {errorCount} con error</span>
                   </button>
                 )}
+                <BranchSelect className="w-full max-w-[150px] mt-1.5" />
               </div>
             )}
           </div>
@@ -329,7 +405,7 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className={`px-4 py-4 border-t border-[var(--mg-separator)] flex items-center gap-2.5 overflow-hidden ${sidebarOpen ? '' : 'justify-center px-0'}`}>
+        <div className={`px-4 py-4 border-t border-[var(--mg-separator)] flex items-center gap-2.5 overflow-hidden ${sidebarOpen ? '' : 'flex-col justify-center px-0'}`}>
           <img
             src={user?.photoURL || ''}
             alt="Avatar"
@@ -345,6 +421,18 @@ export default function Layout() {
               <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{user?.email}</p>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowLogout(true)}
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+            className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-[var(--mg-text-muted)] hover:text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] active:scale-90 transition-all"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
       </aside>
 
@@ -384,6 +472,7 @@ export default function Layout() {
                     ⚠️ {errorCount} con error
                   </button>
                 )}
+                <BranchSelect className="w-full max-w-[170px] mt-1" />
               </div>
             </div>
             <img
@@ -396,6 +485,7 @@ export default function Layout() {
         </header>
 
         <main className={`flex-1 overflow-y-auto pb-24 lg:pb-0 lg:w-full lg:mx-auto lg:px-6 ${location.pathname === '/ventas' || location.pathname === '/compras' || location.pathname === '/' ? 'lg:max-w-[1800px]' : 'lg:max-w-[1400px]'}`}>
+          <PlanNudge />
           {/* key por ruta: reproduce el fade de entrada en cada navegación */}
           <div key={location.pathname} className="mg-fade-in h-full">
             <Outlet />
@@ -520,6 +610,17 @@ export default function Layout() {
         isOpen={isErrorPanelOpen}
         onClose={() => setIsErrorPanelOpen(false)}
       />
+
+      {/* Confirmación de cierre de sesión */}
+      <LogoutModal
+        isOpen={showLogout}
+        onClose={() => setShowLogout(false)}
+        user={user}
+        business={business}
+      />
+
+      {/* Ayuda contextual "?" — una sola vez aquí, sirve para todas las pantallas */}
+      <Ayuda />
     </div>
   );
 }

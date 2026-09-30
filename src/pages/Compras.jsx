@@ -8,6 +8,12 @@ import { getPurchaseDraft } from '../services/purchaseDraft';
 import PurchaseForm from '../components/PurchaseForm';
 import DataTable from '../components/DataTable';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
+import BarcodeScanner from '../components/BarcodeScanner';
+import { UpgradeModal } from '../components/UpgradeScreen';
+import { usePlan } from '../hooks/usePlan';
+import { useBranches } from '../context/BranchContext';
+import { toStockMap } from '../services/branchStock';
+import { useBranchStocks } from '../hooks/useBranchStocks';
 import ReportHeader from '../components/ReportHeader';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
@@ -37,14 +43,33 @@ export default function Compras() {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [purchaseDraft, setPurchaseDraft] = useState(null);
-  const [restoreNotice, setRestoreNotice] = useState('');
-  const hasTriedRestoreRef = useRef(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanMsg, setScanMsg] = useState('');
+  const { can } = usePlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return toLocalISODate(d);
-  });
+  function openScanner() {
+    if (can('scanner')) {
+      setScanMsg('');
+      setShowScanner(true);
+    } else {
+      setShowUpgrade(true);
+    }
+  }
+  const hasTriedRestoreRef = useRef(false);
+  // Fase 2: catálogo con stock de la sede operativa
+  const { branches, activeBranchId } = useBranches();
+  const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
+  const stockRows = useBranchStocks(businessId, mainBranchId);
+  const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
+  const hasBranchRows = stockRows.length > 0;
+  const productsWithStock = useMemo(() => (
+    activeBranchId && hasBranchRows
+      ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${activeBranchId}:${p.id}`) ?? 0) }))
+      : products
+  ), [products, stockMap, activeBranchId, hasBranchRows]);
+
+  const [startDate, setStartDate] = useState(() => toLocalISODate(new Date()));
   const [endDate, setEndDate] = useState(() => toLocalISODate(new Date()));
 
   useEffect(() => {
@@ -88,20 +113,14 @@ export default function Compras() {
 
     getPurchaseDraft(businessId, user.uid).then((draft) => {
       if (!draft) return;
-      const prod = products.find((p) => p.id === draft.productId);
+      const prod = productsWithStock.find((p) => p.id === draft.productId);
       if (!prod) return;
+      // Restauración silenciosa: vuelve intacta sin mostrar avisos.
       setSelectedProduct(prod);
       setShowMobilePanel(true);
       setPurchaseDraft(draft);
-      setRestoreNotice('Recuperamos tu compra en curso.');
     });
-  }, [businessId, user?.uid, products, selectedProduct]);
-
-  useEffect(() => {
-    if (!restoreNotice) return;
-    const t = setTimeout(() => setRestoreNotice(''), 5000);
-    return () => clearTimeout(t);
-  }, [restoreNotice]);
+  }, [businessId, user?.uid, productsWithStock, selectedProduct]);
 
   function handleSelectProduct(product) {
     setPurchaseDraft(null);
@@ -115,11 +134,29 @@ export default function Compras() {
     setShowMobilePanel(false);
   }
 
-  const filteredProducts = products
-    .filter((p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.brand || '').toLowerCase().includes(search.toLowerCase())
-    )
+  function handleScan(code) {
+    const c = String(code || '').trim().toLowerCase();
+    if (!c) return;
+    const found = productsWithStock.find((p) => String(p.barcode || '').trim().toLowerCase() === c);
+    if (found) {
+      setScanMsg('');
+      setShowScanner(false);
+      handleSelectProduct(found);
+    } else {
+      setScanMsg(`Código ${code} no registrado. Créalo primero en Inventario.`);
+    }
+  }
+
+  const filteredProducts = productsWithStock
+    .filter((p) => {
+      const q = search.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.brand || '').toLowerCase().includes(q) ||
+        (p.barcode || '').toLowerCase().includes(q)
+      );
+    })
     .filter((p) => filterCategory === 'Todas' || p.category === filterCategory);
 
   // Memoizado: replenishments puede tener miles de registros históricos, y
@@ -279,13 +316,6 @@ export default function Compras() {
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-full lg:overflow-hidden relative">
-      {restoreNotice && (
-        <div className="fixed top-0 inset-x-0 z-50 flex justify-center px-4 pt-2 pointer-events-none">
-          <div className="bg-[var(--mg-accent)] text-white rounded-2xl px-4 py-3 shadow-lg max-w-md w-full text-sm font-semibold text-center pointer-events-auto">
-            🛍️ {restoreNotice}
-          </div>
-        </div>
-      )}
       {/* Columna Izquierda */}
       <div className="flex-1 flex flex-col min-h-0 lg:pr-4">
         <div className="p-4 space-y-3 flex-1 flex flex-col min-h-0">
@@ -297,14 +327,26 @@ export default function Compras() {
 
           {activeTab === 'comprar' ? (
             <>
-              <div className="shrink-0">
+              <div className="shrink-0 flex gap-2">
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="🔍  Buscar producto o marca..."
-                  className="w-full border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 focus:outline-none focus:border-[var(--mg-accent-border)] text-base"
+                  placeholder="🔍  Buscar producto, marca o código..."
+                  className="flex-1 min-w-0 border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 focus:outline-none focus:border-[var(--mg-accent-border)] text-base"
                 />
+                <button
+                  type="button"
+                  onClick={openScanner}
+                  title="Escanear código de barras"
+                  aria-label="Escanear código de barras"
+                  className="w-[52px] h-[52px] shrink-0 rounded-2xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow-lg flex items-center justify-center active:scale-90 transition-all"
+                  style={{ boxShadow: '0 8px 20px rgba(22,112,194,0.35)' }}
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
+                  </svg>
+                </button>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-1.5 -mx-4 px-4 scrollbar-hide shrink-0">
@@ -326,7 +368,7 @@ export default function Compras() {
 
               <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
                 {filteredProducts.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 p-1 mg-stagger">
                     {filteredProducts.map((product) => (
                       <ProductCatalogCard
                         key={product.id}
@@ -447,6 +489,46 @@ export default function Compras() {
               onClose={handleCloseSelection}
               onSaved={handleCloseSelection}
             />
+          </div>
+        </div>
+      )}
+
+      {/* PAYWALL escáner */}
+      {showUpgrade && (
+        <UpgradeModal feature="scanner" title="El escáner es Pro" onClose={() => setShowUpgrade(false)} />
+      )}
+
+      {/* MODAL ESCÁNER */}
+      {showScanner && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-end sm:items-center justify-center sm:p-4"
+          onClick={() => setShowScanner(false)}
+        >
+          <div
+            className="bg-[var(--mg-bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden mg-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-[var(--mg-text-primary)]">Escanear para comprar</h3>
+                <p className="text-[11px] text-[var(--mg-text-muted)]">El producto se abrirá para registrar la compra</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScanner(false)}
+                className="w-8 h-8 bg-[var(--mg-bg-elevated)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-lg shrink-0"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <BarcodeScanner onScan={handleScan} />
+              {scanMsg && (
+                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-amber-700">
+                  ⚠️ {scanMsg}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
