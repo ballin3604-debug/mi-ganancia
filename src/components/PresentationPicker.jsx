@@ -59,7 +59,7 @@ export default function PresentationPicker({ product, cartCounts = {}, onPick, o
                       : `1 ${(product.unitLabel || 'Unidad').trim() || 'Unidad'}`}
                   </span>
                   <span className="block text-[11px] text-[var(--mg-text-muted)] font-semibold">
-                    {formatMoney(opt.price)} c/u
+                    {formatMoney(opt.price)}{opt.presId === 'unit' ? ' c/u' : ' el paquete'}
                   </span>
                 </span>
                 {count > 0 ? (

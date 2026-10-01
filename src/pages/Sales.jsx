@@ -39,7 +39,7 @@ function ProductImage({ imageData, name, className }) {
   return <img src={imageData} alt={name} className={`${className} object-cover`} />;
 }
 
-function CartItemRow({ line, product, onUpdate }) {
+function CartItemRow({ line, product, onUpdate, stacked = false }) {
   const quantity = line.qty;
   const unitPrice = line.unitPrice;
   const factor = line.factor || 1;
