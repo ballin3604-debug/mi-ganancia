@@ -8,10 +8,39 @@
     <meta name="theme-color" content="#007aff" />
     <meta name="description" content="Mi Ganancia · Tu negocio, simple. Ventas, inventario y reportes." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mi Ganancia" />
     <link rel="manifest" href="/manifest.json" />
     <title>Mi Ganancia</title>
+    <script>
+      // Guardián de arranque: si el JS no carga en 8s (caché vieja apuntando
+      // a un bundle que ya no existe → pantalla en blanco), limpia todo y
+      // recarga fresco UNA vez. main.jsx lo cancela al arrancar bien.
+      (function () {
+        try {
+          if (sessionStorage.getItem('mg-boot-fixed') === '1') return;
+          window.__mgBootTimer = setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && !root.hasChildNodes()) {
+              sessionStorage.setItem('mg-boot-fixed', '1');
+              var done = function () { location.reload(); };
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  return Promise.all(regs.map(function (r) { return r.unregister(); }));
+                }).then(function () {
+                  if (window.caches) {
+                    caches.keys().then(function (keys) {
+                      Promise.all(keys.map(function (k) { return caches.delete(k); })).then(done);
+                    });
+                  } else done();
+                }).catch(done);
+              } else done();
+            }
+          }, 8000);
+        } catch (e) { /* nunca romper el arranque */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

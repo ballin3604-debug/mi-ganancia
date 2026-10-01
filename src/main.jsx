@@ -114,6 +114,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+try {
+  // La app arrancó bien: cancela el guardián anti-pantalla-blanca de index.html
+  if (window.__mgBootTimer) clearTimeout(window.__mgBootTimer);
+  sessionStorage.removeItem('mg-boot-fixed');
+} catch { /* ignore */ }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -1117,7 +1117,10 @@ export default function Sales() {
         <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between shrink-0">
           <div className="flex-1 text-center">
             {isMobile && <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2" />}
-            <h3 className="text-lg font-bold text-[var(--mg-text-primary)]">Tu Carrito ({totalItems})</h3>
+            <h3 className="text-lg font-bold text-[var(--mg-text-primary)]">Tu Carrito ({totalBaseUnits} und.)</h3>
+            {cartItems.length > 1 && (
+              <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">{cartItems.length} líneas</p>
+            )}
             {branches.length > 1 && (
               <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">
                 📍 {branches.find((b) => b.id === activeBranchId)?.name || 'Sede'}
@@ -1387,9 +1390,9 @@ export default function Sales() {
           {activeTab === 'venta' && (
             <div className="flex items-center justify-between shrink-0">
               <h2 className="text-xl font-bold text-[var(--mg-text-primary)]">Nueva Venta</h2>
-              {totalItems > 0 && (
+              {totalBaseUnits > 0 && (
                 <span className="bg-[var(--mg-accent)] text-white text-xs font-black px-3 py-1.5 rounded-full lg:hidden">
-                  {totalItems} en carrito
+                  {totalBaseUnits} en carrito
                 </span>
               )}
             </div>
@@ -1699,7 +1702,7 @@ export default function Sales() {
       )}
 
       {/* Botón flotante para ver carrito (FAB - Sólo Mobile y pestaña venta) */}
-      {activeTab === 'venta' && totalItems > 0 && !showCartModal && (
+      {activeTab === 'venta' && totalBaseUnits > 0 && !showCartModal && (
         <button
           onClick={() => setShowCartModal(true)}
           className="lg:hidden fixed bottom-20 right-4 bg-[var(--mg-accent)] text-white font-bold py-3.5 px-5 rounded-full shadow-2xl flex items-center gap-3 transition-all z-40 active:scale-95 hover:bg-[var(--mg-accent-hover)]"
@@ -1707,8 +1710,8 @@ export default function Sales() {
         >
           <div className="relative">
             <span className="text-xl">🛒</span>
-            <span className="absolute -top-2.5 -right-2.5 bg-white text-[var(--mg-accent)] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">
-              {totalItems}
+            <span className="absolute -top-2.5 -right-2.5 bg-white text-[var(--mg-accent)] text-[10px] font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-md">
+              {totalBaseUnits}
             </span>
           </div>
           <div className="text-left border-l border-white/20 pl-3">
@@ -1927,7 +1930,7 @@ export default function Sales() {
           onPick={(opt) => addToCart(pickerProduct, opt)}
           onClose={() => setPickerProduct(null)}
           onGoCart={() => { setPickerProduct(null); setShowCartModal(true); }}
-          cartTotalItems={totalItems}
+          cartTotalItems={totalBaseUnits}
         />
       )}
 
@@ -2017,10 +2020,10 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={() => { setShowScanner(false); setShowCartModal(true); }}
-                disabled={totalItems === 0}
+                disabled={totalBaseUnits === 0}
                 className="flex-1 bg-[var(--mg-accent)] text-white font-bold py-3 rounded-2xl text-sm active:scale-95 disabled:opacity-50"
               >
-                Ver carrito ({totalItems})
+                Ver carrito ({totalBaseUnits})
               </button>
             </div>
           </div>
