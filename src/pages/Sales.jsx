@@ -40,7 +40,7 @@ function ProductImage({ imageData, name, className }) {
 }
 
 function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed = 0 }) {
-  const quantity = line.qty;
+  const quantity = line.quantity ?? 0;
   const unitPrice = line.unitPrice;
   const factor = line.factor || 1;
   // Tope real: lo que queda del stock descontando las OTRAS líneas del mismo producto
