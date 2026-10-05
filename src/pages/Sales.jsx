@@ -39,11 +39,12 @@ function ProductImage({ imageData, name, className }) {
   return <img src={imageData} alt={name} className={`${className} object-cover`} />;
 }
 
-function CartItemRow({ line, product, onUpdate, stacked = false }) {
+function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed = 0 }) {
   const quantity = line.qty;
   const unitPrice = line.unitPrice;
   const factor = line.factor || 1;
-  const maxQty = Math.max(0, Math.floor((product.stock || 0) / factor));
+  // Tope real: lo que queda del stock descontando las OTRAS líneas del mismo producto
+  const maxQty = Math.max(0, Math.floor(((product.stock || 0) - siblingBaseUsed) / factor));
   const [val, setVal] = useState(quantity);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -105,11 +106,11 @@ function CartItemRow({ line, product, onUpdate, stacked = false }) {
       >
         −
       </button>
-      <input
-        type="number"
-        min="1"
-        max={product.stock}
-        value={val}
+          <input
+            type="number"
+            min="1"
+            max={maxQty}
+            value={val}
         onChange={handleChange}
         onBlur={(e) => handleApply(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -1024,6 +1025,19 @@ export default function Sales() {
 
   function handleCheckoutClick() {
     if (cartItems.length === 0) return;
+    // Guardián final: ninguna línea puede superar el stock real (fresco).
+    // Si el stock bajó (otra venta sincronizada), se avisa y no se cobra.
+    const exceeded = cartItems.find((item) => {
+      const fresh = productsWithStock.find((p) => p.id === item.product.id);
+      const stock = fresh ? fresh.stock : item.product.stock;
+      return item.quantity * item.factor > (stock || 0);
+    });
+    if (exceeded) {
+      const fresh = productsWithStock.find((p) => p.id === exceeded.product.id);
+      const stock = fresh ? fresh.stock : exceeded.product.stock;
+      alert(`"${exceeded.product.name}" ya no tiene stock suficiente (quedan ${stock || 0} und.). Ajusta la cantidad.`);
+      return;
+    }
     if (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) {
       alert('El monto recibido es insuficiente.');
       return;
@@ -1139,12 +1153,17 @@ export default function Sales() {
 
         {/* Listado de Productos */}
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--mg-separator)]">
-          {cartItems.map((item) => (
+          {cartItems.map((item) => {
+            const siblingBaseUsed = cartItems
+              .filter((i) => i.key !== item.key && i.product.id === item.product.id)
+              .reduce((sum, i) => sum + i.quantity * i.factor, 0);
+            return (
             <CartItemRow
               key={item.key}
               line={item}
               product={item.product}
               stacked={!isMobile}
+              siblingBaseUsed={siblingBaseUsed}
               onUpdate={(newQty) => {
                 setCart((prev) => {
                   if (newQty <= 0) {
@@ -1153,11 +1172,21 @@ export default function Sales() {
                   }
                   const line = prev[item.key];
                   if (!line || typeof line.qty !== 'number') return prev;
-                  return { ...prev, [item.key]: { ...line, qty: newQty } };
+                  // Revalidar tope con las líneas hermanas al momento de guardar
+                  const sib = Object.entries(prev)
+                    .filter(([k, l]) => k !== item.key && l && typeof l === 'object' && l.productId === item.product.id)
+                    .reduce((sum, [, l]) => sum + Number(l.qty || 0) * Number(l.factor || 1), 0);
+                  const max = Math.max(0, Math.floor(((item.product.stock || 0) - sib) / (item.factor || 1)));
+                  if (max <= 0) {
+                    const { [item.key]: _, ...rest } = prev;
+                    return rest;
+                  }
+                  return { ...prev, [item.key]: { ...line, qty: Math.min(newQty, max) } };
                 });
               }}
             />
-          ))}
+            );
+          })}
         </div>
 
         {/* Sección de Pago */}
