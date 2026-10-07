@@ -176,11 +176,11 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
           </thead>
           <tbody>
             {pageRows.map((row, i) => (
-              <tr key={getRowKey ? getRowKey(row) : i} className="hover:bg-blue-50/20 transition-colors">
+              <tr key={getRowKey ? getRowKey(row) : i} className="hover:bg-blue-50/20 transition-colors even:bg-slate-50/60">
                 {visibleColumns.map((c) => (
                   <td
                     key={c.key}
-                    className={`p-3 border border-[var(--mg-border)] text-[var(--mg-text-primary)] ${
+                    className={`p-3 border border-[var(--mg-border)] text-[var(--mg-text-primary)] align-middle tabular-nums ${
                       c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
                     }`}
                   >

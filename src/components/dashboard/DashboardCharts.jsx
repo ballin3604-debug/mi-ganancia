@@ -225,7 +225,7 @@ export function DashboardCharts({
 }) {
   const [selectedShift, setSelectedShift] = useState('todos'); // 'todos' | 'manana' | 'tarde' | 'noche'
   const [selectedBandSlot, setSelectedBandSlot] = useState(null);
-  const [activeTab, setActiveTab] = useState('franjas'); // 'franjas' | 'recibos' | 'productos' | 'tendencia'
+  const [activeTab, setActiveTab] = useState('franjas'); // 'franjas' | 'productos' | 'tendencia'
   const [breakdownView, setBreakdownView] = useState('productos'); // 'productos' | 'transacciones'
 
   // Filtrar franjas horarias por turno
@@ -321,7 +321,6 @@ export function DashboardCharts({
         <div className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] p-1 rounded-2xl border border-[var(--mg-border)] max-w-full overflow-x-auto scrollbar-none">
           {[
             { id: 'franjas', label: '⏰ Ventas por Franja Horaria', icon: '⏱️' },
-            { id: 'recibos', label: `🧾 Recibos de Hoy (${filteredSales.length})`, icon: '🧾' },
             { id: 'productos', label: '🍩 Productos y Categorías', icon: '📦' },
             { id: 'tendencia', label: '📈 Tendencia Temporal', icon: '📊' },
           ].map((tab) => (
@@ -802,19 +801,9 @@ export function DashboardCharts({
                 </table>
               </div>
             </div>
-          </motion.div>
-        )}
 
-        {/* VISTA DE RECIBOS DE HOY FUSIONADA */}
-        {activeTab === 'recibos' && (
-          <motion.div
-            key="recibos"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-4"
-          >
+            {/* Registro del día: filtros + todos los recibos (antes pestaña separada) */}
+            <div className="space-y-4">
             {/* Encabezado y Filtros */}
             <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -958,6 +947,7 @@ export function DashboardCharts({
                   No se encontraron ventas con los filtros seleccionados.
                 </div>
               )}
+            </div>
             </div>
           </motion.div>
         )}

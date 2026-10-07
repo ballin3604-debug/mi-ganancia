@@ -572,35 +572,35 @@ export default function Sales() {
   // Tabla de detalle compartida por "Reporte de Ventas" y "Por Cajero"
   const detailColumns = [
     {
-      key: 'fecha', label: 'Fecha', align: 'left', width: 'w-28',
+      key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28',
       render: (r) => {
         const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-        return <span className="font-mono text-xs">{d.toLocaleDateString('es-BO')}</span>;
+        return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleDateString('es-BO')}</span>;
       },
     },
     {
-      key: 'numeroVenta', label: 'N° Venta', align: 'left', width: 'w-24',
-      render: (r) => <span className="font-mono text-xs font-bold">{`#${String(r.saleNumber).padStart(4, '0')}`}</span>,
+      key: 'numeroVenta', label: 'N° Venta', align: 'center', width: 'w-24',
+      render: (r) => <span className="font-mono text-xs font-bold whitespace-nowrap">{`#${String(r.saleNumber).padStart(4, '0')}`}</span>,
     },
     {
       key: 'producto', label: 'Producto', align: 'left',
-      render: (r) => r.productName,
+      render: (r) => <span className="block max-w-[190px] font-semibold leading-snug">{r.productName}</span>,
     },
     {
       key: 'categoria', label: 'Categoría', align: 'left', width: 'w-32',
-      render: (r) => r.category,
+      render: (r) => <span className="whitespace-nowrap">{r.category}</span>,
     },
     {
-      key: 'cantidad', label: 'Cantidad', align: 'right', width: 'w-20',
-      render: (r) => <span title={`${r.baseQty ?? r.quantity} und. base`}>{r.quantityLabel ?? r.quantity}</span>,
+      key: 'cantidad', label: 'Cantidad', align: 'center', width: 'w-20',
+      render: (r) => <span className="tabular-nums" title={`${r.baseQty ?? r.quantity} und. base`}>{r.quantityLabel ?? r.quantity}</span>,
     },
     {
       key: 'pCompra', label: 'P. Compra', align: 'right', width: 'w-28',
-      render: (r) => formatBs(r.supplierPrice),
+      render: (r) => <span className="tabular-nums whitespace-nowrap">{formatBs(r.supplierPrice)}</span>,
     },
     {
       key: 'pVenta', label: 'P. Venta', align: 'right', width: 'w-28',
-      render: (r) => formatBs(r.price),
+      render: (r) => <span className="tabular-nums whitespace-nowrap">{formatBs(r.price)}</span>,
     },
     {
       key: 'metodoPago', label: 'Método de pago', align: 'center', width: 'w-36',
@@ -612,11 +612,11 @@ export default function Sales() {
     },
     {
       key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32',
-      render: (r) => <span className="font-black text-[#1670C2]">{formatBs(r.subtotal)}</span>,
+      render: (r) => <span className="font-black text-[#1670C2] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
     },
     {
       key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28',
-      render: (r) => <span className="font-bold text-green-600">{formatBs(r.ganancia)}</span>,
+      render: (r) => <span className="font-bold text-green-600 tabular-nums whitespace-nowrap">{formatBs(r.ganancia)}</span>,
     },
   ];
 
