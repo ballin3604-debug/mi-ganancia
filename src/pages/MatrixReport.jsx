@@ -19,7 +19,7 @@ const VALID_REPORT_TYPES = ['ranking', 'expenses', 'inventory', 'profit', 'costo
 const REPORT_TYPE_META = {
     ranking: { icon: '🏆', title: 'Ranking de Productos', subtitle: 'Productos más vendidos por unidades e ingresos.' },
     expenses: { icon: '💵', title: 'Reporte de Egresos', subtitle: 'Egresos registrados y su distribución por categoría.' },
-    inventory: { icon: '📦', title: 'Reporte de Inventario', subtitle: 'Stock actual, valorización y movimientos de entrada/salida.' },
+    inventory: { icon: '📦', title: 'Reporte de Inventario', subtitle: 'Stock actual al día de hoy · entradas y salidas del período elegido.' },
     profit: { icon: '📈', title: 'Ganancias Diarias', subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.' },
     costoVendido: { icon: '📦', title: 'Costo de lo Vendido', subtitle: 'Costo de proveedor de cada producto vendido en el periodo.' },
 };
@@ -152,7 +152,7 @@ export default function MatrixReport() {
             return;
         }
         if (reportType === 'inventory') {
-            const rows = products.map((p) => [
+            const rows = inventoryRows.map((p) => [
                 p.name,
                 p.category || 'Otros',
                 p.stock || 0,
@@ -164,7 +164,9 @@ export default function MatrixReport() {
             exportReportToPDF({
                 businessName: settings?.businessName,
                 title: 'Reporte de Inventario',
-                subtitle: 'Stock actual, valorización y movimientos de entrada/salida.',
+                subtitle: inventoryCategory === 'Todas'
+                    ? 'Stock actual, valorización y movimientos de entrada/salida.'
+                    : `Stock actual, valorización y movimientos · Categoría: ${inventoryCategory}.`,
                 periodLabel: periodLabel(),
                 columns: [
                     { label: 'Producto' },
@@ -178,10 +180,10 @@ export default function MatrixReport() {
                 rows,
                 totals: {
                     values: {
-                        2: products.reduce((sum, p) => sum + Number(p.stock || 0), 0),
-                        4: `Bs ${totalInventoryValue.toFixed(2)}`,
-                        5: products.reduce((sum, p) => sum + Number(productEntries[p.id] || 0), 0),
-                        6: products.reduce((sum, p) => sum + Number(productMovements[p.id] || 0), 0),
+                        2: inventoryRows.reduce((sum, p) => sum + Number(p.stock || 0), 0),
+                        4: `Bs ${inventorySummary.value.toFixed(2)}`,
+                        5: inventoryRows.reduce((sum, p) => sum + Number(productEntries[p.id] || 0), 0),
+                        6: inventoryRows.reduce((sum, p) => sum + Number(productMovements[p.id] || 0), 0),
                     },
                 },
             });
@@ -222,6 +224,10 @@ export default function MatrixReport() {
     const [endDate, setEndDate] = useState(() => {
         return searchParams.get('end') || toLocalISODate(new Date());
     });
+
+    // Filtro por categoría + kardex (solo reporte de inventario)
+    const [inventoryCategory, setInventoryCategory] = useState('Todas');
+    const [kardexProductId, setKardexProductId] = useState(null);
 
     useEffect(() => {
         if (!businessId) return;
@@ -397,13 +403,66 @@ export default function MatrixReport() {
         return entries;
     }, [replenishments, start, end]);
 
-    const totalInventoryValue = useMemo(() => {
-        return products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0);
-    }, [products]);
+    const inventoryRows = useMemo(() => {
+        if (inventoryCategory === 'Todas') return products;
+        return products.filter(p => (p.category || 'Otros') === inventoryCategory);
+    }, [products, inventoryCategory]);
 
-    const lowStockCount = useMemo(() => {
-        return products.filter(p => (p.stock || 0) <= (p.minStock || 5)).length;
-    }, [products]);
+    // -- Kardex de inventario: categorías, filtro y movimientos por producto --
+
+    const saleDateById = useMemo(() => {
+        const map = {};
+        sales.forEach(s => {
+            if (!s.createdAt) return;
+            map[s.id] = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+        });
+        return map;
+    }, [sales]);
+
+    // Movimientos del producto seleccionado en el periodo + saldo corrido.
+    // Stock inicial = stock actual − (entradas − salidas del periodo).
+    const kardexData = useMemo(() => {
+        if (!kardexProductId) return null;
+        const product = products.find(p => p.id === kardexProductId);
+        if (!product) return null;
+        const moves = [];
+        replenishments.forEach(r => {
+            if (r.productId !== kardexProductId || !r.createdAt) return;
+            const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+            if (d < start || d > end) return;
+            moves.push({ date: d, type: 'entrada', qty: Number(r.quantity || 0) });
+        });
+        saleItems.forEach(item => {
+            if (item.productId !== kardexProductId) return;
+            const d = saleDateById[item.saleId];
+            if (!d || d < start || d > end) return;
+            moves.push({ date: d, type: 'salida', qty: Number(item.quantity || 0) });
+        });
+        moves.sort((a, b) => a.date - b.date);
+        const totalIn = moves.filter(m => m.type === 'entrada').reduce((s, m) => s + m.qty, 0);
+        const totalOut = moves.filter(m => m.type === 'salida').reduce((s, m) => s + m.qty, 0);
+        const currentStock = Number(product.stock || 0);
+        let balance = currentStock - (totalIn - totalOut);
+        const initialStock = balance;
+        const rows = moves.map(m => {
+            balance = m.type === 'entrada' ? balance + m.qty : balance - m.qty;
+            return { ...m, balance };
+        });
+        return { product, rows, totalIn, totalOut, initialStock, currentStock };
+    }, [kardexProductId, products, replenishments, saleItems, saleDateById, start, end]);
+
+    // Resumen de lo que se está mostrando (respeta el filtro de categoría).
+    // Un solo recorrido cacheado: valor, bajo stock y conteo salen juntos
+    // y solo se recalculan si cambian las filas visibles.
+    const inventorySummary = useMemo(() => {
+        let value = 0;
+        let low = 0;
+        for (const p of inventoryRows) {
+            value += (Number(p.stock) || 0) * (Number(p.price) || 0);
+            if ((Number(p.stock) || 0) <= (Number(p.minStock) || 5)) low += 1;
+        }
+        return { value, low, count: inventoryRows.length };
+    }, [inventoryRows]);
 
     const profitReportData = useMemo(() => {
         const start = new Date(`${startDate}T00:00:00`);
@@ -830,45 +889,75 @@ export default function MatrixReport() {
                     </div>
                 ) : reportType === 'inventory' ? (
                     <div className="space-y-6">
-                        {/* Tarjetas de inventario destacado */}
+                        {/* Tarjetas de lo que se está mostrando (respetan el filtro) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Valor Total del Inventario</p>
-                                    <h3 className="text-3xl font-black text-[#1670C2]">Bs {totalInventoryValue.toFixed(2)}</h3>
+                                    <h3 className="text-3xl font-black text-[#1670C2]">Bs {inventorySummary.value.toFixed(2)}</h3>
                                 </div>
                                 <span className="text-4xl">💰</span>
                             </div>
-                            <div className={`border rounded-2xl p-6 flex items-center justify-between shadow-sm ${lowStockCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
+                            <div className={`border rounded-2xl p-6 flex items-center justify-between shadow-sm ${inventorySummary.low > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
                                 <div>
-                                    <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${lowStockCount > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock Bajo (Reponer)</p>
-                                    <h3 className={`text-3xl font-black ${lowStockCount > 0 ? 'text-amber-700' : 'text-green-700'}`}>{lowStockCount} {lowStockCount === 1 ? 'producto' : 'productos'}</h3>
+                                    <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock Bajo (Reponer)</p>
+                                    <h3 className={`text-3xl font-black ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} {inventorySummary.low === 1 ? 'producto' : 'productos'}</h3>
                                 </div>
-                                <span className="text-4xl">{lowStockCount > 0 ? '⚠️' : '✅'}</span>
+                                <span className="text-4xl">{inventorySummary.low > 0 ? '⚠️' : '✅'}</span>
                             </div>
                             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Total Catálogo</p>
-                                    <h3 className="text-3xl font-black text-gray-700">{products.length} productos</h3>
+                                    <h3 className="text-3xl font-black text-gray-700">{inventorySummary.count} {inventorySummary.count === 1 ? 'producto' : 'productos'}</h3>
+                                    {inventoryCategory !== 'Todas' && (
+                                        <p className="text-[11px] font-bold text-gray-500 mt-0.5">en {inventoryCategory} · {products.length} en total</p>
+                                    )}
                                 </div>
                                 <span className="text-4xl">📦</span>
                             </div>
+                        </div>
+
+                        {/* Filtro por categoría */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">
+                                Categoría
+                            </label>
+                            <select
+                                value={inventoryCategory}
+                                onChange={(e) => setInventoryCategory(e.target.value)}
+                                className="mg-input text-xs font-bold py-2 w-auto min-w-44"
+                                aria-label="Filtrar inventario por categoría"
+                            >
+                                {inventoryCategories.map((cat) => (
+                                    <option key={cat} value={cat}>
+                                        {cat === 'Todas' ? `Todas (${products.length})` : cat}
+                                    </option>
+                                ))}
+                            </select>
+                            <span className="text-[11px] text-[var(--mg-text-muted)] font-medium">
+                                Toca un producto para ver su kardex en el periodo.
+                            </span>
                         </div>
 
                         {/* Tabla detallada de Inventario */}
                         <DataTable
                             storageKey="mg-reporte-inventario-columns"
                             getRowKey={(p) => p.id}
-                            emptyMessage="No hay productos registrados en el inventario."
-                            rows={products}
+                            emptyMessage="No hay productos en esta categoría."
+                            rows={inventoryRows}
                             columns={[
                                 {
                                     key: 'producto', label: 'Producto', align: 'left',
                                     render: (p) => (
-                                        <span className="font-bold text-[var(--mg-text-primary)]">
+                                        <button
+                                            type="button"
+                                            onClick={() => setKardexProductId(p.id)}
+                                            className="font-bold text-[var(--mg-text-primary)] text-left hover:text-[#1670C2] hover:underline transition-colors cursor-pointer"
+                                            title="Ver kardex del producto en el periodo"
+                                        >
                                             {p.name}
                                             {p.brand && <span className="text-[10px] text-[var(--mg-text-muted)] font-normal block">{p.brand}</span>}
-                                        </span>
+                                        </button>
                                     ),
                                 },
                                 {
@@ -901,9 +990,9 @@ export default function MatrixReport() {
                                     render: (p) => {
                                         const entries = productEntries[p.id] || 0;
                                         return entries > 0 ? (
-                                            <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full font-black">{entries} und.</span>
+                                            <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full font-black tabular-nums">+{entries} und.</span>
                                         ) : (
-                                            <span className="text-gray-300">•</span>
+                                            <span className="text-[var(--mg-text-faint)] font-bold tabular-nums">0 und.</span>
                                         );
                                     },
                                 },
@@ -912,16 +1001,16 @@ export default function MatrixReport() {
                                     render: (p) => {
                                         const exits = productMovements[p.id] || 0;
                                         return exits > 0 ? (
-                                            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-full font-black">{exits} und.</span>
+                                            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-full font-black tabular-nums">−{exits} und.</span>
                                         ) : (
-                                            <span className="text-gray-300">•</span>
+                                            <span className="text-[var(--mg-text-faint)] font-bold tabular-nums">0 und.</span>
                                         );
                                     },
                                 },
                             ]}
                         />
                         <p className="text-[11px] text-[var(--mg-text-muted)] italic text-right mt-1">
-                            Entradas = unidades compradas (Compras) en el periodo. Salidas = unidades vendidas en el periodo.
+                            Stock actual al día de hoy. Entradas = unidades compradas y salidas = unidades vendidas en el periodo elegido.
                         </p>
                     </div>
                 ) : reportType === 'profit' ? (
@@ -1225,6 +1314,93 @@ export default function MatrixReport() {
                     onClose={() => setSelectedDayDetail(null)}
                 />
             )}
+            {kardexData && (
+                <KardexModal
+                    data={kardexData}
+                    periodLabel={periodLabel()}
+                    onClose={() => setKardexProductId(null)}
+                />
+            )}
+        </div>
+    );
+}
+
+function KardexModal({ data, periodLabel, onClose }) {
+    const { product, rows, totalIn, totalOut, initialStock, currentStock } = data;
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div
+                className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200"
+                style={{ maxHeight: '90vh' }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="p-5 border-b border-[var(--mg-border)] flex items-center justify-between bg-blue-50/20">
+                    <div className="min-w-0">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2]">Kardex · {periodLabel}</span>
+                        <h3 className="text-lg font-black text-[var(--mg-text-primary)] mt-0.5 truncate">{product.name}</h3>
+                        {product.brand && <p className="text-xs text-[var(--mg-text-muted)]">{product.brand}</p>}
+                    </div>
+                    <button onClick={onClose}
+                        className="w-9 h-9 shrink-0 bg-[var(--mg-bg-elevated)] hover:bg-gray-200 rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-xl transition-all">×</button>
+                </div>
+
+                <div className="px-5 pt-4 grid grid-cols-3 gap-2.5">
+                    <div className="bg-[var(--mg-bg-elevated)] p-2.5 rounded-2xl border border-[var(--mg-border)] text-center">
+                        <span className="text-[9px] text-[var(--mg-text-faint)] uppercase font-bold tracking-wider block">Stock inicial</span>
+                        <span className="text-sm font-black text-[var(--mg-text-primary)] mt-0.5 block tabular-nums">{initialStock} und.</span>
+                    </div>
+                    <div className="bg-green-50 p-2.5 rounded-2xl border border-green-100 text-center">
+                        <span className="text-[9px] text-green-600 uppercase font-bold tracking-wider block">Entradas</span>
+                        <span className="text-sm font-black text-green-700 mt-0.5 block tabular-nums">+{totalIn}</span>
+                    </div>
+                    <div className="bg-blue-50 p-2.5 rounded-2xl border border-blue-100 text-center">
+                        <span className="text-[9px] text-blue-600 uppercase font-bold tracking-wider block">Salidas</span>
+                        <span className="text-sm font-black text-blue-700 mt-0.5 block tabular-nums">−{totalOut}</span>
+                    </div>
+                </div>
+
+                <div className="p-5 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    {rows.length > 0 ? (
+                        <table className="w-full text-xs text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-[var(--mg-border)] text-[var(--mg-text-muted)] font-extrabold uppercase text-[10px] bg-[var(--mg-bg-elevated)]">
+                                    <th className="py-2 px-3 rounded-l-xl">Fecha</th>
+                                    <th className="py-2 px-3">Movimiento</th>
+                                    <th className="py-2 px-3 text-center">Cant.</th>
+                                    <th className="py-2 px-3 text-right rounded-r-xl">Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--mg-separator)] font-bold">
+                                {rows.map((m, i) => (
+                                    <tr key={i} className="hover:bg-blue-50/20">
+                                        <td className="py-2.5 px-3 font-mono whitespace-nowrap">
+                                            {m.date.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit' })} · {m.date.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${m.type === 'entrada' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
+                                                {m.type === 'entrada' ? '⤴ Entrada' : '⤵ Salida'}
+                                            </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center tabular-nums">{m.type === 'entrada' ? `+${m.qty}` : `−${m.qty}`}</td>
+                                        <td className="py-2.5 px-3 text-right font-black tabular-nums">{m.balance} und.</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="text-xs text-[var(--mg-text-muted)] text-center py-6 font-medium">
+                            Sin movimientos en este periodo. El stock actual es {currentStock} und.
+                        </p>
+                    )}
+                </div>
+
+                <div className="px-5 pb-4">
+                    <div className="bg-blue-50/60 border border-blue-100 rounded-2xl px-4 py-2.5 flex items-center justify-between text-sm font-black text-[#1670C2]">
+                        <span>Stock actual</span>
+                        <span className="tabular-nums">{currentStock} und.</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
