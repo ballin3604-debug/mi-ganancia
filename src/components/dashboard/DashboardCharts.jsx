@@ -226,7 +226,6 @@ export function DashboardCharts({
   const [selectedShift, setSelectedShift] = useState('todos'); // 'todos' | 'manana' | 'tarde' | 'noche'
   const [selectedBandSlot, setSelectedBandSlot] = useState(null);
   const [activeTab, setActiveTab] = useState('franjas'); // 'franjas' | 'productos' | 'tendencia'
-  const [breakdownView, setBreakdownView] = useState('productos'); // 'productos' | 'transacciones'
 
   // Filtrar franjas horarias por turno
   const filteredHourlyBands = useMemo(() => {
@@ -295,14 +294,6 @@ export function DashboardCharts({
   const totalSalesSum = useMemo(() => {
     return hourlyBands.reduce((sum, b) => sum + b.total, 0);
   }, [hourlyBands]);
-
-  // Franjas mostradas en la tabla (si hay franja seleccionada, filtra solo esa)
-  const displayedBands = useMemo(() => {
-    if (selectedBandSlot !== null) {
-      return filteredHourlyBands.filter(b => b.slot === selectedBandSlot);
-    }
-    return filteredHourlyBands;
-  }, [filteredHourlyBands, selectedBandSlot]);
 
   if (visibleSalesCount === 0) {
     return (
@@ -529,30 +520,9 @@ export function DashboardCharts({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-blue-200">
-                        <button
-                          onClick={() => setBreakdownView('productos')}
-                          type="button"
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            breakdownView === 'productos'
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-blue-700 hover:bg-blue-50'
-                          }`}
-                        >
-                          📦 Productos ({slotProductsSummary.length})
-                        </button>
-                        <button
-                          onClick={() => setBreakdownView('transacciones')}
-                          type="button"
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            breakdownView === 'transacciones'
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-blue-700 hover:bg-blue-50'
-                          }`}
-                        >
-                          🧾 Recibos ({slotSales.length})
-                        </button>
-                      </div>
+                      <span className="text-[11px] font-bold text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200">
+                        📦 {slotProductsSummary.length} productos · 🧾 {slotSales.length} {slotSales.length === 1 ? 'recibo' : 'recibos'}
+                      </span>
 
                       <button
                         onClick={() => setSelectedBandSlot(null)}
@@ -585,8 +555,7 @@ export function DashboardCharts({
                     </div>
                   </div>
 
-                  {/* TAB 1: PRODUCTOS VENDIDOS EN ESA FRANJA */}
-                  {breakdownView === 'productos' && (
+                  {/* PRODUCTOS VENDIDOS EN ESA FRANJA */}
                     <div className="bg-white rounded-2xl border border-blue-200 p-4 space-y-3">
                       <h5 className="text-xs font-black uppercase text-blue-950 tracking-wider">
                         📦 Lista de Productos y Cantidades Vendidas ({selectedBandObj.label})
@@ -629,10 +598,8 @@ export function DashboardCharts({
                         </p>
                       )}
                     </div>
-                  )}
 
-                  {/* TAB 2: RECIBOS / TRANSACCIONES DE ESA FRANJA */}
-                  {breakdownView === 'transacciones' && (
+                  {/* RECIBOS DE ESA FRANJA (con Detalle y Recibo) */}
                     <div className="bg-white rounded-2xl border border-blue-200 p-4 space-y-3">
                       <h5 className="text-xs font-black uppercase text-blue-950 tracking-wider">
                         🧾 Transacciones de Venta Registradas ({selectedBandObj.label})
@@ -712,95 +679,9 @@ export function DashboardCharts({
                         })}
                       </div>
                     </div>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Tabla Detallada de Franjas Horarias (Filtrada si hay selección) */}
-            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] flex items-center gap-2">
-                  <span>📋 Tabla de Registro por Franja Horaria (30 minutos)</span>
-                  {selectedBandSlot !== null && (
-                    <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">
-                      Filtrado activo
-                    </span>
-                  )}
-                </h4>
-                {selectedBandSlot !== null ? (
-                  <button
-                    onClick={() => setSelectedBandSlot(null)}
-                    type="button"
-                    className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
-                  >
-                    ← Mostrar todas las {filteredHourlyBands.length} franjas
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-[var(--mg-text-muted)] font-semibold">
-                    Ordenado cronológicamente
-                  </span>
-                )}
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--mg-border)] text-[var(--mg-text-muted)] font-extrabold uppercase text-[10px] bg-[var(--mg-bg-elevated)]">
-                      <th className="py-2.5 px-3 rounded-l-xl">Franja Horaria</th>
-                      <th className="py-2.5 px-3 text-center">Transacciones</th>
-                      <th className="py-2.5 px-3 text-center">Ticket Promedio</th>
-                      <th className="py-2.5 px-3 text-center">% del Total Día</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-xl">Monto Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--mg-separator)] font-bold text-[var(--mg-text-secondary)]">
-                    {displayedBands.map((band) => {
-                      const avg = band.count > 0 ? band.total / band.count : 0;
-                      const share = totalSalesSum > 0 ? ((band.total / totalSalesSum) * 100).toFixed(1) : 0;
-                      const isMax = band.total === maxBandTotal;
-                      const isSelected = selectedBandSlot === band.slot;
-
-                      return (
-                        <tr
-                          key={band.slot}
-                          onClick={() => setSelectedBandSlot(isSelected ? null : band.slot)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected
-                              ? 'bg-blue-50/90 border-l-4 border-l-blue-600 font-extrabold'
-                              : isMax
-                              ? 'bg-amber-50/50 hover:bg-amber-100/50'
-                              : 'hover:bg-[var(--mg-bg-elevated)]'
-                          }`}
-                        >
-                          <td className="py-3 px-3 font-mono font-bold text-[var(--mg-text-primary)] flex items-center gap-2">
-                            <span>{band.label}</span>
-                            {isSelected && (
-                              <span className="text-[9px] bg-blue-600 text-white font-extrabold px-1.5 py-0.5 rounded-md">
-                                SELECCIONADA
-                              </span>
-                            )}
-                            {isMax && !isSelected && (
-                              <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded-md border border-amber-200">
-                                🔥 PICO
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center">{band.count} {band.count === 1 ? 'venta' : 'ventas'}</td>
-                          <td className="py-3 px-3 text-center font-mono text-[var(--mg-text-muted)]">{formatBs(avg)}</td>
-                          <td className="py-3 px-3 text-center">
-                            <span className="bg-slate-100 text-slate-700 font-mono text-[10px] px-2 py-0.5 rounded-full border border-slate-200">
-                              {share}%
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right font-black text-blue-600">{formatBs(band.total)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
             {/* Registro del día: filtros + todos los recibos (antes pestaña separada) */}
             <div className="space-y-4">
