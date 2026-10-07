@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { getProducts } from '../services/products';
+import { getProducts, subscribeToProducts } from '../services/products';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
 import { registerSale, subscribeToSales, subscribeToSaleItems } from '../services/sales';
 import { getCustomers, addCustomer } from '../services/customers';
@@ -344,7 +344,12 @@ export default function Sales() {
           const prod = prods.find((p) => p.id === line.productId);
           if (!prod || prod.stock <= 0) return;
           const factor = Number(line.factor || 1);
-          pushLine(key, prod, line.presId || 'unit', line.variant || 'unico', line.qty, Number(line.unitPrice ?? prod.price), factor, line.presLabel || presShortLabel(prod, line.presId, line.variant));
+          // Precio vigente del inventario (no el guardado en el borrador):
+          // si el precio cambió mientras el borrador esperaba, el carrito nace actualizado.
+          const freshOpts = getSellOptions(prod);
+          const freshMatch = freshOpts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico')) || freshOpts[0];
+          const freshPrice = freshMatch ? freshMatch.price : prod.price;
+          pushLine(key, prod, line.presId || 'unit', line.variant || 'unico', line.qty, freshPrice, factor, line.presLabel || presShortLabel(prod, line.presId, line.variant));
         });
 
         setCart(restoredCart);
@@ -395,6 +400,34 @@ export default function Sales() {
   useEffect(() => {
     if (!businessId) return;
     const unsub = subscribeToSales(businessId, setSalesList);
+    return unsub;
+  }, [businessId]);
+
+  // Precios vivos: si el inventario cambia (editar precio, presentación o
+  // eliminar producto) mientras hay una venta armándose, el carrito refleja
+  // el precio vigente sin tener que quitar y volver a agregar el producto.
+  useEffect(() => {
+    if (!businessId) return;
+    const unsub = subscribeToProducts(businessId, (prods) => {
+      setProducts(prods);
+      setCart((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.entries(next).forEach(([key, line]) => {
+          if (!line || typeof line.qty !== 'number') return;
+          const prod = prods.find((p) => p.id === line.productId);
+          if (!prod) return;
+          const opts = getSellOptions(prod);
+          const match = opts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico')) || opts[0];
+          if (!match) return;
+          if (Number(line.unitPrice) !== Number(match.price)) {
+            next[key] = { ...line, unitPrice: match.price };
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    });
     return unsub;
   }, [businessId]);
 
