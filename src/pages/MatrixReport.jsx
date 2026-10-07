@@ -409,6 +409,11 @@ export default function MatrixReport() {
     }, [products, inventoryCategory]);
 
     // -- Kardex de inventario: categorías, filtro y movimientos por producto --
+    const inventoryCategories = useMemo(() => {
+        const set = new Set();
+        products.forEach(p => { if (p.category) set.add(p.category); });
+        return ['Todas', ...[...set].sort((a, b) => a.localeCompare(b, 'es'))];
+    }, [products]);
 
     const saleDateById = useMemo(() => {
         const map = {};
