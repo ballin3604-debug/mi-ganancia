@@ -301,17 +301,34 @@ export default function MatrixReport() {
             const subtotal = item.subtotal || 0;
 
             if (!productSales[pName]) {
-                productSales[pName] = { productName: pName, quantity: 0, totalRevenue: 0 };
+                productSales[pName] = {
+                    productName: pName,
+                    productId: item.productId || null,
+                    image: item.image_url || '',
+                    quantity: 0,
+                    totalRevenue: 0,
+                };
             }
-            productSales[pName].quantity += qty;
-            productSales[pName].totalRevenue += subtotal;
+            const entry = productSales[pName];
+            entry.quantity += qty;
+            entry.totalRevenue += subtotal;
+            if (!entry.image && item.image_url) entry.image = item.image_url;
+            if (!entry.productId && item.productId) entry.productId = item.productId;
         });
 
-        const ranking = Object.values(productSales);
+        // Foto desde el catálogo cuando el ítem vendido no trae imagen
+        const imageById = {};
+        products.forEach(p => {
+            imageById[p.id] = p.imageData || p.image_url || '';
+        });
+        const ranking = Object.values(productSales).map(entry => ({
+            ...entry,
+            image: entry.image || (entry.productId ? (imageById[entry.productId] || '') : ''),
+        }));
         ranking.sort((a, b) => b.quantity - a.quantity || b.totalRevenue - a.totalRevenue);
 
         return ranking;
-    }, [sales, saleItems, startDate, endDate]);
+    }, [sales, saleItems, products, startDate, endDate]);
 
     // -- Lógica para Reporte de Egresos --
     const start = useMemo(() => new Date(`${startDate}T00:00:00`), [startDate]);
@@ -1148,7 +1165,21 @@ export default function MatrixReport() {
                                                 )}
                                             </td>
                                             <td className="p-3 border border-[var(--mg-border)] font-bold text-[var(--mg-text-primary)]">
-                                                {item.productName}
+                                                <div className="flex items-center gap-3">
+                                                    {item.image ? (
+                                                        <img
+                                                            src={item.image}
+                                                            alt={item.productName}
+                                                            className="w-10 h-10 rounded-xl object-cover border border-[var(--mg-border)] shrink-0 bg-gray-50"
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        <span className="w-10 h-10 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-lg shrink-0">
+                                                            📦
+                                                        </span>
+                                                    )}
+                                                    <span className="min-w-0 break-words">{item.productName}</span>
+                                                </div>
                                             </td>
                                             <td className="p-3 border border-[var(--mg-border)] text-center font-black text-sm text-[var(--mg-text-primary)]">
                                                 {item.quantity} und.

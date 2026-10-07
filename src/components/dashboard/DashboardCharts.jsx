@@ -976,6 +976,41 @@ export function DashboardCharts({
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
                 🍩 Productos más vendidos (Unidades)
               </h4>
+              <ul className="divide-y divide-[var(--mg-separator)] mb-4">
+                {topProductsChartData
+                  .filter((p) => p.label !== 'Otros')
+                  .slice(0, 5)
+                  .map((p, i) => (
+                    <li key={p.label} className="flex items-center gap-3 py-2">
+                      <span className="w-5 text-center text-xs font-black text-[var(--mg-text-faint)] shrink-0">
+                        {i + 1}
+                      </span>
+                      {p.image ? (
+                        <img
+                          src={p.image}
+                          alt={p.label}
+                          className="w-9 h-9 rounded-xl object-cover border border-[var(--mg-border)] shrink-0 bg-gray-50"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="w-9 h-9 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-base shrink-0">
+                          📦
+                        </span>
+                      )}
+                      <span className="flex-1 min-w-0 truncate text-sm font-bold text-[var(--mg-text-primary)]">
+                        {p.label}
+                      </span>
+                      <span className="text-sm font-black text-[var(--mg-text-primary)] shrink-0">
+                        {p.value}
+                      </span>
+                    </li>
+                  ))}
+                {topProductsChartData.length === 0 && (
+                  <li className="py-3 text-center text-xs text-[var(--mg-text-muted)] font-bold">
+                    Sin ventas todavía.
+                  </li>
+                )}
+              </ul>
               <DonutChart data={topProductsChartData} totalLabel="Unidades" isCurrency={false} />
             </div>
 

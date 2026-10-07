@@ -120,11 +120,13 @@ export default function Dashboard() {
     Object.values(salesItemsMap).flat().forEach((item) => {
       const name = item.productName || 'Desconocido';
       const factor = Number(item.presentation_factor ?? item.presentationFactor ?? 1);
-      productsCount[name] = (productsCount[name] || 0) + (Number(item.quantity || 0) * factor);
+      if (!productsCount[name]) productsCount[name] = { value: 0, image: '' };
+      productsCount[name].value += Number(item.quantity || 0) * factor;
+      if (!productsCount[name].image && item.image_url) productsCount[name].image = item.image_url;
     });
 
     const sorted = Object.entries(productsCount)
-      .map(([label, value]) => ({ label, value }))
+      .map(([label, data]) => ({ label, value: data.value, image: data.image || '' }))
       .sort((a, b) => b.value - a.value);
 
     const topLimit = 5;
