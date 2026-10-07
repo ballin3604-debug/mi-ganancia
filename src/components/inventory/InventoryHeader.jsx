@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { AppIcon } from '../icons';
 
 export function InventoryHeader({
   totalProducts,
@@ -47,7 +48,7 @@ export function InventoryHeader({
             className="bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-elevated)] text-[var(--mg-text-primary)] border border-[var(--mg-border)] rounded-2xl px-3.5 py-2 font-extrabold text-xs active:scale-95 transition-all flex items-center gap-1.5 shadow-2xs min-h-[40px]"
             title="Gestionar categorías"
           >
-            <span className="text-sm">🏷️</span>
+            <AppIcon name="etiqueta" size={14} />
             <span>Categorías</span>
           </motion.button>
 
@@ -59,8 +60,8 @@ export function InventoryHeader({
             onClick={onOpenAddProduct}
             className="bg-gradient-to-r from-[var(--mg-accent)] to-blue-600 hover:brightness-110 text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2 min-h-[40px] border border-blue-400/20"
           >
-            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center font-black text-sm leading-none">
-              +
+            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center leading-none">
+              <AppIcon name="agregar" size={14} color="#fff" />
             </span>
             <span>Nuevo Producto</span>
           </motion.button>
@@ -74,8 +75,8 @@ export function InventoryHeader({
           {/* Sleek Compact Search Bar + scanner */}
           <div className="flex gap-2 w-full md:max-w-sm">
             <div className="relative flex-1 min-w-0">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--mg-text-muted)] pointer-events-none">
-                🔍
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)] pointer-events-none flex">
+                <AppIcon name="search" size={12} />
               </span>
               <input
                 type="text"
@@ -103,9 +104,7 @@ export function InventoryHeader({
                 aria-label="Escanear código de barras"
                 className="w-9 h-9 shrink-0 rounded-xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow flex items-center justify-center active:scale-90 transition-all"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
-                </svg>
+                <AppIcon name="scan" size={20} color="#fff" />
               </button>
             )}
           </div>
@@ -121,7 +120,7 @@ export function InventoryHeader({
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
-              <span>⏰</span>
+              <AppIcon name="reloj" size={12} />
               <span>Por vencer</span>
               {expiryCounts.porVencer > 0 && (
                 <span className="bg-amber-200/80 text-amber-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
@@ -139,7 +138,7 @@ export function InventoryHeader({
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
-              <span>❌</span>
+              <AppIcon name="cerrar" size={12} />
               <span>Vencidos</span>
               {expiryCounts.vencidos > 0 && (
                 <span className="bg-red-200/80 text-red-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">

@@ -10,6 +10,7 @@ import { AddExpenseModal } from '../components/expenses/AddExpenseModal';
 import { ExpenseFilters } from '../components/expenses/ExpenseFilters';
 import { ExpensesSkeleton } from '../components/expenses/ExpensesSkeleton';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
+import { AppIcon } from '../components/icons';
 
 const CATEGORY_ICONS = {
   'Mercadería': '📦',
@@ -345,7 +346,7 @@ export default function Expenses() {
                           className="w-7 h-7 bg-[var(--mg-danger-bg)] hover:bg-red-100 text-[var(--mg-danger)] rounded-lg flex items-center justify-center text-xs font-black transition-all active:scale-95 border border-red-200 min-h-[28px]"
                           title="Eliminar egreso"
                         >
-                          ✕
+                          <AppIcon name="eliminar" size={13} />
                         </button>
                       </div>
                     </div>

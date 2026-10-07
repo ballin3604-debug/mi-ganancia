@@ -1,4 +1,5 @@
 import { petAge, ownerWhatsApp } from '../../services/vet';
+import { AppIcon } from '../icons';
 
 function fmtDate(d) {
   if (!d) return '';
@@ -53,10 +54,10 @@ export default function PatientDetail({
         </div>
         <div className="flex flex-col gap-1.5 shrink-0">
           <button type="button" onClick={() => onEdit(pet)} className="w-9 h-9 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center active:scale-95" title="Editar">
-            ✏️
+            <AppIcon name="editar" size={15} />
           </button>
           <button type="button" onClick={() => onDelete(pet)} className="w-9 h-9 rounded-xl bg-[var(--mg-danger-bg)] border border-red-200 flex items-center justify-center active:scale-95" title="Eliminar">
-            🗑️
+            <AppIcon name="eliminar" size={15} />
           </button>
         </div>
       </div>
@@ -64,12 +65,12 @@ export default function PatientDetail({
       {/* Acciones */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {[
-          { id: 'record', icon: '🩺', label: 'Consulta' },
-          { id: 'prescription', icon: '💊', label: 'Receta' },
-          { id: 'vaccination', icon: '💉', label: 'Vacuna' },
-          { id: 'reminder', icon: '⏰', label: 'Recordatorio' },
-          { id: 'carnet', icon: '🪪', label: 'Carnet' },
-          ...(waLink ? [{ id: 'whatsapp', icon: '💬', label: 'WhatsApp' }] : []),
+          { id: 'record', icon: 'consulta', label: 'Consulta' },
+          { id: 'prescription', icon: 'receta', label: 'Receta' },
+          { id: 'vaccination', icon: 'vacuna', label: 'Vacuna' },
+          { id: 'reminder', icon: 'recordatorio', label: 'Recordatorio' },
+          { id: 'carnet', icon: 'carnet', label: 'Carnet' },
+          ...(waLink ? [{ id: 'whatsapp', icon: 'whatsapp', label: 'WhatsApp' }] : []),
         ].map((a) => (
           <button
             key={a.id}
@@ -79,7 +80,7 @@ export default function PatientDetail({
               ? 'bg-[#25D366] text-white rounded-2xl py-2.5 font-bold text-[11px] active:scale-95 flex flex-col items-center gap-0.5'
               : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl py-2.5 font-bold text-[var(--mg-text-secondary)] text-[11px] active:scale-95 flex flex-col items-center gap-0.5'}
           >
-            <span className="text-lg">{a.icon}</span>
+            <AppIcon name={a.icon} size={20} color={a.id === 'whatsapp' ? '#fff' : undefined} />
             {a.label}
           </button>
         ))}
@@ -102,7 +103,7 @@ export default function PatientDetail({
                 {t.kind === 'record' && (
                   <>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">🩺 CONSULTA</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1"><AppIcon name="consulta" size={10} /> CONSULTA</span>
                       <span className="text-[11px] font-bold text-[var(--mg-text-muted)]">{fmtDate(t.data.visitDate)}</span>
                     </div>
                     {t.data.reason && <p className="text-xs text-[var(--mg-text-secondary)]"><strong>Motivo:</strong> {t.data.reason}</p>}
@@ -118,7 +119,7 @@ export default function PatientDetail({
                 {t.kind === 'vaccination' && (
                   <>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">💉 VACUNA</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><AppIcon name="vacuna" size={10} /> VACUNA</span>
                       <span className="text-[11px] font-bold text-[var(--mg-text-muted)]">{fmtDate(t.data.dateApplied)}</span>
                     </div>
                     <p className="text-sm font-black text-[var(--mg-text-primary)]">{t.data.vaccineName}</p>
@@ -132,7 +133,7 @@ export default function PatientDetail({
                 {t.kind === 'prescription' && (
                   <>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">💊 RECETA</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1"><AppIcon name="receta" size={10} /> RECETA</span>
                       <span className="text-[11px] font-bold text-[var(--mg-text-muted)]">{fmtDate(t.data.createdAt)}</span>
                     </div>
                     <div className="space-y-1">
@@ -147,9 +148,9 @@ export default function PatientDetail({
                     </div>
                     <button
                       type="button" onClick={() => onPrintReceta(t.data)}
-                      className="mt-2 text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-lg px-3 py-1.5 active:scale-95"
+                      className="mt-2 text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-lg px-3 py-1.5 active:scale-95 flex items-center gap-1.5"
                     >
-                      🖨️ Imprimir receta
+                      <AppIcon name="recibo" size={12} /> Imprimir receta
                     </button>
                   </>
                 )}

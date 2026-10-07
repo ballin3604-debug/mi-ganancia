@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BUSINESS_CATEGORIES, getCategoryById } from '../../config/businessCategories';
+import { AppIcon } from '../icons';
 
 export function BusinessHeaderCard({
   businessCategory,
@@ -93,14 +94,14 @@ export function BusinessHeaderCard({
               onClick={() => setShowRubroModal(true)}
               className="px-3.5 py-2 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] text-[var(--mg-text-primary)] font-bold text-xs rounded-xl border border-[var(--mg-border)] transition-all active:scale-95 shrink-0 min-h-[40px] flex items-center gap-1.5"
             >
-              <span>✏️ Cambiar</span>
+              <AppIcon name="editar" size={13} /> <span>Cambiar</span>
             </button>
           </div>
         </div>
         {/* Logo */}
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] space-y-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🏪</span>
+            <AppIcon name="tienda" size={20} />
             <div>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Logo del negocio</p>
               <p className="text-[var(--mg-text-muted)] text-xs">Se imprime en el recibo digital/térmico</p>
@@ -115,8 +116,8 @@ export function BusinessHeaderCard({
                 className="w-20 h-20 rounded-2xl object-contain border border-[var(--mg-accent-border)] bg-[var(--mg-bg-elevated)] shrink-0 p-1"
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-3xl shrink-0 border-2 border-dashed border-[var(--mg-border)]">
-                🏪
+              <div className="w-20 h-20 rounded-2xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 border-2 border-dashed border-[var(--mg-border)]">
+                <AppIcon name="tienda" size={28} />
               </div>
             )}
 
@@ -126,7 +127,7 @@ export function BusinessHeaderCard({
                 onClick={() => logoRef.current?.click()}
                 className="w-full bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all min-h-[44px]"
               >
-                📁 {logoData ? 'Cambiar logo' : 'Subir logo'}
+                <AppIcon name="carpeta" size={14} color="#fff" /> {logoData ? 'Cambiar logo' : 'Subir logo'}
               </button>
               {logoData && (
                 <button
@@ -153,7 +154,7 @@ export function BusinessHeaderCard({
         {/* QR de cobro */}
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] space-y-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="text-xl">📱</span>
+            <AppIcon name="qr" size={20} />
             <div>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">QR de Cobro</p>
               <p className="text-[var(--mg-text-muted)] text-xs">QR de Tigo Money, BCP, BNB, etc.</p>
@@ -169,7 +170,7 @@ export function BusinessHeaderCard({
               />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-[var(--mg-bg-elevated)] flex flex-col items-center justify-center shrink-0 border-2 border-dashed border-[var(--mg-border)] gap-1">
-                <span className="text-xl">📱</span>
+                <AppIcon name="qr" size={20} />
                 <span className="text-[var(--mg-text-faint)] text-[10px]">Sin QR</span>
               </div>
             )}
@@ -180,7 +181,7 @@ export function BusinessHeaderCard({
                 onClick={() => qrRef.current?.click()}
                 className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all border border-[var(--mg-accent-border)] min-h-[44px]"
               >
-                📁 {qrData ? 'Cambiar QR' : 'Subir QR'}
+                <AppIcon name="carpeta" size={14} /> {qrData ? 'Cambiar QR' : 'Subir QR'}
               </button>
               {qrData && (
                 <button
@@ -207,7 +208,7 @@ export function BusinessHeaderCard({
         {/* Slogan */}
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] space-y-2 shadow-xs">
           <label className="flex items-center gap-2">
-            <span className="text-xl">✨</span>
+            <AppIcon name="texto" size={20} />
             <div>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Slogan del Negocio</p>
               <p className="text-[var(--mg-text-muted)] text-xs">Frase corta impresa en el recibo</p>
@@ -226,7 +227,7 @@ export function BusinessHeaderCard({
         {/* Teléfono */}
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] space-y-2 shadow-xs">
           <label className="flex items-center gap-2">
-            <span className="text-xl">📞</span>
+            <AppIcon name="llamar" size={20} />
             <div>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Teléfono / WhatsApp</p>
               <p className="text-[var(--mg-text-muted)] text-xs">Contacto para clientes en el recibo</p>

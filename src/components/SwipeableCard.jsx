@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { AppIcon } from './icons';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -56,14 +57,14 @@ export default function SwipeableCard({ onEdit, onDelete, children }) {
           onClick={() => { close(); onEdit(); }}
           className="flex-1 bg-blue-500 flex items-center justify-center text-white font-bold text-xs gap-1 flex-col active:brightness-90"
         >
-          <span className="text-xl">✏️</span>
+          <AppIcon name="editar" size={20} color="#fff" />
           Editar
         </button>
         <button
           onClick={() => { close(); onDelete(); }}
           className="flex-1 bg-red-500 flex items-center justify-center text-white font-bold text-xs gap-1 flex-col active:brightness-90"
         >
-          <span className="text-xl">🗑️</span>
+          <AppIcon name="eliminar" size={20} color="#fff" />
           Borrar
         </button>
       </div>

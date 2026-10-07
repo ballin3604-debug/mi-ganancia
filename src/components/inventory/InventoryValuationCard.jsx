@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { formatBs } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 export function InventoryValuationCard({ products, selectedCategory }) {
   // Calculate metrics based on selected category or all products
@@ -49,7 +50,7 @@ export function InventoryValuationCard({ products, selectedCategory }) {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              <span>📊</span>
+              <AppIcon name="reportes" size={12} />
               <span>Valorización de Inventario</span>
             </span>
 

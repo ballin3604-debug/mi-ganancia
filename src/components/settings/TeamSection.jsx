@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AppIcon } from '../icons';
 import { MAX_MEMBERS } from '../../services/cashier';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -101,7 +102,7 @@ export function TeamSection({
       <div className="bg-[var(--mg-bg-surface)] rounded-[24px] border border-[var(--mg-border)] overflow-hidden shadow-xs">
         <div className="px-5 py-4 border-b border-[var(--mg-border)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
           <div className="flex items-center gap-2">
-            <span className="text-xl">👥</span>
+            <AppIcon name="equipo" size={20} />
             <div>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Equipo de Trabajo</p>
               <p className="text-[var(--mg-text-muted)] text-[11px]">Usuarios con acceso a la tienda</p>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSaleItems } from '../../services/sales';
 import { formatBs } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 function getPaymentMethodLabel(method) {
   if (method === 'qr') return '📲 QR';
@@ -95,8 +96,8 @@ export function SaleDetailModal({ sale, businessId, onClose }) {
 
             {sale.paymentMethod === 'mixto' && (
               <div className="text-xs text-white/90 mt-2 pt-2 border-t border-white/20 flex justify-between gap-4 font-semibold">
-                <span>💵 Efectivo: {formatBs(sale.montoEfectivo)}</span>
-                <span>📲 QR: {formatBs(sale.montoQR)}</span>
+                <span className="flex items-center gap-1"><AppIcon name="cash" size={13} color="#fff" /> Efectivo: {formatBs(sale.montoEfectivo)}</span>
+                <span className="flex items-center gap-1"><AppIcon name="qr" size={13} color="#fff" /> QR: {formatBs(sale.montoQR)}</span>
               </div>
             )}
 

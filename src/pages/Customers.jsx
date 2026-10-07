@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../services/customers';
 import SwipeableCard from '../components/SwipeableCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { AppIcon } from '../components/icons';
 
 export default function Customers() {
     const { businessId } = useAuth();
@@ -115,7 +116,7 @@ export default function Customers() {
                                         className="w-9 h-9 hover:bg-[var(--mg-accent-bg)] rounded-xl flex items-center justify-center text-gray-500 hover:text-[var(--mg-accent)] active:scale-95 transition-all shrink-0"
                                         title="Editar cliente"
                                     >
-                                        ✏️
+                                        <AppIcon name="editar" size={16} />
                                     </button>
                                     <button
                                         type="button"
@@ -123,7 +124,7 @@ export default function Customers() {
                                         className="w-9 h-9 hover:bg-red-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0"
                                         title="Eliminar cliente"
                                     >
-                                        🗑️
+                                        <AppIcon name="eliminar" size={16} />
                                     </button>
                                 </div>
                             </div>

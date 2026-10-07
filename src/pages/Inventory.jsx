@@ -29,6 +29,7 @@ import { InventoryHeader } from '../components/inventory/InventoryHeader';
 import { InventoryValuationCard } from '../components/inventory/InventoryValuationCard';
 import { TransferModal } from '../components/inventory/TransferModal';
 import BarcodeScanner from '../components/BarcodeScanner';
+import { AppIcon } from '../components/icons';
 import PhotoCamera from '../components/PhotoCamera';
 import { UpgradeModal } from '../components/UpgradeScreen';
 import { usePlan } from '../hooks/usePlan';
@@ -706,7 +707,8 @@ export default function Inventory() {
             onClick={() => openAdd()}
             className="mt-4 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold px-4 py-2.5 rounded-2xl text-xs shadow-md transition-all inline-flex items-center gap-1.5"
           >
-            <span>+ Nuevo Producto</span>
+            <AppIcon name="agregar" size={14} color="#fff" />
+            <span>Nuevo Producto</span>
           </motion.button>
         </motion.div>
       ) : (
@@ -841,8 +843,9 @@ export default function Inventory() {
             >
               <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
                 <div>
-                  <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm">
-                    {scannerMode === 'assign' ? '📷 Escanear código para el producto' : '📷 Buscar por escáner'}
+                  <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5">
+                    <AppIcon name="scan" size={14} />
+                    {scannerMode === 'assign' ? 'Escanear código para el producto' : 'Buscar por escáner'}
                   </h3>
                   <p className="text-[11px] text-[var(--mg-text-muted)]">
                     {scannerMode === 'assign' ? 'El código se pondrá en el formulario' : 'Apunta al código de barras'}
@@ -894,8 +897,8 @@ export default function Inventory() {
               className="bg-[var(--mg-bg-surface)] w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border border-[var(--mg-border)] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
             >
               <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
-                <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm">
-                  {editingProduct ? '✏️ Editar Producto' : '📦 Nuevo Producto'}
+                <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5">
+                  {editingProduct ? <><AppIcon name="editar" size={14} /> Editar Producto</> : <><AppIcon name="nuevoProducto" size={14} /> Nuevo Producto</>}
                 </h3>
                 <button
                   type="button"
@@ -920,8 +923,8 @@ export default function Inventory() {
                         className="w-20 h-20 rounded-2xl object-cover border-2 border-[var(--mg-accent-border)] shrink-0 shadow-xs"
                       />
                     ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-3xl shrink-0 border-2 border-dashed border-[var(--mg-border)]">
-                        📷
+                      <div className="w-20 h-20 rounded-2xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 border-2 border-dashed border-[var(--mg-border)]">
+                        <AppIcon name="camara" size={28} />
                       </div>
                     )}
 
@@ -932,12 +935,12 @@ export default function Inventory() {
                           onClick={() => setShowCamera(true)}
                           className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-extrabold py-2 rounded-xl text-xs active:scale-95 flex flex-col items-center gap-0.5 cursor-pointer select-none transition-all"
                         >
-                          <span>📷</span>
+                          <AppIcon name="camara" size={14} />
                           <span>Cámara</span>
                         </button>
 
                         <label className="relative bg-[var(--mg-accent)] text-white font-extrabold py-2 rounded-xl text-xs active:scale-95 flex flex-col items-center gap-0.5 cursor-pointer select-none overflow-hidden transition-all shadow-xs">
-                          <span>🖼️</span>
+                          <AppIcon name="galeria" size={14} color="#fff" />
                           <span>Galería</span>
                           <input
                             type="file"
@@ -1312,7 +1315,7 @@ export default function Inventory() {
               className="bg-[var(--mg-bg-surface)] w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border border-[var(--mg-border)] shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
             >
               <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
-                <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm">🏷️ Categorías del Sistema</h3>
+                <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5"><AppIcon name="etiqueta" size={14} /> Categorías del Sistema</h3>
                 <button
                   type="button"
                   onClick={() => setShowCatManager(false)}
@@ -1338,7 +1341,7 @@ export default function Inventory() {
                     disabled={!newCatName.trim() || savingCat}
                     className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold px-4 rounded-xl text-xs active:scale-95 transition-all disabled:opacity-50 min-h-[42px] shrink-0"
                   >
-                    {savingCat ? '...' : '+ Agregar'}
+                    {savingCat ? '...' : <span className="flex items-center gap-1"><AppIcon name="agregar" size={13} color="#fff" /> Agregar</span>}
                   </button>
                 </form>
 

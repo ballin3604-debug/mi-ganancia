@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBranches } from '../context/BranchContext';
 import { addBranch, updateBranch, setMainBranch, deleteBranch } from '../services/branches';
 import { PremiumGate } from './UpgradeScreen';
+import { AppIcon } from './icons';
 
 function BranchForm({ onDone }) {
   const { businessId } = useAuth();
@@ -190,21 +191,21 @@ function BranchManagerInner() {
 
             <div className="flex gap-1.5 mt-3 flex-wrap">
               {!active && (
-                <button type="button" onClick={() => selectBranch(b.id)} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] active:scale-95">
-                  📍 Operar aquí
+                <button type="button" onClick={() => selectBranch(b.id)} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] active:scale-95 flex items-center gap-1">
+                  <AppIcon name="tienda" size={12} /> Operar aquí
                 </button>
               )}
               {!b.isMain && (
-                <button type="button" onClick={() => handleSetMain(b)} disabled={busy === b.id} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border border-[var(--mg-border)] active:scale-95 disabled:opacity-50">
-                  ⭐ Hacer principal
+                <button type="button" onClick={() => handleSetMain(b)} disabled={busy === b.id} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border border-[var(--mg-border)] active:scale-95 disabled:opacity-50 flex items-center gap-1">
+                  <AppIcon name="check" size={12} /> Hacer principal
                 </button>
               )}
-              <button type="button" onClick={() => { setEditing(b.id); setEditName(b.name); }} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border border-[var(--mg-border)] active:scale-95">
-                ✏️
+              <button type="button" onClick={() => { setEditing(b.id); setEditName(b.name); }} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border border-[var(--mg-border)] active:scale-95 flex items-center">
+                <AppIcon name="editar" size={13} />
               </button>
               {!b.isMain && (
-                <button type="button" onClick={() => handleDelete(b)} disabled={busy === b.id} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border border-red-200 active:scale-95 disabled:opacity-50">
-                  🗑️
+                <button type="button" onClick={() => handleDelete(b)} disabled={busy === b.id} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border border-red-200 active:scale-95 disabled:opacity-50 flex items-center">
+                  <AppIcon name="eliminar" size={13} />
                 </button>
               )}
             </div>

@@ -4,6 +4,7 @@ import { PAY_QR_IMAGE, PAY_ALIAS } from '../config/billing';
 import { uploadReceipt, createPayment } from '../services/payments';
 import { useImageUpload } from '../hooks/useImageUpload';
 import PhotoCamera from './PhotoCamera';
+import { AppIcon } from './icons';
 
 const CYCLES = [
   { id: 'monthly', label: 'Mensual', months: 1 },
@@ -169,12 +170,12 @@ export default function PaymentModal({ businessId, initialPlan = 'pro', onClose,
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button" onClick={() => setShowCamera(true)}
-                  className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-extrabold py-2.5 rounded-xl text-xs active:scale-95"
+                  className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-extrabold py-2.5 rounded-xl text-xs active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  📷 Cámara
+                  <AppIcon name="camara" size={14} /> Cámara
                 </button>
-                <label className="relative bg-[var(--mg-accent)] text-white font-extrabold py-2.5 rounded-xl text-xs text-center active:scale-95 cursor-pointer overflow-hidden">
-                  🖼️ Galería
+                <label className="relative bg-[var(--mg-accent)] text-white font-extrabold py-2.5 rounded-xl text-xs text-center active:scale-95 cursor-pointer overflow-hidden flex items-center justify-center gap-1.5">
+                  <AppIcon name="galeria" size={14} color="#fff" /> Galería
                   <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                 </label>
               </div>

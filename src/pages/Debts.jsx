@@ -10,6 +10,7 @@ import { AddDebtModal } from '../components/debts/AddDebtModal';
 import { PayDebtModal } from '../components/debts/PayDebtModal';
 import { DebtsSkeleton } from '../components/debts/DebtsSkeleton';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
+import { AppIcon } from '../components/icons';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -306,7 +307,7 @@ export default function Debts() {
                       : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
                   }`}
                 >
-                  <span>⚠️</span>
+                  <AppIcon name="reloj" size={13} />
                   <span>Solo vencidos ({overdueDebts.length})</span>
                 </button>
               )}

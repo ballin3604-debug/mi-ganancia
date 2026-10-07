@@ -24,13 +24,14 @@ import { UnsavedChangesBar } from '../components/settings/UnsavedChangesBar';
 import BranchManager from '../components/BranchManager';
 import PlanBanner from '../components/PlanBanner';
 import UpgradeScreen, { PremiumGate } from '../components/UpgradeScreen';
+import { AppIcon } from '../components/icons';
 
 const TABS = [
-  { id: 'negocio', icon: '🏪', label: 'Mi negocio' },
-  { id: 'sucursales', icon: '🏬', label: 'Sucursales' },
-  { id: 'equipo', icon: '👥', label: 'Equipo' },
-  { id: 'plan', icon: '🚀', label: 'Plan' },
-  { id: 'respaldo', icon: '📥', label: 'Respaldo' },
+  { id: 'negocio', icon: 'tienda', label: 'Mi negocio' },
+  { id: 'sucursales', icon: 'sucursales', label: 'Sucursales' },
+  { id: 'equipo', icon: 'equipo', label: 'Equipo' },
+  { id: 'plan', icon: 'plan', label: 'Plan' },
+  { id: 'respaldo', icon: 'respaldo', label: 'Respaldo' },
 ];
 
 export default function Settings() {
@@ -280,7 +281,7 @@ export default function Settings() {
                   : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
               }`}
             >
-              <span>{tab.icon}</span>
+              <AppIcon name={tab.icon} size={15} color={isActive ? '#fff' : undefined} />
               <span className="truncate">{tab.label}</span>
             </button>
           );

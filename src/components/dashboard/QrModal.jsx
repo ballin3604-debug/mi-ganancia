@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { AppIcon } from '../icons';
 
 export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
   useEffect(() => {
@@ -30,7 +31,7 @@ export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
           ×
         </button>
 
-        <h3 className="text-lg font-black text-[var(--mg-text-primary)] mb-4">📲 QR de Cobro</h3>
+        <h3 className="text-lg font-black text-[var(--mg-text-primary)] mb-4 flex items-center gap-2"><AppIcon name="qr" size={20} /> QR de Cobro</h3>
 
         {settings?.qrData ? (
           <div className="space-y-4">

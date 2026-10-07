@@ -9,6 +9,7 @@ import { useBusiness } from '../context/BusinessContext';
 import { useBranches } from '../context/BranchContext';
 import { printReceipt } from './Receipt';
 import { savePurchaseDraft, clearPurchaseDraft } from '../services/purchaseDraft';
+import { AppIcon } from './icons';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -366,7 +367,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               onClick={handlePrintPurchase}
               className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
             >
-              🖨️ Imprimir detalle
+              <AppIcon name="recibo" size={14} /> Imprimir detalle
             </button>
             <button
               type="button"
@@ -682,9 +683,9 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               <button
                 type="button"
                 onClick={addExtraCostRow}
-                className="w-full mt-2 border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95"
+                className="w-full mt-2 border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95 flex items-center justify-center gap-1.5"
               >
-                + Agregar gasto extra
+                <AppIcon name="agregar" size={14} /> Agregar gasto extra
               </button>
             </div>
 

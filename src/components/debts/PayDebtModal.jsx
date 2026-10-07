@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 export function PayDebtModal({ debt, isOpen, onClose, onConfirm }) {
   const [processing, setProcessing] = useState(false);
@@ -71,7 +72,7 @@ export function PayDebtModal({ debt, isOpen, onClose, onConfirm }) {
               onClick={() => handleSelectMethod('cash')}
               className="py-3.5 px-3 bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-elevated)] border-2 border-[var(--mg-border)] hover:border-[var(--mg-accent)] text-[var(--mg-text-primary)] rounded-2xl text-xs font-extrabold flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-2xs min-h-[72px]"
             >
-              <span className="text-2xl">💵</span>
+              <AppIcon name="cash" size={26} />
               <span>Efectivo</span>
             </button>
 
@@ -81,7 +82,7 @@ export function PayDebtModal({ debt, isOpen, onClose, onConfirm }) {
               onClick={() => handleSelectMethod('qr')}
               className="py-3.5 px-3 bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-accent-bg)] border-2 border-[var(--mg-border)] hover:border-[var(--mg-accent)] text-[var(--mg-text-primary)] rounded-2xl text-xs font-extrabold flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-2xs min-h-[72px]"
             >
-              <span className="text-2xl">📱</span>
+              <AppIcon name="qr" size={26} />
               <span>Pago QR</span>
             </button>
           </div>

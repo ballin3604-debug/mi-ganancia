@@ -10,6 +10,7 @@ import DataTable from '../components/DataTable';
 import ReportHeader from '../components/ReportHeader';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
+import { AppIcon } from '../components/icons';
 
 function getExpenseFlow(e) {
     return (e.expense_type === 'fixed' || e.expenseType === 'fixed') ? 'fixed' : 'daily';
@@ -712,21 +713,21 @@ export default function MatrixReport() {
                                     </p>
                                     <h3 className="text-3xl font-black text-[#1670C2]">Bs {totalExpenses.toFixed(2)}</h3>
                                 </div>
-                                <span className="text-4xl">💵</span>
+                                <AppIcon name="gastos" size={36} />
                             </div>
                             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Transacciones Registradas</p>
                                     <h3 className="text-3xl font-black text-gray-700">{filteredExpenses.length}</h3>
                                 </div>
-                                <span className="text-4xl">📝</span>
+                                <AppIcon name="texto" size={36} />
                             </div>
                         </div>
 
                         {/* Desglose por categoría (Gráfico de barras CSS) */}
                         {expensesByCategory.length > 0 && (
                             <div className="bg-white border border-[var(--mg-border)] rounded-[20px] p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-[var(--mg-text-primary)] mb-4">📊 Distribución de Egresos por Categoría</h3>
+                                <h3 className="text-lg font-bold text-[var(--mg-text-primary)] mb-4 flex items-center gap-2"><AppIcon name="reportes" size={20} /> Distribución de Egresos por Categoría</h3>
                                 <div className="space-y-4">
                                     {expensesByCategory.map(({ category, amount, percentage }) => (
                                         <div key={category} className="space-y-1">
@@ -822,7 +823,7 @@ export default function MatrixReport() {
                                 <p className="text-xs font-extrabold uppercase tracking-widest text-orange-700 mb-1">Total Costo de lo Vendido</p>
                                 <h3 className="text-3xl font-black text-orange-700">Bs {totalCostOfGoodsRows.toFixed(2)}</h3>
                             </div>
-                            <span className="text-4xl">📦</span>
+                            <AppIcon name="nuevoProducto" size={36} />
                         </div>
 
                         <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
@@ -901,14 +902,14 @@ export default function MatrixReport() {
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Valor Total del Inventario</p>
                                     <h3 className="text-3xl font-black text-[#1670C2]">Bs {inventorySummary.value.toFixed(2)}</h3>
                                 </div>
-                                <span className="text-4xl">💰</span>
+                                <AppIcon name="caja" size={36} />
                             </div>
                             <div className={`border rounded-2xl p-6 flex items-center justify-between shadow-sm ${inventorySummary.low > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
                                 <div>
                                     <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock Bajo (Reponer)</p>
                                     <h3 className={`text-3xl font-black ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} {inventorySummary.low === 1 ? 'producto' : 'productos'}</h3>
                                 </div>
-                                <span className="text-4xl">{inventorySummary.low > 0 ? '⚠️' : '✅'}</span>
+                                <span><AppIcon name={inventorySummary.low > 0 ? 'reloj' : 'check'} size={36} /></span>
                             </div>
                             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                                 <div>
@@ -918,7 +919,7 @@ export default function MatrixReport() {
                                         <p className="text-[11px] font-bold text-gray-500 mt-0.5">en {inventoryCategory} · {products.length} en total</p>
                                     )}
                                 </div>
-                                <span className="text-4xl">📦</span>
+                                <AppIcon name="nuevoProducto" size={36} />
                             </div>
                         </div>
 

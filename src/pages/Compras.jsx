@@ -9,6 +9,7 @@ import PurchaseForm from '../components/PurchaseForm';
 import DataTable from '../components/DataTable';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
 import BarcodeScanner from '../components/BarcodeScanner';
+import { AppIcon } from '../components/icons';
 import { UpgradeModal } from '../components/UpgradeScreen';
 import { usePlan } from '../hooks/usePlan';
 import { useBranches } from '../context/BranchContext';
@@ -343,9 +344,7 @@ export default function Compras() {
                   className="w-[52px] h-[52px] shrink-0 rounded-2xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow-lg flex items-center justify-center active:scale-90 transition-all"
                   style={{ boxShadow: '0 8px 20px rgba(22,112,194,0.35)' }}
                 >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
-                  </svg>
+                  <AppIcon name="scan" size={24} color="#fff" />
                 </button>
               </div>
 
@@ -462,8 +461,8 @@ export default function Compras() {
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-[var(--mg-text-faint)] p-6">
-              <span className="text-5xl mb-3">🛍️</span>
-              <p className="font-semibold text-sm">Selecciona un producto</p>
+              <AppIcon name="nuevoProducto" size={48} />
+              <p className="font-semibold text-sm mt-3">Selecciona un producto</p>
               <p className="text-xs text-center mt-1">Elegí un producto del catálogo para registrar una compra</p>
             </div>
           )}

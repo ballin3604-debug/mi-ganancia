@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { petAge, ownerWhatsApp, reminderMessage, setReminderStatus } from '../../services/vet';
+import { AppIcon } from '../icons';
 
 function daysInfo(dueDate) {
   if (!dueDate) return { label: 'Sin fecha', tone: 'muted', diff: 9999 };
@@ -101,7 +102,7 @@ export default function RemindersTab({ reminders, petsById, ownersById, onChange
                   onClick={() => handleSent(r)}
                   className="flex-[2] bg-[#25D366] text-white font-bold py-2.5 rounded-xl text-xs text-center active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <span>💬</span> WhatsApp al dueño
+                  <AppIcon name="whatsapp" size={14} color="#fff" /> WhatsApp al dueño
                 </a>
               ) : (
                 <span className="flex-[2] text-center text-[11px] font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] rounded-xl py-2.5">

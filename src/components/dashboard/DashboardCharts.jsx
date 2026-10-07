@@ -10,8 +10,8 @@ export function DonutChart({ data, totalLabel, isCurrency }) {
   if (total === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-52 text-[var(--mg-text-muted)] text-xs font-extrabold bg-[var(--mg-bg-elevated)] rounded-2xl border border-[var(--mg-border)] p-6">
-        <span className="text-3xl mb-2">📊</span>
-        <span>Sin registros de ventas aún</span>
+        <AppIcon name="reportes" size={36} />
+        <span className="mt-2">Sin registros de ventas aún</span>
       </div>
     );
   }
@@ -230,7 +230,7 @@ export function DashboardCharts({
   if (visibleSalesCount === 0) {
     return (
       <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-xs">
-        <p className="text-4xl mb-2">🧾</p>
+        <p className="mb-2 flex justify-center"><AppIcon name="recibo" size={40} /></p>
         <p className="font-extrabold text-[var(--mg-text-primary)] text-base">Sin ventas hoy</p>
         <p className="text-xs text-[var(--mg-text-muted)] mt-1">Registra las primeras ventas y aparecerán aquí con sus productos.</p>
       </div>
@@ -243,9 +243,9 @@ export function DashboardCharts({
       <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 flex-wrap gap-2">
         <div className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] p-1 rounded-2xl border border-[var(--mg-border)] max-w-full overflow-x-auto scrollbar-none">
           {[
-            { id: 'recibos', label: '🧾 Recibos de Hoy', icon: '🧾' },
-            { id: 'productos', label: '🍩 Productos y Categorías', icon: '📦' },
-            { id: 'tendencia', label: '📈 Tendencia Temporal', icon: '📊' },
+            { id: 'recibos', label: 'Recibos de Hoy', icon: 'recibo' },
+            { id: 'productos', label: 'Productos y Categorías', icon: 'nuevoProducto' },
+            { id: 'tendencia', label: 'Tendencia Temporal', icon: 'reportes' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -264,7 +264,9 @@ export function DashboardCharts({
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">{tab.label}</span>
+              <span className="relative z-10 flex items-center gap-1.5">
+                <AppIcon name={tab.icon} size={14} /> {tab.label}
+              </span>
             </button>
           ))}
         </div>
@@ -291,7 +293,7 @@ export function DashboardCharts({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h4 className="text-sm font-black text-[var(--mg-text-primary)]">
-                    {isOwner ? '🧾 Registro de Recibos y Ventas de Hoy' : '🧾 Mis Recibos de Hoy'}
+                    {isOwner ? 'Registro de Recibos y Ventas de Hoy' : 'Mis Recibos de Hoy'}
                   </h4>
                   <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
                     Toca un recibo para ver sus productos · filtra por pago o categoría
@@ -473,7 +475,7 @@ export function DashboardCharts({
           >
             <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-1">
-                🍩 Productos más vendidos
+                Productos más vendidos
               </h4>
               <p className="text-[11px] text-[var(--mg-text-muted)] font-medium mb-3">
                 Unidades y dinero que deja cada uno hoy.
@@ -531,7 +533,7 @@ export function DashboardCharts({
 
             <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
-                🍩 Ventas por Categoría (Bs)
+                Ventas por Categoría (Bs)
               </h4>
               <DonutChart data={categorySalesChartData} totalLabel="Total" isCurrency={true} />
             </div>
@@ -549,7 +551,7 @@ export function DashboardCharts({
             className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs"
           >
             <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
-              📈 Tendencia de Ingresos por Media Hora (Bs)
+              Tendencia de Ingresos por Media Hora (Bs)
             </h4>
             <LineChart data={hourlyTrendData} labelEvery={4} />
           </motion.div>

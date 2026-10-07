@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AppIcon } from '../icons';
 import { useImageUpload } from '../../hooks/useImageUpload';
 
 const SPECIES = [
@@ -119,7 +120,7 @@ export function PetFormModal({ businessId, owners, initialPet, onSave, onClose }
   }
 
   return (
-    <Shell title={isEdit ? '✏️ Editar paciente' : '🐾 Nueva mascota'} subtitle="Datos del paciente y su dueño" onClose={onClose} wide>
+    <Shell title={isEdit ? 'Editar paciente' : 'Nueva mascota'} subtitle="Datos del paciente y su dueño" onClose={onClose} wide>
       <form onSubmit={handleSubmit} className="p-4 overflow-y-auto space-y-3.5">
         <div className="flex items-center gap-3">
           {photoUrl ? (
@@ -261,7 +262,7 @@ export function RecordFormModal({ petName, vetDefault = '', onSave, onClose }) {
   }
 
   return (
-    <Shell title="🩺 Nueva consulta" subtitle={petName} onClose={onClose}>
+    <Shell title="Nueva consulta" subtitle={petName} onClose={onClose}>
       <form onSubmit={handleSubmit} className="p-4 overflow-y-auto space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Fecha">
@@ -315,7 +316,7 @@ export function PrescriptionFormModal({ petName, onSave, onClose }) {
   }
 
   return (
-    <Shell title="💊 Nueva receta" subtitle={petName} onClose={onClose} wide>
+    <Shell title="Nueva receta" subtitle={petName} onClose={onClose} wide>
       <form onSubmit={handleSubmit} className="p-4 overflow-y-auto space-y-3">
         {items.map((it, i) => (
           <div key={i} className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3 space-y-2">
@@ -337,9 +338,9 @@ export function PrescriptionFormModal({ petName, onSave, onClose }) {
         ))}
         <button
           type="button" onClick={() => setItems((prev) => [...prev, { name: '', dosage: '', frequency: '', duration: '' }])}
-          className="w-full border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95"
+          className="w-full border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95 flex items-center justify-center gap-1.5"
         >
-          + Agregar medicamento
+          <AppIcon name="agregar" size={14} /> Agregar medicamento
         </button>
         <Field label="Indicaciones generales">
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej: volver a control en 7 días" rows={2} maxLength={300} className="mg-input text-xs" />
@@ -382,7 +383,7 @@ export function VaccinationFormModal({ petName, onSave, onClose }) {
   }
 
   return (
-    <Shell title="💉 Registrar vacuna" subtitle={petName} onClose={onClose}>
+    <Shell title="Registrar vacuna" subtitle={petName} onClose={onClose}>
       <form onSubmit={handleSubmit} className="p-4 overflow-y-auto space-y-3">
         <Field label="Vacuna *">
           <input type="text" value={vaccineName} onChange={(e) => setVaccineName(e.target.value)} placeholder="Ej: Antirrábica, Séxtuple" maxLength={80} className="mg-input text-xs font-bold" />

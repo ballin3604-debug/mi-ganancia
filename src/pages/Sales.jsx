@@ -589,16 +589,16 @@ export default function Sales() {
   ), [salesReportRows, reportCashier]);
 
   const METHOD_META = {
-    cash: { label: 'Efectivo', icon: '💵', pill: 'bg-green-50 text-green-700 border-green-200' },
-    qr: { label: 'QR', icon: '📲', pill: 'bg-blue-50 text-blue-700 border-blue-200' },
-    mixto: { label: 'Mixto', icon: '🔀', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
-    fiado: { label: 'Fiado', icon: '⏳', pill: 'bg-amber-50 text-amber-700 border-amber-200' },
+    cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-green-50 text-green-700 border-green-200' },
+    qr: { label: 'QR', icon: 'qr', pill: 'bg-blue-50 text-blue-700 border-blue-200' },
+    mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
+    fiado: { label: 'Fiado', icon: 'fiado', pill: 'bg-amber-50 text-amber-700 border-amber-200' },
   };
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
     return (
-      <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-full border ${m.pill}`}>
-        {m.icon} {m.label}
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full border ${m.pill}`}>
+        <AppIcon name={m.icon} size={12} /> {m.label}
       </span>
     );
   }
@@ -1496,7 +1496,7 @@ export default function Sales() {
               {renderBranchPills()}
               <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-4 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h3 className="font-black text-[var(--mg-text-primary)] text-sm">👥 Ventas por cajero</h3>
+                  <h3 className="font-black text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5"><AppIcon name="equipo" size={15} /> Ventas por cajero</h3>
                   <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold">Toca un cajero para ver su detalle</p>
                 </div>
 
@@ -1513,7 +1513,7 @@ export default function Sales() {
                           : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                       }`}
                     >
-                      {name === 'Todos' ? 'Todos' : `👤 ${name}`}
+                      {name === 'Todos' ? 'Todos' : name}
                     </button>
                   ))}
                 </div>
@@ -1528,7 +1528,7 @@ export default function Sales() {
                     <table className="w-full text-sm min-w-[640px] border-collapse bg-white">
                       <thead>
                         <tr className="bg-[var(--mg-bg-elevated)]">
-                          {['Cajero', 'Ventas', '💵 Efectivo', '📲 QR', '🔀 Mixto', '⏳ Fiado', '💰 En caja', '📈 Ganancia'].map((h, i) => (
+                          {['Cajero', 'Ventas', 'Efectivo', 'QR', 'Mixto', 'Fiado', 'En caja', 'Ganancia'].map((h, i) => (
                             <th key={h} className={`p-2.5 text-xs font-black text-[var(--mg-text-secondary)] uppercase tracking-wide whitespace-nowrap ${i >= 2 ? 'text-right' : 'text-left'}`}>
                               {h}
                             </th>
@@ -1584,13 +1584,13 @@ export default function Sales() {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
-                            { icon: '💵', label: 'Efectivo', value: st.cash, cls: 'text-green-700 bg-green-50 border-green-200' },
-                            { icon: '📲', label: 'QR', value: st.qr, cls: 'text-blue-700 bg-blue-50 border-blue-200' },
-                            { icon: '🔀', label: 'Mixto', value: st.mixto, cls: 'text-purple-700 bg-purple-50 border-purple-200' },
-                            { icon: '⏳', label: 'Fiado', value: st.fiado, cls: 'text-amber-700 bg-amber-50 border-amber-200' },
+                            { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-green-700 bg-green-50 border-green-200' },
+                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-blue-700 bg-blue-50 border-blue-200' },
+                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-purple-700 bg-purple-50 border-purple-200' },
+                            { icon: 'fiado', label: 'Fiado', value: st.fiado, cls: 'text-amber-700 bg-amber-50 border-amber-200' },
                           ].map((m) => (
                             <div key={m.label} className={`rounded-2xl p-2.5 text-center border ${m.cls}`}>
-                              <p className="text-sm">{m.icon}</p>
+                              <p className="flex justify-center"><AppIcon name={m.icon} size={18} /></p>
                               <p className="text-[10px] font-extrabold uppercase tracking-wide opacity-80">{m.label}</p>
                               <p className="text-sm font-black">{formatBs(m.value)}</p>
                             </div>
@@ -1754,8 +1754,8 @@ export default function Sales() {
             renderCartContent(false)
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-[var(--mg-text-faint)] p-6">
-              <span className="text-5xl mb-3">🛒</span>
-              <p className="font-semibold text-sm">Tu carrito está vacío</p>
+              <AppIcon name="carrito" size={48} />
+              <p className="font-semibold text-sm mt-3">Tu carrito está vacío</p>
               <p className="text-xs text-center mt-1">Haz clic en los productos para agregarlos al carrito</p>
             </div>
           )}
@@ -1769,8 +1769,8 @@ export default function Sales() {
           className="lg:hidden fixed bottom-20 right-4 bg-[var(--mg-accent)] text-white font-bold py-3.5 px-5 rounded-full shadow-2xl flex items-center gap-3 transition-all z-40 active:scale-95 hover:bg-[var(--mg-accent-hover)]"
           style={{ boxShadow: '0 8px 30px rgba(0, 122, 255, 0.45)' }}
         >
-          <div className="relative">
-            <span className="text-xl">🛒</span>
+          <div className="relative flex items-center">
+            <AppIcon name="carrito" size={20} color="#fff" />
             <span className="absolute -top-2.5 -right-2.5 bg-white text-[var(--mg-accent)] text-[10px] font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-md">
               {totalBaseUnits}
             </span>
@@ -1887,8 +1887,9 @@ export default function Sales() {
                 onClick={handlePrintSuccessSale}
                 className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
               >
-                🖨️ Imprimir recibo
-              </button>
+                <AppIcon name="recibo" size={14} /> Imprimir recibo
+
+                              </button>
               <button
                 type="button"
                 onClick={closeSuccessModal}

@@ -16,6 +16,7 @@ import { DEFAULT_CATEGORIES } from '../services/categories';
 import ProductCatalogCard from '../components/ProductCatalogCard';
 import PaymentsTab from '../components/admin/PaymentsTab';
 import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
+import { AppIcon } from '../components/icons';
 
 const EMPTY_CATALOG_FORM = {
   name: '', brand: '', category: 'Otros', unit: 'Unidad',
@@ -544,7 +545,7 @@ export default function AdminPanel() {
           {[
             { key: 'requests', label: `Solicitudes (${pending.length})` },
             { key: 'businesses', label: `Negocios (${businesses.length})` },
-            { key: 'payments', label: 'Pagos 💳' },
+            { key: 'payments', label: 'Pagos' },
             { key: 'catalog', label: `Catálogo (${masterProducts.length})` },
             { key: 'history', label: 'Historial' },
           ].map(({ key, label }) => (
@@ -705,7 +706,7 @@ export default function AdminPanel() {
                       onClick={() => openDelete(biz)}
                       className="w-full mt-2 text-[var(--mg-danger)] font-semibold py-2 rounded-xl text-xs active:scale-95 hover:bg-[var(--mg-danger-bg)] transition-all"
                     >
-                      🗑️ Eliminar negocio permanentemente
+                      <AppIcon name="eliminar" size={14} /> Eliminar negocio permanentemente
                     </button>
                   </div>
                 ))}
@@ -721,8 +722,8 @@ export default function AdminPanel() {
                       <img src={catalogForm.imageData} alt="Preview"
                         className="w-16 h-16 rounded-xl object-cover border-2 border-[var(--mg-accent-border)] shrink-0" />
                     ) : (
-                      <div className="w-16 h-16 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-2xl shrink-0 border-2 border-dashed border-gray-300">
-                        📷
+                      <div className="w-16 h-16 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 border-2 border-dashed border-gray-300">
+                        <AppIcon name="camara" size={24} />
                       </div>
                     )}
                     <label className="relative flex-1 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-sm text-center active:scale-95 cursor-pointer select-none overflow-hidden">
@@ -800,7 +801,7 @@ export default function AdminPanel() {
                       <p className="text-sm font-black text-[var(--mg-accent)] shrink-0">Bs {Number(product.suggestedPrice || 0).toFixed(2)}</p>
                       <button onClick={() => handleDeleteCatalogProduct(product)}
                         className="w-8 h-8 hover:bg-red-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0">
-                        🗑️
+                        <AppIcon name="eliminar" size={15} />
                       </button>
                     </div>
                   ))}
@@ -876,8 +877,8 @@ export default function AdminPanel() {
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
           <div className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] flex items-center justify-center text-2xl">
-              🗑️
+            <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] flex items-center justify-center">
+              <AppIcon name="eliminar" size={24} />
             </div>
             <div>
               <p className="font-black text-[var(--mg-text-primary)] text-base">

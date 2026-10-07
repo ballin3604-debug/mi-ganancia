@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { transferStock, getTransfers } from '../../services/branchStock';
+import { AppIcon } from '../icons';
 
 // Traspaso de stock entre sedes + mini historial del producto.
 export function TransferModal({ businessId, product, branches, fromBranchId, branchStocks = {}, isOpen, onClose, onDone }) {
@@ -52,7 +53,7 @@ export function TransferModal({ businessId, product, branches, fromBranchId, bra
       >
         <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
           <div>
-            <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm">🔀 Traspasar stock</h3>
+            <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5"><AppIcon name="mixto" size={14} /> Traspasar stock</h3>
             <p className="text-[11px] text-[var(--mg-text-muted)] truncate max-w-[240px]">{product.name}</p>
           </div>
           <button

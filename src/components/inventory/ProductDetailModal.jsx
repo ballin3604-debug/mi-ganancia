@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
 import { TransferModal } from './TransferModal';
+import { AppIcon } from '../icons';
 
 function formatDate(dateVal) {
   if (!dateVal) return '—';
@@ -345,7 +346,7 @@ export function ProductDetailModal({
               }}
               className="flex-1 py-3 px-4 bg-[var(--mg-danger-bg)] hover:bg-red-100 text-[var(--mg-danger)] font-extrabold rounded-2xl text-xs border border-red-200 transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
             >
-              <span>🗑️</span>
+              <AppIcon name="eliminar" size={14} />
               <span>Eliminar</span>
             </button>
 
@@ -357,7 +358,7 @@ export function ProductDetailModal({
               }}
               className="flex-1 py-3 px-4 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold rounded-2xl text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
             >
-              <span>✏️</span>
+              <AppIcon name="editar" size={14} color="#fff" />
               <span>Editar Producto</span>
             </button>
           </div>

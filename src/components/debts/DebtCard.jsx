@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { formatBs } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 function formatDateShort(dateVal) {
   if (!dateVal) return '';
@@ -86,7 +87,7 @@ export function DebtCard({ debt, businessName, onPay, onDelete }) {
                       className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-lg transition-all active:scale-95"
                       title="Enviar mensaje por WhatsApp"
                     >
-                      <span>💬</span>
+                      <AppIcon name="whatsapp" size={11} />
                       <span>WhatsApp</span>
                     </a>
                   )}
@@ -98,7 +99,7 @@ export function DebtCard({ debt, businessName, onPay, onDelete }) {
                       className="inline-flex items-center gap-1 bg-[var(--mg-accent-bg)] hover:bg-blue-100 text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[10px] font-black px-2 py-0.5 rounded-lg transition-all active:scale-95"
                       title="Llamar directamente"
                     >
-                      <span>📞</span>
+                      <AppIcon name="llamar" size={11} />
                       <span>{debt.clientPhone}</span>
                     </a>
                   )}
@@ -143,11 +144,11 @@ export function DebtCard({ debt, businessName, onPay, onDelete }) {
                 className="bg-[var(--mg-success)] hover:opacity-90 text-white text-xs font-black px-3.5 py-1.5 rounded-xl transition-all shadow-xs min-h-[34px] flex items-center gap-1"
               >
                 <span>Cobrar</span>
-                <span>✓</span>
+                <AppIcon name="check" size={13} color="#fff" />
               </motion.button>
             ) : (
-              <span className="text-[11px] text-[var(--mg-success-text)] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-extrabold">
-                ✓ Pagado
+              <span className="text-[11px] text-[var(--mg-success-text)] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-extrabold flex items-center gap-1">
+                <AppIcon name="check" size={11} /> Pagado
               </span>
             )}
 
@@ -157,7 +158,7 @@ export function DebtCard({ debt, businessName, onPay, onDelete }) {
               className="text-[11px] font-extrabold text-[var(--mg-text-muted)] hover:text-[var(--mg-danger)] p-1 rounded-lg transition-colors"
               title="Eliminar registro"
             >
-              🗑️
+              <AppIcon name="eliminar" size={13} />
             </button>
           </div>
         </div>

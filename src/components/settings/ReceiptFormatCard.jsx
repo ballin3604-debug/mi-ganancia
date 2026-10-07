@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { getReceiptFormat, setReceiptFormat, RECEIPT_FORMATS } from '../../utils/receiptFormat';
+import { AppIcon } from '../icons';
 
 const OPCIONES = [
   {
@@ -30,7 +31,7 @@ export function ReceiptFormatCard() {
   return (
     <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-xl">🖨️</span>
+        <AppIcon name="recibo" size={20} />
         <div>
           <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Formato del recibo</p>
           <p className="text-[var(--mg-text-muted)] text-xs">
