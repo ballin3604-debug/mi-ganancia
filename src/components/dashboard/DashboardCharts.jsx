@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs, formatBsShort } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 export function DonutChart({ data, totalLabel, isCurrency }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -425,9 +426,9 @@ export function DashboardCharts({
                                       <button
                                         onClick={(e) => { e.stopPropagation(); onSelectSale(sale); }}
                                         type="button"
-                                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
+                                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
                                       >
-                                        🔍 Detalle
+                                        <AppIcon name="detalle" size={13} /> Detalle
                                       </button>
                                     )}
                                     {onReimprint && (
@@ -435,9 +436,9 @@ export function DashboardCharts({
                                         onClick={(e) => { e.stopPropagation(); onReimprint(sale); }}
                                         disabled={printingSaleId === sale.id}
                                         type="button"
-                                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
+                                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-2xs cursor-pointer flex items-center gap-1"
                                       >
-                                        {printingSaleId === sale.id ? '⌛ Imprimiendo…' : '🖨️ Recibo'}
+                                        <AppIcon name="recibo" size={13} color="#fff" /> {printingSaleId === sale.id ? 'Imprimiendo…' : 'Recibo'}
                                       </button>
                                     )}
                                   </div>

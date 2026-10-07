@@ -1,4 +1,5 @@
 import QuickDateRangeButtons from './QuickDateRangeButtons';
+import { AppIcon } from './icons';
 
 export default function ReportHeader({
   icon, title, subtitle,
@@ -53,7 +54,7 @@ export default function ReportHeader({
               title={exportDisabled ? 'No hay datos en el periodo seleccionado' : undefined}
               className="flex items-center gap-1.5 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover,#0f5c9e)] text-white font-bold px-4 py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
             >
-              📄 {exportLabel}
+              <AppIcon name="pdf" size={14} color="#fff" /> {exportLabel}
             </button>
           )}
         </div>

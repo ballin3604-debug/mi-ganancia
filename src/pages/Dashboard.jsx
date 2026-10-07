@@ -18,6 +18,7 @@ import { DashboardCharts } from '../components/dashboard/DashboardCharts';
 import { SaleDetailModal } from '../components/dashboard/SaleDetailModal';
 import { QrModal } from '../components/dashboard/QrModal';
 import { LogoutModal } from '../components/LogoutModal';
+import { AppIcon } from '../components/icons';
 
 function SectionHeader({ title }) {
   return (
@@ -343,7 +344,7 @@ export default function Dashboard() {
                 type="button"
                 className="text-xs font-bold text-[var(--mg-accent)] hover:underline flex items-center gap-1 disabled:opacity-50"
               >
-                {exporting ? 'Exportando...' : '📥 Exportar CSV'}
+                {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
               </button>
             )}
           </div>
