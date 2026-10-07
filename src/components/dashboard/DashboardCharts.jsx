@@ -223,84 +223,15 @@ export function DashboardCharts({
   printingSaleId,
   isOwner = true
 }) {
-  const [selectedShift, setSelectedShift] = useState('todos'); // 'todos' | 'manana' | 'tarde' | 'noche'
-  const [selectedBandSlot, setSelectedBandSlot] = useState(null);
-  const [activeTab, setActiveTab] = useState('franjas'); // 'franjas' | 'productos' | 'tendencia'
-
-  // Filtrar franjas horarias por turno
-  const filteredHourlyBands = useMemo(() => {
-    if (selectedShift === 'todos') return hourlyBands;
-
-    return hourlyBands.filter((band) => {
-      // band.slot va de 0 a 47 (cada un slot representa 30 min)
-      // slot 12 (06:00) a 23 (11:30) = mañana
-      // slot 24 (12:00) a 35 (17:30) = tarde
-      // slot 36 (18:00) a 47 (23:30) = noche
-      if (selectedShift === 'manana') return band.slot >= 12 && band.slot < 24;
-      if (selectedShift === 'tarde') return band.slot >= 24 && band.slot < 36;
-      if (selectedShift === 'noche') return band.slot >= 36 || band.slot < 12;
-      return true;
-    });
-  }, [hourlyBands, selectedShift]);
-
-  // Max total de franja para escala de gráfico
-  const maxBandTotal = useMemo(() => {
-    if (hourlyBands.length === 0) return 1;
-    return Math.max(...hourlyBands.map(b => b.total), 1);
-  }, [hourlyBands]);
-
-  // Franja activa elegida o null
-  const selectedBandObj = useMemo(() => {
-    if (selectedBandSlot !== null) {
-      return hourlyBands.find(b => b.slot === selectedBandSlot) || null;
-    }
-    return null;
-  }, [selectedBandSlot, hourlyBands]);
-
-  // Ventas pertenecientes a la franja horaria seleccionada
-  const slotSales = useMemo(() => {
-    if (selectedBandSlot === null || !visibleSales) return [];
-    return visibleSales.filter((s) => {
-      if (!s.createdAt) return false;
-      const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-      const slot = d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0);
-      return slot === selectedBandSlot;
-    });
-  }, [visibleSales, selectedBandSlot]);
-
-  // Resumen de productos vendidos durante la franja horaria seleccionada
-  const slotProductsSummary = useMemo(() => {
-    if (slotSales.length === 0) return [];
-    const summary = {};
-    slotSales.forEach((s) => {
-      const items = salesItemsMap[s.id] || [];
-      items.forEach((item) => {
-        const name = item.productName || 'Producto varios';
-        if (!summary[name]) {
-          summary[name] = {
-            productName: name,
-            category: item.category || 'Otros',
-            quantity: 0,
-            subtotal: 0,
-          };
-        }
-        summary[name].quantity += item.quantity || 0;
-        summary[name].subtotal += item.subtotal || 0;
-      });
-    });
-    return Object.values(summary).sort((a, b) => b.subtotal - a.subtotal);
-  }, [slotSales, salesItemsMap]);
-
-  const totalSalesSum = useMemo(() => {
-    return hourlyBands.reduce((sum, b) => sum + b.total, 0);
-  }, [hourlyBands]);
+  const [activeTab, setActiveTab] = useState('recibos'); // 'recibos' | 'productos' | 'tendencia'
+  const [expandedSaleId, setExpandedSaleId] = useState(null); // recibo desplegado para ver sus productos
 
   if (visibleSalesCount === 0) {
     return (
       <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-xs">
-        <p className="text-4xl mb-2">⏰</p>
-        <p className="font-extrabold text-[var(--mg-text-primary)] text-base">Sin datos de ventas para franjas horarias</p>
-        <p className="text-xs text-[var(--mg-text-muted)] mt-1">Registra las primeras ventas para activar los gráficos e informes de horario.</p>
+        <p className="text-4xl mb-2">🧾</p>
+        <p className="font-extrabold text-[var(--mg-text-primary)] text-base">Sin ventas hoy</p>
+        <p className="text-xs text-[var(--mg-text-muted)] mt-1">Registra las primeras ventas y aparecerán aquí con sus productos.</p>
       </div>
     );
   }
@@ -311,7 +242,7 @@ export function DashboardCharts({
       <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 flex-wrap gap-2">
         <div className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] p-1 rounded-2xl border border-[var(--mg-border)] max-w-full overflow-x-auto scrollbar-none">
           {[
-            { id: 'franjas', label: '⏰ Ventas por Franja Horaria', icon: '⏱️' },
+            { id: 'recibos', label: '🧾 Recibos de Hoy', icon: '🧾' },
             { id: 'productos', label: '🍩 Productos y Categorías', icon: '📦' },
             { id: 'tendencia', label: '📈 Tendencia Temporal', icon: '📊' },
           ].map((tab) => (
@@ -338,353 +269,22 @@ export function DashboardCharts({
         </div>
 
         <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-          {hourlyBands.length} {hourlyBands.length === 1 ? 'franja activa' : 'franjas activas con ventas'}
+          {filteredSales.length} {filteredSales.length === 1 ? 'venta hoy' : 'ventas hoy'}
         </span>
       </div>
 
-      {/* VISTA 1: VENTAS POR FRANJA HORARIA (PROTAGONISTA INTERACTIVO) */}
+      {/* VISTA 1: RECIBOS DE HOY (clic en una fila = ver sus productos) */}
       <AnimatePresence mode="wait">
-        {activeTab === 'franjas' && (
+        {activeTab === 'recibos' && (
           <motion.div
-            key="franjas"
+            key="recibos"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            {/* Filtros por Turno y Botón de Restablecer */}
-            <div className="flex items-center justify-between gap-3 flex-wrap bg-[var(--mg-bg-surface)] p-4 rounded-2xl border border-[var(--mg-border)]">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-extrabold uppercase text-[var(--mg-text-muted)]">Filtrar por Turno:</span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[
-                    { id: 'todos', label: 'Todos los Turnos' },
-                    { id: 'manana', label: '🌅 Mañana (06:00 - 12:00)' },
-                    { id: 'tarde', label: '☀️ Tarde (12:00 - 18:00)' },
-                    { id: 'noche', label: '🌙 Noche (18:00 - 24:00)' },
-                  ].map((shift) => (
-                    <button
-                      key={shift.id}
-                      onClick={() => setSelectedShift(shift.id)}
-                      type="button"
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                        selectedShift === shift.id
-                          ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                          : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border-[var(--mg-border)] hover:bg-slate-100'
-                      }`}
-                    >
-                      {shift.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedBandSlot !== null && (
-                <button
-                  onClick={() => setSelectedBandSlot(null)}
-                  type="button"
-                  className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <span>✖ Ver todas las franjas horarias</span>
-                </button>
-              )}
-            </div>
-
-            {/* Visualizador de Barras de Franjas Horarias */}
-            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="text-sm font-black text-[var(--mg-text-primary)]">
-                    📊 Distribución de Ventas por Franja Horaria
-                  </h4>
-                  <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-                    Haz clic en cualquier franja para filtrar la tabla y ver qué productos se vendieron en ese horario
-                  </p>
-                </div>
-                <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-                  Máx Horario: {formatBs(maxBandTotal)}
-                </span>
-              </div>
-
-              {/* Chart Bars */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 pt-2">
-                {filteredHourlyBands.map((band) => {
-                  const isMax = band.total === maxBandTotal;
-                  const isSelected = selectedBandSlot === band.slot;
-                  const heightPercent = Math.max((band.total / maxBandTotal) * 100, 15);
-                  const sharePercent = totalSalesSum > 0 ? ((band.total / totalSalesSum) * 100).toFixed(1) : 0;
-
-                  return (
-                    <motion.button
-                      key={band.slot}
-                      type="button"
-                      whileHover={{ scale: 1.04, y: -2 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => {
-                        if (selectedBandSlot === band.slot) {
-                          setSelectedBandSlot(null);
-                        } else {
-                          setSelectedBandSlot(band.slot);
-                        }
-                      }}
-                      className={`text-left rounded-2xl p-3 border flex flex-col justify-between h-36 transition-all relative overflow-hidden cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-700 shadow-lg ring-2 ring-blue-400'
-                          : isMax
-                          ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100/80'
-                          : 'bg-[var(--mg-bg-elevated)] border-[var(--mg-border)] hover:border-blue-300 hover:bg-slate-50 text-[var(--mg-text-primary)]'
-                      }`}
-                    >
-                      {/* Badge Hora Pico o Seleccionado */}
-                      {isSelected ? (
-                        <span className="absolute top-1.5 right-1.5 text-[9px] font-black bg-white text-blue-700 px-1.5 py-0.5 rounded-full shadow-xs">
-                          ✓ ACTIVA
-                        </span>
-                      ) : isMax ? (
-                        <span className="absolute top-1.5 right-1.5 text-[8px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full shadow-xs">
-                          🔥 PICO
-                        </span>
-                      ) : null}
-
-                      {/* Header label */}
-                      <div>
-                        <p className={`font-mono text-[10px] font-extrabold ${isSelected ? 'text-blue-100' : 'text-[var(--mg-text-muted)]'}`}>
-                          {band.label}
-                        </p>
-                        <p className={`text-xs font-black mt-1 ${isSelected ? 'text-white' : 'text-[var(--mg-text-primary)]'}`}>
-                          {formatBs(band.total)}
-                        </p>
-                      </div>
-
-                      {/* Bar fill */}
-                      <div className="w-full bg-black/10 rounded-full h-2.5 overflow-hidden my-1">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${heightPercent}%` }}
-                          transition={{ duration: 0.5, ease: 'easeOut' }}
-                          className={`h-full rounded-full ${
-                            isSelected
-                              ? 'bg-white'
-                              : isMax
-                              ? 'bg-amber-500'
-                              : 'bg-blue-600'
-                          }`}
-                        />
-                      </div>
-
-                      {/* Footer count */}
-                      <div className="flex items-center justify-between text-[10px] font-bold">
-                        <span className={isSelected ? 'text-blue-100' : 'text-[var(--mg-text-secondary)]'}>
-                          {band.count} {band.count === 1 ? 'venta' : 'ventas'}
-                        </span>
-                        <span className={isSelected ? 'text-blue-200' : 'text-[var(--mg-text-muted)]'}>
-                          {sharePercent}%
-                        </span>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-
-                {filteredHourlyBands.length === 0 && (
-                  <div className="col-span-full py-8 text-center text-xs text-[var(--mg-text-muted)] font-bold">
-                    No hay franjas de ventas registradas para este turno.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* SI HAY UNA FRANJA SELECCIONADA: PANEL DE DETALLE DE VENTAS EN ESE HORARIO */}
-            <AnimatePresence>
-              {selectedBandObj && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-blue-50/70 rounded-[24px] border-2 border-blue-200 p-5 shadow-sm space-y-4 overflow-hidden"
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2 border-b border-blue-200/80 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
-                        ⏱️
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-black text-blue-950">
-                          Detalle de Lo Vendido en el Horario: <span className="font-mono text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200">{selectedBandObj.label}</span>
-                        </h4>
-                        <p className="text-xs text-blue-800/80 font-medium mt-0.5">
-                          {slotSales.length} {slotSales.length === 1 ? 'transacción realizada' : 'transacciones realizadas'} en este intervalo de 30 minutos
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200">
-                        📦 {slotProductsSummary.length} productos · 🧾 {slotSales.length} {slotSales.length === 1 ? 'recibo' : 'recibos'}
-                      </span>
-
-                      <button
-                        onClick={() => setSelectedBandSlot(null)}
-                        type="button"
-                        className="text-slate-400 hover:text-slate-700 text-lg font-bold w-7 h-7 rounded-full bg-white border border-blue-200 flex items-center justify-center cursor-pointer"
-                        title="Cerrar detalle"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Resumen rápido de la franja */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div className="bg-white p-3 rounded-xl border border-blue-200 shadow-2xs">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Total Recaudado</p>
-                      <p className="text-base font-black text-blue-950 mt-0.5">{formatBs(selectedBandObj.total)}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-blue-200 shadow-2xs">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Total Unidades</p>
-                      <p className="text-base font-black text-blue-950 mt-0.5">
-                        {slotProductsSummary.reduce((sum, p) => sum + p.quantity, 0)} ud.
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-blue-200 shadow-2xs col-span-2 sm:col-span-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Ticket Promedio</p>
-                      <p className="text-base font-black text-blue-950 mt-0.5">
-                        {formatBs(selectedBandObj.count > 0 ? selectedBandObj.total / selectedBandObj.count : 0)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* PRODUCTOS VENDIDOS EN ESA FRANJA */}
-                    <div className="bg-white rounded-2xl border border-blue-200 p-4 space-y-3">
-                      <h5 className="text-xs font-black uppercase text-blue-950 tracking-wider">
-                        📦 Lista de Productos y Cantidades Vendidas ({selectedBandObj.label})
-                      </h5>
-
-                      {slotProductsSummary.length > 0 ? (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs text-left border-collapse">
-                            <thead>
-                              <tr className="border-b border-slate-200 text-slate-500 font-extrabold uppercase text-[10px] bg-slate-50">
-                                <th className="py-2 px-3 rounded-l-lg">Producto</th>
-                                <th className="py-2 px-3">Categoría</th>
-                                <th className="py-2 px-3 text-center">Cant. Vendida</th>
-                                <th className="py-2 px-3 text-right rounded-r-lg">Subtotal</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                              {slotProductsSummary.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-blue-50/40">
-                                  <td className="py-2.5 px-3 font-extrabold text-slate-900">{item.productName}</td>
-                                  <td className="py-2.5 px-3">
-                                    <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md border border-slate-200 font-semibold">
-                                      {item.category}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center font-mono font-bold text-blue-700">
-                                    {item.quantity} ud.
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-black text-slate-900">
-                                    {formatBs(item.subtotal)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 font-medium py-4 text-center">
-                          Cargando ítems de las ventas registradas en esta franja...
-                        </p>
-                      )}
-                    </div>
-
-                  {/* RECIBOS DE ESA FRANJA (con Detalle y Recibo) */}
-                    <div className="bg-white rounded-2xl border border-blue-200 p-4 space-y-3">
-                      <h5 className="text-xs font-black uppercase text-blue-950 tracking-wider">
-                        🧾 Transacciones de Venta Registradas ({selectedBandObj.label})
-                      </h5>
-
-                      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                        {slotSales.map((sale) => {
-                          const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
-                          const formattedTime = saleDate.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                          const items = salesItemsMap[sale.id] || [];
-
-                          return (
-                            <div key={sale.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                              <div className="flex items-center justify-between text-xs flex-wrap gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
-                                    ⏱️ {formattedTime}
-                                  </span>
-                                  <span className="font-bold text-slate-800">
-                                    Cliente: {sale.clientName || 'Cliente Ocasional'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${
-                                    sale.paymentMethod === 'qr'
-                                      ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                      : sale.paymentMethod === 'fiado'
-                                      ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                  }`}>
-                                    {sale.paymentMethod || 'Efectivo'}
-                                  </span>
-                                  <span className="font-black text-slate-900 text-sm">
-                                    {formatBs(sale.total)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Ítems e instructivos del recibo */}
-                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/80 flex-wrap">
-                                <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-600 flex-1 min-w-0">
-                                  {items.length > 0 ? (
-                                    items.map((it, idx) => (
-                                      <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-md font-semibold">
-                                        {it.quantity}x {it.productName} ({formatBs(it.subtotal)})
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-slate-400 font-medium">Cargando detalles de ítems...</span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {onSelectSale && (
-                                    <button
-                                      onClick={() => onSelectSale(sale)}
-                                      type="button"
-                                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
-                                    >
-                                      🔍 Detalle
-                                    </button>
-                                  )}
-                                  {onReimprint && (
-                                    <button
-                                      onClick={() => onReimprint(sale)}
-                                      disabled={printingSaleId === sale.id}
-                                      type="button"
-                                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
-                                    >
-                                      {printingSaleId === sale.id ? '⌛ Imprimiendo...' : '🖨️ Recibo'}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Registro del día: filtros + todos los recibos (antes pestaña separada) */}
-            <div className="space-y-4">
+            {/* Registro del día: filtros + recibos expandibles */}
             {/* Encabezado y Filtros */}
             <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -693,7 +293,7 @@ export function DashboardCharts({
                     {isOwner ? '🧾 Registro de Recibos y Ventas de Hoy' : '🧾 Mis Recibos de Hoy'}
                   </h4>
                   <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-                    Filtra por método de pago o categoría, consulta transacciones y reimprime comprobantes
+                    Toca un recibo para ver sus productos · filtra por pago o categoría
                   </p>
                 </div>
                 <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
@@ -753,7 +353,7 @@ export function DashboardCharts({
                         <th className="px-4 py-3">Productos</th>
                         <th className="px-4 py-3">Pago</th>
                         <th className="px-4 py-3 text-right">Total</th>
-                        <th className="px-4 py-3 text-center">Acciones</th>
+                        <th className="px-2 py-3 w-10"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--mg-separator)] text-xs font-bold text-slate-700">
@@ -761,9 +361,14 @@ export function DashboardCharts({
                         const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt || Date.now());
                         const formattedTime = date.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
                         const itemsList = salesItemsMap[sale.id] || [];
+                        const expanded = expandedSaleId === sale.id;
 
                         return (
-                          <tr key={sale.id} className="hover:bg-slate-50/80 transition-colors">
+                          <React.Fragment key={sale.id}>
+                          <tr
+                            onClick={() => setExpandedSaleId(expanded ? null : sale.id)}
+                            className={`transition-colors cursor-pointer ${expanded ? 'bg-blue-50/60' : 'hover:bg-slate-50/80'}`}
+                          >
                             <td className="px-4 py-3 font-mono font-bold text-[var(--mg-text-primary)]">
                               {formattedTime}
                             </td>
@@ -794,30 +399,53 @@ export function DashboardCharts({
                             <td className="px-4 py-3 text-right font-black text-blue-700 font-mono text-sm">
                               {formatBs(sale.total)}
                             </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {onSelectSale && (
-                                  <button
-                                    onClick={() => onSelectSale(sale)}
-                                    type="button"
-                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer"
-                                  >
-                                    🔍 Detalle
-                                  </button>
-                                )}
-                                {onReimprint && (
-                                  <button
-                                    onClick={() => onReimprint(sale)}
-                                    disabled={printingSaleId === sale.id}
-                                    type="button"
-                                    className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-all shadow-2xs cursor-pointer"
-                                  >
-                                    {printingSaleId === sale.id ? '⌛' : '🖨️ Recibo'}
-                                  </button>
-                                )}
-                              </div>
+                            <td className="px-2 py-3 text-center">
+                              <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full border text-xs transition-transform ${expanded ? 'bg-blue-600 text-white border-blue-600 rotate-180' : 'bg-white text-slate-400 border-slate-200'}`}>
+                                ⌄
+                              </span>
                             </td>
                           </tr>
+                          {expanded && (
+                            <tr className="bg-blue-50/40">
+                              <td colSpan={6} className="px-4 py-3">
+                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                  <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                                    {itemsList.length > 0 ? (
+                                      itemsList.map((item, idx) => (
+                                        <span key={idx} className="bg-white border border-slate-200 px-2 py-1 rounded-md font-semibold text-[11px] text-slate-600 tabular-nums">
+                                          {item.quantity}x {item.productName} ({formatBs(item.subtotal)})
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-slate-400 font-medium text-xs">Cargando productos…</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {onSelectSale && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); onSelectSale(sale); }}
+                                        type="button"
+                                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
+                                      >
+                                        🔍 Detalle
+                                      </button>
+                                    )}
+                                    {onReimprint && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); onReimprint(sale); }}
+                                        disabled={printingSaleId === sale.id}
+                                        type="button"
+                                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        {printingSaleId === sale.id ? '⌛ Imprimiendo…' : '🖨️ Recibo'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
@@ -828,7 +456,6 @@ export function DashboardCharts({
                   No se encontraron ventas con los filtros seleccionados.
                 </div>
               )}
-            </div>
             </div>
           </motion.div>
         )}
