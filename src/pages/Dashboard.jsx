@@ -18,6 +18,7 @@ import { SaleDetailModal } from '../components/dashboard/SaleDetailModal';
 import { QrModal } from '../components/dashboard/QrModal';
 import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
+import { OwnerPulse } from '../components/OwnerPulse';
 
 function SectionHeader({ title }) {
   return (
@@ -345,6 +346,15 @@ export default function Dashboard() {
 
       {/* ALERTA DE STOCK BAJO (solo aparece si hay productos por reponer) */}
       <LowStockAlert lowStock={lowStock} onLowStockClick={handleLowStockClick} />
+
+      {/* PULSO DEL NEGOCIO (solo dueño): mensual, stock, sucursales y en vivo */}
+      <OwnerPulse
+        businessId={businessId}
+        liveSales={todaySales}
+        salesItemsMap={salesItemsMap}
+        lowStock={lowStock}
+        onNavigate={(path) => navigate(path)}
+      />
 
       {/* SECCIÓN 2 — ANÁLISIS DETALLADO (solo si hubo ventas hoy) */}
       {hasSalesToday && (
