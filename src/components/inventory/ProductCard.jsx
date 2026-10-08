@@ -76,7 +76,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
               </span>
             ) : (
               <span className="bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                {product.stock} {product.unit || 'und'}
+                {product.stock} {product.unitLabel || 'und'}
               </span>
             )}
 
@@ -167,7 +167,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
                       isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'
                     }`}
                   >
-                    {product.stock} {product.unit || 'und'}
+                    {product.stock} {product.unitLabel || 'und'}
                   </p>
                 </div>
               </div>

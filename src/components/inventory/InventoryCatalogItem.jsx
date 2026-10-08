@@ -93,7 +93,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                 Stock Disponible
               </span>
               <p className={`text-sm font-black ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'}`}>
-                {product.stock} {product.unit || 'und'}
+                {product.stock} {product.unitLabel || 'und'}
               </p>
             </div>
           </div>
