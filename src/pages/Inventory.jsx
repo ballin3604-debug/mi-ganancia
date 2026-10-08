@@ -374,10 +374,16 @@ export default function Inventory() {
     try {
       if (editingProduct) {
         const globalCur = Number(products.find((p) => p.id === editingProduct.id)?.stock || 0);
-        // Otros campos con stock neutro; el stock va a la sede objetivo
-        await updateProduct(editingProduct.id, { ...data, stock: globalCur, expectedStock: globalCur });
         if (hasBranchRows && targetBranchId) {
+          // El stock vive en la sede: global nuevo = global actual + (nuevo − anterior de sede).
+          // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
+          // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
+          const oldBranch = Number(stockMap.get(`${targetBranchId}:${editingProduct.id}`) ?? globalCur);
+          const newGlobal = Math.max(0, globalCur + (Number(formStockVal) - oldBranch));
           await setBranchStock(businessId, editingProduct, targetBranchId, Number(formStockVal));
+          // Otros campos + stock neutro (expectedStock = stock → no mueve el global local,
+          // pero la operación lleva el valor ya correcto al servidor).
+          await updateProduct(editingProduct.id, { ...data, stock: newGlobal, expectedStock: newGlobal });
         } else {
           await updateProduct(editingProduct.id, { ...data, stock: Number(formStockVal), expectedStock: globalCur });
         }
