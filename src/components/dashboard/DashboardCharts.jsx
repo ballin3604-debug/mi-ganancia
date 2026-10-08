@@ -287,57 +287,19 @@ export function DashboardCharts({
           >
             {/* Registro del día: filtros + recibos expandibles */}
             {/* Encabezado y Filtros */}
-            <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] space-y-3">
+            <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)]">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h4 className="text-sm font-black text-[var(--mg-text-primary)]">
                     {isOwner ? 'Registro de Recibos y Ventas de Hoy' : 'Mis Recibos de Hoy'}
                   </h4>
                   <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-                    Toca un recibo para ver sus productos · filtra por pago o categoría
+                    Toca un recibo para ver sus productos
                   </p>
                 </div>
                 <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
                   {filteredSales.length} de {visibleSalesCount} {visibleSalesCount === 1 ? 'venta' : 'ventas'}
                 </span>
-              </div>
-
-              {/* Controles de Filtro */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--mg-separator)]">
-                <div>
-                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)] block mb-1">
-                    Método de Pago
-                  </label>
-                  <select
-                    value={filterPaymentMethod}
-                    onChange={(e) => setFilterPaymentMethod && setFilterPaymentMethod(e.target.value)}
-                    className="mg-input text-xs font-bold py-2"
-                    aria-label="Filtrar por método de pago"
-                  >
-                    <option value="Todos">Todos los métodos</option>
-                    <option value="cash">💵 Efectivo</option>
-                    <option value="qr">📲 QR</option>
-                    <option value="mixto">🔀 Mixto</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)] block mb-1">
-                    Categoría de Producto
-                  </label>
-                  <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory && setFilterCategory(e.target.value)}
-                    className="mg-input text-xs font-bold py-2"
-                    aria-label="Filtrar por categoría de producto"
-                  >
-                    {categoriesList.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat === 'Todas' ? 'Todas las categorías' : cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
 

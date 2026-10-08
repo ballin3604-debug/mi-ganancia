@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { formatBs, formatBsShort } from '../../utils/currency';
+import { AppIcon } from '../icons';
 
 export function MagicMetricCards({
   totalHoy = 0,
@@ -45,9 +46,7 @@ export function MagicMetricCards({
             Ventas de Hoy
           </span>
           <div className="w-9 h-9 rounded-xl bg-blue-50 text-[var(--mg-accent)] flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <AppIcon name="caja" size={20} />
           </div>
         </div>
 
@@ -59,8 +58,10 @@ export function MagicMetricCards({
           <span className="font-extrabold text-[var(--mg-text-secondary)]">
             {paidSalesCount} {paidSalesCount === 1 ? 'venta' : 'ventas'}
           </span>
-          <span className="text-[var(--mg-text-muted)] font-medium">
-            💵 {formatBsShort(totalCash)} · 📲 {formatBsShort(totalQr)}
+          <span className="text-[var(--mg-text-muted)] font-bold flex items-center gap-1.5">
+            <span className="flex items-center gap-0.5"><AppIcon name="cash" size={12} /> {formatBsShort(totalCash)}</span>
+            <span className="text-[var(--mg-text-faint)]">·</span>
+            <span className="flex items-center gap-0.5"><AppIcon name="qr" size={12} /> {formatBsShort(totalQr)}</span>
           </span>
         </div>
       </motion.div>
@@ -76,9 +77,7 @@ export function MagicMetricCards({
             Hora Pico de Ventas
           </span>
           <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-110 transition-transform">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <AppIcon name="reloj" size={20} />
           </div>
         </div>
 
@@ -107,9 +106,7 @@ export function MagicMetricCards({
             Promedio por Venta
           </span>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-110 transition-transform">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+            <AppIcon name="reportes" size={20} />
           </div>
         </div>
 
