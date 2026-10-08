@@ -243,8 +243,7 @@ export function DashboardCharts({
         <div className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] p-1 rounded-2xl border border-[var(--mg-border)] max-w-full overflow-x-auto scrollbar-none">
           {[
             { id: 'recibos', label: 'Recibos de Hoy', icon: 'recibo' },
-            { id: 'productos', label: 'Productos y Categorías', icon: 'nuevoProducto' },
-            { id: 'tendencia', label: 'Tendencia Temporal', icon: 'reportes' },
+            { id: 'analisis', label: 'Productos y Tendencia', icon: 'nuevoProducto' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -461,16 +460,17 @@ export function DashboardCharts({
           </motion.div>
         )}
 
-        {/* VISTA 2: PRODUCTOS Y CATEGORÍAS */}
-        {activeTab === 'productos' && (
+        {/* VISTA 2: PRODUCTOS + TENDENCIA (línea temporal abajo) */}
+        {activeTab === 'analisis' && (
           <motion.div
-            key="productos"
+            key="analisis"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            className="space-y-6"
           >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-1">
                 Productos más vendidos
@@ -535,23 +535,15 @@ export function DashboardCharts({
               </h4>
               <DonutChart data={categorySalesChartData} totalLabel="Total" isCurrency={true} />
             </div>
-          </motion.div>
-        )}
+          </div>
 
-        {/* VISTA 3: TENDENCIA TEMPORAL (LÍNEA) */}
-        {activeTab === 'tendencia' && (
-          <motion.div
-            key="tendencia"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs"
-          >
+          {/* Línea temporal abajo */}
+          <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
             <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
               Tendencia de Ingresos por Media Hora (Bs)
             </h4>
             <LineChart data={hourlyTrendData} labelEvery={4} />
+          </div>
           </motion.div>
         )}
       </AnimatePresence>

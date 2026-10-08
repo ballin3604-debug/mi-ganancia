@@ -16,8 +16,8 @@ import { LowStockAlert } from '../components/dashboard/LowStockAlert';
 import { DashboardCharts } from '../components/dashboard/DashboardCharts';
 import { SaleDetailModal } from '../components/dashboard/SaleDetailModal';
 import { QrModal } from '../components/dashboard/QrModal';
-import { LogoutModal } from '../components/LogoutModal';
 import { AppIcon } from '../components/icons';
+import { CashierHome } from '../components/CashierHome';
 
 function SectionHeader({ title }) {
   return (
@@ -40,7 +40,6 @@ export default function Dashboard() {
   const [exporting, setExporting] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [showQr, setShowQr] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [salesItemsMap, setSalesItemsMap] = useState({});
   const [printingSaleId, setPrintingSaleId] = useState(null);
   const [filterPaymentMethod, setFilterPaymentMethod] = useState('Todos');
@@ -278,6 +277,36 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
 
+  // Cajero: inicio propio de trabajo (sin totales del negocio ni ajustes).
+  if (!isOwner) {
+    return (
+      <>
+        <CashierHome
+          user={user}
+          businessName={business?.name || settings?.businessName || 'Mi negocio'}
+          todayStr={todayStr}
+          sales={visibleSales}
+          salesItemsMap={salesItemsMap}
+          lowStock={lowStock}
+          totalCobrado={totalHoy}
+          totalCash={totalCash}
+          totalQr={totalQr}
+          onNavigate={(path) => navigate(path)}
+          onSelectSale={(sale) => setSelectedSale(sale)}
+          onReimprint={handleReimprint}
+          printingSaleId={printingSaleId}
+        />
+        {selectedSale && (
+          <SaleDetailModal
+            sale={selectedSale}
+            businessId={businessId}
+            onClose={() => setSelectedSale(null)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -359,20 +388,6 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* CERRAR SESIÓN */}
-      <div className="flex justify-center pt-2">
-        <button
-          onClick={() => setIsLogoutModalOpen(true)}
-          type="button"
-          className="text-[var(--mg-text-faint)] hover:text-rose-600 text-xs font-bold py-2.5 px-5 rounded-2xl hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all flex items-center gap-2"
-        >
-          <svg className="w-4 h-4 fill-none stroke-current" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Cerrar sesión de negocio</span>
-        </button>
-      </div>
-
       {/* MODALES */}
       {selectedSale && (
         <SaleDetailModal
@@ -390,13 +405,6 @@ export default function Dashboard() {
           onNavigateSettings={() => navigate('/configuracion')}
         />
       )}
-
-      <LogoutModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        user={user}
-        business={business}
-      />
     </motion.div>
   );
 }
