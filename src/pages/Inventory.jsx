@@ -7,6 +7,7 @@ import {
   addProduct,
   updateProduct,
   deleteProduct,
+  subscribeToProducts,
   subscribeToReplenishments,
   updateReplenishmentExpiry,
 } from '../services/products';
@@ -196,6 +197,16 @@ export default function Inventory() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Productos en vivo: ventas, compras u otros cambios (misma app u otro
+  // dispositivo sincronizado) se reflejan sin recargar ni re-guardar.
+  useEffect(() => {
+    if (!businessId) return;
+    const unsub = subscribeToProducts(businessId, (prods) => {
+      setProducts(prods);
+    });
+    return unsub;
+  }, [businessId]);
 
   // Guardar borrador en cada cambio mientras el formulario está abierto.
   // Así, si el sistema mata la página al abrir la cámara, al volver se restaura.

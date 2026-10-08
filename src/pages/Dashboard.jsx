@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../services/sales';
-import { getProducts } from '../services/products';
+import { getProducts, subscribeToProducts } from '../services/products';
 import { printReceipt } from '../components/Receipt';
 
 // Subcomponentes del Dashboard
@@ -64,6 +64,18 @@ export default function Dashboard() {
 
     return () => {
       unsubSales();
+    };
+  }, [businessId]);
+
+  // Productos en vivo: el resumen y las alertas de stock reaccionan
+  // a ventas y ediciones sin recargar la pantalla.
+  useEffect(() => {
+    if (!businessId) return;
+    const unsubProducts = subscribeToProducts(businessId, (prods) => {
+      setProducts(prods);
+    });
+    return () => {
+      unsubProducts();
     };
   }, [businessId]);
 

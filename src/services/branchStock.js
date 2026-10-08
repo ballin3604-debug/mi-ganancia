@@ -1,6 +1,6 @@
 import { db, generateUUID } from './localDb';
 import { buildOutboxOp, refreshOutboxState } from './syncEngine';
-import { updateProduct } from './products';
+import { updateProduct, notifyProductChanges } from './products';
 
 // ─────────────────────────────────────────────────────────────
 // Fase 2: stock por sede. branch_stock (sede × producto) es la fuente;
@@ -112,6 +112,7 @@ export async function setBranchStock(businessId, product, branchId, newBranchSto
     }
   });
   notifyBranchStock(businessId);
+  notifyProductChanges(businessId);
   try {
     if (sync) await refreshOutboxState(businessId);
   } catch { /* offline: queda encolado */ }
@@ -213,6 +214,7 @@ export async function applyPurchaseStock({ businessId, product, branchId, qty, f
       stock: newBranch,
     }, businessId));
     notifyBranchStock(businessId);
+    notifyProductChanges(businessId);
     try {
       await refreshOutboxState(businessId);
     } catch { /* offline */ }
