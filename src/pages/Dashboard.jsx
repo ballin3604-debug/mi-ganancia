@@ -6,7 +6,6 @@ import { useBusiness } from '../context/BusinessContext';
 import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../services/sales';
 import { getProducts } from '../services/products';
 import { printReceipt } from '../components/Receipt';
-import { getDebts } from '../services/debts';
 
 // Subcomponentes del Dashboard
 import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton';
@@ -37,7 +36,6 @@ export default function Dashboard() {
   // Estados
   const [todaySales, setTodaySales] = useState([]);
   const [products, setProducts] = useState([]);
-  const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
@@ -58,11 +56,9 @@ export default function Dashboard() {
 
     Promise.allSettled([
       getProducts(businessId),
-      getDebts(businessId),
     ])
-      .then(([prods, dbs]) => {
+      .then(([prods]) => {
         if (prods.status === 'fulfilled') setProducts(prods.value);
-        if (dbs.status === 'fulfilled') setDebts(dbs.value);
       })
       .finally(() => setLoading(false));
 
@@ -70,11 +66,6 @@ export default function Dashboard() {
       unsubSales();
     };
   }, [businessId]);
-
-  // Cuentas por cobrar (fiados)
-  const pendingDebts = debts.filter((d) => d.status === 'pending');
-  const totalPendingDebts = pendingDebts.reduce((sum, d) => sum + (d.amount || 0), 0);
-  const uniqueClientsCount = new Set(pendingDebts.map((d) => (d.clientName || '').trim().toLowerCase())).size;
 
   // Ventas visibles según rol (dueño ve todas, cajero solo las suyas)
   const visibleSales = useMemo(() => (
@@ -214,7 +205,7 @@ export default function Dashboard() {
     products.filter((p) => p.stock <= (p.minStock || 5))
   ), [products]);
 
-  // Totales por método de pago (con soporte para mixtos y excluyendo fiados)
+  // Totales por método de pago (con soporte para mixtos)
   const totalQr = visibleSales.reduce((sum, s) => {
     if (s.paymentMethod === 'qr') return sum + (s.total || 0);
     if (s.paymentMethod === 'mixto') return sum + (s.montoQR || 0);
@@ -313,14 +304,11 @@ export default function Dashboard() {
             totalCash={totalCash}
             totalQr={totalQr}
             peakBand={peakBand}
-            totalPendingDebts={totalPendingDebts}
-            uniqueClientsCount={uniqueClientsCount}
             onNavigate={(path) => navigate(path)}
           />
         ) : (
           <EmptyDayState
             isOwner={isOwner}
-            pendingSalesYesterday={pendingDebts.length}
             onNavigate={(path) => navigate(path)}
           />
         )}

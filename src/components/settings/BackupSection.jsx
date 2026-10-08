@@ -30,7 +30,7 @@ export function BackupSection({
 
         <p className="text-xs text-[var(--mg-text-secondary)] leading-relaxed bg-[var(--mg-bg-elevated)] p-3 rounded-2xl border border-[var(--mg-border)]">
           Baja a tu celular o computadora un archivo con todos los datos de tu negocio: productos,
-          ventas, compras, fiados, egresos y clientes. Guardalo en un lugar seguro (WhatsApp, correo,
+          ventas, compras, egresos y clientes. Guardalo en un lugar seguro (WhatsApp, correo,
           Drive). Te recomendamos hacerlo cada semana.
         </p>
 

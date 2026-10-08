@@ -13,7 +13,6 @@ import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import MatrixReport from './pages/MatrixReport';
 import PendingApproval from './pages/PendingApproval';
-import Debts from './pages/Debts';
 import Vet from './pages/Vet';
 import LoadingSpinner from './components/LoadingSpinner';
 import SplashScreen from './components/SplashScreen';
@@ -165,7 +164,6 @@ export default function App() {
             <Route path="egresos" element={<Expenses />} />
             <Route path="reportes" element={<PremiumGate feature="advancedReports" title="Los reportes avanzados son Pro"><MatrixReport /></PremiumGate>} />
             <Route path="configuracion" element={<Settings />} />
-            <Route path="cxc" element={<Debts />} />
             <Route path="mascotas" element={<Vet />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
@@ -196,7 +194,6 @@ export default function App() {
           <Route path="egresos" element={<Expenses />} />
           <Route path="reportes" element={<PremiumGate feature="advancedReports" title="Los reportes avanzados son Pro"><MatrixReport /></PremiumGate>} />
           <Route path="configuracion" element={<Settings />} />
-          <Route path="cxc" element={<Debts />} />
             <Route path="mascotas" element={<Vet />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

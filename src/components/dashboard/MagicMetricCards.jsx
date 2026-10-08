@@ -8,8 +8,6 @@ export function MagicMetricCards({
   totalCash = 0,
   totalQr = 0,
   peakBand = null,
-  totalPendingDebts = 0,
-  uniqueClientsCount = 0,
   onNavigate
 }) {
   const avgTicket = paidSalesCount > 0 ? totalHoy / paidSalesCount : 0;
@@ -34,7 +32,7 @@ export function MagicMetricCards({
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
     >
       {/* 1. VENTAS DE HOY */}
       <motion.div
@@ -129,37 +127,6 @@ export function MagicMetricCards({
         </div>
       </motion.div>
 
-      {/* 4. FIADOS POR COBRAR (CxC) */}
-      <motion.div
-        variants={itemVariants}
-        whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        onClick={() => onNavigate && onNavigate('/cxc')}
-        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group cursor-pointer relative overflow-hidden"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-            Fiados por Cobrar
-          </span>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-        </div>
-
-        <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight">
-          {formatBs(totalPendingDebts)}
-        </p>
-
-        <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--mg-separator)] text-[11px]">
-          <span className="font-extrabold text-purple-800 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-            {uniqueClientsCount} {uniqueClientsCount === 1 ? 'cliente' : 'clientes'}
-          </span>
-          <span className="text-[var(--mg-text-muted)] font-bold text-[10px]">
-            Gestionar ›
-          </span>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }

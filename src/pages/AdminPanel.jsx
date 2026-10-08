@@ -885,7 +885,7 @@ export default function AdminPanel() {
                 ¿Eliminar "{deleteTarget.name}"?
               </p>
               <p className="text-[13px] text-[var(--mg-text-secondary)] mt-1.5 leading-relaxed">
-                Se borrarán <b>ventas, productos, fiados, gastos, compras y usuarios</b> de este negocio.
+                Se borrarán <b>ventas, productos, gastos, compras y usuarios</b> de este negocio.
                 Esta acción <b>no se puede deshacer</b>.
               </p>
             </div>

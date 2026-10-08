@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
  * Reemplaza a las tarjetas de métricas y a los gráficos, que en cero solo
  * mostrarían "Bs 0.00" y "Sin registro".
  */
-export function EmptyDayState({ isOwner, pendingSalesYesterday, onNavigate }) {
+export function EmptyDayState({ isOwner, onNavigate }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -55,17 +55,6 @@ export function EmptyDayState({ isOwner, pendingSalesYesterday, onNavigate }) {
           </svg>
           <span>Registrar primera venta</span>
         </motion.button>
-
-        {/* Atajo secundario, útil sólo si hay algo pendiente por cobrar */}
-        {isOwner && pendingSalesYesterday > 0 && (
-          <button
-            onClick={() => onNavigate('/cxc')}
-            type="button"
-            className="mt-3 text-xs font-bold text-[var(--mg-gold-text)] hover:underline"
-          >
-            Tenés {pendingSalesYesterday} {pendingSalesYesterday === 1 ? 'fiado pendiente' : 'fiados pendientes'} por cobrar ›
-          </button>
-        )}
       </div>
     </motion.div>
   );

@@ -7,7 +7,6 @@ function getPaymentMethodLabel(method) {
   if (method === 'qr') return '📲 QR';
   if (method === 'cash') return '💵 Efectivo';
   if (method === 'mixto') return '🔀 Mixto';
-  if (method === 'fiado') return '⏳ Fiado';
   return '💵 Efectivo';
 }
 

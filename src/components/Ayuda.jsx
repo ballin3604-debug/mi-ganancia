@@ -4,7 +4,7 @@ import { AYUDA, claveAyudaParaRuta } from '../utils/texto-ayuda';
 
 // Botón flotante "?" + modal de ayuda contextual.
 // Se monta una sola vez en Layout y automáticamente muestra la ayuda
-// de la pantalla actual (ventas, inventario, fiados, etc.).
+// de la pantalla actual (ventas, inventario, etc.).
 export default function Ayuda() {
   const location = useLocation();
   const [abierto, setAbierto] = useState(false);

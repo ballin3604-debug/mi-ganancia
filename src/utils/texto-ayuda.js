@@ -26,13 +26,13 @@ export const AYUDA = {
     titulo: 'Ventas: cobrar rápido',
     linea: 'Busca el producto, súmalo al carrito y cobra.',
     explicacion:
-      'Es tu caja registradora. Buscas por nombre o categoría, sumas con + y cobras en Efectivo, QR, Mixto (parte y parte) o Fiado. La app calcula el cambio sola y no deja vender más de lo que tienes en stock.',
+      'Es tu caja registradora. Buscas por nombre o categoría, sumas con + y cobras en Efectivo, QR o Mixto (parte y parte). La app calcula el cambio sola y no deja vender más de lo que tienes en stock.',
     pasos: [
       'Busca el producto o filtra por categoría.',
       'Toca el botón azul del lector para escanear el código de barras con tu cámara.',
       'Tócalo para sumarlo al carrito (+ / − para ajustar).',
       'Elige cómo te pagan y toca "Cobrar".',
-      'Si es QR, muestra tu QR y confirma. Si es Fiado, escribe el nombre del cliente.',
+      'Si es QR, muestra tu QR y confirma.',
     ],
     ejemplo: 'Vendes 3 cosas por Bs 75, te pagan con Bs 100. La app te dice: "Devolver Bs 25".',
     tip: 'Si sales a mitad de una venta, no se borra: al volver la recupera sola.',
@@ -115,30 +115,6 @@ export const AYUDA = {
     tip: 'Separa bien Diario vs Fijo: los reportes los usan para calcular tu ganancia real.',
   },
 
-  'cxc-pendientes': {
-    emoji: '📖',
-    titulo: 'Fiados: que nadie se olvide de pagarte',
-    linea: 'Quién te debe, cuánto y desde cuándo.',
-    explicacion:
-      'Se acabó el cuaderno mojado. Cada venta al fiado crea sola su deuda con nombre, teléfono y fecha límite. Los vencidos salen en rojo primero para que cobres a quien más urge.',
-    pasos: [
-      'Vende al fiado desde Ventas o toca "+ Fiado manual".',
-      'Busca por nombre o filtra "Solo vencidos".',
-      'Toca "Cobrar" cuando te paguen: elige Efectivo o QR.',
-    ],
-    ejemplo: 'Don Juan te debe Bs 120 desde el lunes. Lo ves en rojo como vencido y lo cobras en 1 clic.',
-    tip: 'Anota siempre el teléfono y la fecha límite: cobrarás el doble de rápido.',
-  },
-
-  'cxc-cobrados': {
-    emoji: '✅',
-    titulo: 'Cobros realizados',
-    linea: 'Los fiados que ya recuperaste.',
-    explicacion: 'Historial de deudas ya pagadas, ordenadas de la más reciente a la más antigua. Sirve como comprobante de que te pagaron.',
-    pasos: ['Revisa quién ya te pagó.', 'Busca por nombre si necesitas comprobar algo.'],
-    ejemplo: 'Doña María dice "ya te pagué": la buscas aquí y ves la fecha del cobro.',
-    tip: 'Los cobrados también suman a tu total del día en Inicio.',
-  },
 
   'reportes-ganancias': {
     emoji: '📈',
@@ -239,7 +215,6 @@ export function claveAyudaParaRuta(pathname, search = '') {
   if (pathname === '/compras') return tab === 'historial' ? 'compras-historial' : 'compras';
   if (pathname === '/inventario') return 'inventario';
   if (pathname === '/egresos') return 'egresos';
-  if (pathname === '/cxc') return tab === 'paid' ? 'cxc-cobrados' : 'cxc-pendientes';
   if (pathname === '/mascotas') return 'mascotas';
   if (pathname === '/configuracion') return 'configuracion';
   if (pathname === '/reportes') {

@@ -556,7 +556,7 @@ export function printReceipt({
     ? saleId.replace(/-/g, '').slice(-8).toUpperCase()
     : String(d.getTime()).slice(-6);
 
-  const payLabels = { qr: '📲 QR / Transferencia', mixto: '🔀 Mixto', fiado: '⏳ Fiado (CxC)', cash: '💵 Efectivo' };
+  const payLabels = { qr: '📲 QR / Transferencia', mixto: '🔀 Mixto', cash: '💵 Efectivo' };
   const payLabel = payLabels[paymentMethod] || '💵 Efectivo';
 
   const cleanExtraRows = Array.isArray(extraCostRows) ? extraCostRows.filter((r) => Number(r.amount) > 0) : [];

@@ -8,7 +8,6 @@ import { registerSale, subscribeToSales, subscribeToSaleItems } from '../service
 import { getCustomers, addCustomer } from '../services/customers';
 import { subscribeToCategories } from '../services/categories';
 import { printReceipt } from '../components/Receipt';
-import { addDebt } from '../services/debts';
 import DataTable from '../components/DataTable';
 import ReportHeader from '../components/ReportHeader';
 import { toLocalISODate } from '../utils/dateRanges';
@@ -556,13 +555,13 @@ export default function Sales() {
   }, [scopedSalesReport]);
 
   // Totales por cajero calculados a nivel VENTA (no por ítem, para no duplicar).
-  // "En caja" = efectivo + QR + mixto (plata que entró). Fiado va aparte.
+  // "En caja" = efectivo + QR + mixto (plata que entró).
   const cashierStats = useMemo(() => {
     const map = {};
     filteredSalesReport.forEach((s) => {
       const name = s.seller_name || 'Sin nombre';
       if (!map[name]) {
-        map[name] = { name, ventas: 0, cash: 0, qr: 0, mixto: 0, fiado: 0, ganancia: 0 };
+        map[name] = { name, ventas: 0, cash: 0, qr: 0, mixto: 0, ganancia: 0 };
       }
       const st = map[name];
       const total = Number(s.total || 0);
@@ -570,7 +569,6 @@ export default function Sales() {
       if (s.paymentMethod === 'cash') st.cash += total;
       else if (s.paymentMethod === 'qr') st.qr += total;
       else if (s.paymentMethod === 'mixto') st.mixto += total;
-      else if (s.paymentMethod === 'fiado') st.fiado += total;
       else st.cash += total;
     });
     salesReportRows.forEach((r) => {
@@ -578,7 +576,7 @@ export default function Sales() {
       if (map[name]) map[name].ganancia += Number(r.ganancia || 0);
     });
     return Object.values(map)
-      .map((st) => ({ ...st, enCaja: st.cash + st.qr + st.mixto, total: st.cash + st.qr + st.mixto + st.fiado }))
+      .map((st) => ({ ...st, enCaja: st.cash + st.qr + st.mixto, total: st.cash + st.qr + st.mixto }))
       .sort((a, b) => b.enCaja - a.enCaja);
   }, [scopedSalesReport, salesReportRows]);
 
@@ -592,7 +590,6 @@ export default function Sales() {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-green-50 text-green-700 border-green-200' },
     qr: { label: 'QR', icon: 'qr', pill: 'bg-blue-50 text-blue-700 border-blue-200' },
     mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
-    fiado: { label: 'Fiado', icon: 'fiado', pill: 'bg-amber-50 text-amber-700 border-amber-200' },
   };
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
@@ -672,7 +669,7 @@ export default function Sales() {
   }
 
   function handleExportSales() {
-    const labels = { cash: 'Efectivo', qr: 'QR', mixto: 'Mixto', fiado: 'Fiado' };
+    const labels = { cash: 'Efectivo', qr: 'QR', mixto: 'Mixto' };
     const columns = [
       { label: 'Fecha' },
       { label: 'N° Venta' },
@@ -990,10 +987,6 @@ export default function Sales() {
         if (Number(mixedQr || 0) > 0 && isQrConfirmed) {
           extraFields.confirmadoPor = user?.displayName || user?.email || 'Vendedor';
         }
-      } else if (paymentMethod === 'fiado') {
-        extraFields.status = 'pending_payment';
-        extraFields.clientPhone = clientPhone.trim();
-        extraFields.dueDate = dueDate || null;
       }
       // Sede operativa de esta venta (para reportes por sucursal)
       if (activeBranchId) extraFields.branchId = activeBranchId;
@@ -1009,21 +1002,6 @@ export default function Sales() {
         extraFields
       );
 
-      if (paymentMethod === 'fiado') {
-        const productSummary = cartItems.map(item =>
-          item.factor > 1 ? `${item.product.name} (${item.presLabel} x${item.quantity})` : `${item.product.name} (x${item.quantity})`
-        ).join(', ');
-        await addDebt(businessId, {
-          clientName: finalClientName,
-          clientNit: finalClientNit,
-          clientPhone: clientPhone,
-          dueDate: dueDate,
-          amount: total,
-          description: productSummary,
-          saleId: saleId,
-        });
-      }
-      
       const saleDetails = {
         saleId,
         total,
@@ -1089,12 +1067,6 @@ export default function Sales() {
           return;
         }
         setShowQrConfirmModal(true);
-        return;
-      }
-    }
-    if (paymentMethod === 'fiado') {
-      if (!(selectedCustomer?.name || typedClientName).trim()) {
-        alert('Para ventas al fiado, selecciona o escribe el nombre del cliente.');
         return;
       }
     }
@@ -1236,14 +1208,13 @@ export default function Sales() {
               <option value="cash">💵 Efectivo</option>
               <option value="qr">📲 QR</option>
               <option value="mixto">🔀 Mixto</option>
-              <option value="fiado">⏳ Fiado (CxC)</option>
             </select>
           </div>
 
           {/* Cliente */}
           <div>
             <p className="text-xs text-[var(--mg-text-muted)] font-semibold mb-1">
-              Cliente {paymentMethod === 'fiado' && <span className="text-red-500 font-bold">*</span>}
+              Cliente
             </p>
             {isCustomClient ? (
               <input
@@ -1370,31 +1341,6 @@ export default function Sales() {
             </div>
           )}
 
-          {/* Campos adicionales para Fiado */}
-          {paymentMethod === 'fiado' && (
-            <div className="grid grid-cols-2 gap-2 bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-2xl p-3.5">
-              <div>
-                <p className="text-xs text-[var(--mg-text-muted)] font-semibold mb-1">Teléfono</p>
-                <input
-                  type="tel"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="Ej: 71234567"
-                  className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-medium"
-                />
-              </div>
-              <div>
-                <p className="text-xs text-[var(--mg-text-muted)] font-semibold mb-1">Fecha Límite</p>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-medium cursor-pointer"
-                />
-              </div>
-            </div>
-          )}
-
           {/* Acciones principales */}
           <div className="flex items-center gap-3 pt-2">
             <div className="flex-1">
@@ -1424,10 +1370,9 @@ export default function Sales() {
             </button>
             <button
               onClick={handleCheckoutClick}
-              disabled={registering || 
+              disabled={registering ||
                 (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) ||
-                (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total) ||
-                (paymentMethod === 'fiado' && !(selectedCustomer?.name || typedClientName).trim())
+                (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total)
               }
               className="bg-[var(--mg-accent)] text-white font-bold py-3.5 px-6 rounded-2xl text-sm active:scale-95 transition-all disabled:opacity-60 shrink-0 shadow-lg flex items-center gap-2"
               style={{ boxShadow: '0 8px 20px rgba(0, 122, 255, 0.3)' }}
@@ -1528,7 +1473,7 @@ export default function Sales() {
                     <table className="w-full text-sm min-w-[640px] border-collapse bg-white">
                       <thead>
                         <tr className="bg-[var(--mg-bg-elevated)]">
-                          {['Cajero', 'Ventas', 'Efectivo', 'QR', 'Mixto', 'Fiado', 'En caja', 'Ganancia'].map((h, i) => (
+                          {['Cajero', 'Ventas', 'Efectivo', 'QR', 'Mixto', 'En caja', 'Ganancia'].map((h, i) => (
                             <th key={h} className={`p-2.5 text-xs font-black text-[var(--mg-text-secondary)] uppercase tracking-wide whitespace-nowrap ${i >= 2 ? 'text-right' : 'text-left'}`}>
                               {h}
                             </th>
@@ -1543,7 +1488,7 @@ export default function Sales() {
                             className="border-t border-[var(--mg-separator)] hover:bg-blue-50/40 cursor-pointer transition-colors"
                           >
                             <td className="p-2.5 font-bold text-[var(--mg-text-primary)] whitespace-nowrap">
-                              👤 {st.name}
+                              {st.name}
                             </td>
                             <td className="p-2.5 text-left">
                               <span className="inline-block bg-[var(--mg-bg-elevated)] rounded-full px-2.5 py-0.5 text-xs font-black">
@@ -1553,7 +1498,6 @@ export default function Sales() {
                             <td className="p-2.5 text-right font-semibold text-green-700">{formatBs(st.cash)}</td>
                             <td className="p-2.5 text-right font-semibold text-blue-700">{formatBs(st.qr)}</td>
                             <td className="p-2.5 text-right font-semibold text-purple-700">{formatBs(st.mixto)}</td>
-                            <td className="p-2.5 text-right font-semibold text-amber-700">{formatBs(st.fiado)}</td>
                             <td className="p-2.5 text-right font-black text-[var(--mg-accent)]">{formatBs(st.enCaja)}</td>
                             <td className="p-2.5 text-right font-bold text-green-600">{formatBs(st.ganancia)}</td>
                           </tr>
@@ -1587,7 +1531,6 @@ export default function Sales() {
                             { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-green-700 bg-green-50 border-green-200' },
                             { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-blue-700 bg-blue-50 border-blue-200' },
                             { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-purple-700 bg-purple-50 border-purple-200' },
-                            { icon: 'fiado', label: 'Fiado', value: st.fiado, cls: 'text-amber-700 bg-amber-50 border-amber-200' },
                           ].map((m) => (
                             <div key={m.label} className={`rounded-2xl p-2.5 text-center border ${m.cls}`}>
                               <p className="flex justify-center"><AppIcon name={m.icon} size={18} /></p>
@@ -1832,9 +1775,8 @@ export default function Sales() {
               <div className="flex justify-between">
                 <span className="text-[var(--mg-text-muted)] font-medium">Método de Pago:</span>
                 <span className="font-bold text-[var(--mg-text-primary)]">
-                  {showSuccessModal.paymentMethod === 'qr' ? '📲 QR' : 
-                   showSuccessModal.paymentMethod === 'cash' ? '💵 Efectivo' :
-                   showSuccessModal.paymentMethod === 'mixto' ? '🔀 Mixto' : '⏳ Fiado (CxC)'}
+                  {showSuccessModal.paymentMethod === 'qr' ? '📲 QR' :
+                   showSuccessModal.paymentMethod === 'cash' ? '💵 Efectivo' : '🔀 Mixto'}
                 </span>
               </div>
               {showSuccessModal.paymentMethod === 'cash' && showSuccessModal.montoRecibido !== null && showSuccessModal.montoRecibido !== undefined && (
@@ -1864,11 +1806,6 @@ export default function Sales() {
                     <span className="font-bold text-green-600">{formatBs(showSuccessModal.cambio)}</span>
                   </div>
                 </>
-              )}
-              {showSuccessModal.paymentMethod === 'fiado' && (
-                <div className="text-center py-1 bg-red-50 text-red-700 rounded-lg font-bold text-[10px] uppercase">
-                  Deuda Registrada Pendiente
-                </div>
               )}
               <div className="flex justify-between">
                 <span className="text-[var(--mg-text-muted)] font-medium">Productos:</span>

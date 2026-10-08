@@ -21,7 +21,7 @@ export default function ReportHeader({
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-3 bg-[var(--mg-bg-elevated)] p-3 px-4 rounded-2xl border border-[var(--mg-border)] shrink-0">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
               <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2]">Desde</label>
               <input
                 type="date"
@@ -30,7 +30,7 @@ export default function ReportHeader({
                 className="bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm font-mono text-[var(--mg-text-primary)] focus:outline-none focus:border-[#1670C2] focus:ring-2 focus:ring-[#1670C2]/20 transition-all cursor-pointer"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
               <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2]">Hasta</label>
               <input
                 type="date"
@@ -52,7 +52,7 @@ export default function ReportHeader({
               onClick={onExport}
               disabled={exportDisabled}
               title={exportDisabled ? 'No hay datos en el periodo seleccionado' : undefined}
-              className="flex items-center gap-1.5 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover,#0f5c9e)] text-white font-bold px-4 py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="flex items-center justify-center gap-1.5 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover,#0f5c9e)] text-white font-bold px-4 py-2.5 rounded-xl text-xs active:scale-95 transition-all shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 w-full sm:w-auto"
             >
               <AppIcon name="pdf" size={14} color="#fff" /> {exportLabel}
             </button>

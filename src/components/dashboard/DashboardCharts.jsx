@@ -201,7 +201,6 @@ function getPaymentMethodLabel(method) {
   if (method === 'qr') return '📲 QR';
   if (method === 'cash') return '💵 Efectivo';
   if (method === 'mixto') return '🔀 Mixto';
-  if (method === 'fiado') return '⏳ Fiado';
   return '💵 Efectivo';
 }
 
@@ -320,7 +319,6 @@ export function DashboardCharts({
                     <option value="cash">💵 Efectivo</option>
                     <option value="qr">📲 QR</option>
                     <option value="mixto">🔀 Mixto</option>
-                    <option value="fiado">⏳ Fiado (CxC)</option>
                   </select>
                 </div>
 

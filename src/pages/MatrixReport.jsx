@@ -701,24 +701,24 @@ export default function MatrixReport() {
                 exportDisabled={!currentReportHasData}
             />
 
-            <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-6 lg:p-8 shadow-sm">
+            <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-3 sm:p-6 lg:p-8 shadow-sm">
                 {reportType === 'expenses' ? (
                     <div className="space-y-6">
                         {/* Tarjetas de Total destacado */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">
                                         {flowFilter === 'daily' ? 'Total Gastos Diarios en Periodo' : 'Total Egresos en Periodo'}
                                     </p>
-                                    <h3 className="text-3xl font-black text-[#1670C2]">Bs {totalExpenses.toFixed(2)}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black text-[#1670C2]">Bs {totalExpenses.toFixed(2)}</h3>
                                 </div>
                                 <AppIcon name="gastos" size={36} />
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Transacciones Registradas</p>
-                                    <h3 className="text-3xl font-black text-gray-700">{filteredExpenses.length}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black text-gray-700">{filteredExpenses.length}</h3>
                                 </div>
                                 <AppIcon name="texto" size={36} />
                             </div>
@@ -818,10 +818,10 @@ export default function MatrixReport() {
                     </div>
                 ) : reportType === 'costoVendido' ? (
                     <div className="space-y-6">
-                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 flex items-center justify-between shadow-sm max-w-md">
+                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm max-w-md">
                             <div>
                                 <p className="text-xs font-extrabold uppercase tracking-widest text-orange-700 mb-1">Total Costo de lo Vendido</p>
-                                <h3 className="text-3xl font-black text-orange-700">Bs {totalCostOfGoodsRows.toFixed(2)}</h3>
+                                <h3 className="text-2xl sm:text-3xl font-black text-orange-700">Bs {totalCostOfGoodsRows.toFixed(2)}</h3>
                             </div>
                             <AppIcon name="nuevoProducto" size={36} />
                         </div>
@@ -897,24 +897,24 @@ export default function MatrixReport() {
                     <div className="space-y-6">
                         {/* Tarjetas de lo que se está mostrando (respetan el filtro) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Valor Total del Inventario</p>
-                                    <h3 className="text-3xl font-black text-[#1670C2]">Bs {inventorySummary.value.toFixed(2)}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black text-[#1670C2]">Bs {inventorySummary.value.toFixed(2)}</h3>
                                 </div>
                                 <AppIcon name="caja" size={36} />
                             </div>
-                            <div className={`border rounded-2xl p-6 flex items-center justify-between shadow-sm ${inventorySummary.low > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
+                            <div className={`border rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm ${inventorySummary.low > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
                                 <div>
                                     <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock Bajo (Reponer)</p>
-                                    <h3 className={`text-3xl font-black ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} {inventorySummary.low === 1 ? 'producto' : 'productos'}</h3>
+                                    <h3 className={`text-2xl sm:text-3xl font-black ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} {inventorySummary.low === 1 ? 'producto' : 'productos'}</h3>
                                 </div>
                                 <span><AppIcon name={inventorySummary.low > 0 ? 'reloj' : 'check'} size={36} /></span>
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
                                 <div>
                                     <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Total Catálogo</p>
-                                    <h3 className="text-3xl font-black text-gray-700">{inventorySummary.count} {inventorySummary.count === 1 ? 'producto' : 'productos'}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black text-gray-700">{inventorySummary.count} {inventorySummary.count === 1 ? 'producto' : 'productos'}</h3>
                                     {inventoryCategory !== 'Todas' && (
                                         <p className="text-[11px] font-bold text-gray-500 mt-0.5">en {inventoryCategory} · {products.length} en total</p>
                                     )}
@@ -1082,7 +1082,7 @@ export default function MatrixReport() {
                                             </span>
                                         </div>
 
-                                        <p className={`text-2xl lg:text-3xl font-black tracking-tight ${card.accent}`}>
+                                        <p className={`text-2xl lg:text-2xl sm:text-3xl font-black tracking-tight ${card.accent}`}>
                                             Bs {card.value.toFixed(2)}
                                         </p>
 

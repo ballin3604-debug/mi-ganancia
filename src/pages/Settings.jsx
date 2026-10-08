@@ -126,7 +126,7 @@ export default function Settings() {
     setBackupMsg('');
     try {
       const counts = await exportFullBackup(businessId, business?.name || settings?.businessName || '');
-      setBackupMsg(`✓ Respaldo descargado: ${counts.productos} productos, ${counts.ventas} ventas, ${counts.compras} compras, ${counts.fiados} fiados, ${counts.egresos} egresos.`);
+      setBackupMsg(`✓ Respaldo descargado: ${counts.productos} productos, ${counts.ventas} ventas, ${counts.compras} compras, ${counts.egresos} egresos.`);
     } catch (err) {
       console.error(err);
       setBackupMsg(err.code === 'OFFLINE'

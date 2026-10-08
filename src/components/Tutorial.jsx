@@ -18,7 +18,7 @@ const STEPS = [
     emoji: '🛒',
     title: 'Vender: busca, suma y cobra',
     description:
-      'Busca el producto, súmalo con + y cobra. En efectivo te calcula el cambio, con QR muestras tu código, y al fiado solo escribes el nombre.',
+      'Busca el producto, súmalo con + y cobra. En efectivo te calcula el cambio y con QR muestras tu código.',
     accion: 'Haz hoy: registra tu primera venta.',
   },
   {
@@ -28,14 +28,6 @@ const STEPS = [
     description:
       'Cuando te llega mercadería, anota cantidad y lo que pagaste. El stock sube solo y tu ganancia sale real.',
     accion: 'Haz hoy: registra una compra de tu proveedor.',
-  },
-  {
-    color: '#7c3aed',
-    emoji: '📖',
-    title: 'Fiados: quién te debe',
-    description:
-      'Cada fiado se guarda con nombre, teléfono y fecha límite. Los vencidos salen en rojo primero para que cobres a quien más urge.',
-    accion: 'Haz hoy: revisa tus pendientes en CxC.',
   },
   {
     color: '#0c3457',

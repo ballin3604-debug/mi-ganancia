@@ -7,15 +7,15 @@ const SLIDES = [
   {
     emoji: '🛒',
     title: 'Vende en segundos',
-    description: 'Toca el producto, cóbralo en efectivo, QR o fiado. La app te calcula el cambio sola.',
+    description: 'Toca el producto, cóbralo en efectivo o QR. La app te calcula el cambio sola.',
     example: 'Vendes Bs 75, te pagan con Bs 100 → te dice: devuelve Bs 25.',
     color: '#1670C2',
   },
   {
-    emoji: '📖',
-    title: 'Adiós cuaderno de fiados',
-    description: 'La app anota quién te debe, cuánto y desde cuándo. Los vencidos salen en rojo.',
-    example: 'Don Juan te debe Bs 120 desde el lunes. Lo cobras en 1 clic.',
+    emoji: '📦',
+    title: 'Adiós cuaderno de stock',
+    description: 'La app descuenta sola cada venta y te avisa qué se está acabando.',
+    example: 'Vendiste 3 leches: el stock bajó solo y te avisa cuando repongas.',
     color: '#d99a2b',
   },
   {
