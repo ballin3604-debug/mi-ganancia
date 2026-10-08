@@ -6,7 +6,15 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { formatBs } from '../utils/currency';
+import { supabase } from '../services/supabaseClient';
 import { AppIcon } from './icons';
+
+function prettyName(raw) {
+  const name = (raw || '').trim();
+  if (!name) return 'Cajero';
+  if (name.includes('@')) return name.split('@')[0];
+  return name.split(' ')[0];
+}
 
 function ReceiptRow({ sale, items, expanded, onToggle, onSelectSale, onReimprint, printingSaleId }) {
   const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt || Date.now());
@@ -85,7 +93,35 @@ export function CashierHome({
   printingSaleId,
 }) {
   const [expandedId, setExpandedId] = useState(null);
-  const firstName = (user?.displayName || 'Cajero').split(' ')[0];
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [displayName, setDisplayName] = useState(
+    () => user?.displayName || user?.email || ''
+  );
+  const firstName = prettyName(displayName);
+  const looksLikeEmail = (displayName || '').includes('@');
+
+  async function handleSaveName() {
+    const clean = nameDraft.trim().replace(/\s+/g, ' ').slice(0, 40);
+    if (!clean || savingName) return;
+    setSavingName(true);
+    try {
+      const uid = user?.id || user?.uid;
+      await supabase.auth.updateUser({ data: { displayName: clean } });
+      if (uid) {
+        try {
+          await supabase.from('profiles').update({ name: clean }).eq('id', uid);
+        } catch { /* si RLS lo bloquea, el saludo igual se actualiza */ }
+      }
+      setDisplayName(clean);
+      setEditingName(false);
+    } catch {
+      alert('No se pudo guardar el nombre. Intenta de nuevo.');
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   return (
     <motion.div
@@ -96,13 +132,51 @@ export function CashierHome({
     >
       {/* Saludo */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-black text-[var(--mg-text-primary)]">Hola, {firstName} 👋</h1>
+        <div className="min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                placeholder="Tu nombre (ej: Alan)"
+                autoFocus
+                maxLength={40}
+                className="mg-input text-sm font-bold py-2 min-w-0"
+              />
+              <button
+                type="button"
+                onClick={handleSaveName}
+                disabled={!nameDraft.trim() || savingName}
+                className="px-3 py-2 rounded-xl bg-[var(--mg-accent)] text-white text-xs font-black shrink-0 disabled:opacity-50"
+              >
+                {savingName ? '…' : 'Listo'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black text-[var(--mg-text-primary)] truncate">
+                Hola, {firstName}! 👋
+              </h1>
+              <button
+                type="button"
+                onClick={() => { setNameDraft(looksLikeEmail ? '' : firstName); setEditingName(true); }}
+                title={looksLikeEmail ? 'Pon tu nombre' : 'Cambiar nombre'}
+                className="w-7 h-7 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-[var(--mg-text-muted)] shrink-0"
+              >
+                <AppIcon name="editar" size={13} />
+              </button>
+            </div>
+          )}
           <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-0.5 capitalize">
             {businessName} · {todayStr}
           </p>
+          {looksLikeEmail && !editingName && (
+            <p className="text-[11px] font-bold text-amber-700 mt-1">
+              Toca el lápiz y pon tu nombre para que salga en las ventas.
+            </p>
+          )}
         </div>
-        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shrink-0">
           Mi turno
         </span>
       </div>
