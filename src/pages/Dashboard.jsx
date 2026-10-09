@@ -6,6 +6,7 @@ import { useBusiness } from '../context/BusinessContext';
 import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../services/sales';
 import { getProducts, subscribeToProducts, subscribeToReplenishments } from '../services/products';
 import { subscribeToExpenses } from '../services/expenses';
+import { ExpiryAlert } from '../components/dashboard/ExpiryAlert';
 import { printReceipt } from '../components/Receipt';
 
 // Subcomponentes del Dashboard
@@ -241,6 +242,34 @@ export default function Dashboard() {
   const gananciaHoy = totalHoy - cogsHoy - gastosHoy;
   const margenHoy = totalHoy > 0 ? (gananciaHoy / totalHoy) * 100 : 0;
 
+  // Control de vencimientos: lo vencido y por vencer (30 días) con stock.
+  const expirySummary = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nearest = {};
+    replenishments.forEach((r) => {
+      if (!r.productId || !r.expiryDate) return;
+      const d = new Date(`${r.expiryDate}T00:00:00`);
+      if (!nearest[r.productId] || d < nearest[r.productId]) nearest[r.productId] = d;
+    });
+    const byId = Object.fromEntries(products.map((p) => [p.id, p]));
+    const rows = Object.entries(nearest)
+      .map(([pid, date]) => {
+        const p = byId[pid];
+        if (!p) return null;
+        const daysLeft = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+        return { productId: pid, name: p.name, stock: Number(p.stock || 0), date, daysLeft };
+      })
+      .filter(Boolean)
+      .filter((r) => r.daysLeft <= 30)
+      .sort((a, b) => a.date - b.date);
+    return {
+      expired: rows.filter((r) => r.daysLeft < 0).length,
+      soon: rows.filter((r) => r.daysLeft >= 0).length,
+      items: rows,
+    };
+  }, [replenishments, products]);
+
   // Handlers
   async function handleExport() {
     setExporting(true);
@@ -358,6 +387,14 @@ export default function Dashboard() {
           />
         )}
       </section>
+
+      {/* Control de vencimientos */}
+      <ExpiryAlert
+        expiredCount={expirySummary.expired}
+        soonCount={expirySummary.soon}
+        items={expirySummary.items}
+        onNavigate={(path) => navigate(path)}
+      />
 
       {/* PULSO DEL NEGOCIO (solo dueño): mensual, stock, sucursales y en vivo */}
       <OwnerPulse

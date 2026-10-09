@@ -125,7 +125,10 @@ export default function Inventory() {
   // Filter states
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('Todas');
-  const [filterExpiry, setFilterExpiry] = useState('todos'); // 'todos' | 'porVencer' | 'vencidos'
+  const [filterExpiry, setFilterExpiry] = useState(() => { // 'todos' | 'porVencer' | 'vencidos'
+    const f = searchParams.get('filtro');
+    return f === 'vencidos' || f === 'porVencer' ? f : 'todos';
+  });
   const [filterRecent, setFilterRecent] = useState(false);
   const [filterLowStock, setFilterLowStock] = useState(false);
   // Fase 2: vista por sede ('all' = totales). El formulario edita la sede vista
