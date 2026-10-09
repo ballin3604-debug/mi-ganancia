@@ -4,7 +4,8 @@ import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../services/sales';
-import { getProducts, subscribeToProducts } from '../services/products';
+import { getProducts, subscribeToProducts, subscribeToReplenishments } from '../services/products';
+import { subscribeToExpenses } from '../services/expenses';
 import { printReceipt } from '../components/Receipt';
 
 // Subcomponentes del Dashboard
@@ -42,6 +43,8 @@ export default function Dashboard() {
   const [showQr, setShowQr] = useState(false);
   const [salesItemsMap, setSalesItemsMap] = useState({});
   const [printingSaleId, setPrintingSaleId] = useState(null);
+  const [replenishments, setReplenishments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
 
   // Carga de datos iniciales y suscripciones en tiempo real
   useEffect(() => {
@@ -71,8 +74,16 @@ export default function Dashboard() {
     const unsubProducts = subscribeToProducts(businessId, (prods) => {
       setProducts(prods);
     });
+    const unsubReps = subscribeToReplenishments(businessId, (reps) => {
+      setReplenishments(reps);
+    });
+    const unsubExpenses = subscribeToExpenses(businessId, (list) => {
+      setExpenses(list);
+    });
     return () => {
       unsubProducts();
+      unsubReps();
+      unsubExpenses();
     };
   }, [businessId]);
 
@@ -164,36 +175,6 @@ export default function Dashboard() {
     return trend;
   }, [visibleSales]);
 
-  // Franjas horarias con ventas
-  const hourlyBands = useMemo(() => {
-    const bands = {};
-    visibleSales.forEach((s) => {
-      if (!s.createdAt) return;
-      const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-      const hr = d.getHours();
-      const isSecondHalf = d.getMinutes() >= 30;
-      const slot = hr * 2 + (isSecondHalf ? 1 : 0);
-      const startLabel = `${String(hr).padStart(2, '0')}:${isSecondHalf ? '30' : '00'}`;
-      const endHr = isSecondHalf ? (hr + 1) % 24 : hr;
-      const endLabel = `${String(endHr).padStart(2, '0')}:${isSecondHalf ? '00' : '30'}`;
-      const label = `${startLabel} - ${endLabel}`;
-
-      if (!bands[slot]) {
-        bands[slot] = { label, count: 0, total: 0, slot };
-      }
-      bands[slot].count += 1;
-      bands[slot].total += s.total || 0;
-    });
-
-    return Object.values(bands).sort((a, b) => a.slot - b.slot);
-  }, [visibleSales]);
-
-  // Franja pico de ventas
-  const peakBand = useMemo(() => {
-    if (hourlyBands.length === 0) return null;
-    return [...hourlyBands].sort((a, b) => b.total - a.total)[0];
-  }, [hourlyBands]);
-
   // Productos que necesitan reposición
   const lowStock = useMemo(() => (
     products.filter((p) => p.stock <= (p.minStock || 5))
@@ -217,6 +198,48 @@ export default function Dashboard() {
 
   const totalHoy = totalCash + totalQr;
   const paidSalesCount = visibleSales.filter((s) => s.paymentMethod !== 'fiado').length;
+
+  const isToday = (d) => {
+    if (!d) return false;
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  };
+
+  // Compras de hoy (reposiciones del día)
+  const comprasHoy = useMemo(() => {
+    const list = replenishments.filter((r) => {
+      const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+      return isToday(d);
+    });
+    return {
+      count: list.length,
+      total: list.reduce((s, r) => s + Number(r.totalCost ?? r.total_cost ?? 0), 0),
+    };
+  }, [replenishments]);
+
+  // Costo de lo vendido hoy (para la ganancia del día)
+  const cogsHoy = useMemo(() => (
+    Object.values(salesItemsMap).flat().reduce((sum, it) => {
+      const cost = it.supplier_price ?? it.supplierPrice ?? null;
+      if (cost === null || cost === undefined) return sum;
+      const factor = Number(it.presentation_factor ?? it.presentationFactor ?? 1);
+      return sum + Number(cost) * Number(it.quantity || 0) * factor;
+    }, 0)
+  ), [salesItemsMap]);
+
+  // Gastos de hoy
+  const gastosHoy = useMemo(() => (
+    expenses
+      .filter((e) => {
+        const d = e.createdAt?.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
+        return isToday(d);
+      })
+      .reduce((s, e) => s + Number(e.amount || 0), 0)
+  ), [expenses]);
+
+  // Ganancia del día = ventas − costo − gastos
+  const gananciaHoy = totalHoy - cogsHoy - gastosHoy;
+  const margenHoy = totalHoy > 0 ? (gananciaHoy / totalHoy) * 100 : 0;
 
   // Handlers
   async function handleExport() {
@@ -322,8 +345,11 @@ export default function Dashboard() {
             paidSalesCount={paidSalesCount}
             totalCash={totalCash}
             totalQr={totalQr}
-            peakBand={peakBand}
-            onNavigate={(path, opts) => navigate(path, opts)}
+            comprasTotal={comprasHoy.total}
+            comprasCount={comprasHoy.count}
+            gananciaNeta={gananciaHoy}
+            margen={margenHoy}
+            onNavigate={(path) => navigate(path)}
           />
         ) : (
           <EmptyDayState

@@ -8,10 +8,12 @@ export function MagicMetricCards({
   paidSalesCount = 0,
   totalCash = 0,
   totalQr = 0,
-  peakBand = null,
+  comprasTotal = 0,
+  comprasCount = 0,
+  gananciaNeta = 0,
+  margen = 0,
   onNavigate
 }) {
-  const avgTicket = paidSalesCount > 0 ? totalHoy / paidSalesCount : 0;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -66,60 +68,62 @@ export function MagicMetricCards({
         </div>
       </motion.div>
 
-      {/* 2. HORA PICO DE VENTAS */}
+      {/* 2. COMPRAS DE HOY */}
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+        onClick={() => onNavigate && onNavigate('/compras?tab=historial')}
+        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-            Hora Pico de Ventas
+            Compras de Hoy
           </span>
           <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-110 transition-transform">
-            <AppIcon name="reloj" size={20} />
+            <AppIcon name="nuevoProducto" size={20} />
           </div>
         </div>
 
-        <p className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight truncate">
-          {peakBand ? peakBand.label : 'Sin registro'}
+        <p className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight tabular-nums">
+          {formatBs(comprasTotal)}
         </p>
 
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--mg-separator)] text-[11px]">
-          <span className="font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-            {peakBand ? `${formatBs(peakBand.total)}` : 'Esperando datos'}
+          <span className="font-extrabold text-[var(--mg-text-secondary)]">
+            {comprasCount} {comprasCount === 1 ? 'compra' : 'compras'}
           </span>
-          <span className="text-[var(--mg-text-muted)] font-bold text-[10px]">
-            {peakBand ? `${peakBand.count} ventas` : '0 ventas'}
+          <span className="text-[var(--mg-text-muted)] font-medium">
+            Reposición del día
           </span>
         </div>
       </motion.div>
 
-      {/* 3. PROMEDIO POR VENTA (TICKET PROMEDIO) */}
+      {/* 3. GANANCIA DE HOY (ventas − costo − gastos) */}
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+        onClick={() => onNavigate && onNavigate('/reportes?type=profit')}
+        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-            Promedio por Venta
+            Ganancia de Hoy
           </span>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-110 transition-transform">
             <AppIcon name="reportes" size={20} />
           </div>
         </div>
 
-        <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">
-          {formatBs(avgTicket)}
+        <p className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          {formatBs(gananciaNeta)}
         </p>
 
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--mg-separator)] text-[11px]">
-          <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-            Ticket promedio
+          <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 tabular-nums">
+            Margen {margen.toFixed(1)}%
           </span>
           <span className="text-[var(--mg-text-muted)] font-medium">
-            {paidSalesCount} ops.
+            Ventas − costo − gastos
           </span>
         </div>
       </motion.div>
