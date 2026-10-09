@@ -64,8 +64,14 @@ export function BusinessProvider({ children }) {
     setSettings((prev) => normalizeSettings({ ...prev, ...newSettings }));
   }
 
+  async function refreshBusiness() {
+    if (!businessId) return;
+    const res = await supabase.from('businesses').select('*').eq('id', businessId).single();
+    if (res.data) setBusiness(res.data);
+  }
+
   return (
-    <BusinessContext.Provider value={{ business, settings, refreshSettings }}>
+    <BusinessContext.Provider value={{ business, settings, refreshSettings, refreshBusiness }}>
       {children}
     </BusinessContext.Provider>
   );

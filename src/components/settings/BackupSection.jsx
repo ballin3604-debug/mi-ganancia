@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { LogoutModal } from '../LogoutModal';
+import { AppIcon } from '../icons';
 
 export function BackupSection({
   backupLoading,
@@ -7,10 +6,7 @@ export function BackupSection({
   onBackup,
   admin,
   onNavigate,
-  user,
-  business,
 }) {
-  const [showLogout, setShowLogout] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -46,7 +42,7 @@ export function BackupSection({
               Preparando respaldo…
             </>
           ) : (
-            <>📥 Exportar todos los datos (.JSON)</>
+            <><AppIcon name="respaldo" size={14} color="#fff" /> Exportar todos los datos (.JSON)</>
           )}
         </button>
 
@@ -68,27 +64,9 @@ export function BackupSection({
           onClick={() => onNavigate && onNavigate('/admin')}
           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold py-3.5 rounded-2xl text-xs active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 min-h-[44px]"
         >
-          👑 Ir al Panel de Administración
+          <AppIcon name="plan" size={14} color="#fff" /> Ir al Panel de Administración
         </button>
       )}
-
-      {/* Cerrar sesión — con confirmación */}
-      <div className="pt-2 flex justify-center">
-        <button
-          type="button"
-          onClick={() => setShowLogout(true)}
-          className="text-xs font-extrabold text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] px-4 py-2.5 rounded-xl transition-all border border-transparent hover:border-red-200 min-h-[44px]"
-        >
-          🚪 Cerrar sesión de negocio
-        </button>
-      </div>
-
-      <LogoutModal
-        isOpen={showLogout}
-        onClose={() => setShowLogout(false)}
-        user={user}
-        business={business}
-      />
     </div>
   );
 }

@@ -19,9 +19,11 @@ import {
   setMemberStatus,
   removeMember,
 } from '../services/cashier';
+import { renameBusiness } from '../services/businessSettings';
 
 // Subcomponentes de Ajustes
 import { BusinessHeaderCard } from '../components/settings/BusinessHeaderCard';
+import { BusinessNameCard } from '../components/settings/BusinessNameCard';
 import { ReceiptFormatCard } from '../components/settings/ReceiptFormatCard';
 import { TeamSection } from '../components/settings/TeamSection';
 import { BackupSection } from '../components/settings/BackupSection';
@@ -32,17 +34,17 @@ import UpgradeScreen, { PremiumGate } from '../components/UpgradeScreen';
 import { AppIcon } from '../components/icons';
 
 const TABS = [
-  { id: 'negocio', icon: 'tienda', label: 'Mi negocio' },
-  { id: 'sucursales', icon: 'sucursales', label: 'Sucursales' },
-  { id: 'equipo', icon: 'equipo', label: 'Equipo' },
-  { id: 'plan', icon: 'plan', label: 'Plan' },
-  { id: 'respaldo', icon: 'respaldo', label: 'Respaldo' },
+  { id: 'negocio', icon: 'tienda', label: 'Mi negocio', desc: 'Nombre, rubro, logo, QR de cobro y formato de recibo.' },
+  { id: 'sucursales', icon: 'sucursales', label: 'Sucursales', desc: 'Sedes y almacenes donde opera tu negocio.' },
+  { id: 'equipo', icon: 'equipo', label: 'Equipo', desc: 'Cajeros, accesos, invitaciones y permisos.' },
+  { id: 'plan', icon: 'plan', label: 'Plan', desc: 'Tu suscripción, límites y funciones Pro.' },
+  { id: 'respaldo', icon: 'respaldo', label: 'Respaldo', desc: 'Copia de seguridad de todos tus datos.' },
 ];
 
 export default function Settings() {
   const { businessId, admin, user, updateOwnRole } = useAuth();
   const navigate = useNavigate();
-  const { business, settings, refreshSettings } = useBusiness();
+  const { business, settings, refreshSettings, refreshBusiness } = useBusiness();
   const { pickImage, pickQR } = useImageUpload();
 
   // Valores guardados actualmente en el negocio (referencia para "hay cambios")
@@ -343,6 +345,9 @@ export default function Settings() {
           );
         })}
       </div>
+      <p className="text-[11px] text-[var(--mg-text-muted)] font-medium -mt-3 px-1">
+        {TABS.find((t) => t.id === activeTab)?.desc}
+      </p>
 
       <AnimatePresence mode="wait">
         {/* PESTAÑA 1 — MI NEGOCIO */}
@@ -353,7 +358,15 @@ export default function Settings() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
+            className="space-y-4"
           >
+            <BusinessNameCard
+              currentName={business?.name || ''}
+              onSave={async (name) => {
+                await renameBusiness(businessId, name);
+                await refreshBusiness();
+              }}
+            />
             <BusinessHeaderCard
               businessCategory={businessCategory}
               setBusinessCategory={setBusinessCategory}

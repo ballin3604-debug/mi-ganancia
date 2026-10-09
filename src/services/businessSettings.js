@@ -35,8 +35,7 @@ export async function getBusinessSettings(businessId) {
   return local || {};
 }
 
-export async function saveBusinessSettings(businessId, data) {
-  const payload = {
+export async function saveBusinessSettings(businessId, data) {  const payload = {
     business_id: businessId,
     slogan: data.slogan !== undefined ? data.slogan : '',
     phone: data.phone !== undefined ? data.phone : '',
@@ -57,4 +56,13 @@ export async function saveBusinessSettings(businessId, data) {
 
   // Enqueue outbox operation with clean snake_case payload
   await enqueueOperation('SAVE_BUSINESS_SETTINGS', payload, businessId);
+}
+
+// Nombre comercial del negocio (tabla businesses). Sale en recibos y PDFs.
+export async function renameBusiness(businessId, name) {
+  const clean = (name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (clean.length < 2) throw new Error('El nombre debe tener al menos 2 letras.');
+  const { error } = await supabase.from('businesses').update({ name: clean }).eq('id', businessId);
+  if (error) throw error;
+  return clean;
 }
