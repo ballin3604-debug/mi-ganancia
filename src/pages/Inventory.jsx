@@ -127,6 +127,7 @@ export default function Inventory() {
   const [filterCategory, setFilterCategory] = useState('Todas');
   const [filterExpiry, setFilterExpiry] = useState('todos'); // 'todos' | 'porVencer' | 'vencidos'
   const [filterRecent, setFilterRecent] = useState(false);
+  const [filterLowStock, setFilterLowStock] = useState(false);
   // Fase 2: vista por sede ('all' = totales). El formulario edita la sede vista
   // (o la principal si se ven todas).
   const [invBranch, setInvBranch] = useState('all');
@@ -584,7 +585,7 @@ export default function Inventory() {
   // Al cambiar búsqueda/filtros/sede se vuelve al inicio de la lista
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, filterCategory, filterExpiry, filterRecent, invBranch]);
+  }, [search, filterCategory, filterExpiry, filterRecent, filterLowStock, invBranch]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -607,8 +608,13 @@ export default function Inventory() {
         if (filterExpiry === 'vencidos') return daysLeft < 0;
         return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
       })
-      .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id));
-  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, productExpiry, recentlyPurchasedIds]);
+      .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id))
+      .filter((p) => !filterLowStock || (Number(p.stock) || 0) <= (Number(p.minStock) || 5));
+  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds]);
+
+  const lowStockCount = useMemo(() => (
+    viewProducts.filter((p) => (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
+  ), [viewProducts]);
 
   const visibleProducts = useMemo(
     () => filtered.slice(0, visibleCount),
@@ -670,6 +676,9 @@ export default function Inventory() {
         onExpiryFilterChange={setFilterExpiry}
         filterRecent={filterRecent}
         onRecentFilterToggle={() => setFilterRecent(!filterRecent)}
+        filterLowStock={filterLowStock}
+        onLowStockFilterToggle={() => setFilterLowStock(!filterLowStock)}
+        lowStockCount={lowStockCount}
         onOpenAddProduct={() => openAdd()}
         onOpenCatManager={() => setShowCatManager(true)}
         onOpenScanner={() => openScanner('search')}

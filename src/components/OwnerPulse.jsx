@@ -196,7 +196,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                   </div>
                   <button
                     type="button"
-                    onClick={() => onNavigate && onNavigate('/compras')}
+                    onClick={() => onNavigate && onNavigate('/compras', { state: { reorderProductId: p.id } })}
                     className="text-[11px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg shrink-0"
                   >
                     + Reordenar

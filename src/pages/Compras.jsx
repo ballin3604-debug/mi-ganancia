@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { subscribeToProducts, subscribeToReplenishments } from '../services/products';
@@ -32,6 +32,7 @@ export default function Compras() {
   const { businessId, user } = useAuth();
   const { settings } = useBusiness();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [replenishments, setReplenishments] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -128,6 +129,19 @@ export default function Compras() {
     setSelectedProduct(product);
     setShowMobilePanel(true);
   }
+
+  // Reordenar desde el Pulso: llega con el producto ya elegido.
+  useEffect(() => {
+    const reorderId = location.state?.reorderProductId;
+    if (!reorderId || productsWithStock.length === 0) return;
+    const prod = productsWithStock.find((p) => p.id === reorderId);
+    if (prod) {
+      setSelectedProduct(prod);
+      setShowMobilePanel(true);
+      // Se consume una sola vez para no reabrir al volver atrás
+      window.history.replaceState({}, '');
+    }
+  }, [location.state, productsWithStock]);
 
   function handleCloseSelection() {
     setPurchaseDraft(null);

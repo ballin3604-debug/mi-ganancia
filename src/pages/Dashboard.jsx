@@ -12,7 +12,6 @@ import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { MagicMetricCards } from '../components/dashboard/MagicMetricCards';
 import { EmptyDayState } from '../components/dashboard/EmptyDayState';
-import { LowStockAlert } from '../components/dashboard/LowStockAlert';
 import { DashboardCharts } from '../components/dashboard/DashboardCharts';
 import { SaleDetailModal } from '../components/dashboard/SaleDetailModal';
 import { QrModal } from '../components/dashboard/QrModal';
@@ -248,11 +247,6 @@ export default function Dashboard() {
     }
   }
 
-  // Abrir el producto directamente en modo edición dentro de Inventario
-  function handleLowStockClick(product) {
-    navigate('/inventario', { state: { editProduct: product } });
-  }
-
   async function handleReimprint(sale) {
     setPrintingSaleId(sale.id);
     try {
@@ -355,9 +349,6 @@ export default function Dashboard() {
           />
         )}
       </section>
-
-      {/* ALERTA DE STOCK BAJO (solo aparece si hay productos por reponer) */}
-      <LowStockAlert lowStock={lowStock} onLowStockClick={handleLowStockClick} />
 
       {/* PULSO DEL NEGOCIO (solo dueño): mensual, stock, sucursales y en vivo */}
       <OwnerPulse

@@ -14,6 +14,9 @@ export function InventoryHeader({
   onExpiryFilterChange,
   filterRecent,
   onRecentFilterToggle,
+  filterLowStock,
+  onLowStockFilterToggle,
+  lowStockCount = 0,
   onOpenAddProduct,
   onOpenCatManager,
   onOpenScanner,
@@ -113,6 +116,23 @@ export function InventoryHeader({
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
             <button
               type="button"
+              onClick={onLowStockFilterToggle}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
+                filterLowStock
+                  ? 'bg-red-50 text-red-700 border-red-300 shadow-2xs'
+                  : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
+              }`}
+            >
+              <AppIcon name="reloj" size={12} />
+              <span>Por reponer</span>
+              {lowStockCount > 0 && (
+                <span className="bg-red-200/80 text-red-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
+                  {lowStockCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={() => onExpiryFilterChange(filterExpiry === 'porVencer' ? 'todos' : 'porVencer')}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
                 filterExpiry === 'porVencer'
@@ -156,7 +176,7 @@ export function InventoryHeader({
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
-              <span>🆕</span>
+              <AppIcon name="agregar" size={12} />
               <span>Recién comprado</span>
             </button>
           </div>
