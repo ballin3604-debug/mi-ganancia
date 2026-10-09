@@ -42,8 +42,6 @@ export default function Dashboard() {
   const [showQr, setShowQr] = useState(false);
   const [salesItemsMap, setSalesItemsMap] = useState({});
   const [printingSaleId, setPrintingSaleId] = useState(null);
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState('Todos');
-  const [filterCategory, setFilterCategory] = useState('Todas');
 
   // Carga de datos iniciales y suscripciones en tiempo real
   useEffect(() => {
@@ -85,22 +83,7 @@ export default function Dashboard() {
 
   const hasSalesToday = visibleSales.length > 0;
 
-  // Lista de categorías de productos para el filtro
-  const categoriesList = useMemo(() => {
-    return ['Todas', ...new Set(products.map((p) => p.category || 'Otros').filter(Boolean))];
-  }, [products]);
-
-  // Ventas filtradas
-  const filteredSales = useMemo(() => {
-    return visibleSales.filter((s) => {
-      const matchesMethod = filterPaymentMethod === 'Todos' || s.paymentMethod === filterPaymentMethod;
-      const itemsOfSale = salesItemsMap[s.id] || [];
-      const matchesCategory = filterCategory === 'Todas' || itemsOfSale.some((item) => item.category === filterCategory);
-      return matchesMethod && matchesCategory;
-    });
-  }, [visibleSales, salesItemsMap, filterPaymentMethod, filterCategory]);
-
-  // Cargar los ítems de cada venta visible (gráficos y filtro por categoría)
+  // Cargar los ítems de cada venta visible (gráficos)
   useEffect(() => {
     if (!businessId || visibleSales.length === 0) return;
     visibleSales.forEach((sale) => {
@@ -357,6 +340,8 @@ export default function Dashboard() {
         salesItemsMap={salesItemsMap}
         lowStock={lowStock}
         onNavigate={(path) => navigate(path)}
+        onReimprint={handleReimprint}
+        printingSaleId={printingSaleId}
       />
 
       {/* SECCIÓN 2 — ANÁLISIS DETALLADO (solo si hubo ventas hoy) */}
@@ -364,8 +349,8 @@ export default function Dashboard() {
         <section className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
-              <h3 className="font-black text-base text-[var(--mg-text-primary)]">Rendimiento por franja horaria</h3>
-              <p className="text-xs text-[var(--mg-text-muted)]">Explora tus ventas según horario, pico de consumo y productos</p>
+              <h3 className="font-black text-base text-[var(--mg-text-primary)]">Análisis del día</h3>
+              <p className="text-xs text-[var(--mg-text-muted)]">Productos, categorías y tendencia por hora</p>
             </div>
             {isOwner && (
               <button
@@ -384,19 +369,6 @@ export default function Dashboard() {
             topProductsChartData={topProductsChartData}
             categorySalesChartData={categorySalesChartData}
             hourlyTrendData={hourlyTrendData}
-            hourlyBands={hourlyBands}
-            visibleSales={visibleSales}
-            filteredSales={filteredSales}
-            salesItemsMap={salesItemsMap}
-            filterPaymentMethod={filterPaymentMethod}
-            setFilterPaymentMethod={setFilterPaymentMethod}
-            filterCategory={filterCategory}
-            setFilterCategory={setFilterCategory}
-            categoriesList={categoriesList}
-            onSelectSale={(sale) => setSelectedSale(sale)}
-            onReimprint={handleReimprint}
-            printingSaleId={printingSaleId}
-            isOwner={isOwner}
           />
         </section>
       )}

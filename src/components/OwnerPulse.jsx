@@ -23,7 +23,7 @@ function monthKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], onNavigate }) {
+export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], onNavigate, onReimprint, printingSaleId }) {
   const { branches } = useBranches();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
@@ -265,7 +265,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                 const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
                 const items = (salesItemsMap[s.id] || []).slice(0, 2).map((it) => `${it.quantity}x ${it.productName}`).join(', ');
                 return (
-                  <li key={s.id} className="flex items-center gap-3 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                  <li key={s.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-[var(--mg-text-primary)] truncate">
                         {s.sellerName || s.clientName || 'Venta'} <span className="font-semibold text-[var(--mg-text-muted)]">· {timeAgo(d)}</span>
@@ -273,6 +273,17 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                       <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{items || '—'}</p>
                     </div>
                     <span className="text-sm font-black text-emerald-600 tabular-nums shrink-0">+{formatBs(s.total)}</span>
+                    {onReimprint && (
+                      <button
+                        type="button"
+                        onClick={() => onReimprint(s)}
+                        disabled={printingSaleId === s.id}
+                        title="Reimprimir recibo"
+                        className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shrink-0 disabled:opacity-50"
+                      >
+                        <AppIcon name="recibo" size={14} color="#fff" />
+                      </button>
+                    )}
                   </li>
                 );
               })}

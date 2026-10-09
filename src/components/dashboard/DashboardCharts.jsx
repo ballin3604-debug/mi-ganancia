@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { formatBs, formatBsShort } from '../../utils/currency';
 import { AppIcon } from '../icons';
 
@@ -209,22 +209,7 @@ export function DashboardCharts({
   topProductsChartData,
   categorySalesChartData,
   hourlyTrendData,
-  hourlyBands,
-  visibleSales = [],
-  filteredSales = [],
-  salesItemsMap = {},
-  filterPaymentMethod = 'Todos',
-  setFilterPaymentMethod,
-  filterCategory = 'Todas',
-  setFilterCategory,
-  categoriesList = [],
-  onSelectSale,
-  onReimprint,
-  printingSaleId,
-  isOwner = true
 }) {
-  const [activeTab, setActiveTab] = useState('recibos'); // 'recibos' | 'productos' | 'tendencia'
-  const [expandedSaleId, setExpandedSaleId] = useState(null); // recibo desplegado para ver sus productos
 
   if (visibleSalesCount === 0) {
     return (
@@ -238,197 +223,12 @@ export function DashboardCharts({
 
   return (
     <div className="space-y-6">
-      {/* Tab Switcher con animación de deslizamiento fluid */}
-      <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] p-1 rounded-2xl border border-[var(--mg-border)] max-w-full overflow-x-auto scrollbar-none">
-          {[
-            { id: 'recibos', label: 'Recibos de Hoy', icon: 'recibo' },
-            { id: 'analisis', label: 'Productos y Tendencia', icon: 'nuevoProducto' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              type="button"
-              className={`relative px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'text-blue-600 font-extrabold shadow-xs'
-                  : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)]'
-              }`}
-            >
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="activeChartTab"
-                  className="absolute inset-0 bg-white rounded-xl shadow-xs border border-[var(--mg-border)]"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-1.5">
-                <AppIcon name={tab.icon} size={14} /> {tab.label}
-              </span>
-            </button>
-          ))}
-        </div>
 
-        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-          {filteredSales.length} {filteredSales.length === 1 ? 'venta hoy' : 'ventas hoy'}
-        </span>
-      </div>
-
-      {/* VISTA 1: RECIBOS DE HOY (clic en una fila = ver sus productos) */}
-      <AnimatePresence mode="wait">
-        {activeTab === 'recibos' && (
-          <motion.div
-            key="recibos"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-4"
-          >
-            {/* Registro del día: filtros + recibos expandibles */}
-            {/* Encabezado y Filtros */}
-            <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)]">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="text-sm font-black text-[var(--mg-text-primary)]">
-                    {isOwner ? 'Registro de Recibos y Ventas de Hoy' : 'Mis Recibos de Hoy'}
-                  </h4>
-                  <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-                    Toca un recibo para ver sus productos
-                  </p>
-                </div>
-                <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
-                  {filteredSales.length} de {visibleSalesCount} {visibleSalesCount === 1 ? 'venta' : 'ventas'}
-                </span>
-              </div>
-            </div>
-
-            {/* Lista / Tabla de Ventas Filtradas */}
-            <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] overflow-hidden shadow-xs">
-              {filteredSales.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[var(--mg-bg-elevated)] border-b border-[var(--mg-border)] text-[var(--mg-text-muted)] text-[10px] uppercase font-extrabold">
-                        <th className="px-4 py-3">Hora</th>
-                        <th className="px-4 py-3">Cliente</th>
-                        <th className="px-4 py-3">Productos</th>
-                        <th className="px-4 py-3">Pago</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                        <th className="px-2 py-3 w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--mg-separator)] text-xs font-bold text-slate-700">
-                      {filteredSales.map((sale) => {
-                        const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt || Date.now());
-                        const formattedTime = date.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
-                        const itemsList = salesItemsMap[sale.id] || [];
-                        const expanded = expandedSaleId === sale.id;
-
-                        return (
-                          <React.Fragment key={sale.id}>
-                          <tr
-                            onClick={() => setExpandedSaleId(expanded ? null : sale.id)}
-                            className={`transition-colors cursor-pointer ${expanded ? 'bg-blue-50/60' : 'hover:bg-slate-50/80'}`}
-                          >
-                            <td className="px-4 py-3 font-mono font-bold text-[var(--mg-text-primary)]">
-                              {formattedTime}
-                            </td>
-                            <td className="px-4 py-3">
-                              <p className="font-extrabold text-[var(--mg-text-primary)]">{sale.clientName || 'Cliente Ocasional'}</p>
-                              {sale.clientNit && sale.clientNit !== '0' && (
-                                <p className="text-[10px] text-[var(--mg-text-muted)]">NIT: {sale.clientNit}</p>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-[var(--mg-text-secondary)] max-w-xs truncate">
-                              {itemsList.length > 0 ? (
-                                itemsList.map((item) => `${item.productName} (x${item.quantity})`).join(', ')
-                              ) : (
-                                <span className="text-[var(--mg-text-muted)] font-medium">Variados</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 font-bold">
-                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
-                                sale.paymentMethod === 'qr'
-                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                  : sale.paymentMethod === 'fiado'
-                                  ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                  : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                              }`}>
-                                {getPaymentMethodLabel(sale.paymentMethod)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right font-black text-blue-700 font-mono text-sm">
-                              {formatBs(sale.total)}
-                            </td>
-                            <td className="px-2 py-3 text-center">
-                              <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full border text-xs transition-transform ${expanded ? 'bg-blue-600 text-white border-blue-600 rotate-180' : 'bg-white text-slate-400 border-slate-200'}`}>
-                                ⌄
-                              </span>
-                            </td>
-                          </tr>
-                          {expanded && (
-                            <tr className="bg-blue-50/40">
-                              <td colSpan={6} className="px-4 py-3">
-                                <div className="flex items-start justify-between gap-3 flex-wrap">
-                                  <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-                                    {itemsList.length > 0 ? (
-                                      itemsList.map((item, idx) => (
-                                        <span key={idx} className="bg-white border border-slate-200 px-2 py-1 rounded-md font-semibold text-[11px] text-slate-600 tabular-nums">
-                                          {item.quantity}x {item.productName} ({formatBs(item.subtotal)})
-                                        </span>
-                                      ))
-                                    ) : (
-                                      <span className="text-slate-400 font-medium text-xs">Cargando productos…</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {onSelectSale && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); onSelectSale(sale); }}
-                                        type="button"
-                                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                                      >
-                                        <AppIcon name="detalle" size={13} /> Detalle
-                                      </button>
-                                    )}
-                                    {onReimprint && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); onReimprint(sale); }}
-                                        disabled={printingSaleId === sale.id}
-                                        type="button"
-                                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-2xs cursor-pointer flex items-center gap-1"
-                                      >
-                                        <AppIcon name="recibo" size={13} color="#fff" /> {printingSaleId === sale.id ? 'Imprimiendo…' : 'Recibo'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="p-8 text-center text-xs text-[var(--mg-text-muted)] font-bold">
-                  No se encontraron ventas con los filtros seleccionados.
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* VISTA 2: PRODUCTOS + TENDENCIA (línea temporal abajo) */}
-        {activeTab === 'analisis' && (
+        {/* PRODUCTOS + TENDENCIA (línea temporal abajo) */}
           <motion.div
             key="analisis"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
@@ -507,8 +307,6 @@ export function DashboardCharts({
             <LineChart data={hourlyTrendData} labelEvery={4} />
           </div>
           </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
