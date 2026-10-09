@@ -281,7 +281,7 @@ export default function Dashboard() {
           totalCobrado={totalHoy}
           totalCash={totalCash}
           totalQr={totalQr}
-          onNavigate={(path) => navigate(path)}
+          onNavigate={(path, opts) => navigate(path, opts)}
           onSelectSale={(sale) => setSelectedSale(sale)}
           onReimprint={handleReimprint}
           printingSaleId={printingSaleId}
@@ -310,7 +310,7 @@ export default function Dashboard() {
         user={user}
         settings={settings}
         onShowQr={() => setShowQr(true)}
-        onNavigate={(path) => navigate(path)}
+        onNavigate={(path, opts) => navigate(path, opts)}
       />
 
       {/* SECCIÓN 1 — RESUMEN DEL DÍA */}
@@ -323,12 +323,12 @@ export default function Dashboard() {
             totalCash={totalCash}
             totalQr={totalQr}
             peakBand={peakBand}
-            onNavigate={(path) => navigate(path)}
+            onNavigate={(path, opts) => navigate(path, opts)}
           />
         ) : (
           <EmptyDayState
             isOwner={isOwner}
-            onNavigate={(path) => navigate(path)}
+            onNavigate={(path, opts) => navigate(path, opts)}
           />
         )}
       </section>
@@ -339,7 +339,7 @@ export default function Dashboard() {
         liveSales={todaySales}
         salesItemsMap={salesItemsMap}
         lowStock={lowStock}
-        onNavigate={(path) => navigate(path)}
+        onNavigate={(path, opts) => navigate(path, opts)}
         onReimprint={handleReimprint}
         printingSaleId={printingSaleId}
       />
