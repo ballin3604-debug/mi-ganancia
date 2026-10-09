@@ -83,7 +83,7 @@ const NAV_ITEMS = [
     children: [
       { to: '/ventas?tab=venta', label: 'Nueva Venta', key: 'sales-new' },
       { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'sales-report' },
-      { to: '/ventas?tab=cajeros', label: 'Por Cajero', key: 'sales-cashier' },
+      { to: '/ventas?tab=cajeros', label: 'Por Cajero', key: 'sales-cashier', ownerOnly: true },
     ],
   },
   {
@@ -370,7 +370,7 @@ export default function Layout() {
                 </button>
                 {isOpen && (
                   <div className="ml-9 mt-0.5 mb-1 space-y-0.5 border-l-2 border-[var(--mg-border)] pl-3">
-                    {item.children.map((child) => {
+                    {item.children.filter((child) => !child.ownerOnly || !isCashier).map((child) => {
                       const childActive = isChildActive(location, child.to);
                       return (
                         <Link

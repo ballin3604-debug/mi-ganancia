@@ -213,12 +213,15 @@ const CUSTOM_CLIENT_VALUE = '__custom__';
 const RECENT_CATEGORY = '🕐 Recientes';
 
 export default function Sales() {
-  const { businessId, user, sellerName } = useAuth();
+  const { businessId, user, sellerName, role } = useAuth();
+  const isOwner = role !== 'cashier';
   const { business, settings } = useBusiness();
   const { branches, activeBranchId } = useBranches();
   const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'reporte' ? 'reporte'
+  const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
     : searchParams.get('tab') === 'cajeros' ? 'cajeros' : 'venta';
+  // El cajero no tiene Por Cajero: cae a su reporte propio.
+  const activeTab = (!isOwner && requestedTab === 'cajeros') ? 'reporte' : requestedTab;
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
   // Si se llega acá desde otro reporte (p.ej. "Total Vendido" en Ganancias
@@ -490,12 +493,16 @@ export default function Sales() {
   const [reportBranch, setReportBranch] = useState('all');
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const saleBranchId = (s) => s.branchId || s.branch_id || mainBranchId;
-  const scopedSalesReport = useMemo(() => (
-    reportBranch === 'all'
-      ? filteredSalesReport
-      : filteredSalesReport.filter((s) => saleBranchId(s) === reportBranch)
+  const scopedSalesReport = useMemo(() => {
+    // El cajero solo ve sus propias ventas en reportes.
+    const own = !isOwner && user?.uid
+      ? filteredSalesReport.filter((s) => (s.createdBy || s.created_by) === user.uid)
+      : filteredSalesReport;
+    return reportBranch === 'all'
+      ? own
+      : own.filter((s) => saleBranchId(s) === reportBranch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [filteredSalesReport, reportBranch, mainBranchId]);
+  }, [filteredSalesReport, reportBranch, mainBranchId, isOwner, user?.uid]);
 
   const salesReportRows = useMemo(() => scopedSalesReport.flatMap((s) =>
     (itemsBySaleId[s.id] || []).map((item) => {
@@ -652,18 +659,26 @@ export default function Sales() {
   ];
 
   function renderDetailTable(rows, emptyMessage, footerLabel) {
+    // El cajero no ve costos ni ganancias.
+    const visibleColumns = isOwner ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia');
+    const visibleFooter = isOwner
+      ? [
+          { key: 'cantidad', label: footerLabel, value: rows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0) },
+          { key: 'totalVenta', value: formatBs(rows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)) },
+          { key: 'ganancia', value: formatBs(rows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0)) },
+        ]
+      : [
+          { key: 'cantidad', label: footerLabel, value: rows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0) },
+          { key: 'totalVenta', value: formatBs(rows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)) },
+        ];
     return (
       <DataTable
         storageKey="mg-reporte-ventas-items-columns"
         getRowKey={(r) => r.rowKey}
         emptyMessage={emptyMessage}
         rows={rows}
-        footer={[
-          { key: 'cantidad', label: footerLabel, value: rows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0) },
-          { key: 'totalVenta', value: formatBs(rows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)) },
-          { key: 'ganancia', value: formatBs(rows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0)) },
-        ]}
-        columns={detailColumns}
+        footer={visibleFooter}
+        columns={visibleColumns}
       />
     );
   }
@@ -701,20 +716,24 @@ export default function Sales() {
     });
     const formattedStart = reportStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
     const formattedEnd = reportEnd.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
+    // El cajero exporta sin costos ni ganancias (mismas columnas que ve).
+    const visibleIdx = columns.map((_, i) => i).filter((i) => isOwner || (i !== 5 && i !== 10));
     exportReportToPDF({
       businessName: settings?.businessName,
       title: reportCashier === 'Todos' ? 'Reporte de Ventas' : `Ventas de ${reportCashier}`,
       subtitle: 'Historial detallado de ventas por producto.',
       periodLabel: `Periodo: ${formattedStart} hasta ${formattedEnd}`,
-      columns,
-      rows,
+      columns: visibleIdx.map((i) => columns[i]),
+      rows: rows.map((r) => visibleIdx.map((i) => r[i])),
       totals: {
         label: 'Total del período',
-        values: {
-          4: cashierRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0),
-          9: formatBs(cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)),
-          10: formatBs(cashierRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0)),
-        },
+        values: Object.fromEntries(
+          Object.entries({
+            4: cashierRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0),
+            9: formatBs(cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)),
+            10: formatBs(cashierRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0)),
+          }).filter(([k]) => visibleIdx.includes(Number(k))).map(([k, v]) => [visibleIdx.indexOf(Number(k)), v])
+        ),
       },
     });
   }

@@ -61,17 +61,22 @@ function ModeSelector({ onSelect }) {
 function JoinWithCode({ user, onBack }) {
   const { completeSetup } = useAuth();
   const [code, setCode] = useState('');
-  const [cashierName, setCashierName] = useState(user?.displayName?.split(' ')[0] || '');
+  const initialName = (user?.displayName && !user.displayName.includes('@') ? user.displayName : '').split(' ');
+  const [firstName, setFirstName] = useState(initialName[0] || '');
+  const [lastName, setLastName] = useState(initialName.slice(1).join(' ') || '');
+  const [birthdate, setBirthdate] = useState(user?.user_metadata?.birthdate || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const canSubmit = code.trim().length >= 6 && firstName.trim() && lastName.trim() && birthdate && !loading;
 
   async function handleJoin(e) {
     e.preventDefault();
-    if (!code.trim() || !cashierName.trim()) return;
+    if (!canSubmit) return;
     setLoading(true);
     setError('');
     try {
-      const { businessId, role, displayName } = await joinBusinessWithCode(user, code.trim(), cashierName.trim());
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.replace(/\s+/g, ' ');
+      const { businessId, role, displayName } = await joinBusinessWithCode(user, code.trim(), fullName, { birthdate });
       completeSetup(businessId, role, displayName);
     } catch (err) {
       setError(err.message || 'Código inválido. Verifica y vuelve a intentar.');
@@ -97,18 +102,50 @@ function JoinWithCode({ user, onBack }) {
         </div>
 
         <form onSubmit={handleJoin} className="space-y-4">
+          <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl px-4 py-2.5 text-xs text-[var(--mg-text-secondary)]">
+            Te unes como: <strong className="text-[var(--mg-text-primary)]">{user?.email || 'tu cuenta'}</strong>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold text-[var(--mg-text-muted)] block mb-1">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Ej: María"
+                className="w-full border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 text-[var(--mg-text-primary)] text-base focus:outline-none focus:border-blue-500 transition-colors"
+                autoFocus
+                maxLength={30}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-[var(--mg-text-muted)] block mb-1">
+                Apellido *
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Ej: Pérez"
+                className="w-full border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 text-[var(--mg-text-primary)] text-base focus:outline-none focus:border-blue-500 transition-colors"
+                maxLength={30}
+                required
+              />
+            </div>
+          </div>
+
           <div>
             <label className="text-sm font-semibold text-[var(--mg-text-muted)] block mb-1">
-              Tu nombre (como aparecerá en las ventas)
+              Fecha de nacimiento *
             </label>
             <input
-              type="text"
-              value={cashierName}
-              onChange={(e) => setCashierName(e.target.value)}
-              placeholder="Ej: María, Juan, Carlos..."
+              type="date"
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
               className="w-full border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 text-[var(--mg-text-primary)] text-base focus:outline-none focus:border-blue-500 transition-colors"
-              autoFocus
-              maxLength={40}
               required
             />
           </div>
@@ -132,7 +169,7 @@ function JoinWithCode({ user, onBack }) {
 
           <button
             type="submit"
-            disabled={code.trim().length < 6 || !cashierName.trim() || loading}
+            disabled={!canSubmit}
             className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-4 rounded-2xl text-lg active:scale-95 transition-all disabled:opacity-50 shadow-md"
           >
             {loading ? (

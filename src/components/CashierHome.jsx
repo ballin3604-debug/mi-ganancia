@@ -170,6 +170,11 @@ export function CashierHome({
           <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-0.5 capitalize">
             {businessName} · {todayStr}
           </p>
+          {user?.email && (
+            <p className="text-[11px] text-[var(--mg-text-faint)] font-medium mt-0.5 truncate">
+              Cuenta vinculada: {user.email}
+            </p>
+          )}
           {looksLikeEmail && !editingName && (
             <p className="text-[11px] font-bold text-amber-700 mt-1">
               Toca el lápiz y pon tu nombre para que salga en las ventas.

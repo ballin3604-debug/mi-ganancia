@@ -9,6 +9,7 @@ function mapSale(s) {
   return {
     ...s,
     paymentMethod: s.payment_method,
+    createdBy: s.created_by || s.createdBy || null,
     itemCount: s.item_count,
     montoEfectivo: s.monto_efectivo,
     montoQR: s.monto_qr,

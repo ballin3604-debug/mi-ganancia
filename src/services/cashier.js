@@ -91,13 +91,16 @@ export async function createOwnerCode(businessId, businessName) {
   return code;
 }
 
-export async function joinBusinessWithCode(user, rawCode, cashierName = '') {
+export async function joinBusinessWithCode(user, rawCode, cashierName = '', extra = {}) {
   const biz = await lookupJoinCode(rawCode);
   if (!biz) throw new Error('Código inválido. Verifica y vuelve a intentar.');
 
   const role = biz.role || 'cashier';
   const displayName = cashierName || user.user_metadata?.displayName || user.email;
+  const birthdate = (extra.birthdate || '').trim() || null;
 
+  // La identidad es la cuenta logueada (Google/correo): el perfil se crea
+  // o actualiza con el MISMO id de auth, nunca se duplica por nombre.
   const { error } = await supabase
     .from('profiles')
     .upsert({
@@ -109,6 +112,13 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '') {
     });
 
   if (error) throw error;
+
+  // Nombre + cumpleaños en los metadatos de auth (sin migración de BD).
+  try {
+    await supabase.auth.updateUser({
+      data: { displayName, ...(birthdate ? { birthdate } : {}) },
+    });
+  } catch { /* el perfil ya quedó; el saludo usa el nombre igual */ }
 
   return { businessId: biz.businessId, role, displayName };
 }
