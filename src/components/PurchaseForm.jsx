@@ -33,7 +33,8 @@ const CUSTOM_CONCEPT_VALUE = '__custom__';
 const CUSTOM_SUPPLIER_VALUE = '__custom__';
 
 export default function PurchaseForm({ businessId, product, initialDraft, lastPurchase, onClose, onSaved }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isOwner = role !== 'cashier';
   const { business, settings } = useBusiness();
   const { branches, activeBranchId } = useBranches();
   // Sede donde ENTRA la mercadería (Fase 2). Por defecto la operativa.
@@ -43,6 +44,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
   const [supplierPrice, setSupplierPrice] = useState(String(product.supplierPrice || ''));
   const [quantity, setQuantity] = useState('');
   const [purchaseUnitType, setPurchaseUnitType] = useState('unit');
+  const [helpTopic, setHelpTopic] = useState(null); // 'unit' | 'pack' | null
   const [packageSize, setPackageSize] = useState(product.packageSize ? String(product.packageSize) : '');
   const [packageCount, setPackageCount] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -457,10 +459,27 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'unit' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)]' : 'border-gray-300'}`}>
                       {purchaseUnitType === 'unit' && <span className="w-2 h-2 rounded-full bg-white" />}
                     </span>
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-[var(--mg-text-primary)]">Por unidad</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-[var(--mg-text-primary)] flex items-center justify-between gap-2">
+                        Por unidad
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Ayuda: comprar por unidad"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setHelpTopic(helpTopic === 'unit' ? null : 'unit'); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHelpTopic(helpTopic === 'unit' ? null : 'unit'); } }}
+                          className="shrink-0 w-6 h-6 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center"
+                        >
+                          <AppIcon name="ayuda" size={14} />
+                        </span>
+                      </p>
                       <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré unidades sueltas</p>
                       <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 12 botellas sueltas a Bs 8 cada una</p>
+                      {helpTopic === 'unit' && (
+                        <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1.5 bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                          Elegí esto si el proveedor te cobra por cada unidad suelta. El costo que pongas abajo es el de UNA unidad.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -481,10 +500,27 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'package' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)]' : 'border-gray-300'}`}>
                       {purchaseUnitType === 'package' && <span className="w-2 h-2 rounded-full bg-white" />}
                     </span>
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-[var(--mg-text-primary)]">Por paquete / caja</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-[var(--mg-text-primary)] flex items-center justify-between gap-2">
+                        Por paquete / caja
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Ayuda: comprar por paquete"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setHelpTopic(helpTopic === 'pack' ? null : 'pack'); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHelpTopic(helpTopic === 'pack' ? null : 'pack'); } }}
+                          className="shrink-0 w-6 h-6 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center"
+                        >
+                          <AppIcon name="ayuda" size={14} />
+                        </span>
+                      </p>
                       <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré cajas, pacas o fardos que traen varias unidades adentro</p>
                       <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 10 cajas de 12 botellas, cada caja a Bs 84</p>
+                      {helpTopic === 'pack' && (
+                        <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1.5 bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                          Elegí esto si pagás por caja cerrada. Abajo poné cuántas cajas compraste, cuántas unidades trae cada una y el costo POR CAJA: la app saca sola el costo por unidad.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -689,7 +725,8 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               </button>
             </div>
 
-            {/* Resumen en lenguaje natural — se arma en vivo mientras se escribe */}
+            {/* Resumen en lenguaje natural — solo dueño (muestra costos y ganancia) */}
+            {isOwner && (
             <div className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-2xl p-3.5 text-sm leading-relaxed text-[var(--mg-text-secondary)]">
               <p>
                 {purchaseUnitType === 'package' ? (
@@ -712,9 +749,10 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 </div>
               )}
             </div>
+            )}
 
             {/* Alerta de venta a pérdida (advertencia, no bloqueo) */}
-            {showLossAlert && (
+            {isOwner && showLossAlert && (
               <div className="bg-[var(--mg-warning-bg)] border-2 border-[var(--mg-warning)] rounded-2xl p-3.5">
                 <p className="text-sm font-bold text-[var(--mg-warning)] mb-1 flex items-center gap-1.5">
                   <span>⚠️</span> Estás vendiendo a pérdida
@@ -730,8 +768,8 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               </div>
             )}
 
-            {/* Bloques CALCULADOS (no editables) */}
-            {qtyVal > 0 && (
+            {/* Bloques CALCULADOS (no editables) — solo dueño */}
+            {isOwner && qtyVal > 0 && (
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl text-center relative">
                   <span className="absolute top-1.5 right-2 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">🔒 calculado</span>

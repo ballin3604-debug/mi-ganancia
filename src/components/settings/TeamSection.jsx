@@ -7,6 +7,7 @@ export function TeamSection({
   members = [],
   membersLoading = false,
   roleUpdating = null,
+  memberBusy = null,
   user,
   joinCode,
   ownerCode,
@@ -17,16 +18,23 @@ export function TeamSection({
   onCopyOwnerCode,
   onRegenerateCode,
   onRegenerateOwnerCode,
-  onToggleRole
+  onToggleRole,
+  invites = [],
+  onInvite,
+  onRevokeInvite,
+  onToggleStatus,
+  onRemoveMember
 }) {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
-    type: null, // 'role' | 'joinCode' | 'ownerCode'
+    type: null, // 'role' | 'joinCode' | 'ownerCode' | 'remove'
     data: null,
     title: '',
     message: '',
     danger: false
   });
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSent, setInviteSent] = useState(null); // { code, email }
 
   // Contador de dueños activos para evitar dejar el negocio sin ningún dueño
   const ownersCount = members.filter((m) => m.role === 'owner').length;
@@ -80,8 +88,35 @@ export function TeamSection({
       onRegenerateCode();
     } else if (confirmModal.type === 'ownerCode') {
       onRegenerateOwnerCode();
+    } else if (confirmModal.type === 'remove') {
+      onRemoveMember(confirmModal.data);
     }
     setConfirmModal({ isOpen: false, type: null, data: null, title: '', message: '', danger: false });
+  };
+
+  const handleRemoveClick = (member) => {
+    if (member.role === 'owner' && ownersCount <= 1) {
+      alert('No puedes eliminar al único dueño. Nombra otro dueño primero.');
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'remove',
+      data: member,
+      title: `Eliminar a ${member.displayName}`,
+      message: `Se le quitará el acceso a la tienda de inmediato. Sus ventas pasadas se conservan.`,
+      danger: true
+    });
+  };
+
+  const handleInviteSubmit = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || memberBusy === 'invite') return;
+    const invite = await onInvite(inviteEmail.trim());
+    if (invite) {
+      setInviteSent(invite);
+      setInviteEmail('');
+    }
   };
 
   return (
@@ -127,9 +162,11 @@ export function TeamSection({
             {members.map((m) => {
               const isCurrentUser = m.id === user?.uid;
               const isOwnerRole = m.role === 'owner';
+              const isSuspended = m.status === 'suspended';
+              const busy = roleUpdating === m.id || memberBusy === m.id;
 
               return (
-                <div key={m.id} className="flex items-center justify-between p-4 hover:bg-[var(--mg-bg-elevated)] transition-colors gap-3">
+                <div key={m.id} className={`flex items-center justify-between p-4 hover:bg-[var(--mg-bg-elevated)] transition-colors gap-3 ${isSuspended ? 'opacity-70' : ''}`}>
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-full bg-slate-200 border border-[var(--mg-border)] overflow-hidden shrink-0 flex items-center justify-center font-bold text-slate-600">
                       {m.photoURL ? (
@@ -140,7 +177,7 @@ export function TeamSection({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-extrabold text-[var(--mg-text-primary)] truncate">
                           {m.displayName}
                         </p>
@@ -149,32 +186,123 @@ export function TeamSection({
                             (Tú)
                           </span>
                         )}
+                        {isSuspended && (
+                          <span className="text-[9px] font-black uppercase tracking-wide text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                            Suspendido
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{m.email}</p>
+                      <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{m.email || 'Sin correo registrado'}</p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRoleClick(m)}
-                    disabled={roleUpdating === m.id}
-                    className={`px-3 py-1.5 rounded-xl font-black text-xs border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[38px] ${
-                      isOwnerRole
-                        ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                        : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
-                    }`}
-                  >
-                    {roleUpdating === m.id ? (
-                      <span className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                    ) : isOwnerRole ? (
-                      <>👑 Dueño</>
-                    ) : (
-                      <>🔑 Cajero</>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRoleClick(m)}
+                      disabled={busy}
+                      className={`px-3 py-1.5 rounded-xl font-black text-xs border transition-all active:scale-95 min-h-[38px] flex items-center gap-1 disabled:opacity-50 ${
+                        isOwnerRole
+                          ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                          : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      {busy ? (
+                        <span className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+                      ) : isOwnerRole ? (
+                        <>👑 Dueño</>
+                      ) : (
+                        <>🔑 Cajero</>
+                      )}
+                    </button>
+                    {!isCurrentUser && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onToggleStatus(m)}
+                          disabled={busy}
+                          title={isSuspended ? 'Reactivar acceso' : 'Suspender acceso'}
+                          className={`w-[38px] min-h-[38px] rounded-xl border font-black text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center ${
+                            isSuspended
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-600 border-[var(--mg-border)] hover:bg-slate-200'
+                          }`}
+                        >
+                          {isSuspended ? '✓' : '⏸'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveClick(m)}
+                          disabled={busy}
+                          title="Eliminar del equipo"
+                          className="w-[38px] min-h-[38px] rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border border-red-200 hover:bg-red-100 font-black transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                        >
+                          <AppIcon name="eliminar" size={15} />
+                        </button>
+                      </>
                     )}
-                  </button>
+                  </div>
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Invitar por correo */}
+      <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] space-y-3 shadow-xs">
+        <div>
+          <p className="text-xs font-extrabold text-[var(--mg-text-primary)] uppercase tracking-wider">
+            Invitar cajero por correo
+          </p>
+          <p className="text-[var(--mg-text-muted)] text-xs mt-0.5">
+            Se genera un código que solo funciona con esa cuenta. El cajero entra con su Google y lo escribe al unirse.
+          </p>
+        </div>
+        <form onSubmit={handleInviteSubmit} className="flex gap-2">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="cajero@correo.com"
+            className="mg-input text-xs font-semibold flex-1"
+            maxLength={120}
+          />
+          <button
+            type="submit"
+            disabled={!inviteEmail.trim() || memberBusy === 'invite'}
+            className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-bold px-4 rounded-xl text-xs active:scale-95 transition-all disabled:opacity-50 shrink-0 min-h-[42px]"
+          >
+            {memberBusy === 'invite' ? '...' : 'Invitar'}
+          </button>
+        </form>
+        {inviteSent && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-xs">
+            <p className="font-bold text-emerald-800">
+              Código para {inviteSent.email}: <span className="font-mono font-black tracking-widest">{inviteSent.code}</span>
+            </p>
+            <p className="text-emerald-700 mt-0.5">Pásaselo por WhatsApp. Solo esa cuenta puede usarlo.</p>
+          </div>
+        )}
+        {invites.filter((i) => i.email).length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">Invitaciones pendientes</p>
+            {invites.filter((i) => i.email).map((i) => (
+              <div key={i.code} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[var(--mg-text-primary)] truncate">{i.email}</p>
+                  <p className="text-[11px] font-mono font-black tracking-widest text-[var(--mg-accent)]">{i.code}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRevokeInvite(i.code)}
+                  title="Revocar invitación"
+                  className="text-[11px] font-bold text-[var(--mg-danger)] hover:underline shrink-0"
+                >
+                  Revocar
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

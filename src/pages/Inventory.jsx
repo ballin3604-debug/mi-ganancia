@@ -151,6 +151,7 @@ export default function Inventory() {
   // Add/Edit Product form state (si la página se recargó al volver de la
   // cámara, el borrador guardado reabre el formulario con los datos intactos)
   const [showForm, setShowForm] = useState(() => searchParams.get('action') === 'nuevo' || !!loadProductDraft());
+  const [packHelp, setPackHelp] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(() => loadProductDraft()?.form || EMPTY_FORM);
   const [expiryDate, setExpiryDate] = useState(() => loadProductDraft()?.expiryDate || '');
@@ -1160,17 +1161,32 @@ export default function Inventory() {
 
                 {/* Venta por paquete (chipa/caja): unidad Y paquete */}
                 <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={!!form.sellPack}
-                      onChange={(e) => setField('sellPack', e.target.checked)}
-                      className="w-5 h-5 accent-[#1670C2]"
-                    />
-                    <span className="text-xs font-extrabold text-[var(--mg-text-primary)]">
-                      📦 También se vende por paquete
-                    </span>
-                  </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!form.sellPack}
+                        onChange={(e) => setField('sellPack', e.target.checked)}
+                        className="w-5 h-5 accent-[#1670C2]"
+                      />
+                      <span className="text-xs font-extrabold text-[var(--mg-text-primary)]">
+                        📦 También se vende por paquete
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPackHelp(!packHelp)}
+                      aria-label="Ayuda: venta por paquete"
+                      className="shrink-0 w-6 h-6 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] flex items-center justify-center"
+                    >
+                      <AppIcon name="ayuda" size={14} />
+                    </button>
+                  </div>
+                  {packHelp && (
+                    <p className="text-[11px] text-[var(--mg-accent)] font-semibold bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                      Actívalo si además de la unidad suelta vendés el paquete cerrado (ej: lata suelta y chipa x12). El stock siempre vive en unidades: vender 1 paquete descuenta las unidades que trae.
+                    </p>
+                  )}
                   <p className="-mt-1 text-[11px] text-[var(--mg-text-muted)]">
                     Ej: la lata suelta y la chipa x12. El paquete se puede romper: el stock vive en unidades.
                   </p>

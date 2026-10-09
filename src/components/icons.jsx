@@ -44,6 +44,7 @@ import {
   Syringe,
   Bell,
   IdCard,
+  CircleHelp,
 } from 'lucide-react';
 
 // Azul banca, verde éxito, ámbar alerta, rojo peligro, morado QR
@@ -96,6 +97,7 @@ const ICONS = {
   vacuna: { Component: Syringe, color: BRAND_COLORS.success },
   recordatorio: { Component: Bell, color: BRAND_COLORS.warning },
   carnet: { Component: IdCard, color: BRAND_COLORS.primary },
+  ayuda: { Component: CircleHelp, color: BRAND_COLORS.primary },
 };
 
 export function AppIcon({ name, size = 18, color, strokeWidth = 2, className = '' }) {

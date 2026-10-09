@@ -21,6 +21,8 @@ export async function getBusinessMembers(businessId) {
     id: m.id,
     businessId: m.business_id,
     displayName: m.name,
+    email: m.email || null,
+    photoURL: m.photo_url || null,
     role: m.role,
     status: m.status,
   }));
@@ -46,6 +48,7 @@ export async function lookupJoinCode(rawCode) {
     businessId: data.business_id,
     businessName: data.business_name,
     role: data.role || 'cashier',
+    email: (data.email || '').toLowerCase() || null,
   };
 }
 
@@ -96,6 +99,13 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
   if (!biz) throw new Error('Código inválido. Verifica y vuelve a intentar.');
 
   const role = biz.role || 'cashier';
+  // Código atado a un correo: solo esa cuenta puede usarlo.
+  if (biz.email) {
+    const userEmail = (user.email || '').toLowerCase();
+    if (userEmail !== biz.email) {
+      throw new Error(`Este código es para ${biz.email}. Entra con esa cuenta.`);
+    }
+  }
   const displayName = cashierName || user.user_metadata?.displayName || user.email;
   const birthdate = (extra.birthdate || '').trim() || null;
 
@@ -119,6 +129,13 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
       data: { displayName, ...(birthdate ? { birthdate } : {}) },
     });
   } catch { /* el perfil ya quedó; el saludo usa el nombre igual */ }
+
+  // Correo visible para el dueño (best-effort: si la columna no existe, se ignora).
+  if (user.email) {
+    try {
+      await supabase.from('profiles').update({ email: user.email }).eq('id', user.id || user.uid);
+    } catch { /* columna ausente: no bloquea el ingreso */ }
+  }
 
   return { businessId: biz.businessId, role, displayName };
 }
@@ -145,6 +162,64 @@ export async function regenerateOwnerCode(businessId, businessName, oldCode) {
     } catch (_) {}
   }
   return createOwnerCode(businessId, businessName);
+}
+
+// ── Invitaciones por correo ──────────────────────────────────
+// Crea un código atado a un correo: solo esa cuenta puede usarlo.
+export async function createInviteCode(businessId, businessName, email, role = 'cashier') {
+  const clean = (email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clean)) {
+    throw new Error('Escribe un correo válido.');
+  }
+  const code = generateCode();
+  const row = {
+    code,
+    business_id: businessId,
+    business_name: businessName,
+    role,
+    email: clean,
+  };
+  const { error: insErr } = await supabase.from('business_join_codes').insert(row);
+  if (insErr) {
+    // Servidor sin la columna email (migración pendiente): invita sin atar.
+    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
+      const { email: _drop, ...fallback } = row;
+      const { error: retryErr } = await supabase.from('business_join_codes').insert(fallback);
+      if (retryErr) throw retryErr;
+    } else throw insErr;
+  }
+  return { code, email: clean };
+}
+
+export async function listInvites(businessId) {
+  const { data, error } = await supabase
+    .from('business_join_codes')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('code');
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    code: r.code,
+    email: r.email || null,
+    role: r.role || 'cashier',
+  }));
+}
+
+export async function revokeInvite(code) {
+  const { error } = await supabase.from('business_join_codes').delete().eq('code', code);
+  if (error) throw error;
+}
+
+// ── Suspender / reactivar / eliminar miembros ─────────────────
+export async function setMemberStatus(memberId, status) {
+  if (!['active', 'suspended'].includes(status)) throw new Error('Estado inválido.');
+  const { error } = await supabase.from('profiles').update({ status }).eq('id', memberId);
+  if (error) throw error;
+}
+
+export async function removeMember(memberId) {
+  const { error } = await supabase.from('profiles').delete().eq('id', memberId);
+  if (error) throw error;
 }
 
 export async function updateMemberRole(members, targetUserId, newRole) {

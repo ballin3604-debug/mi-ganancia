@@ -13,6 +13,11 @@ import {
   createOwnerCode,
   getBusinessMembers,
   updateMemberRole,
+  createInviteCode,
+  listInvites,
+  revokeInvite,
+  setMemberStatus,
+  removeMember,
 } from '../services/cashier';
 
 // Subcomponentes de Ajustes
@@ -68,6 +73,8 @@ export default function Settings() {
   const [ownerCopied, setOwnerCopied] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [invites, setInvites] = useState([]);
+  const [memberBusy, setMemberBusy] = useState(null);
   const [roleUpdating, setRoleUpdating] = useState(null);
 
   // Respaldo
@@ -96,6 +103,7 @@ export default function Settings() {
       .then(setMembers)
       .catch(console.error)
       .finally(() => setMembersLoading(false));
+    listInvites(businessId).then(setInvites).catch(() => setInvites([]));
   }, [businessId]);
 
   // Cambios sin guardar
@@ -198,6 +206,54 @@ export default function Settings() {
       alert(err.message || 'Error al actualizar rol.');
     } finally {
       setRoleUpdating(null);
+    }
+  }
+
+  async function handleInvite(email) {
+    setMemberBusy('invite');
+    try {
+      const invite = await createInviteCode(businessId, business?.name || '', email, 'cashier');
+      setInvites((prev) => [...prev.filter((i) => i.code !== invite.code), { code: invite.code, email: invite.email, role: 'cashier' }]);
+      return invite;
+    } catch (err) {
+      alert(err.message || 'No se pudo crear la invitación.');
+      return null;
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleRevokeInvite(code) {
+    try {
+      await revokeInvite(code);
+      setInvites((prev) => prev.filter((i) => i.code !== code));
+    } catch (err) {
+      alert(err.message || 'No se pudo revocar la invitación.');
+    }
+  }
+
+  async function handleToggleStatus(member) {
+    const next = member.status === 'suspended' ? 'active' : 'suspended';
+    setMemberBusy(member.id);
+    try {
+      await setMemberStatus(member.id, next);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, status: next } : m)));
+    } catch (err) {
+      alert(err.message || 'No se pudo cambiar el estado.');
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleRemoveMember(member) {
+    setMemberBusy(member.id);
+    try {
+      await removeMember(member.id);
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+    } catch (err) {
+      alert(err.message || 'No se pudo eliminar. Prueba suspendiéndolo.');
+    } finally {
+      setMemberBusy(null);
     }
   }
 
@@ -357,6 +413,7 @@ export default function Settings() {
               members={members}
               membersLoading={membersLoading}
               roleUpdating={roleUpdating}
+              memberBusy={memberBusy}
               user={user}
               joinCode={joinCode}
               ownerCode={ownerCode}
@@ -368,6 +425,11 @@ export default function Settings() {
               onRegenerateCode={handleRegenerateCode}
               onRegenerateOwnerCode={handleOwnerCode}
               onToggleRole={handleToggleRole}
+              invites={invites}
+              onInvite={handleInvite}
+              onRevokeInvite={handleRevokeInvite}
+              onToggleStatus={handleToggleStatus}
+              onRemoveMember={handleRemoveMember}
             />
             </PremiumGate>
           </motion.div>
