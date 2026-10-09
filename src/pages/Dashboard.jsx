@@ -390,7 +390,7 @@ export default function Dashboard() {
       </section>
 
       {/* Productos top + vencimientos en una fila */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="mg-grid-auto">
         <TopProductsCard data={topProductsChartData} />
         <ExpiryAlert
           expiredCount={expirySummary.expired}

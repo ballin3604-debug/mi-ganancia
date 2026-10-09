@@ -271,6 +271,19 @@ button:not(:disabled):active, [role="button"]:active, .mg-tappable:active {
   }
 }
 
+/* Rejillas que siempre se redistribuyen: 1 columna en celular,
+   2+ en tablet/desktop según el ancho real, sin breakpoints rígidos. */
+.mg-grid-auto {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+.mg-grid-auto-sm {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
 @media (display-mode: standalone) {
   body { padding-top: env(safe-area-inset-top); }
 }

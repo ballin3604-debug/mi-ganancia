@@ -35,7 +35,7 @@ export function MagicMetricCards({
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      className="mg-grid-auto-sm"
     >
       {/* 1. VENTAS DE HOY */}
       <motion.div

@@ -232,7 +232,7 @@ export function DashboardCharts({
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="mg-grid-auto">
             <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
                 Ventas por Categoría (Bs)
