@@ -224,7 +224,7 @@ export function DashboardCharts({
   return (
     <div className="space-y-6">
 
-        {/* PRODUCTOS + TENDENCIA (línea temporal abajo) */}
+        {/* TENDENCIA + CATEGORÍAS lado a lado */}
           <motion.div
             key="analisis"
             initial={{ opacity: 0, y: 10 }}
@@ -234,78 +234,19 @@ export function DashboardCharts({
           >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-1">
-                Productos más vendidos
-              </h4>
-              <p className="text-[11px] text-[var(--mg-text-muted)] font-medium mb-3">
-                Unidades y dinero que deja cada uno hoy.
-              </p>
-              <ul className="divide-y divide-[var(--mg-separator)]">
-                {topProductsChartData
-                  .filter((p) => p.label !== 'Otros')
-                  .slice(0, 5)
-                  .map((p, i, arr) => {
-                    const max = Math.max(...arr.map((x) => x.value), 1);
-                    return (
-                    <li key={p.label} className="relative py-2.5 overflow-hidden">
-                      <div
-                        className="absolute left-0 top-1 bottom-1 rounded-lg"
-                        style={{ width: `${Math.max((p.value / max) * 100, 6)}%`, background: `${p.color}1f` }}
-                      />
-                      <div className="relative flex items-center gap-3">
-                        <span className="w-5 text-center text-xs font-black text-[var(--mg-text-faint)] shrink-0">
-                          {i + 1}
-                        </span>
-                        {p.image ? (
-                          <img
-                            src={p.image}
-                            alt={p.label}
-                            className="w-9 h-9 rounded-xl object-cover border border-[var(--mg-border)] shrink-0 bg-white"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span className="w-9 h-9 rounded-xl bg-white border border-[var(--mg-border)] flex items-center justify-center text-base shrink-0">
-                            📦
-                          </span>
-                        )}
-                        <span className="flex-1 min-w-0 truncate text-sm font-bold text-[var(--mg-text-primary)]">
-                          {p.label}
-                        </span>
-                        <span className="text-right shrink-0">
-                          <span className="block text-sm font-black text-[var(--mg-text-primary)] tabular-nums">
-                            {p.value} ud.
-                          </span>
-                          <span className="block text-[11px] font-bold text-[#1670C2] tabular-nums">
-                            Bs {Number(p.revenue || 0).toFixed(2)}
-                          </span>
-                        </span>
-                      </div>
-                    </li>
-                    );
-                  })}
-                {topProductsChartData.length === 0 && (
-                  <li className="py-3 text-center text-xs text-[var(--mg-text-muted)] font-bold">
-                    Sin ventas todavía.
-                  </li>
-                )}
-              </ul>
-            </div>
-
-            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
               <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
                 Ventas por Categoría (Bs)
               </h4>
               <DonutChart data={categorySalesChartData} totalLabel="Total" isCurrency={true} />
             </div>
+            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
+              <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
+                Tendencia de Ingresos por Media Hora (Bs)
+              </h4>
+              <LineChart data={hourlyTrendData} labelEvery={4} />
+            </div>
           </div>
 
-          {/* Línea temporal abajo */}
-          <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-            <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
-              Tendencia de Ingresos por Media Hora (Bs)
-            </h4>
-            <LineChart data={hourlyTrendData} labelEvery={4} />
-          </div>
           </motion.div>
     </div>
   );

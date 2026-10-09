@@ -7,6 +7,7 @@ import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../servi
 import { getProducts, subscribeToProducts, subscribeToReplenishments } from '../services/products';
 import { subscribeToExpenses } from '../services/expenses';
 import { ExpiryAlert } from '../components/dashboard/ExpiryAlert';
+import { TopProductsCard } from '../components/dashboard/TopProductsCard';
 import { printReceipt } from '../components/Receipt';
 
 // Subcomponentes del Dashboard
@@ -388,13 +389,16 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Control de vencimientos */}
-      <ExpiryAlert
-        expiredCount={expirySummary.expired}
-        soonCount={expirySummary.soon}
-        items={expirySummary.items}
-        onNavigate={(path) => navigate(path)}
-      />
+      {/* Productos top + vencimientos en una fila */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopProductsCard data={topProductsChartData} />
+        <ExpiryAlert
+          expiredCount={expirySummary.expired}
+          soonCount={expirySummary.soon}
+          items={expirySummary.items}
+          onNavigate={(path) => navigate(path)}
+        />
+      </div>
 
       {/* PULSO DEL NEGOCIO (solo dueño): mensual, stock, sucursales y en vivo */}
       <OwnerPulse
