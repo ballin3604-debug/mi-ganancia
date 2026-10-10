@@ -54,14 +54,14 @@ const PLAN_CARDS = [
     id: 'free',
     badge: null,
     tagline: 'Para empezar y probar la app.',
-    features: ['Hasta 100 productos', '1 usuario', 'Ventas e inventario básico', 'Sin escáner ni reportes'],
+    features: ['Hasta 100 productos', '1 usuario', 'Ventas e inventario', 'Compras y gastos del día'],
     selectable: false,
   },
   {
     id: 'pro',
     badge: 'El más pedido',
     tagline: 'Todo lo operativo de tu tienda en 1 sede.',
-    features: ['Productos ilimitados', 'Escáner de códigos', 'Reportes avanzados + PDF', 'Equipo hasta 5 (multi-caja)', 'Compras, gastos y kardex'],
+    features: ['Escáner de códigos', 'Productos ilimitados', 'Reportes avanzados + PDF', 'Equipo hasta 5 (multi-caja)', 'Compras, gastos y kardex'],
   },
   {
     id: 'premium',
@@ -94,7 +94,7 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
   };
 
   return (
-    <div className={`mg-fade-in w-full mx-auto max-w-2xl ${compact ? '' : 'p-4 sm:p-6 pb-24'}`}>
+    <div className={`mg-fade-in w-full mx-auto max-w-4xl ${compact ? '' : 'p-4 sm:p-6 pb-24'}`}>
       <div className="text-center mb-5">
         <h2 className="text-xl font-black text-[var(--mg-text-primary)]">
           {title || (feature ? `Desbloquea ${FEATURE_NAMES[feature] || 'esta función'}` : 'Mi plan')}

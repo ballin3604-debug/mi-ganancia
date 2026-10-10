@@ -36,24 +36,23 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
 
   return (
     <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4 transition-all">
-      {/* Fila superior: sede + mes + vivo */}
+      {/* Fila superior: sede + mes + vivo (solo si hay sedes que elegir) */}
+      {showBranch && (
       <div className="flex items-center gap-2 flex-wrap">
-        {showBranch && (
-          <label className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-3 pr-1.5 py-1.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Sucursal:</span>
-            <select
-              value={homeBranch}
-              onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
-              className="bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer max-w-[220px]"
-              aria-label="Elegir sucursal"
-            >
-              <option value="all">Todas las Sucursales (Consolidado)</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-3 pr-1.5 py-1.5">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Sucursal:</span>
+          <select
+            value={homeBranch}
+            onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
+            className="bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer max-w-[220px]"
+            aria-label="Elegir sucursal"
+          >
+            <option value="all">Todas las Sucursales (Consolidado)</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </label>
         <span className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-[11px] font-bold text-[var(--mg-text-secondary)] capitalize">
           📅 {monthLabel}
           <span className="flex items-center gap-1 text-emerald-600 font-black normal-case">
@@ -61,6 +60,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
           </span>
         </span>
       </div>
+      )}
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       {/* Saludo e información de la tienda */}

@@ -172,14 +172,13 @@ function BranchSelect({ className = '' }) {
 // Aviso de plan: prueba por vencer o período terminado. Silencioso si
 // el billing no está activo (modo legacy) o si ya es premium.
 function PlanNudge() {
-  const { planId, isTrial, trialDaysLeft, periodDaysLeft, subscription, loading, billingReady } = usePlan();
-  const sig = subscription ? `${subscription.status}:${subscription.plan_id}:${periodDaysLeft}` : '';
+  const { isTrial, trialDaysLeft, isExpired, loading, billingReady } = usePlan();
+  const sig = isExpired ? 'expired' : (isTrial ? `trial:${trialDaysLeft}` : '');
   const [dismissedSig, setDismissedSig] = useState(() => {
     try { return localStorage.getItem('mg-plan-nudge-hide') || ''; } catch { return ''; }
   });
-  if (loading || !billingReady || !subscription || dismissedSig === sig) return null;
-  const expired = (subscription.status === 'trial' || subscription.status === 'active')
-    && (periodDaysLeft || 0) <= 0;
+  if (loading || !billingReady || dismissedSig === sig || sig === '') return null;
+  const expired = isExpired;
   const trialSoon = isTrial && trialDaysLeft <= 3 && trialDaysLeft > 0;
   if (!expired && !trialSoon) return null;
   const hide = (e) => {

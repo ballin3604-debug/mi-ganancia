@@ -3,14 +3,12 @@ import { usePlan } from '../hooks/usePlan';
 
 // Cintillo con el plan actual: trial, vencimiento y atajo a upgrade.
 export default function PlanBanner({ onVerPlanes }) {
-  const { plan, planId, isTrial, trialDaysLeft, periodDaysLeft, subscription, loading } = usePlan();
+  const { plan, planId, isTrial, trialDaysLeft, isExpired, loading } = usePlan();
   const navigate = useNavigate();
 
   if (loading) return null;
 
-  const expired = !!subscription
-    && (subscription.status === 'trial' || subscription.status === 'active')
-    && (periodDaysLeft || 0) <= 0;
+  const expired = isExpired;
 
   return (
     <div

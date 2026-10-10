@@ -47,6 +47,13 @@ export function usePlan() {
   const plan = effectivePlan(subscription);
   const left = daysLeft(subscription);
   const isTrial = subscription?.status === 'trial' && left > 0;
+  // Vencido = hay fecha de fin y ya pasó. Activo sin fecha (asignado por
+  // admin) nunca vence: antes se mostraba como "período terminado".
+  const rawEnd = subscription?.status === 'trial'
+    ? subscription?.trial_ends_at
+    : subscription?.current_period_end;
+  const periodEnd = rawEnd ? new Date(rawEnd) : null;
+  const isExpired = !!subscription && !!periodEnd && periodEnd.getTime() <= Date.now();
 
   function can(feature) {
     return !!plan.features?.[feature];
@@ -57,6 +64,7 @@ export function usePlan() {
     plan,
     planId: plan.id,
     isTrial,
+    isExpired,
     trialDaysLeft: isTrial ? left : 0,
     periodDaysLeft: left,
     can,
