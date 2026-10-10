@@ -45,6 +45,11 @@ import {
   Bell,
   IdCard,
   CircleHelp,
+  Package,
+  Warehouse,
+  History,
+  ArrowRightLeft,
+  CheckCircle2,
 } from 'lucide-react';
 
 // Azul banca, verde éxito, ámbar alerta, rojo peligro, morado QR
@@ -98,6 +103,12 @@ const ICONS = {
   recordatorio: { Component: Bell, color: BRAND_COLORS.warning },
   carnet: { Component: IdCard, color: BRAND_COLORS.primary },
   ayuda: { Component: CircleHelp, color: BRAND_COLORS.primary },
+  paquete: { Component: Package, color: BRAND_COLORS.primary },
+  almacen: { Component: Warehouse, color: BRAND_COLORS.warning },
+  historial: { Component: History, color: BRAND_COLORS.primary },
+  traspaso: { Component: ArrowRightLeft, color: BRAND_COLORS.primary },
+  mas: { Component: Plus, color: BRAND_COLORS.primary },
+  ok: { Component: CheckCircle2, color: BRAND_COLORS.success },
 };
 
 export function AppIcon({ name, size = 18, color, strokeWidth = 2, className = '' }) {
