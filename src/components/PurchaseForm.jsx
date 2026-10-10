@@ -33,8 +33,9 @@ const CUSTOM_CONCEPT_VALUE = '__custom__';
 const CUSTOM_SUPPLIER_VALUE = '__custom__';
 
 export default function PurchaseForm({ businessId, product, initialDraft, lastPurchase, onClose, onSaved }) {
-  const { user, role } = useAuth();
+  const { user, role, hasPermission } = useAuth();
   const isOwner = role !== 'cashier';
+  const canSeeCosts = isOwner || hasPermission('ver_costos');
   const { business, settings } = useBusiness();
   const { branches, activeBranchId } = useBranches();
   // Sede donde ENTRA la mercadería (Fase 2). Por defecto la operativa.
@@ -726,7 +727,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             </div>
 
             {/* Resumen en lenguaje natural — solo dueño (muestra costos y ganancia) */}
-            {isOwner && (
+            {canSeeCosts && (
             <div className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-2xl p-3.5 text-sm leading-relaxed text-[var(--mg-text-secondary)]">
               <p>
                 {purchaseUnitType === 'package' ? (
@@ -752,7 +753,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             )}
 
             {/* Alerta de venta a pérdida (advertencia, no bloqueo) */}
-            {isOwner && showLossAlert && (
+            {canSeeCosts && showLossAlert && (
               <div className="bg-[var(--mg-warning-bg)] border-2 border-[var(--mg-warning)] rounded-2xl p-3.5">
                 <p className="text-sm font-bold text-[var(--mg-warning)] mb-1 flex items-center gap-1.5">
                   <span>⚠️</span> Estás vendiendo a pérdida
@@ -769,7 +770,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             )}
 
             {/* Bloques CALCULADOS (no editables) — solo dueño */}
-            {isOwner && qtyVal > 0 && (
+            {canSeeCosts && qtyVal > 0 && (
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl text-center relative">
                   <span className="absolute top-1.5 right-2 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">🔒 calculado</span>

@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [role, setRole] = useState(null); // 'owner' | 'cashier' | null
   const [sellerName, setSellerName] = useState(''); // nombre que aparece en ventas
+  const [memberPermissions, setMemberPermissions] = useState(null); // null = defecto por rol
   const [authError, setAuthError] = useState(null);
 
   const activeSessionIdRef = useRef(0);
@@ -40,10 +41,12 @@ export function AuthProvider({ children }) {
           setUserStatus(null);
           setBusinessId(null);
           setSellerName(userObj.displayName || '');
+          setMemberPermissions(null);
         } else {
           setUserStatus(userData.status || 'active');
           setRole(userData.role === 'cashier' ? 'cashier' : 'owner');
           setSellerName(userData.name || userObj.displayName || '');
+          setMemberPermissions(Array.isArray(userData.custom_permissions) ? userData.custom_permissions : null);
           if (userData.business_id) {
             setBusinessId(userData.business_id);
             setNeedsSetup(false);
@@ -70,6 +73,7 @@ export function AuthProvider({ children }) {
       setNeedsSetup(false);
       setRole(null);
       setSellerName('');
+      setMemberPermissions(null);
       setAuthError(null);
     }
 
@@ -140,6 +144,7 @@ export function AuthProvider({ children }) {
     setNeedsSetup(false);
     setUserStatus('active');
     setRole(userRole);
+    setMemberPermissions(null);
     if (displayName) setSellerName(displayName);
   }
 
@@ -179,10 +184,21 @@ export function AuthProvider({ children }) {
 
   const admin = user ? isAdmin(user.id) : false;
 
+  // ¿Puede este miembro hacer X? Dueño = todo. Cajero = sus permisos
+  // personalizados o los de defecto (cobrar, scanner, exportar).
+  function hasPermission(permId) {
+    if (role !== 'cashier') return true;
+    const list = Array.isArray(memberPermissions)
+      ? memberPermissions
+      : ['cobrar', 'scanner', 'exportar'];
+    return list.includes(permId);
+  }
+
   return (
     <AuthContext.Provider value={{
       user, businessId, loading, needsSetup,
       userStatus, admin, role, sellerName, authError,
+      memberPermissions, hasPermission,
       completeSetup, setRequestSent, refreshSession,
       // Para cuando el usuario cambia su PROPIO rol desde Ajustes (p.ej. un
       // dueño se autodegrada a cajero, o viceversa) — sin esto, el rol de la

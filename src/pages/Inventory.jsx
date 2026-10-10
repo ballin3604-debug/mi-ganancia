@@ -110,7 +110,7 @@ function clearProductDraft() {
 }
 
 export default function Inventory() {
-  const { businessId } = useAuth();
+  const { businessId, hasPermission } = useAuth();
   const { pickImage } = useImageUpload();
   const location = useLocation();
   const navigate = useNavigate();
@@ -178,7 +178,7 @@ export default function Inventory() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   function openScanner(mode) {
-    if (can('scanner')) {
+    if (can('scanner') && hasPermission('scanner')) {
       setScanMsg('');
       setScannerMode(mode);
     } else {

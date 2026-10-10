@@ -213,8 +213,10 @@ const CUSTOM_CLIENT_VALUE = '__custom__';
 const RECENT_CATEGORY = '🕐 Recientes';
 
 export default function Sales() {
-  const { businessId, user, sellerName, role } = useAuth();
+  const { businessId, user, sellerName, role, hasPermission } = useAuth();
   const isOwner = role !== 'cashier';
+  const canSeeCosts = isOwner || hasPermission('ver_costos');
+  const canExport = hasPermission('exportar');
   const { business, settings } = useBusiness();
   const { branches, activeBranchId } = useBranches();
   const [searchParams] = useSearchParams();
@@ -266,7 +268,7 @@ export default function Sales() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   function openScanner() {
-    if (can('scanner')) {
+    if (can('scanner') && hasPermission('scanner')) {
       setScanMsg(null);
       setShowScanner(true);
     } else {
@@ -660,8 +662,8 @@ export default function Sales() {
 
   function renderDetailTable(rows, emptyMessage, footerLabel) {
     // El cajero no ve costos ni ganancias.
-    const visibleColumns = isOwner ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia');
-    const visibleFooter = isOwner
+    const visibleColumns = canSeeCosts ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia');
+    const visibleFooter = canSeeCosts
       ? [
           { key: 'cantidad', label: footerLabel, value: rows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0) },
           { key: 'totalVenta', value: formatBs(rows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)) },
@@ -717,7 +719,7 @@ export default function Sales() {
     const formattedStart = reportStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
     const formattedEnd = reportEnd.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
     // El cajero exporta sin costos ni ganancias (mismas columnas que ve).
-    const visibleIdx = columns.map((_, i) => i).filter((i) => isOwner || (i !== 5 && i !== 10));
+    const visibleIdx = columns.map((_, i) => i).filter((i) => canSeeCosts || (i !== 5 && i !== 10));
     exportReportToPDF({
       businessName: settings?.businessName,
       title: reportCashier === 'Todos' ? 'Reporte de Ventas' : `Ventas de ${reportCashier}`,
@@ -1435,7 +1437,7 @@ export default function Sales() {
                 endDate={reportEndDate}
                 onStartDateChange={setReportStartDate}
                 onEndDateChange={setReportEndDate}
-                onExport={handleExportSales}
+                onExport={canExport ? handleExportSales : undefined}
                 exportDisabled={salesReportRows.length === 0}
               />
 

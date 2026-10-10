@@ -18,6 +18,8 @@ import {
   revokeInvite,
   setMemberStatus,
   removeMember,
+  updateMemberPermissions,
+  updateMemberName,
 } from '../services/cashier';
 import { renameBusiness } from '../services/businessSettings';
 
@@ -213,15 +215,28 @@ export default function Settings() {
     }
   }
 
-  async function handleInvite(email) {
+  async function handleInvite(email, role) {
     setMemberBusy('invite');
     try {
-      const invite = await createInviteCode(businessId, business?.name || '', email, 'cashier');
-      setInvites((prev) => [...prev.filter((i) => i.code !== invite.code), { code: invite.code, email: invite.email, role: 'cashier' }]);
+      const invite = await createInviteCode(businessId, business?.name || '', email, role || 'cashier');
+      setInvites((prev) => [...prev.filter((i) => i.code !== invite.code), { code: invite.code, email: invite.email, role: invite.role, expiresAt: invite.expiresAt }]);
       return invite;
     } catch (err) {
       alert(err.message || 'No se pudo crear la invitación.');
       return null;
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleResendInvite(invite) {
+    setMemberBusy('invite');
+    try {
+      try { await revokeInvite(invite.code); } catch { /* sigue igual */ }
+      const fresh = await createInviteCode(businessId, business?.name || '', invite.email, invite.role || 'cashier');
+      setInvites((prev) => [...prev.filter((i) => i.code !== invite.code), { code: fresh.code, email: fresh.email, role: fresh.role, expiresAt: fresh.expiresAt }]);
+    } catch (err) {
+      alert(err.message || 'No se pudo reenviar.');
     } finally {
       setMemberBusy(null);
     }
@@ -256,6 +271,32 @@ export default function Settings() {
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
     } catch (err) {
       alert(err.message || 'No se pudo eliminar. Prueba suspendiéndolo.');
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleSavePermissions(member, perms) {
+    setMemberBusy(member.id);
+    try {
+      const saved = await updateMemberPermissions(member.id, perms);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, customPermissions: saved } : m)));
+    } catch (err) {
+      alert(err.message || 'No se pudo guardar.');
+      throw err;
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleRenameMember(member, name) {
+    setMemberBusy(member.id);
+    try {
+      const clean = await updateMemberName(member.id, name);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, displayName: clean } : m)));
+    } catch (err) {
+      alert(err.message || 'No se pudo guardar.');
+      throw err;
     } finally {
       setMemberBusy(null);
     }
@@ -444,8 +485,12 @@ export default function Settings() {
               invites={invites}
               onInvite={handleInvite}
               onRevokeInvite={handleRevokeInvite}
+              onResendInvite={handleResendInvite}
               onToggleStatus={handleToggleStatus}
               onRemoveMember={handleRemoveMember}
+              onSavePermissions={handleSavePermissions}
+              onRenameMember={handleRenameMember}
+              onUpgradePlan={() => setActiveTab('plan')}
             />
             </PremiumGate>
           </motion.div>

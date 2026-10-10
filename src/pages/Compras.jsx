@@ -29,7 +29,7 @@ function formatDate(dateLike) {
 }
 
 export default function Compras() {
-  const { businessId, user } = useAuth();
+  const { businessId, user, hasPermission } = useAuth();
   const { settings } = useBusiness();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -51,7 +51,7 @@ export default function Compras() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   function openScanner() {
-    if (can('scanner')) {
+    if (can('scanner') && hasPermission('scanner')) {
       setScanMsg('');
       setShowScanner(true);
     } else {

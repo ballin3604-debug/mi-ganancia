@@ -11,6 +11,44 @@ function generateCode() {
 
 export const MAX_MEMBERS = 5;
 
+// ── Permisos por miembro (matriz real, no decorativa) ──────────
+// El dueño siempre tiene todo. El cajero usa sus custom_permissions
+// o estos valores de defecto.
+export const MEMBER_PERMISSIONS = [
+  { id: 'cobrar', name: 'Cobrar y emitir recibos', description: 'Registrar ventas y reimprimir recibos.', locked: true },
+  { id: 'scanner', name: 'Escáner de códigos', description: 'Buscar y asignar productos con la cámara.', locked: false },
+  { id: 'exportar', name: 'Exportar reportes', description: 'Descargar CSV y PDF de ventas.', locked: false },
+  { id: 'ver_costos', name: 'Ver costos y ganancias', description: 'Precios de compra, márgenes y resúmenes de dinero.', locked: false },
+];
+
+export const DEFAULT_CASHIER_PERMISSIONS = ['cobrar', 'scanner', 'exportar'];
+
+export function memberCan(memberOrRole, permId, customPermissions) {
+  const role = typeof memberOrRole === 'string' ? memberOrRole : memberOrRole?.role;
+  if (role !== 'cashier') return true;
+  const custom = Array.isArray(customPermissions)
+    ? customPermissions
+    : (typeof memberOrRole === 'object' ? memberOrRole?.custom_permissions || memberOrRole?.customPermissions : null);
+  const list = Array.isArray(custom) ? custom : DEFAULT_CASHIER_PERMISSIONS;
+  return list.includes(permId);
+}
+
+export async function updateMemberPermissions(memberId, permissions) {
+  const clean = [...new Set((permissions || []).filter(Boolean))];
+  if (!clean.includes('cobrar')) clean.unshift('cobrar');
+  const { error } = await supabase.from('profiles').update({ custom_permissions: clean }).eq('id', memberId);
+  if (error) throw error;
+  return clean;
+}
+
+export async function updateMemberName(memberId, name) {
+  const clean = (name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (clean.length < 2) throw new Error('El nombre debe tener al menos 2 letras.');
+  const { error } = await supabase.from('profiles').update({ name: clean }).eq('id', memberId);
+  if (error) throw error;
+  return clean;
+}
+
 export async function getBusinessMembers(businessId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -25,6 +63,7 @@ export async function getBusinessMembers(businessId) {
     photoURL: m.photo_url || null,
     role: m.role,
     status: m.status,
+    customPermissions: Array.isArray(m.custom_permissions) ? m.custom_permissions : null,
   }));
 }
 
@@ -49,20 +88,27 @@ export async function lookupJoinCode(rawCode) {
     businessName: data.business_name,
     role: data.role || 'cashier',
     email: (data.email || '').toLowerCase() || null,
+    expiresAt: data.expires_at || null,
   };
 }
 
-export async function createJoinCode(businessId, businessName) {
+export async function createJoinCode(businessId, businessName, hoursValid = 48) {
   const code = generateCode();
-  const { error: insErr } = await supabase
-    .from('business_join_codes')
-    .insert({
-      code,
-      business_id: businessId,
-      business_name: businessName,
-      role: 'cashier',
-    });
-  if (insErr) throw insErr;
+  const row = {
+    code,
+    business_id: businessId,
+    business_name: businessName,
+    role: 'cashier',
+  };
+  const expires = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
+  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
+  if (insErr) {
+    // Servidor sin la columna expires_at (migración pendiente): invita sin caducidad.
+    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
+      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
+      if (retryErr) throw retryErr;
+    } else throw insErr;
+  }
 
   const { error: updErr } = await supabase
     .from('businesses')
@@ -73,17 +119,22 @@ export async function createJoinCode(businessId, businessName) {
   return code;
 }
 
-export async function createOwnerCode(businessId, businessName) {
+export async function createOwnerCode(businessId, businessName, hoursValid = 72) {
   const code = generateCode();
-  const { error: insErr } = await supabase
-    .from('business_join_codes')
-    .insert({
-      code,
-      business_id: businessId,
-      business_name: businessName,
-      role: 'owner',
-    });
-  if (insErr) throw insErr;
+  const row = {
+    code,
+    business_id: businessId,
+    business_name: businessName,
+    role: 'owner',
+  };
+  const expires = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
+  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
+  if (insErr) {
+    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
+      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
+      if (retryErr) throw retryErr;
+    } else throw insErr;
+  }
 
   const { error: updErr } = await supabase
     .from('businesses')
@@ -105,6 +156,10 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
     if (userEmail !== biz.email) {
       throw new Error(`Este código es para ${biz.email}. Entra con esa cuenta.`);
     }
+  }
+  // Código vencido: no entra.
+  if (biz.expiresAt && new Date(biz.expiresAt).getTime() <= Date.now()) {
+    throw new Error('Este código venció. Pide uno nuevo al dueño.');
   }
   const displayName = cashierName || user.user_metadata?.displayName || user.email;
   const birthdate = (extra.birthdate || '').trim() || null;
@@ -165,13 +220,15 @@ export async function regenerateOwnerCode(businessId, businessName, oldCode) {
 }
 
 // ── Invitaciones por correo ──────────────────────────────────
-// Crea un código atado a un correo: solo esa cuenta puede usarlo.
+// Crea un código atado a un correo (7 días): solo esa cuenta puede usarlo.
 export async function createInviteCode(businessId, businessName, email, role = 'cashier') {
   const clean = (email || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clean)) {
     throw new Error('Escribe un correo válido.');
   }
+  if (!['cashier', 'owner'].includes(role)) throw new Error('Rol inválido.');
   const code = generateCode();
+  const expires = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const row = {
     code,
     business_id: businessId,
@@ -179,16 +236,15 @@ export async function createInviteCode(businessId, businessName, email, role = '
     role,
     email: clean,
   };
-  const { error: insErr } = await supabase.from('business_join_codes').insert(row);
+  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
-    // Servidor sin la columna email (migración pendiente): invita sin atar.
+    // Servidor sin las columnas nuevas (migración pendiente): invita sin atar.
     if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
-      const { email: _drop, ...fallback } = row;
-      const { error: retryErr } = await supabase.from('business_join_codes').insert(fallback);
+      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
       if (retryErr) throw retryErr;
     } else throw insErr;
   }
-  return { code, email: clean };
+  return { code, email: clean, role, expiresAt: expires };
 }
 
 export async function listInvites(businessId) {
@@ -202,6 +258,8 @@ export async function listInvites(businessId) {
     code: r.code,
     email: r.email || null,
     role: r.role || 'cashier',
+    createdAt: r.created_at || null,
+    expiresAt: r.expires_at || null,
   }));
 }
 
