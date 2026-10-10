@@ -173,28 +173,45 @@ function BranchSelect({ className = '' }) {
 // el billing no está activo (modo legacy) o si ya es premium.
 function PlanNudge() {
   const { planId, isTrial, trialDaysLeft, periodDaysLeft, subscription, loading, billingReady } = usePlan();
-  if (loading || !billingReady || !subscription) return null;
+  const sig = subscription ? `${subscription.status}:${subscription.plan_id}:${periodDaysLeft}` : '';
+  const [dismissedSig, setDismissedSig] = useState(() => {
+    try { return localStorage.getItem('mg-plan-nudge-hide') || ''; } catch { return ''; }
+  });
+  if (loading || !billingReady || !subscription || dismissedSig === sig) return null;
   const expired = (subscription.status === 'trial' || subscription.status === 'active')
     && (periodDaysLeft || 0) <= 0;
   const trialSoon = isTrial && trialDaysLeft <= 3 && trialDaysLeft > 0;
   if (!expired && !trialSoon) return null;
+  const hide = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { localStorage.setItem('mg-plan-nudge-hide', sig); } catch { /* ignore */ }
+    setDismissedSig(sig);
+  };
   return (
-    <Link
-      to="/configuracion"
-      className={`mx-4 lg:mx-6 mt-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 text-xs font-bold border transition-all active:scale-[0.99] ${
+    <div
+      className={`mx-4 lg:mx-6 mt-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 text-xs font-bold border ${
         expired
           ? 'bg-amber-50 border-amber-200 text-amber-800'
           : 'bg-[var(--mg-accent-bg-soft)] border-[var(--mg-accent-border)] text-[var(--mg-accent)]'
       }`}
     >
       <span className="text-base">{expired ? '⏳' : '⭐'}</span>
-      <span className="flex-1">
+      <Link to="/configuracion?tab=plan" className="flex-1">
         {expired
           ? 'Tu período Pro terminó. Activa tu plan para recuperar todo.'
           : `Tu prueba Pro termina en ${trialDaysLeft} día${trialDaysLeft === 1 ? '' : 's'}. Actívala.`}
-      </span>
-      <span className="shrink-0 underline">Ver planes</span>
-    </Link>
+      </Link>
+      <Link to="/configuracion?tab=plan" className="shrink-0 underline">Ver planes</Link>
+      <button
+        type="button"
+        onClick={hide}
+        aria-label="Ocultar aviso"
+        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center opacity-60 hover:opacity-100"
+      >
+        ✕
+      </button>
+    </div>
   );
 }
 

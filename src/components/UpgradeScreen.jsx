@@ -51,6 +51,13 @@ const FEATURE_NAMES = {
 
 const PLAN_CARDS = [
   {
+    id: 'free',
+    badge: null,
+    tagline: 'Para empezar y probar la app.',
+    features: ['Hasta 100 productos', '1 usuario', 'Ventas e inventario básico', 'Sin escáner ni reportes'],
+    selectable: false,
+  },
+  {
     id: 'pro',
     badge: 'El más pedido',
     tagline: 'Todo lo operativo de tu tienda en 1 sede.',
@@ -77,7 +84,14 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
     getMyPayments(businessId).then(setMyPayments).catch(() => setMyPayments([]));
   }, [businessId, sent]);
 
-  const priceOf = (id) => cycle === 'yearly' ? PLANS[id].priceYearly : PLANS[id].priceMonthly;
+  const priceOf = (id) => {
+    if (id === 'free') return 0;
+    return cycle === 'yearly' ? PLANS[id].priceYearly : PLANS[id].priceMonthly;
+  };
+  const cycleSuffix = (id) => {
+    if (id === 'free') return 'para siempre';
+    return cycle === 'yearly' ? 'año (2 meses gratis)' : 'mes';
+  };
 
   return (
     <div className={`mg-fade-in w-full mx-auto max-w-2xl ${compact ? '' : 'p-4 sm:p-6 pb-24'}`}>
@@ -108,7 +122,49 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {(sent || myPayments.length > 0) && (
+        <div className="bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl p-4 mb-4 space-y-2.5">
+          {sent && (
+            <div className="bg-[var(--mg-success-bg)] border border-green-200 rounded-xl px-3 py-2.5">
+              <p className="text-xs font-black text-[var(--mg-success-text)] text-center">
+                ✅ Comprobante enviado. Lo revisamos y activamos tu plan el mismo día.
+              </p>
+            </div>
+          )}
+          {myPayments.length > 0 && (
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)] mb-1.5">
+                Mis pagos
+              </p>
+              <div className="space-y-1.5">
+                {myPayments.slice(0, 3).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                    <span className="text-xs font-bold text-[var(--mg-text-secondary)]">
+                      {p.planId === 'premium' ? '👑 Premium' : '⭐ Pro'} · Bs {Number(p.amount).toFixed(0)}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      p.status === 'approved' ? 'bg-green-100 text-green-700'
+                      : p.status === 'rejected' ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {p.status === 'approved' ? 'Aprobado' : p.status === 'rejected' ? 'Rechazado' : 'En revisión'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshPlan()}
+                className="w-full text-center text-[11px] font-bold text-[var(--mg-accent)] mt-2"
+              >
+                🔄 Ya me aprobaron · revisar mi plan
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {PLAN_CARDS.map((card) => {
           const mine = planId === card.id;
           return (
@@ -133,10 +189,10 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
               </p>
               <p className="text-center mt-2">
                 <span className="text-3xl font-black text-[var(--mg-text-primary)]">
-                  Bs {priceOf(card.id)}
+                  {card.id === 'free' ? 'Gratis' : `Bs ${priceOf(card.id)}`}
                 </span>
                 <span className="block text-[11px] font-bold text-[var(--mg-text-muted)]">
-                  /{cycle === 'yearly' ? 'año (2 meses gratis)' : 'mes'}
+                  /{cycleSuffix(card.id)}
                 </span>
               </p>
               <ul className="mt-3 mb-4 space-y-1.5 flex-1">
@@ -149,6 +205,10 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
               {mine ? (
                 <p className="text-center text-xs font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2.5">
                   Tu plan actual
+                </p>
+              ) : card.selectable === false ? (
+                <p className="text-center text-[11px] font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl py-2.5">
+                  Plan base, sin pago
                 </p>
               ) : (
                 <button
@@ -168,50 +228,6 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
         })}
       </div>
 
-      <div className="bg-[var(--mg-accent-bg-soft)] border border-[var(--mg-accent-border)] rounded-2xl p-4 mt-4 text-center space-y-2.5">
-        {sent ? (
-          <div className="bg-[var(--mg-success-bg)] border border-green-200 rounded-xl px-3 py-2.5">
-            <p className="text-xs font-black text-[var(--mg-success-text)]">
-              ✅ Comprobante enviado. Lo revisamos y activamos tu plan el mismo día.
-            </p>
-          </div>
-        ) : (
-          <p className="text-xs text-[var(--mg-text-muted)] font-medium">
-            Pagas por QR y subes tu comprobante. Sin permanencia: vuelve a Gratis cuando quieras.
-          </p>
-        )}
-
-        {myPayments.length > 0 && (
-          <div className="text-left pt-1">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)] mb-1.5">
-              Mis pagos
-            </p>
-            <div className="space-y-1.5">
-              {myPayments.slice(0, 3).map((p) => (
-                <div key={p.id} className="flex items-center justify-between bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
-                  <span className="text-xs font-bold text-[var(--mg-text-secondary)]">
-                    {p.planId === 'premium' ? '👑 Premium' : '⭐ Pro'} · Bs {Number(p.amount).toFixed(0)}
-                  </span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                    p.status === 'approved' ? 'bg-green-100 text-green-700'
-                    : p.status === 'rejected' ? 'bg-red-100 text-red-700'
-                    : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {p.status === 'approved' ? 'Aprobado' : p.status === 'rejected' ? 'Rechazado' : 'En revisión'}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => refreshPlan()}
-              className="w-full text-center text-[11px] font-bold text-[var(--mg-accent)] mt-2"
-            >
-              🔄 Ya me aprobaron · revisar mi plan
-            </button>
-          </div>
-        )}
-      </div>
 
       {payPlan && (
         <PaymentModal
