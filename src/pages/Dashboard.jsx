@@ -22,6 +22,9 @@ import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
 import { OwnerPulse } from '../components/OwnerPulse';
 import { usePlan } from '../hooks/usePlan';
+import { useBranches } from '../context/BranchContext';
+import { useBranchStocks } from '../hooks/useBranchStocks';
+import { toStockMap } from '../services/branchStock';
 
 function UpgradeNudge({ title, desc, planName, onGo }) {
   return (
@@ -123,12 +126,37 @@ export default function Dashboard() {
     isOwner ? todaySales : todaySales.filter((s) => s.createdBy === user?.uid)
   ), [isOwner, todaySales, user?.uid]);
 
-  const hasSalesToday = visibleSales.length > 0;
+  // Sede del Inicio: filtra todo el día (resumen, análisis, en vivo).
+  const { branches } = useBranches();
+  const [homeBranch, setHomeBranch] = useState('all');
+  const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
+  const saleBranchId = (s) => s.branchId || s.branch_id || mainBranchId;
+  const daySales = useMemo(() => {
+    if (!isOwner || homeBranch === 'all') return visibleSales;
+    return visibleSales.filter((s) => saleBranchId(s) === homeBranch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleSales, homeBranch, mainBranchId, isOwner]);
+
+  // Ítems solo de las ventas del día/sede visible
+  const scopedItemsMap = useMemo(() => {
+    const ids = new Set(daySales.map((s) => s.id));
+    const out = {};
+    Object.entries(salesItemsMap).forEach(([sid, items]) => {
+      if (ids.has(sid)) out[sid] = items;
+    });
+    return out;
+  }, [salesItemsMap, daySales]);
+
+  // Stock bajo: por sede si hay filtro, si no el global
+  const branchStockRows = useBranchStocks(businessId, mainBranchId);
+  const branchStockMap = useMemo(() => toStockMap(branchStockRows), [branchStockRows]);
+
+  const hasSalesToday = daySales.length > 0;
 
   // Cargar los ítems de cada venta visible (gráficos)
   useEffect(() => {
-    if (!businessId || visibleSales.length === 0) return;
-    visibleSales.forEach((sale) => {
+    if (!businessId || daySales.length === 0) return;
+    daySales.forEach((sale) => {
       if (salesItemsMap[sale.id]) return;
       getSaleItems(businessId, sale.id)
         .then((items) => {
@@ -139,13 +167,13 @@ export default function Dashboard() {
         })
         .catch(console.error);
     });
-  }, [visibleSales, businessId]);
+  }, [daySales, businessId]);
 
   // Datos del gráfico de productos más vendidos (cantidades en UNIDADES BASE:
   // los paquetes suman × su factor)
   const topProductsChartData = useMemo(() => {
     const productsCount = {};
-    Object.values(salesItemsMap).flat().forEach((item) => {
+    Object.values(scopedItemsMap).flat().forEach((item) => {
       const name = item.productName || 'Desconocido';
       const factor = Number(item.presentation_factor ?? item.presentationFactor ?? 1);
       if (!productsCount[name]) productsCount[name] = { value: 0, revenue: 0, image: '' };
@@ -168,12 +196,12 @@ export default function Dashboard() {
 
     const colors = ['#1670C2', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#34d399', '#94a3b8'];
     return top.map((item, i) => ({ ...item, color: colors[i % colors.length] }));
-  }, [salesItemsMap]);
+  }, [scopedItemsMap]);
 
   // Datos del gráfico de ventas por categoría
   const categorySalesChartData = useMemo(() => {
     const categoryTotals = {};
-    Object.values(salesItemsMap).flat().forEach((item) => {
+    Object.values(scopedItemsMap).flat().forEach((item) => {
       const cat = item.category || 'Otros';
       categoryTotals[cat] = (categoryTotals[cat] || 0) + (item.subtotal || 0);
     });
@@ -184,7 +212,7 @@ export default function Dashboard() {
 
     const colors = ['#8b5cf6', '#10b981', '#1670C2', '#f59e0b', '#f43f5e', '#38bdf8', '#34d399', '#94a3b8'];
     return sorted.map((item, i) => ({ ...item, color: colors[i % colors.length] }));
-  }, [salesItemsMap]);
+  }, [scopedItemsMap]);
 
   // Tendencia por media hora (48 franjas)
   const hourlyTrendData = useMemo(() => {
@@ -194,7 +222,7 @@ export default function Dashboard() {
       total: 0,
     }));
 
-    visibleSales.forEach((s) => {
+    daySales.forEach((s) => {
       if (!s.createdAt) return;
       const d = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
       const slot = d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0);
@@ -204,21 +232,32 @@ export default function Dashboard() {
     });
 
     return trend;
-  }, [visibleSales]);
+  }, [daySales]);
 
-  // Productos que necesitan reposición
-  const lowStock = useMemo(() => (
-    products.filter((p) => p.stock <= (p.minStock || 5))
-  ), [products]);
+  // Productos que necesitan reposición (de la sede elegida si hay filtro)
+  const lowStock = useMemo(() => {
+    if (isOwner && homeBranch !== 'all' && branchStockRows.length > 0) {
+      const byId = Object.fromEntries(products.map((p) => [p.id, p]));
+      return branchStockRows
+        .filter((r) => r.branch_id === homeBranch)
+        .map((r) => {
+          const p = byId[r.product_id];
+          if (!p) return null;
+          return { ...p, stock: Number(r.stock || 0) };
+        })
+        .filter((p) => p && p.stock <= (p.minStock || 5));
+    }
+    return products.filter((p) => p.stock <= (p.minStock || 5));
+  }, [products, homeBranch, branchStockRows, isOwner]);
 
   // Totales por método de pago (con soporte para mixtos)
-  const totalQr = visibleSales.reduce((sum, s) => {
+  const totalQr = daySales.reduce((sum, s) => {
     if (s.paymentMethod === 'qr') return sum + (s.total || 0);
     if (s.paymentMethod === 'mixto') return sum + (s.montoQR || 0);
     return sum;
   }, 0);
 
-  const totalCash = visibleSales.reduce((sum, s) => {
+  const totalCash = daySales.reduce((sum, s) => {
     if (s.paymentMethod === 'cash') return sum + (s.total || 0);
     if (s.paymentMethod === 'mixto') return sum + (s.montoEfectivo || 0);
     if (s.paymentMethod !== 'qr' && s.paymentMethod !== 'mixto' && s.paymentMethod !== 'fiado') {
@@ -228,7 +267,7 @@ export default function Dashboard() {
   }, 0);
 
   const totalHoy = totalCash + totalQr;
-  const paidSalesCount = visibleSales.filter((s) => s.paymentMethod !== 'fiado').length;
+  const paidSalesCount = daySales.filter((s) => s.paymentMethod !== 'fiado').length;
 
   const isToday = (d) => {
     if (!d) return false;
@@ -250,23 +289,25 @@ export default function Dashboard() {
 
   // Costo de lo vendido hoy (para la ganancia del día)
   const cogsHoy = useMemo(() => (
-    Object.values(salesItemsMap).flat().reduce((sum, it) => {
+    Object.values(scopedItemsMap).flat().reduce((sum, it) => {
       const cost = it.supplier_price ?? it.supplierPrice ?? null;
       if (cost === null || cost === undefined) return sum;
       const factor = Number(it.presentation_factor ?? it.presentationFactor ?? 1);
       return sum + Number(cost) * Number(it.quantity || 0) * factor;
     }, 0)
-  ), [salesItemsMap]);
+  ), [scopedItemsMap]);
 
-  // Gastos de hoy
+  // Gastos de hoy (de la sede elegida; viejos sin sede van a la principal)
   const gastosHoy = useMemo(() => (
     expenses
       .filter((e) => {
         const d = e.createdAt?.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
-        return isToday(d);
+        if (!isToday(d)) return false;
+        if (!isOwner || homeBranch === 'all') return true;
+        return (e.branch_id || mainBranchId) === homeBranch;
       })
       .reduce((s, e) => s + Number(e.amount || 0), 0)
-  ), [expenses]);
+  ), [expenses, isOwner, homeBranch, mainBranchId]);
 
   // Ganancia del día = ventas − costo − gastos
   const gananciaHoy = totalHoy - cogsHoy - gastosHoy;
@@ -358,7 +399,7 @@ export default function Dashboard() {
           businessName={business?.name || settings?.businessName || 'Mi negocio'}
           todayStr={todayStr}
           sales={visibleSales}
-          salesItemsMap={salesItemsMap}
+          salesItemsMap={scopedItemsMap}
           lowStock={lowStock}
           totalCobrado={totalHoy}
           totalCash={totalCash}
@@ -386,18 +427,21 @@ export default function Dashboard() {
       transition={{ duration: 0.3 }}
       className="p-4 sm:p-6 space-y-8 max-w-7xl mx-auto pb-16"
     >
-      {/* CABECERA: SALUDO, ESTADO DE SINCRONIZACIÓN Y ACCIONES PRINCIPALES */}
+      {/* CABECERA: SEDE, SALUDO Y ACCIONES PRINCIPALES */}
       <DashboardHeader
         today={todayStr}
         user={user}
         settings={settings}
         onShowQr={() => setShowQr(true)}
         onNavigate={(path, opts) => navigate(path, opts)}
+        branches={branches}
+        homeBranch={homeBranch}
+        onBranchChange={setHomeBranch}
       />
 
       {/* SECCIÓN 1 — RESUMEN DEL DÍA */}
       <section>
-        <SectionHeader title="Resumen del día" />
+        <SectionHeader title={homeBranch !== 'all' ? `Resumen del día · ${(branches.find((b) => b.id === homeBranch)?.name) || 'Sucursal'}` : 'Resumen del día'} />
         {hasSalesToday ? (
           <MagicMetricCards
             totalHoy={totalHoy}
@@ -433,9 +477,12 @@ export default function Dashboard() {
       {showPulso ? (
         <OwnerPulse
           businessId={businessId}
-          liveSales={todaySales}
-          salesItemsMap={salesItemsMap}
+          liveSales={daySales}
+          salesItemsMap={scopedItemsMap}
           lowStock={lowStock}
+          branchId={homeBranch}
+          mainBranchId={mainBranchId}
+          branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
           onNavigate={(path, opts) => navigate(path, opts)}
           onReimprint={handleReimprint}
           printingSaleId={printingSaleId}
@@ -470,7 +517,7 @@ export default function Dashboard() {
           </div>
 
           <DashboardCharts
-            visibleSalesCount={visibleSales.length}
+            visibleSalesCount={daySales.length}
             topProductsChartData={topProductsChartData}
             categorySalesChartData={categorySalesChartData}
             hourlyTrendData={hourlyTrendData}
@@ -506,3 +553,4 @@ export default function Dashboard() {
     </motion.div>
   );
 }
+

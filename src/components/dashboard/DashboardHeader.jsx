@@ -29,11 +29,40 @@ function SyncBadge() {
   );
 }
 
-export function DashboardHeader({ today, user, settings, onShowQr, onNavigate }) {
+export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, branches = [], homeBranch = 'all', onBranchChange }) {
   const userFirstName = user?.displayName?.split(' ')[0] || 'Vendedor';
+  const monthLabel = new Date().toLocaleDateString('es-BO', { month: 'long', year: 'numeric' });
+  const showBranch = branches.length > 1;
 
   return (
-    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all">
+    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4 transition-all">
+      {/* Fila superior: sede + mes + vivo */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {showBranch && (
+          <label className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-3 pr-1.5 py-1.5">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Sucursal:</span>
+            <select
+              value={homeBranch}
+              onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
+              className="bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer max-w-[220px]"
+              aria-label="Elegir sucursal"
+            >
+              <option value="all">Todas las Sucursales (Consolidado)</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <span className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-[11px] font-bold text-[var(--mg-text-secondary)] capitalize">
+          📅 {monthLabel}
+          <span className="flex items-center gap-1 text-emerald-600 font-black normal-case">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En Tiempo Real
+          </span>
+        </span>
+      </div>
+
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       {/* Saludo e información de la tienda */}
       <div className="flex items-center gap-3.5">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[var(--mg-accent)] to-sky-500 text-white flex items-center justify-center font-black text-xl shrink-0 shadow-md border border-white/20 overflow-hidden">
@@ -89,6 +118,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate })
           </svg>
           <span>Nueva Venta</span>
         </button>
+      </div>
       </div>
     </div>
   );

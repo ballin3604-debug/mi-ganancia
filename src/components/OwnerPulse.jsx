@@ -23,7 +23,7 @@ function monthKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], onNavigate, onReimprint, printingSaleId }) {
+export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], branchId = 'all', mainBranchId = null, branchName = '', onNavigate, onReimprint, printingSaleId }) {
   const { branches } = useBranches();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
@@ -59,19 +59,22 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
       buckets.push({ key: monthKey(d), label: d.toLocaleDateString('es-BO', { month: 'short' }).replace('.', ''), income: 0, cogs: 0, exp: 0 });
     }
     const byKey = Object.fromEntries(buckets.map((b) => [b.key, b]));
-    const saleDate = {};
+    const inBranch = (bid) => branchId === 'all' || (bid || mainBranchId) === branchId;
+    const saleInfo = {};
     sales.forEach((s) => {
       if (!s.createdAt) return;
       const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-      saleDate[s.id] = d;
+      saleInfo[s.id] = { date: d, branch: s.branchId || s.branch_id || null };
       const b = byKey[monthKey(d)];
-      if (b && s.paymentMethod !== 'fiado') b.income += Number(s.total || 0);
+      if (b && s.paymentMethod !== 'fiado' && inBranch(s.branchId || s.branch_id)) {
+        b.income += Number(s.total || 0);
+      }
     });
     items.forEach((it) => {
-      const d = saleDate[it.saleId];
-      if (!d) return;
-      const b = byKey[monthKey(d)];
-      if (!b) return;
+      const info = saleInfo[it.saleId];
+      if (!info) return;
+      const b = byKey[monthKey(info.date)];
+      if (!b || !inBranch(info.branch)) return;
       const cost = it.supplier_price ?? it.supplierPrice ?? null;
       if (cost === null || cost === undefined) return;
       const factor = Number(it.presentation_factor ?? it.presentationFactor ?? 1);
@@ -81,10 +84,10 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
       if (!e.createdAt) return;
       const d = e.createdAt?.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
       const b = byKey[monthKey(d)];
-      if (b) b.exp += Number(e.amount || 0);
+      if (b && inBranch(e.branch_id)) b.exp += Number(e.amount || 0);
     });
     return buckets.map((b) => ({ ...b, net: b.income - b.cogs - b.exp }));
-  }, [sales, items, expenses]);
+  }, [sales, items, expenses, branchId, mainBranchId]);
 
   const maxBar = Math.max(...monthly.map((m) => Math.max(m.income, m.cogs, m.net, 0)), 1);
   const avgMargin = (() => {
@@ -150,7 +153,10 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#1670C2]" /> Utilidad</span>
             </div>
           </div>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">Ingresos vs costo de mercadería y utilidad neta por mes.</p>
+          <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">
+            Ingresos vs costo de mercadería y utilidad neta por mes.
+            {branchId !== 'all' && branchName ? ` · ${branchName}` : ''}
+          </p>
           <div className="flex items-end justify-between gap-2 h-44">
             {monthly.map((m) => (
               <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
