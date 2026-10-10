@@ -4,6 +4,7 @@ import {
   getAllRequests, getAllBusinesses,
   approveRequest, rejectRequest,
   suspendBusiness, reactivateBusiness, deleteBusiness,
+  getBusinessPlans, setBusinessPlan,
 } from '../services/admin';
 import { signOut } from '../services/auth';
 import {
@@ -359,6 +360,8 @@ export default function AdminPanel() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deletingBiz, setDeletingBiz] = useState(false);
+  const [bizPlans, setBizPlans] = useState({});
+  const [planBusy, setPlanBusy] = useState('');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -366,6 +369,9 @@ export default function AdminPanel() {
     setRequests(reqs);
     setBusinesses(biz);
     setMasterProducts(cat);
+    try {
+      setBizPlans(await getBusinessPlans());
+    } catch { setBizPlans({}); }
     setLoading(false);
   }, []);
 
@@ -451,6 +457,16 @@ export default function AdminPanel() {
       await reactivateBusiness(biz.id, biz.owner_id || biz.ownerId);
       await fetchAll();
     } finally { setProcessing(''); }
+  }
+
+  async function handleSetPlan(biz, planId) {
+    setPlanBusy(biz.id);
+    try {
+      await setBusinessPlan(biz.id, planId);
+      setBizPlans((prev) => ({ ...prev, [biz.id]: planId }));
+    } catch (err) {
+      alert(err.message || 'No se pudo cambiar el plan.');
+    } finally { setPlanBusy(''); }
   }
 
   function openDelete(biz) {
@@ -675,6 +691,33 @@ export default function AdminPanel() {
                         <p className="text-[var(--mg-text-faint)] text-xs">Creado: {formatDate(biz.createdAt)}</p>
                       </div>
                       <Badge status={biz.status || 'active'} />
+                    </div>
+
+                    {/* Plan del negocio: 3 botones */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Plan:</span>
+                      {[
+                        { id: 'free', label: 'Free' },
+                        { id: 'pro', label: 'Pro' },
+                        { id: 'premium', label: 'Premium' },
+                      ].map((p) => {
+                        const active = (bizPlans[biz.id] || 'free') === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            disabled={planBusy === biz.id}
+                            onClick={() => handleSetPlan(biz, p.id)}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all disabled:opacity-50 ${
+                              active
+                                ? 'bg-[var(--mg-accent)] text-white shadow-sm'
+                                : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border border-[var(--mg-border)]'
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {biz.status === 'suspended' ? (

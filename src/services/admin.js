@@ -8,6 +8,27 @@ export function isAdmin(uid) {
   return uid === ADMIN_UID;
 }
 
+// ── Planes por negocio (solo admin, 3 botones: free/pro/premium) ──
+export async function getBusinessPlans() {
+  const { data, error } = await supabase.from('subscriptions').select('business_id,plan_id,status');
+  if (error) throw error;
+  const map = {};
+  (data || []).forEach((s) => { map[s.business_id] = s.plan_id || 'free'; });
+  return map;
+}
+
+export async function setBusinessPlan(businessId, planId) {
+  if (!['free', 'pro', 'premium'].includes(planId)) throw new Error('Plan inválido.');
+  const { error } = await supabase.from('subscriptions').upsert({
+    business_id: businessId,
+    plan_id: planId,
+    status: 'active',
+    trial_ends_at: null,
+    current_period_end: null,
+  }, { onConflict: 'business_id' });
+  if (error) throw error;
+}
+
 function mapRequest(req) {
   if (!req) return req;
   return {

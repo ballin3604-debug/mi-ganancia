@@ -21,6 +21,28 @@ import { QrModal } from '../components/dashboard/QrModal';
 import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
 import { OwnerPulse } from '../components/OwnerPulse';
+import { usePlan } from '../hooks/usePlan';
+
+function UpgradeNudge({ title, desc, planName, onGo }) {
+  return (
+    <button
+      type="button"
+      onClick={onGo}
+      className="w-full text-left bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-[22px] p-5 flex items-center gap-3 active:scale-[0.99] transition-all"
+    >
+      <span className="w-10 h-10 rounded-2xl bg-[var(--mg-accent)] text-white flex items-center justify-center shrink-0">
+        <AppIcon name="plan" size={18} color="#fff" />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-black text-[var(--mg-text-primary)]">{title}</span>
+        <span className="block text-xs text-[var(--mg-text-secondary)]">{desc}</span>
+      </span>
+      <span className="text-xs font-black text-white bg-[var(--mg-accent)] px-3 py-1.5 rounded-xl shrink-0">
+        {planName} →
+      </span>
+    </button>
+  );
+}
 
 function SectionHeader({ title }) {
   return (
@@ -35,6 +57,13 @@ export default function Dashboard() {
   const isOwner = role === 'owner';
   const { business, settings } = useBusiness();
   const navigate = useNavigate();
+  const { planId, billingReady } = usePlan();
+  // Contenido según plan: Free ve resumen + top + vencimientos;
+  // Pro suma análisis; Premium suma el pulso del dueño.
+  // Sin tablas de facturación (legacy), todo abierto como antes.
+  const showAnalisis = !billingReady || planId !== 'free';
+  const showPulso = !billingReady || planId === 'premium';
+  const goPlanes = () => navigate('/configuracion');
 
   // Estados
   const [todaySales, setTodaySales] = useState([]);
@@ -400,26 +429,35 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* PULSO DEL NEGOCIO (solo dueño): mensual, stock, sucursales y en vivo */}
-      <OwnerPulse
-        businessId={businessId}
-        liveSales={todaySales}
-        salesItemsMap={salesItemsMap}
-        lowStock={lowStock}
-        onNavigate={(path, opts) => navigate(path, opts)}
-        onReimprint={handleReimprint}
-        printingSaleId={printingSaleId}
-      />
+      {/* PULSO DEL NEGOCIO (Premium): mensual, stock, sucursales y en vivo */}
+      {showPulso ? (
+        <OwnerPulse
+          businessId={businessId}
+          liveSales={todaySales}
+          salesItemsMap={salesItemsMap}
+          lowStock={lowStock}
+          onNavigate={(path, opts) => navigate(path, opts)}
+          onReimprint={handleReimprint}
+          printingSaleId={printingSaleId}
+        />
+      ) : (
+        <UpgradeNudge
+          title="Pulso del dueño"
+          desc="Rendimiento mensual, sucursales y ventas en vivo en un solo lugar."
+          planName="Premium"
+          onGo={goPlanes}
+        />
+      )}
 
-      {/* SECCIÓN 2 — ANÁLISIS DETALLADO (solo si hubo ventas hoy) */}
-      {hasSalesToday && (
+      {/* SECCIÓN 2 — ANÁLISIS DETALLADO (Pro; solo si hubo ventas hoy) */}
+      {hasSalesToday && showAnalisis && (
         <section className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
               <h3 className="font-black text-base text-[var(--mg-text-primary)]">Análisis del día</h3>
               <p className="text-xs text-[var(--mg-text-muted)]">Productos, categorías y tendencia por hora</p>
             </div>
-            {isOwner && (
+            {showAnalisis && (
               <button
                 onClick={handleExport}
                 disabled={exporting}
@@ -438,6 +476,14 @@ export default function Dashboard() {
             hourlyTrendData={hourlyTrendData}
           />
         </section>
+      )}
+      {hasSalesToday && !showAnalisis && (
+        <UpgradeNudge
+          title="Análisis avanzado"
+          desc="Tendencia por hora y ventas por categoría del día."
+          planName="Pro"
+          onGo={goPlanes}
+        />
       )}
 
       {/* MODALES */}
