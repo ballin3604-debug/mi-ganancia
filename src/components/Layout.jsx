@@ -204,6 +204,7 @@ export default function Layout() {
   const { online, pendingCount, errorCount } = useSyncStatus();
   const location = useLocation();
   const navigate = useNavigate();
+  const { planId } = usePlan();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState(false);
