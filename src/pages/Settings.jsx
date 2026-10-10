@@ -61,7 +61,10 @@ export default function Settings() {
   const [qrData, setQrData] = useState(savedQr);
   const [businessCategory, setBusinessCategory] = useState(savedCategory);
 
-  const [activeTab, setActiveTab] = useState('negocio');
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['negocio', 'sucursales', 'equipo', 'plan', 'respaldo'].includes(t) ? t : 'negocio';
+  });
 
   // Guardado
   const [saving, setSaving] = useState(false);

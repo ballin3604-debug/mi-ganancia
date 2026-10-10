@@ -17,10 +17,10 @@ function cycleAmount(plan, cycle) {
 }
 
 // Pagar Pro/Premium: elige plan y ciclo, paga al QR, sube el comprobante.
-export default function PaymentModal({ businessId, initialPlan = 'pro', onClose, onSent }) {
+export default function PaymentModal({ businessId, initialPlan = 'pro', initialCycle = 'monthly', onClose, onSent }) {
   const { pickImage } = useImageUpload();
   const [planId, setPlanId] = useState(initialPlan === 'premium' ? 'premium' : 'pro');
-  const [cycle, setCycle] = useState('monthly');
+  const [cycle, setCycle] = useState(initialCycle === 'yearly' ? 'yearly' : 'monthly');
   const [reference, setReference] = useState('');
   const [photo, setPhoto] = useState('');
   const [showCamera, setShowCamera] = useState(false);

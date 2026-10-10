@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { useBranches } from '../context/BranchContext';
@@ -203,6 +203,7 @@ export default function Layout() {
   const { business, settings } = useBusiness();
   const { online, pendingCount, errorCount } = useSyncStatus();
   const location = useLocation();
+  const navigate = useNavigate();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState(false);
@@ -391,7 +392,8 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className={`px-4 py-4 border-t border-[var(--mg-separator)] flex items-center gap-2.5 overflow-hidden ${sidebarOpen ? '' : 'flex-col justify-center px-0'}`}>
+        <div className={`px-4 py-4 border-t border-[var(--mg-separator)] overflow-hidden ${sidebarOpen ? 'space-y-2' : 'flex flex-col justify-center px-0'}`}>
+          <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'flex-col justify-center px-0'}`}>
           <img
             src={user?.photoURL || ''}
             alt="Avatar"
@@ -404,7 +406,9 @@ export default function Layout() {
               <p className="text-[13px] font-semibold text-[var(--mg-text-primary)] truncate">
                 {user?.displayName?.split(' ')[0]}
               </p>
-              <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{user?.email}</p>
+              <p className="text-[11px] text-[var(--mg-text-muted)] truncate">
+                {planId === 'free' ? 'Gratis' : planId === 'pro' ? 'Pro' : planId === 'premium' ? 'Premium' : ''}
+              </p>
             </div>
           )}
 
@@ -419,6 +423,17 @@ export default function Layout() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
           </button>
+          </div>
+
+          {!isCashier && sidebarOpen && (
+            <button
+              type="button"
+              onClick={() => navigate('/configuracion?tab=plan')}
+              className="w-full text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2 hover:bg-blue-100 transition-all"
+            >
+              Mejorar el plan
+            </button>
+          )}
         </div>
       </aside>
 

@@ -25,6 +25,7 @@ export const PLANS = {
     name: 'Pro',
     tagline: 'Tu negocio a fondo · Bs 49/mes',
     priceMonthly: 49,
+    priceYearly: 490,
     maxProducts: 1000000,
     maxUsers: 5,
     features: {
@@ -40,6 +41,7 @@ export const PLANS = {
     name: 'Premium',
     tagline: 'Sucursales y almacenes · Bs 99/mes',
     priceMonthly: 99,
+    priceYearly: 990,
     maxProducts: 1000000,
     maxUsers: 15,
     features: {
