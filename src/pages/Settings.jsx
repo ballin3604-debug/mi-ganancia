@@ -29,7 +29,6 @@ import { TeamSection } from '../components/settings/TeamSection';
 import { BackupSection } from '../components/settings/BackupSection';
 import { UnsavedChangesBar } from '../components/settings/UnsavedChangesBar';
 import BranchManager from '../components/BranchManager';
-import PlanBanner from '../components/PlanBanner';
 import UpgradeScreen, { PremiumGate } from '../components/UpgradeScreen';
 import { AppIcon } from '../components/icons';
 
@@ -320,37 +319,38 @@ export default function Settings() {
         </p>
       </div>
 
-      <PlanBanner onVerPlanes={() => setActiveTab('plan')} />
-
-      {/* Pestañas */}
-      <div
-        role="tablist"
-        className="flex items-center gap-1.5 bg-[var(--mg-bg-surface)] p-1.5 rounded-[20px] border border-[var(--mg-border)] shadow-2xs overflow-x-auto scrollbar-none"
-      >
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 min-h-[44px] ${
-                isActive
-                  ? 'bg-[var(--mg-accent)] text-white shadow-xs'
-                  : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
-              }`}
-            >
-              <AppIcon name={tab.icon} size={15} color={isActive ? '#fff' : undefined} />
-              <span className="truncate">{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Pestañas solo iconos */}
+      <div className="flex items-center gap-2">
+        <div
+          role="tablist"
+          className="flex items-center gap-1 bg-[var(--mg-bg-surface)] p-1.5 rounded-[20px] border border-[var(--mg-border)] shadow-2xs overflow-x-auto scrollbar-none"
+        >
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                title={tab.label}
+                aria-label={tab.label}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-12 h-12 rounded-2xl transition-all flex items-center justify-center shrink-0 ${
+                  isActive
+                    ? 'bg-[var(--mg-accent)] text-white shadow-xs'
+                    : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                }`}
+              >
+                <AppIcon name={tab.icon} size={20} color={isActive ? '#fff' : undefined} />
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs font-black text-[var(--mg-text-primary)]">
+          {TABS.find((t) => t.id === activeTab)?.label}
+        </p>
       </div>
-      <p className="text-[11px] text-[var(--mg-text-muted)] font-medium -mt-3 px-1">
-        {TABS.find((t) => t.id === activeTab)?.desc}
-      </p>
 
       <AnimatePresence mode="wait">
         {/* PESTAÑA 1 — MI NEGOCIO */}
