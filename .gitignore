@@ -93,3 +93,11 @@ source/.gradle/
 
 # dataconnect generated files
 .dataconnect
+
+# Maquetas de referencia (demos IA, no son codigo de la app)
+Inicio2/
+Inicio3/
+Inicio4/
+Inicio5/
+Inicio6/
+inicio/
