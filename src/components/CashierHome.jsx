@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { formatBs } from '../utils/currency';
 import { supabase } from '../services/supabaseClient';
+import { useBranches } from '../context/BranchContext';
 import { AppIcon } from './icons';
 
 function prettyName(raw) {
@@ -99,6 +100,9 @@ export function CashierHome({
   const [displayName, setDisplayName] = useState(
     () => user?.displayName || user?.email || ''
   );
+  const { branches, activeBranch, selectBranch } = useBranches();
+  const inWarehouse = activeBranch?.type === 'almacen';
+  const sellBranches = branches.filter((b) => b.type !== 'almacen');
   const firstName = prettyName(displayName);
   const looksLikeEmail = (displayName || '').includes('@');
 
@@ -187,6 +191,23 @@ export function CashierHome({
       </div>
 
       {/* Acción principal */}
+      {inWarehouse ? (
+        <div className="w-full bg-amber-50 border border-amber-200 rounded-3xl p-5 space-y-2.5">
+          <p className="text-sm font-black text-amber-800">
+            Estás en {activeBranch?.name || 'un almacén'}: aquí no se vende
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {sellBranches.map((b) => (
+              <button
+                key={b.id} type="button" onClick={() => { selectBranch(b.id); onNavigate('/ventas'); }}
+                className="px-3 py-2 rounded-xl text-xs font-black bg-[var(--mg-accent)] text-white active:scale-95"
+              >
+                Vender en {b.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
       <button
         type="button"
         onClick={() => onNavigate('/ventas')}
@@ -200,6 +221,7 @@ export function CashierHome({
           <span className="block text-xs text-white/80 font-medium">Toca, cobra y listo</span>
         </span>
       </button>
+      )}
 
       {/* Mi turno hoy */}
       <section>

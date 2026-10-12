@@ -219,7 +219,9 @@ export default function Sales() {
   const canSeeCosts = isOwner || hasPermission('ver_costos');
   const canExport = hasPermission('exportar');
   const { business, settings } = useBusiness();
-  const { branches, activeBranchId } = useBranches();
+  const { branches, activeBranchId, activeBranch, selectBranch } = useBranches();
+  // Un almacén custodia y distribuye: no vende al público en ningún caso.
+  const sellingBlocked = activeBranch?.type === 'almacen';
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
     : searchParams.get('tab') === 'cajeros' ? 'cajeros' : 'venta';
@@ -860,6 +862,10 @@ export default function Sales() {
   }
 
   function addToCart(product, option) {
+    if (sellingBlocked) {
+      alert(`Estás operando en ${activeBranch?.name || 'un almacén'}: los almacenes no venden. Cambia a una sucursal para cobrar.`);
+      return;
+    }
     const opt = option || defaultSellOption(product);
     if (!opt) return;
     setCart((prev) => {
@@ -920,6 +926,10 @@ export default function Sales() {
   }
 
   function handleBarcodeScan(code) {
+    if (sellingBlocked) {
+      setScanMsg({ ok: false, text: 'Almacén: cambia a una sucursal para vender.' });
+      return;
+    }
     const product = findByBarcode(code);
     if (!product) {
       setScanMsg({ ok: false, text: `Código ${code} no registrado. Ve a Inventario para crearlo.` });
@@ -1004,6 +1014,10 @@ export default function Sales() {
 
   async function handleRegister(isQrConfirmed = false) {
     if (cartItems.length === 0) return;
+    if (sellingBlocked) {
+      alert('Los almacenes no venden. Cambia a una sucursal para cobrar.');
+      return;
+    }
 
     const finalClientName = (selectedCustomer?.name || typedClientName).trim() || 'S/N';
     const finalClientNit = selectedCustomer?.nit || '0';
@@ -1445,6 +1459,27 @@ export default function Sales() {
                   {totalBaseUnits} en carrito
                 </span>
               )}
+            </div>
+          )}
+
+          {activeTab === 'venta' && sellingBlocked && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5 shrink-0">
+              <p className="text-sm font-black text-amber-800">
+                Estás en {activeBranch?.name || 'un almacén'}: aquí no se vende
+              </p>
+              <p className="text-xs text-amber-700">
+                Los almacenes custodian y distribuyen. Elige una sucursal para cobrar.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {branches.filter((b) => b.type !== 'almacen').map((b) => (
+                  <button
+                    key={b.id} type="button" onClick={() => selectBranch(b.id)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black bg-[var(--mg-accent)] text-white active:scale-95"
+                  >
+                    Vender en {b.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
