@@ -206,9 +206,9 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
                 <p className="text-center text-xs font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2.5">
                   Tu plan actual
                 </p>
-              ) : card.selectable === false ? (
+              ) : card.selectable === false || planId === 'premium' ? (
                 <p className="text-center text-[11px] font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl py-2.5">
-                  Plan base, sin pago
+                  {card.selectable === false ? 'Plan base, sin pago' : 'Incluido en tu plan'}
                 </p>
               ) : (
                 <button

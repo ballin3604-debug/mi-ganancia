@@ -442,7 +442,7 @@ export default function Layout() {
           </button>
           </div>
 
-          {!isCashier && sidebarOpen && (
+          {!isCashier && sidebarOpen && planId !== 'premium' && (
             <button
               type="button"
               onClick={() => navigate('/configuracion?tab=plan')}

@@ -689,12 +689,9 @@ export default function Inventory() {
         expiryCounts={expiryCounts}
       />
 
-      {/* Dynamic Inventory Valuation Card (Changes investment total per active category) */}
-      <InventoryValuationCard products={viewProducts} selectedCategory={filterCategory} />
-
-      {/* Vista por sede (solo si hay varias): las tarjetas muestran ese stock */}
+      {/* Vista por sede (solo si hay varias): todo lo de abajo muestra ese stock */}
       {branches.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mt-2">
           <button
             key="all" type="button" onClick={() => setInvBranch('all')}
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${invBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
@@ -711,6 +708,9 @@ export default function Inventory() {
           ))}
         </div>
       )}
+
+      {/* Valorización de la sede vista */}
+      <InventoryValuationCard products={viewProducts} selectedCategory={filterCategory} />
 
       {/* Catalog Grid View */}
       {loading ? (

@@ -11,6 +11,9 @@ import ReportHeader from '../components/ReportHeader';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
 import { AppIcon } from '../components/icons';
+import { useBranches } from '../context/BranchContext';
+import { useBranchStocks } from '../hooks/useBranchStocks';
+import { toStockMap } from '../services/branchStock';
 
 function getExpenseFlow(e) {
     return (e.expense_type === 'fixed' || e.expenseType === 'fixed') ? 'fixed' : 'daily';
@@ -29,9 +32,33 @@ export default function MatrixReport() {
     const { businessId } = useAuth();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [sales, setSales] = useState([]);
-    const [saleItems, setSaleItems] = useState([]);
-    const [expenses, setExpenses] = useState([]);
+    const [allSales, setSales] = useState([]);
+    const [allSaleItems, setSaleItems] = useState([]);
+    const [allExpenses, setExpenses] = useState([]);
+    const [reportBranch, setReportBranch] = useState('all');
+    const { branches } = useBranches();
+    const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
+    const branchOfSale = (s) => s.branchId || s.branch_id || mainBranchId;
+    const branchOfExpense = (e) => e.branch_id || mainBranchId;
+
+    // Todo el reporte respeta la sede elegida (ventas, ítems y gastos).
+    const sales = useMemo(() => (
+      reportBranch === 'all' ? allSales : allSales.filter((s) => branchOfSale(s) === reportBranch)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ), [allSales, reportBranch, mainBranchId]);
+    const saleItems = useMemo(() => {
+      if (reportBranch === 'all') return allSaleItems;
+      const ids = new Set(sales.map((s) => s.id));
+      return allSaleItems.filter((it) => ids.has(it.saleId));
+    }, [allSaleItems, sales, reportBranch]);
+    const expenses = useMemo(() => (
+      reportBranch === 'all' ? allExpenses : allExpenses.filter((e) => branchOfExpense(e) === reportBranch)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ), [allExpenses, reportBranch, mainBranchId]);
+
+    // Stock por sede para el inventario (global si se ve todo).
+    const branchStockRows = useBranchStocks(businessId, mainBranchId);
+    const branchStockMap = useMemo(() => toStockMap(branchStockRows), [branchStockRows]);
     const [products, setProducts] = useState([]);
     const [replenishments, setReplenishments] = useState([]);
     const [settings, setSettings] = useState(null);
@@ -52,7 +79,10 @@ export default function MatrixReport() {
     function periodLabel() {
         const formattedStart = new Date(`${startDate}T00:00:00`).toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
         const formattedEnd = new Date(`${endDate}T23:59:59.999`).toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
-        return `Periodo: ${formattedStart} hasta ${formattedEnd}`;
+        const sede = reportBranch === 'all'
+            ? 'Todas las sedes'
+            : (branches.find((b) => b.id === reportBranch)?.name || 'Sede');
+        return `Periodo: ${formattedStart} hasta ${formattedEnd} · Sede: ${sede}`;
     }
 
     function exportProfitReportToPDF() {
@@ -285,6 +315,12 @@ export default function MatrixReport() {
         };
     }, [businessId]);
 
+    // Productos con stock de la sede elegida (para el inventario).
+    const invProducts = useMemo(() => {
+      if (reportBranch === 'all' || branchStockRows.length === 0) return products;
+      return products.map((p) => ({ ...p, stock: Number(branchStockMap.get(`${reportBranch}:${p.id}`) ?? 0) }));
+    }, [products, reportBranch, branchStockRows, branchStockMap]);
+
     // Lógica para el ranking de productos más vendidos
     const rankingMatrix = useMemo(() => {
         const start = new Date(`${startDate}T00:00:00`);
@@ -405,16 +441,16 @@ export default function MatrixReport() {
     }, [replenishments, start, end]);
 
     const inventoryRows = useMemo(() => {
-        if (inventoryCategory === 'Todas') return products;
-        return products.filter(p => (p.category || 'Otros') === inventoryCategory);
-    }, [products, inventoryCategory]);
+        if (inventoryCategory === 'Todas') return invProducts;
+        return invProducts.filter(p => (p.category || 'Otros') === inventoryCategory);
+    }, [invProducts, inventoryCategory]);
 
     // -- Kardex de inventario: categorías, filtro y movimientos por producto --
     const inventoryCategories = useMemo(() => {
         const set = new Set();
-        products.forEach(p => { if (p.category) set.add(p.category); });
+        invProducts.forEach(p => { if (p.category) set.add(p.category); });
         return ['Todas', ...[...set].sort((a, b) => a.localeCompare(b, 'es'))];
-    }, [products]);
+    }, [invProducts]);
 
     const saleDateById = useMemo(() => {
         const map = {};
@@ -429,7 +465,7 @@ export default function MatrixReport() {
     // Stock inicial = stock actual − (entradas − salidas del periodo).
     const kardexData = useMemo(() => {
         if (!kardexProductId) return null;
-        const product = products.find(p => p.id === kardexProductId);
+        const product = invProducts.find(p => p.id === kardexProductId);
         if (!product) return null;
         const moves = [];
         replenishments.forEach(r => {
@@ -455,7 +491,7 @@ export default function MatrixReport() {
             return { ...m, balance };
         });
         return { product, rows, totalIn, totalOut, initialStock, currentStock };
-    }, [kardexProductId, products, replenishments, saleItems, saleDateById, start, end]);
+    }, [kardexProductId, invProducts, replenishments, saleItems, saleDateById, start, end]);
 
     // Resumen de lo que se está mostrando (respeta el filtro de categoría).
     // Un solo recorrido cacheado: valor, bajo stock y conteo salen juntos
@@ -700,6 +736,25 @@ export default function MatrixReport() {
                 exportLabel="Exportar PDF"
                 exportDisabled={!currentReportHasData}
             />
+
+            {branches.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide mt-4">
+                    <button
+                        key="all" type="button" onClick={() => setReportBranch('all')}
+                        className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+                    >
+                        🏬 Todas
+                    </button>
+                    {branches.map((b) => (
+                        <button
+                            key={b.id} type="button" onClick={() => setReportBranch(b.id)}
+                            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === b.id ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+                        >
+                            {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-3 sm:p-6 lg:p-8 shadow-sm">
                 {reportType === 'expenses' ? (
