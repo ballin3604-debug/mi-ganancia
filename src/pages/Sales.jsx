@@ -5,6 +5,7 @@ import { useBusiness } from '../context/BusinessContext';
 import { getProducts, subscribeToProducts } from '../services/products';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
 import { registerSale, subscribeToSales, subscribeToSaleItems } from '../services/sales';
+import { getBusinessMembers } from '../services/cashier';
 import { getCustomers, addCustomer } from '../services/customers';
 import { subscribeToCategories } from '../services/categories';
 import { printReceipt } from '../components/Receipt';
@@ -448,6 +449,13 @@ export default function Sales() {
     return unsub;
   }, [businessId]);
 
+  // Miembros (para saber qué cajeros pertenecen a cada sede)
+  const [teamMembers, setTeamMembers] = useState([]);
+  useEffect(() => {
+    if (!businessId || !isOwner) return;
+    getBusinessMembers(businessId).then(setTeamMembers).catch(() => setTeamMembers([]));
+  }, [businessId, isOwner]);
+
   // Memoizado: salesList/saleItemsList pueden tener miles de registros
   // históricos, y sin memoizar este bloque se re-ordenaba/re-agrupaba
   // completo en cada render (incluido cada tecla escrita en el buscador
@@ -500,11 +508,22 @@ export default function Sales() {
     const own = !isOwner && user?.uid
       ? filteredSalesReport.filter((s) => (s.createdBy || s.created_by) === user.uid)
       : filteredSalesReport;
-    return reportBranch === 'all'
+    const inBranch = reportBranch === 'all'
       ? own
-      : own.filter((s) => saleBranchId(s) === reportBranch)
+      : own.filter((s) => saleBranchId(s) === reportBranch);
+    // Con sede filtrada: solo cajeros asignados a esa sede. Sin createdBy
+    // (ventas viejas) o miembro sin restricción: se conservan.
+    if (!isOwner || reportBranch === 'all' || teamMembers.length === 0) return inBranch;
+    const byId = Object.fromEntries(teamMembers.map((m) => [m.id, m]));
+    return inBranch.filter((s) => {
+      const uid = s.createdBy || s.created_by;
+      if (!uid) return true;
+      const m = byId[uid];
+      if (!m || !Array.isArray(m.branchIds) || m.branchIds.length === 0) return true;
+      return m.branchIds.includes(reportBranch);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredSalesReport, reportBranch, mainBranchId, isOwner, user?.uid]);
+  }, [filteredSalesReport, reportBranch, mainBranchId, isOwner, user?.uid, teamMembers]);
 
   const salesReportRows = useMemo(() => scopedSalesReport.flatMap((s) =>
     (itemsBySaleId[s.id] || []).map((item) => {
@@ -537,17 +556,18 @@ export default function Sales() {
 
   function renderBranchPills() {
     if (branches.length <= 1) return null;
+    const pick = (id) => { setReportBranch(id); setReportCashier('Todos'); };
     return (
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button
-          key="all" type="button" onClick={() => setReportBranch('all')}
+          key="all" type="button" onClick={() => pick('all')}
           className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}
         >
           🏬 Todas
         </button>
         {branches.map((b) => (
           <button
-            key={b.id} type="button" onClick={() => setReportBranch(b.id)}
+            key={b.id} type="button" onClick={() => pick(b.id)}
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === b.id ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}
           >
             {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
