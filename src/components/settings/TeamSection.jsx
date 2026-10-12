@@ -377,17 +377,17 @@ export function TeamSection({
         </form>
       </div>
       {toast && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex items-center gap-2.5 bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-accent-border)] rounded-2xl pl-3 pr-4 py-3 shadow-2xl max-w-[92vw]">
-            <span className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
-              <AppIcon name="check" size={18} color="#fff" />
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 pointer-events-none">
+          <div className="flex items-center gap-3 bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-accent-border)] rounded-3xl px-5 py-4 shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <span className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+              <AppIcon name="check" size={24} color="#fff" />
             </span>
             <span className="min-w-0">
-              <span className="block text-xs font-black text-[var(--mg-text-primary)] truncate">
+              <span className="block text-sm font-black text-[var(--mg-text-primary)] truncate">
                 Se agregó el correo {toast.email}
               </span>
-              <span className="block text-[11px] font-bold text-[var(--mg-accent)] tabular-nums">
-                Usuarios Activos {toast.active}/{MAX_MEMBERS}
+              <span className="block text-xs font-bold text-[var(--mg-accent)] tabular-nums mt-0.5">
+                Usuarios Activos {toast.active}/{toast.max}
               </span>
             </span>
           </div>
