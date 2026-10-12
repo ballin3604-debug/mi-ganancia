@@ -133,8 +133,8 @@ export default function Inventory() {
   const [filterLowStock, setFilterLowStock] = useState(false);
   // Fase 2: vista por sede ('all' = totales). El formulario edita la sede vista
   // (o la principal si se ven todas).
-  const [invBranch, setInvBranch] = useState('all');
-  const { branches } = useBranches();
+  const [invBranch, setInvBranch] = useState(() => activeBranchId || 'all');
+  const { branches, activeBranchId } = useBranches();
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);

@@ -35,7 +35,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
   const showBranch = branches.length > 1;
 
   return (
-    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] px-5 py-4 border border-[var(--mg-border)] shadow-xs space-y-3 transition-all">
+    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] px-5 pt-4 pb-2.5 border border-[var(--mg-border)] shadow-xs space-y-3 transition-all">
       {/* Fila superior: saludo · sucursal al centro · mes a la derecha */}
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -114,6 +114,9 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
           <span>Nueva Venta</span>
         </button>
       </div>
+      <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold capitalize pt-0.5">
+        {today}
+      </p>
     </div>
   );
 }
