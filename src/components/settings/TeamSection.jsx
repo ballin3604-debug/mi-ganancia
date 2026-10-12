@@ -1,51 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppIcon } from '../icons';
 import { MAX_MEMBERS, MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS, updateMemberPermissions, updateMemberName } from '../../services/cashier';
 import { ConfirmModal } from './ConfirmModal';
-import QRCode from 'qrcode';
-
-function fmtDateTime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' }) + ', ' +
-    d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
-}
-
-function expiryLabel(iso) {
-  if (!iso) return 'Sin vencimiento';
-  const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return 'Vencido';
-  const h = Math.floor(ms / 3600000);
-  if (h < 24) return `Vence en ${h} h`;
-  return `Vence en ${Math.floor(h / 24)} d`;
-}
-
-function QrModal({ code, onClose }) {
-  const [img, setImg] = useState('');
-  React.useEffect(() => {
-    let alive = true;
-    QRCode.toDataURL(String(code || ''), { width: 280, margin: 2 }).then((url) => {
-      if (alive) setImg(url);
-    }).catch(() => {});
-    return () => { alive = false; };
-  }, [code]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <p className="text-xs font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">Escanea para vincular</p>
-        {img ? (
-          <img src={img} alt={`QR ${code}`} className="w-56 h-56 mx-auto my-4 rounded-2xl border border-[var(--mg-border)]" />
-        ) : (
-          <div className="w-56 h-56 mx-auto my-4 rounded-2xl bg-[var(--mg-bg-elevated)] animate-pulse" />
-        )}
-        <p className="font-mono font-black text-2xl tracking-widest text-[var(--mg-text-primary)]">{code}</p>
-        <button type="button" onClick={onClose} className="mt-4 w-full py-2.5 rounded-xl bg-[var(--mg-bg-elevated)] font-bold text-xs">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function PermissionsModal({ member, busy, onClose, onSave }) {
   const isOwner = member.role !== 'cashier';
@@ -180,10 +136,12 @@ export function TeamSection({
   });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('cashier');
-  const [inviteSent, setInviteSent] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [qrCode, setQrCode] = useState(null);
   const [permMember, setPermMember] = useState(null);
   const [editMember, setEditMember] = useState(null);
 
@@ -208,7 +166,9 @@ export function TeamSection({
     if (!inviteEmail.trim() || memberBusy === 'invite') return;
     const invite = await onInvite(inviteEmail.trim(), inviteRole);
     if (invite) {
-      setInviteSent(invite);
+      setToast({ email: invite.email, active: members.length, max: MAX_MEMBERS });
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(null), 4500);
       setInviteEmail('');
     }
   };
@@ -233,7 +193,6 @@ export function TeamSection({
         loading={codeLoading || roleUpdating !== null}
         confirmText="Aceptar y Aplicar"
       />
-      {qrCode && <QrModal code={qrCode} onClose={() => setQrCode(null)} />}
       {permMember && (
         <PermissionsModal
           member={permMember}
@@ -385,33 +344,6 @@ export function TeamSection({
         )}
       </div>
 
-      {/* Códigos rápidos */}
-      <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-[var(--mg-separator)]">
-          <p className="font-black text-[var(--mg-text-primary)] text-sm">Códigos de Vinculación Rápida</p>
-          <p className="text-[11px] text-[var(--mg-text-muted)]">Comparte el código o el QR para vincular teléfonos a esta tienda</p>
-        </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <QuickCodeCard
-            title="Código para Cajeros" badge="Acceso Básico" accent="blue"
-            desc="Cobrar, recibos e inventario. Sin ganancias."
-            code={joinCode} codeLoading={codeLoading} copied={codeCopied}
-            onCopy={onCopyCode} onShowQr={() => setQrCode(joinCode)}
-            onRegenerate={onRegenerateCode} emptyLabel="Generar Código Cajero"
-          />
-          <QuickCodeCard
-            title="Código para Dueños y Socios" badge="Acceso Total" accent="amber"
-            desc="Inventario, ganancias, auditoría y ajustes."
-            code={ownerCode} codeLoading={codeLoading} copied={ownerCopied}
-            onCopy={onCopyOwnerCode} onShowQr={() => setQrCode(ownerCode)}
-            onRegenerate={onRegenerateOwnerCode} emptyLabel="Generar Código Dueño"
-          />
-        </div>
-        <p className="px-4 pb-4 text-[11px] text-[var(--mg-text-muted)]">
-          ¿Cómo funciona? 1. El personal descarga Mi Ganancia → 2. Pulsa “Unirse” → 3. Escribe el PIN. Los PIN caducan solos.
-        </p>
-      </div>
-
       {/* Invitar por correo */}
       <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] overflow-hidden shadow-xs">
         <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between gap-2">
@@ -443,40 +375,24 @@ export function TeamSection({
             </button>
           </div>
         </form>
-        {inviteSent && (
-          <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-xs">
-            <p className="font-bold text-emerald-800">
-              Código para {inviteSent.email}: <span className="font-mono font-black tracking-widest">{inviteSent.code}</span>
-            </p>
-            <p className="text-emerald-700 mt-0.5">Al entrar con esa cuenta se une con un toque, sin PIN.</p>
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Hola, te invito a ${businessName} en Mi Ganancia como ${inviteSent.role === 'owner' ? 'Dueño' : 'Cajero'}. Tu código es ${inviteSent.code}. Descarga la app, entra con este correo (${inviteSent.email}) y únete. Solo esa cuenta puede usarlo.`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 rounded-xl bg-[#25D366] text-white font-black text-[11px]"
-            >
-              <AppIcon name="whatsapp" size={13} color="#fff" /> Pasar por WhatsApp
-            </a>
-          </div>
-        )}
-        {emailInvites.length > 0 && (
-          <div className="px-4 pb-4 space-y-1.5">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">Pendientes ({emailInvites.length})</p>
-            {emailInvites.map((i) => (
-              <div key={i.code} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-[var(--mg-text-primary)] truncate">{i.email}</p>
-                  <p className="text-[11px] font-mono font-black tracking-widest text-[var(--mg-accent)]">
-                    {i.code} <span className="font-sans font-semibold text-[var(--mg-text-muted)]">· {i.role === 'owner' ? 'Dueño' : 'Cajero'} · {expiryLabel(i.expiresAt)}</span>
-                  </p>
-                </div>
-                <button type="button" onClick={() => onResendInvite(i)} title="Reenviar (nuevo código)" className="text-[11px] font-bold text-[var(--mg-text-secondary)] hover:underline shrink-0">Reenviar</button>
-                <button type="button" onClick={() => onRevokeInvite(i.code)} title="Revocar invitación" className="text-[11px] font-bold text-[var(--mg-danger)] hover:underline shrink-0">Cancelar</button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2.5 bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-accent-border)] rounded-2xl pl-3 pr-4 py-3 shadow-2xl max-w-[92vw]">
+            <span className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+              <AppIcon name="check" size={18} color="#fff" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-black text-[var(--mg-text-primary)] truncate">
+                Se agregó el correo {toast.email}
+              </span>
+              <span className="block text-[11px] font-bold text-[var(--mg-accent)] tabular-nums">
+                Usuarios Activos {toast.active}/{MAX_MEMBERS}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -556,43 +472,5 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
         </span>
       </td>
     </tr>
-  );
-}
-
-function QuickCodeCard({ title, badge, accent, desc, code, codeLoading, copied, onCopy, onShowQr, onRegenerate, emptyLabel }) {
-  const amber = accent === 'amber';
-  return (
-    <div className={`rounded-2xl border p-4 flex flex-col ${amber ? 'border-amber-200 bg-amber-50/40' : 'border-blue-100 bg-blue-50/40'}`}>
-      <p className="font-bold text-[var(--mg-text-primary)] text-sm flex items-center gap-2">
-        {title}
-        <span className={`text-[10px] px-2 py-0.5 rounded-full ${amber ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'}`}>{badge}</span>
-      </p>
-      <p className="text-[11px] text-[var(--mg-text-muted)] mt-0.5">{desc}</p>
-      {code ? (
-        <div className="mt-3 bg-white rounded-xl p-3 border border-[var(--mg-border)] flex items-center justify-between gap-2">
-          <span>
-            <span className="block text-[10px] uppercase tracking-wider text-[var(--mg-text-muted)] font-bold">PIN de vinculación</span>
-            <span className="font-mono font-black text-xl tracking-widest text-[var(--mg-text-primary)]">{code}</span>
-          </span>
-          <span className="flex items-center gap-1.5 shrink-0">
-            <button type="button" onClick={onCopy} className={`px-3 py-2 rounded-lg text-[11px] font-bold ${amber ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>
-              {copied ? '✓ Copiado' : 'Copiar'}
-            </button>
-            <button type="button" onClick={onShowQr} title="Mostrar QR" className={`p-2 rounded-lg text-white ${amber ? 'bg-amber-600' : 'bg-blue-600'}`}>
-              <AppIcon name="qr" size={15} color="#fff" />
-            </button>
-          </span>
-        </div>
-      ) : (
-        <button type="button" onClick={onRegenerate} disabled={codeLoading} className="mt-3 w-full py-2.5 rounded-xl bg-[var(--mg-accent)] text-white font-bold text-xs disabled:opacity-50">
-          {codeLoading ? 'Generando…' : emptyLabel}
-        </button>
-      )}
-      {code && (
-        <button type="button" onClick={onRegenerate} disabled={codeLoading} className="mt-2 text-[11px] font-bold text-[var(--mg-text-muted)] hover:underline self-start">
-          Renovar PIN
-        </button>
-      )}
-    </div>
   );
 }
