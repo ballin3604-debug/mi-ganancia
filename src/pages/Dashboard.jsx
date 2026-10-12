@@ -337,6 +337,8 @@ export default function Dashboard() {
       })
       .filter(Boolean)
       .filter((r) => r.daysLeft <= 30)
+      // Con sede filtrada: solo lo que realmente hay en esa sede.
+      .filter((r) => homeBranch === 'all' || !isOwner || r.stock > 0)
       .sort((a, b) => a.date - b.date);
     return {
       expired: rows.filter((r) => r.daysLeft < 0).length,
