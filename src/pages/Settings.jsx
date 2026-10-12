@@ -21,12 +21,14 @@ import {
   updateMemberPermissions,
   updateMemberName,
   updateMemberBranches,
+  MAX_MEMBERS,
 } from '../services/cashier';
 import { renameBusiness } from '../services/businessSettings';
 
 // Subcomponentes de Ajustes
 import { BusinessHeaderCard } from '../components/settings/BusinessHeaderCard';
 import { BusinessNameCard } from '../components/settings/BusinessNameCard';
+import { TicketPreview } from '../components/settings/TicketPreview';
 import { ReceiptFormatCard } from '../components/settings/ReceiptFormatCard';
 import { TeamSection } from '../components/settings/TeamSection';
 import { BackupSection } from '../components/settings/BackupSection';
@@ -44,7 +46,7 @@ const TABS = [
 ];
 
 export default function Settings() {
-  const { businessId, admin, user, updateOwnRole } = useAuth();
+  const { businessId, admin, user, role, updateOwnRole } = useAuth();
   const navigate = useNavigate();
   const { business, settings, refreshSettings, refreshBusiness } = useBusiness();
   const { pickImage, pickQR } = useImageUpload();
@@ -355,14 +357,35 @@ export default function Settings() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6 pb-28">
-      {/* Encabezado */}
-      <div>
-        <h1 className="text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
-          Ajustes del negocio
-        </h1>
-        <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-          Identidad comercial, recibos, permisos de equipo y copias de seguridad
-        </p>
+      {/* Encabezado con breadcrumb y usuario */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">
+            Ajustes <span className="mx-1">/</span>{' '}
+            <span className="text-[var(--mg-text-primary)]">
+              {TABS.find((t) => t.id === activeTab)?.label}
+            </span>
+          </p>
+          <h1 className="text-2xl font-black text-[var(--mg-text-primary)] tracking-tight mt-0.5">
+            Ajustes del negocio
+          </h1>
+          <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
+            Identidad comercial, recibos, permisos de equipo y copias de seguridad
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl pl-1.5 pr-3 py-1.5 shadow-xs">
+          <span className="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs">
+            {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+          </span>
+          <span className="text-left leading-tight">
+            <span className="block text-xs font-extrabold text-[var(--mg-text-primary)]">
+              {user?.displayName?.split(' ')[0] || 'Usuario'} (Tú)
+            </span>
+            <span className="block text-[10px] font-bold text-amber-600">
+              {role === 'cashier' ? 'Cajero de la tienda' : 'Dueño de la tienda'}
+            </span>
+          </span>
+        </div>
       </div>
 
       {/* Pestañas solo iconos */}
@@ -382,13 +405,19 @@ export default function Settings() {
                 title={tab.label}
                 aria-label={tab.label}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-12 h-12 rounded-2xl transition-all flex items-center justify-center shrink-0 ${
+                className={`h-12 rounded-2xl transition-all flex items-center justify-center gap-1.5 shrink-0 px-3 ${
                   isActive
                     ? 'bg-[var(--mg-accent)] text-white shadow-xs'
-                    : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                    : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] w-12'
                 }`}
               >
                 <AppIcon name={tab.icon} size={20} color={isActive ? '#fff' : undefined} />
+                {isActive && <span className="text-xs font-black whitespace-nowrap">{tab.label}</span>}
+                {tab.id === 'equipo' && members.length > 0 && (
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md tabular-nums ${isActive ? 'bg-white/20 text-white' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
+                    {members.length}/{MAX_MEMBERS}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -409,29 +438,42 @@ export default function Settings() {
             transition={{ duration: 0.25 }}
             className="space-y-4"
           >
-            <BusinessNameCard
-              currentName={business?.name || ''}
-              onSave={async (name) => {
-                await renameBusiness(businessId, name);
-                await refreshBusiness();
-              }}
-            />
-            <BusinessHeaderCard
-              businessCategory={businessCategory}
-              setBusinessCategory={setBusinessCategory}
-              slogan={slogan}
-              setSlogan={setSlogan}
-              phone={phone}
-              setPhone={setPhone}
-              logoData={logoData}
-              setLogoData={setLogoData}
-              qrData={qrData}
-              setQrData={setQrData}
-              onImagePick={handleImagePick}
-              onQRPick={handleQRPick}
-            />
-
-            <ReceiptFormatCard />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+              <div className="lg:col-span-7 space-y-4">
+                <BusinessNameCard
+                  currentName={business?.name || ''}
+                  onSave={async (name) => {
+                    await renameBusiness(businessId, name);
+                    await refreshBusiness();
+                  }}
+                />
+                <BusinessHeaderCard
+                  businessCategory={businessCategory}
+                  setBusinessCategory={setBusinessCategory}
+                  slogan={slogan}
+                  setSlogan={setSlogan}
+                  phone={phone}
+                  setPhone={setPhone}
+                  logoData={logoData}
+                  setLogoData={setLogoData}
+                  qrData={qrData}
+                  setQrData={setQrData}
+                  onImagePick={handleImagePick}
+                  onQRPick={handleQRPick}
+                />
+                <ReceiptFormatCard />
+              </div>
+              <div className="lg:col-span-5">
+                <TicketPreview
+                  businessName={business?.name || ''}
+                  slogan={slogan}
+                  phone={phone}
+                  address={settings?.address || ''}
+                  logoData={logoData}
+                  qrData={qrData}
+                />
+              </div>
+            </div>
           </motion.div>
         )}
 
