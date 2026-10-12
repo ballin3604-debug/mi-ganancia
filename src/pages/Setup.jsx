@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { submitRequest } from '../services/admin';
 import { createUserAndBusiness } from '../services/auth';
-import { joinBusinessWithCode } from '../services/cashier';
+import { joinBusinessWithCode, findInviteForEmail } from '../services/cashier';
 import { signOut } from '../services/auth';
 import { BUSINESS_CATEGORIES, DEFAULT_CATEGORY_ID } from '../config/businessCategories';
 
@@ -67,6 +67,18 @@ function JoinWithCode({ user, onBack }) {
   const [birthdate, setBirthdate] = useState(user?.user_metadata?.birthdate || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [foundInvite, setFoundInvite] = useState(null);
+
+  // Si el dueño ya lo invitó por correo, se detecta solo: un toque para unirse.
+  useEffect(() => {
+    let alive = true;
+    findInviteForEmail(user?.email).then((inv) => {
+      if (!alive || !inv) return;
+      setFoundInvite(inv);
+      setCode((prev) => prev || inv.code);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [user?.email]);
   const canSubmit = code.trim().length >= 6 && firstName.trim() && lastName.trim() && birthdate && !loading;
 
   async function handleJoin(e) {
@@ -102,6 +114,14 @@ function JoinWithCode({ user, onBack }) {
         </div>
 
         <form onSubmit={handleJoin} className="space-y-4">
+          {foundInvite && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 text-xs">
+              <p className="font-black text-emerald-800">
+                Te invitaron a {foundInvite.businessName || 'una tienda'} como {foundInvite.role === 'owner' ? 'Dueño' : 'Cajero'}
+              </p>
+              <p className="text-emerald-700 mt-0.5">Completa tus datos y toca Unirme. Sin PIN.</p>
+            </div>
+          )}
           <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl px-4 py-2.5 text-xs text-[var(--mg-text-secondary)]">
             Te unes como: <strong className="text-[var(--mg-text-primary)]">{user?.email || 'tu cuenta'}</strong>
           </div>

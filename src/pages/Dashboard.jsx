@@ -329,7 +329,11 @@ export default function Dashboard() {
         const p = byId[pid];
         if (!p) return null;
         const daysLeft = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
-        return { productId: pid, name: p.name, stock: Number(p.stock || 0), date, daysLeft };
+        // Stock de la sede filtrada; global si se ve consolidado.
+        const stock = (isOwner && homeBranch !== 'all' && branchStockRows.length > 0)
+          ? Number(branchStockMap.get(`${homeBranch}:${pid}`) ?? 0)
+          : Number(p.stock || 0);
+        return { productId: pid, name: p.name, stock, date, daysLeft };
       })
       .filter(Boolean)
       .filter((r) => r.daysLeft <= 30)
@@ -339,7 +343,7 @@ export default function Dashboard() {
       soon: rows.filter((r) => r.daysLeft >= 0).length,
       items: rows,
     };
-  }, [replenishments, products]);
+  }, [replenishments, products, homeBranch, branchStockRows, branchStockMap, isOwner]);
 
   // Handlers
   async function handleExport() {

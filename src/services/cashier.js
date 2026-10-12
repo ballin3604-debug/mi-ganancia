@@ -89,6 +89,7 @@ export async function lookupJoinCode(rawCode) {
     throw error;
   }
   return {
+    code: data.code,
     businessId: data.business_id,
     businessName: data.business_name,
     role: data.role || 'cashier',
@@ -183,6 +184,13 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
 
   if (error) throw error;
 
+  // Invitación por correo: se consume al usarse (un solo uso).
+  if (biz.email && biz.code) {
+    try {
+      await supabase.from('business_join_codes').delete().eq('code', biz.code);
+    } catch { /* si no se puede borrar, el código atado igual solo sirve a esa cuenta */ }
+  }
+
   // Nombre + cumpleaños en los metadatos de auth (sin migración de BD).
   try {
     await supabase.auth.updateUser({
@@ -272,6 +280,33 @@ export async function listInvites(businessId) {
 export async function revokeInvite(code) {
   const { error } = await supabase.from('business_join_codes').delete().eq('code', code);
   if (error) throw error;
+}
+
+// Busca invitación pendiente para un correo (para unirse con un toque).
+export async function findInviteForEmail(email) {
+  const clean = (email || '').trim().toLowerCase();
+  if (!clean) return null;
+  try {
+    const { data, error } = await supabase
+      .from('business_join_codes')
+      .select('*')
+      .eq('email', clean)
+      .order('code');
+    if (error || !data) return null;
+    const now = Date.now();
+    const valid = data.find((r) => !r.expires_at || new Date(r.expires_at).getTime() > now);
+    if (!valid) return null;
+    return {
+      code: valid.code,
+      businessId: valid.business_id,
+      businessName: valid.business_name,
+      role: valid.role || 'cashier',
+      email: (valid.email || '').toLowerCase() || null,
+      expiresAt: valid.expires_at || null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ── Suspender / reactivar / eliminar miembros ─────────────────

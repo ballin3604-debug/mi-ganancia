@@ -491,6 +491,7 @@ export default function Settings() {
               onSavePermissions={handleSavePermissions}
               onRenameMember={handleRenameMember}
               onUpgradePlan={() => setActiveTab('plan')}
+              businessName={business?.name || ''}
             />
             </PremiumGate>
           </motion.div>

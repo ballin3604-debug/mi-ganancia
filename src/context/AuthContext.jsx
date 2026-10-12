@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 import { supabase } from '../services/supabaseClient';
 import { getUserData } from '../services/auth';
 import { isAdmin } from '../services/admin';
+import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
 import { initializeSyncEngine, syncCacheFromServer } from '../services/syncEngine';
 
 const AuthContext = createContext(null);
@@ -36,6 +37,34 @@ export function AuthProvider({ children }) {
         if (thisSessionId !== activeSessionIdRef.current) return;
 
         if (!userData) {
+          // Sin perfil: ¿lo invitaron por correo? Entra directo, sin PIN.
+          try {
+            const invite = await findInviteForEmail(supabaseUser.email);
+            if (invite) {
+              if (thisSessionId !== activeSessionIdRef.current) return;
+              const displayName = supabaseUser.user_metadata?.displayName || supabaseUser.email;
+              await joinBusinessWithCode(supabaseUser, invite.code, displayName, {});
+              const fresh = await getUserData(supabaseUser.id);
+              if (fresh) {
+                if (thisSessionId !== activeSessionIdRef.current) return;
+                setUserStatus(fresh.status || 'active');
+                setRole(fresh.role === 'cashier' ? 'cashier' : 'owner');
+                setSellerName(fresh.name || userObj.displayName || '');
+                setMemberPermissions(Array.isArray(fresh.custom_permissions) ? fresh.custom_permissions : null);
+                if (fresh.business_id) {
+                  setBusinessId(fresh.business_id);
+                  setNeedsSetup(false);
+                } else {
+                  setBusinessId(null);
+                  setNeedsSetup(false);
+                }
+                setUser(userObj);
+                setAuthError(null);
+                setLoading(false);
+                return;
+              }
+            }
+          } catch { /* sin invitación: flujo normal */ }
           // Brand new user — no profile doc yet
           setNeedsSetup(true);
           setUserStatus(null);

@@ -173,6 +173,7 @@ export function TeamSection({
   onSavePermissions,
   onRenameMember,
   onUpgradePlan,
+  businessName = 'Mi Ganancia',
 }) {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, type: null, data: null, title: '', message: '', danger: false,
@@ -447,7 +448,15 @@ export function TeamSection({
             <p className="font-bold text-emerald-800">
               Código para {inviteSent.email}: <span className="font-mono font-black tracking-widest">{inviteSent.code}</span>
             </p>
-            <p className="text-emerald-700 mt-0.5">Pásaselo por WhatsApp. Solo esa cuenta puede usarlo.</p>
+            <p className="text-emerald-700 mt-0.5">Al entrar con esa cuenta se une con un toque, sin PIN.</p>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Hola, te invito a ${businessName} en Mi Ganancia como ${inviteSent.role === 'owner' ? 'Dueño' : 'Cajero'}. Tu código es ${inviteSent.code}. Descarga la app, entra con este correo (${inviteSent.email}) y únete. Solo esa cuenta puede usarlo.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 rounded-xl bg-[#25D366] text-white font-black text-[11px]"
+            >
+              <AppIcon name="whatsapp" size={13} color="#fff" /> Pasar por WhatsApp
+            </a>
           </div>
         )}
         {emailInvites.length > 0 && (
