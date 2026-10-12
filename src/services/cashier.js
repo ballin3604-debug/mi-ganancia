@@ -37,7 +37,12 @@ export async function updateMemberPermissions(memberId, permissions) {
   const clean = [...new Set((permissions || []).filter(Boolean))];
   if (!clean.includes('cobrar')) clean.unshift('cobrar');
   const { error } = await supabase.from('profiles').update({ custom_permissions: clean }).eq('id', memberId);
-  if (error) throw error;
+  if (error) {
+    if (/column|PGRST204|does not exist|schema cache/i.test(error.message || '')) {
+      throw new Error('Falta aplicar el SQL de permisos en Supabase (20261008150000_team_permissions.sql).');
+    }
+    throw error;
+  }
   return clean;
 }
 
@@ -104,7 +109,7 @@ export async function createJoinCode(businessId, businessName, hoursValid = 48) 
   const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
     // Servidor sin la columna expires_at (migración pendiente): invita sin caducidad.
-    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
+    if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
       const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
       if (retryErr) throw retryErr;
     } else throw insErr;
@@ -130,7 +135,7 @@ export async function createOwnerCode(businessId, businessName, hoursValid = 72)
   const expires = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
   const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
-    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
+    if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
       const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
       if (retryErr) throw retryErr;
     } else throw insErr;
@@ -238,9 +243,10 @@ export async function createInviteCode(businessId, businessName, email, role = '
   };
   const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
-    // Servidor sin las columnas nuevas (migración pendiente): invita sin atar.
-    if (/column|PGRST204|does not exist/i.test(insErr.message || '')) {
-      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
+    // Servidor sin las columnas nuevas (migración pendiente): invita sin atar ni caducar.
+    if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
+      const { email: _dropEmail, ...noNewCols } = row;
+      const { error: retryErr } = await supabase.from('business_join_codes').insert(noNewCols);
       if (retryErr) throw retryErr;
     } else throw insErr;
   }
