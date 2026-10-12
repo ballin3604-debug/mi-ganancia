@@ -35,64 +35,59 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
   const showBranch = branches.length > 1;
 
   return (
-    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4 transition-all">
-      {/* Fila superior: sede + mes + vivo (solo si hay sedes que elegir) */}
-      {showBranch && (
-      <div className="flex items-center gap-2 flex-wrap">
-        <label className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-3 pr-1.5 py-1.5">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Sucursal:</span>
-          <select
-            value={homeBranch}
-            onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
-            className="bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer max-w-[220px]"
-            aria-label="Elegir sucursal"
-          >
-            <option value="all">Todas las Sucursales (Consolidado)</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        </label>
-        <span className="flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-[11px] font-bold text-[var(--mg-text-secondary)] capitalize">
-          📅 {monthLabel}
-          <span className="flex items-center gap-1 text-emerald-600 font-black normal-case">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En Tiempo Real
-          </span>
-        </span>
-      </div>
-      )}
-
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      {/* Saludo e información de la tienda */}
-      <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[var(--mg-accent)] to-sky-500 text-white flex items-center justify-center font-black text-xl shrink-0 shadow-md border border-white/20 overflow-hidden">
-          {user?.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={userFirstName}
-              className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-          ) : (
-            <span>{userFirstName.charAt(0)}</span>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
-              ¡Hola, {userFirstName}!
-            </h1>
-            <SyncBadge />
+    <div className="bg-[var(--mg-bg-surface)] rounded-[24px] px-5 py-4 border border-[var(--mg-border)] shadow-xs space-y-3 transition-all">
+      {/* Fila superior: saludo · sucursal al centro · mes a la derecha */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[var(--mg-accent)] to-sky-500 text-white flex items-center justify-center font-black text-lg shrink-0 shadow-md border border-white/20 overflow-hidden">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={userFirstName}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : (
+              <span>{userFirstName.charAt(0)}</span>
+            )}
           </div>
-          <p className="text-[var(--mg-text-muted)] text-xs font-semibold capitalize mt-0.5">
-            {today}
-          </p>
+          <h1 className="text-lg sm:text-xl font-black text-[var(--mg-text-primary)] tracking-tight truncate">
+            ¡Hola, {userFirstName}!
+          </h1>
+          <SyncBadge />
+        </div>
+
+        {showBranch && (
+          <div className="flex sm:justify-center order-first sm:order-none">
+            <label className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-3 pr-1.5 py-1.5">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Sucursal:</span>
+              <select
+                value={homeBranch}
+                onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
+                className="bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer max-w-[200px]"
+                aria-label="Elegir sucursal"
+              >
+                <option value="all">Todas las Sucursales (Consolidado)</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
+        <div className="flex sm:justify-end">
+          <span className="inline-flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-[11px] font-bold text-[var(--mg-text-secondary)] capitalize">
+            📅 {monthLabel}
+            <span className="flex items-center gap-1 text-emerald-600 font-black normal-case">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En Tiempo Real
+            </span>
+          </span>
         </div>
       </div>
 
-      {/* Acciones principales */}
-      <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+      {/* Fila de acciones */}
+      <div className="flex items-center gap-2.5 justify-end">
         {settings?.qrData && (
           <button
             onClick={onShowQr}
@@ -118,7 +113,6 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
           </svg>
           <span>Nueva Venta</span>
         </button>
-      </div>
       </div>
     </div>
   );
