@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null); // 'owner' | 'cashier' | null
   const [sellerName, setSellerName] = useState(''); // nombre que aparece en ventas
   const [memberPermissions, setMemberPermissions] = useState(null); // null = defecto por rol
+  const [memberBranches, setMemberBranches] = useState(null); // null = todas las sedes
   const [authError, setAuthError] = useState(null);
 
   const activeSessionIdRef = useRef(0);
@@ -71,11 +72,13 @@ export function AuthProvider({ children }) {
           setBusinessId(null);
           setSellerName(userObj.displayName || '');
           setMemberPermissions(null);
+          setMemberBranches(null);
         } else {
           setUserStatus(userData.status || 'active');
           setRole(userData.role === 'cashier' ? 'cashier' : 'owner');
           setSellerName(userData.name || userObj.displayName || '');
           setMemberPermissions(Array.isArray(userData.custom_permissions) ? userData.custom_permissions : null);
+          setMemberBranches(Array.isArray(userData.branch_ids) ? userData.branch_ids : null);
           if (userData.business_id) {
             setBusinessId(userData.business_id);
             setNeedsSetup(false);
@@ -103,6 +106,7 @@ export function AuthProvider({ children }) {
       setRole(null);
       setSellerName('');
       setMemberPermissions(null);
+      setMemberBranches(null);
       setAuthError(null);
     }
 
@@ -174,6 +178,7 @@ export function AuthProvider({ children }) {
     setUserStatus('active');
     setRole(userRole);
     setMemberPermissions(null);
+    setMemberBranches(null);
     if (displayName) setSellerName(displayName);
   }
 
@@ -227,7 +232,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, businessId, loading, needsSetup,
       userStatus, admin, role, sellerName, authError,
-      memberPermissions, hasPermission,
+      memberPermissions, hasPermission, memberBranches,
       completeSetup, setRequestSent, refreshSession,
       // Para cuando el usuario cambia su PROPIO rol desde Ajustes (p.ej. un
       // dueño se autodegrada a cajero, o viceversa) — sin esto, el rol de la

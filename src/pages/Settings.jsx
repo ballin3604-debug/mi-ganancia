@@ -20,6 +20,7 @@ import {
   removeMember,
   updateMemberPermissions,
   updateMemberName,
+  updateMemberBranches,
 } from '../services/cashier';
 import { renameBusiness } from '../services/businessSettings';
 
@@ -276,11 +277,15 @@ export default function Settings() {
     }
   }
 
-  async function handleSavePermissions(member, perms) {
+  async function handleSavePermissions(member, perms, branchIds) {
     setMemberBusy(member.id);
     try {
       const saved = await updateMemberPermissions(member.id, perms);
-      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, customPermissions: saved } : m)));
+      let savedBranches = member.branchIds ?? null;
+      if (member.role === 'cashier' && branchIds !== undefined) {
+        savedBranches = await updateMemberBranches(member.id, branchIds);
+      }
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, customPermissions: saved, branchIds: savedBranches } : m)));
     } catch (err) {
       alert(err.message || 'No se pudo guardar.');
       throw err;

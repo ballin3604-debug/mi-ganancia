@@ -1,14 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AppIcon } from '../icons';
+import { useBranches } from '../../context/BranchContext';
 import { MAX_MEMBERS, MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS, updateMemberPermissions, updateMemberName } from '../../services/cashier';
 import { ConfirmModal } from './ConfirmModal';
 
-function PermissionsModal({ member, busy, onClose, onSave }) {
+function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {
   const isOwner = member.role !== 'cashier';
   const [selected, setSelected] = useState(() => (
     Array.isArray(member.customPermissions) && member.customPermissions.length > 0
       ? [...member.customPermissions]
       : [...DEFAULT_CASHIER_PERMISSIONS]
+  ));
+  const [selectedBranches, setSelectedBranches] = useState(() => (
+    Array.isArray(member.branchIds) ? [...member.branchIds] : []
   ));
   if (isOwner) {
     return (
@@ -25,6 +29,9 @@ function PermissionsModal({ member, busy, onClose, onSave }) {
     const def = MEMBER_PERMISSIONS.find((p) => p.id === id);
     if (def?.locked) return;
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+  const toggleBranch = (id) => {
+    setSelectedBranches((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
@@ -55,12 +62,45 @@ function PermissionsModal({ member, busy, onClose, onSave }) {
             );
           })}
         </div>
+        {!isOwner && (
+          <BranchesPicker branches={branches} selectedBranches={selectedBranches} onToggle={toggleBranch} />
+        )}
         <div className="p-4 border-t border-[var(--mg-border)] flex gap-2">
           <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-[var(--mg-bg-elevated)] font-bold text-xs">Cancelar</button>
-          <button type="button" onClick={() => onSave(selected)} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-[var(--mg-accent)] text-white font-bold text-xs disabled:opacity-50">
+          <button type="button" onClick={() => onSave(selected, selectedBranches)} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-[var(--mg-accent)] text-white font-bold text-xs disabled:opacity-50">
             {busy ? 'Guardando…' : 'Guardar permisos'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BranchesPicker({ branches, selectedBranches, onToggle }) {
+  if (branches.length <= 1) return null;
+  return (
+    <div className="px-4 pb-1">
+      <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)] mb-1.5">
+        Sedes asignadas
+      </p>
+      <p className="text-[11px] text-[var(--mg-text-muted)] mb-2">
+        Sin marcar = ve todas. Marca para limitarlo a esas sedes.
+      </p>
+      <div className="space-y-1.5">
+        {branches.map((b) => {
+          const on = selectedBranches.includes(b.id);
+          return (
+            <button
+              key={b.id} type="button" onClick={() => onToggle(b.id)}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${on ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-secondary)]'}`}
+            >
+              <span className="truncate">{b.name}</span>
+              <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)] text-white' : 'border-slate-300 text-transparent'}`}>
+                ✓
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -144,6 +184,7 @@ export function TeamSection({
   const [roleFilter, setRoleFilter] = useState('all');
   const [permMember, setPermMember] = useState(null);
   const [editMember, setEditMember] = useState(null);
+  const { branches } = useBranches();
 
   const ownersCount = members.filter((m) => m.role === 'owner').length;
   const activeCount = members.filter((m) => m.status !== 'suspended').length;
@@ -196,11 +237,12 @@ export function TeamSection({
       {permMember && (
         <PermissionsModal
           member={permMember}
+          branches={branches}
           busy={memberBusy === permMember.id}
           onClose={() => setPermMember(null)}
-          onSave={async (perms) => {
+          onSave={async (perms, branchIds) => {
             try {
-              await onSavePermissions(permMember, perms);
+              await onSavePermissions(permMember, perms, branchIds);
               setPermMember(null);
             } catch { /* el error ya se mostró */ }
           }}
@@ -428,7 +470,9 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
                 <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">TÚ</span>
               )}
             </span>
-            <span className="block text-[11px] text-[var(--mg-text-muted)] truncate">{m.email || 'Sin correo registrado'}</span>
+            <span className="block text-[11px] text-[var(--mg-text-muted)] truncate">
+              {m.email || 'Sin correo registrado'}{Array.isArray(m.branchIds) && m.branchIds.length > 0 ? ` · ${m.branchIds.length} ${m.branchIds.length === 1 ? 'sede' : 'sedes'}` : ''}
+            </span>
           </span>
         </div>
       </td>

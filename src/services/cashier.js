@@ -54,6 +54,21 @@ export async function updateMemberName(memberId, name) {
   return clean;
 }
 
+export async function updateMemberBranches(memberId, branchIds) {
+  const clean = [...new Set((branchIds || []).filter(Boolean))];
+  const { error } = await supabase
+    .from('profiles')
+    .update({ branch_ids: clean.length > 0 ? clean : null })
+    .eq('id', memberId);
+  if (error) {
+    if (/column|PGRST204|does not exist|schema cache/i.test(error.message || '')) {
+      throw new Error('Falta aplicar el SQL de sedes por miembro en Supabase (20261008160000_member_branches.sql).');
+    }
+    throw error;
+  }
+  return clean.length > 0 ? clean : null;
+}
+
 export async function getBusinessMembers(businessId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -69,6 +84,7 @@ export async function getBusinessMembers(businessId) {
     role: m.role,
     status: m.status,
     customPermissions: Array.isArray(m.custom_permissions) ? m.custom_permissions : null,
+    branchIds: Array.isArray(m.branch_ids) ? m.branch_ids : null,
   }));
 }
 

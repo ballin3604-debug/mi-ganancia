@@ -18,7 +18,7 @@ function lsSet(v) {
 // Sede operativa actual (sucursal o almacén). Se recuerda por dispositivo.
 // Fase 1: organiza las VENTAS por sede (stock global). Fase 2: stock por sede.
 export function BranchProvider({ children }) {
-  const { businessId } = useAuth();
+  const { businessId, role, memberBranches } = useAuth();
   const [branches, setBranches] = useState([]);
   const [activeBranchId, setActiveBranchId] = useState(() => lsGet());
   const [loading, setLoading] = useState(true);
@@ -53,29 +53,36 @@ export function BranchProvider({ children }) {
     fetchBranches();
   }, [businessId, fetchBranches]);
 
-  // Si la sede guardada ya no existe, caer a la principal
+  // El cajero solo ve sus sedes asignadas (lista del dueño).
+  // Sin lista = todas (comportamiento de siempre). El dueño ve todo.
+  const visibleBranches = (role === 'cashier' && Array.isArray(memberBranches) && memberBranches.length > 0)
+    ? branches.filter((b) => memberBranches.includes(b.id))
+    : branches;
+
+  // Si la sede guardada ya no existe (o ya no está asignada), caer a la principal
   useEffect(() => {
-    if (loading || branches.length === 0) return;
-    if (!branches.some((b) => b.id === activeBranchId)) {
-      const main = branches.find((b) => b.isMain) || branches[0];
+    if (loading || visibleBranches.length === 0) return;
+    if (!visibleBranches.some((b) => b.id === activeBranchId)) {
+      const main = visibleBranches.find((b) => b.isMain) || visibleBranches[0];
       setActiveBranchId(main.id);
       lsSet(main.id);
     }
-  }, [branches, loading, activeBranchId]);
+  }, [visibleBranches, loading, activeBranchId]);
 
   function selectBranch(id) {
+    if (role === 'cashier' && Array.isArray(memberBranches) && memberBranches.length > 0 && !memberBranches.includes(id)) return;
     setActiveBranchId(id);
     lsSet(id);
   }
 
-  const activeBranch = branches.find((b) => b.id === activeBranchId)
-    || branches.find((b) => b.isMain)
-    || branches[0]
+  const activeBranch = visibleBranches.find((b) => b.id === activeBranchId)
+    || visibleBranches.find((b) => b.isMain)
+    || visibleBranches[0]
     || null;
 
   return (
     <BranchContext.Provider value={{
-      branches, activeBranch, activeBranchId: activeBranch?.id || null,
+      branches: visibleBranches, activeBranch, activeBranchId: activeBranch?.id || null,
       selectBranch, refreshBranches: fetchBranches, loading, loadError,
     }}>
       {children}
