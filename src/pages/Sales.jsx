@@ -565,9 +565,10 @@ export default function Sales() {
 
   // Totales por cajero calculados a nivel VENTA (no por ítem, para no duplicar).
   // "En caja" = efectivo + QR + mixto (plata que entró).
+  // Usa la lista CON sede aplicada: resumen y detalle siempre cuadran.
   const cashierStats = useMemo(() => {
     const map = {};
-    filteredSalesReport.forEach((s) => {
+    scopedSalesReport.forEach((s) => {
       const name = s.seller_name || 'Sin nombre';
       if (!map[name]) {
         map[name] = { name, ventas: 0, cash: 0, qr: 0, mixto: 0, ganancia: 0 };
