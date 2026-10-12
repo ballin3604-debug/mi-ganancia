@@ -31,7 +31,6 @@ function SyncBadge() {
 
 export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, branches = [], homeBranch = 'all', onBranchChange }) {
   const userFirstName = user?.displayName?.split(' ')[0] || 'Vendedor';
-  const monthLabel = new Date().toLocaleDateString('es-BO', { month: 'long', year: 'numeric' });
   const showBranch = branches.length > 1;
 
   return (
@@ -77,11 +76,8 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
         )}
 
         <div className="flex sm:justify-end">
-          <span className="inline-flex items-center gap-1.5 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2 text-[11px] font-bold text-[var(--mg-text-secondary)] capitalize">
-            📅 {monthLabel}
-            <span className="flex items-center gap-1 text-emerald-600 font-black normal-case">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En Tiempo Real
-            </span>
+          <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[11px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En Tiempo Real
           </span>
         </div>
       </div>
