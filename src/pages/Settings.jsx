@@ -28,6 +28,7 @@ import { renameBusiness } from '../services/businessSettings';
 // Subcomponentes de Ajustes
 import { BusinessHeaderCard } from '../components/settings/BusinessHeaderCard';
 import { BusinessNameCard } from '../components/settings/BusinessNameCard';
+import { BusinessExtraFields } from '../components/settings/BusinessExtraFields';
 import { TicketPreview } from '../components/settings/TicketPreview';
 import { ReceiptFormatCard } from '../components/settings/ReceiptFormatCard';
 import { TeamSection } from '../components/settings/TeamSection';
@@ -57,6 +58,13 @@ export default function Settings() {
   const savedLogo = settings?.logoData || '';
   const savedQr = settings?.qrData || '';
   const savedCategory = settings?.businessCategory || DEFAULT_CATEGORY_ID;
+  // ── Campos antes inexistentes (solo estos agregan UI nueva) ──
+  const savedLegalName = settings?.legalName || '';
+  const savedNit = settings?.nit || '';
+  const savedCity = settings?.city || '';
+  const savedAddress = settings?.address || '';
+  const savedFooter = settings?.footerMessage || '';
+  const savedShowQr = settings?.showQrOnTicket ?? true;
 
   // Estados editables
   const [slogan, setSlogan] = useState(savedSlogan);
@@ -64,6 +72,12 @@ export default function Settings() {
   const [logoData, setLogoData] = useState(savedLogo);
   const [qrData, setQrData] = useState(savedQr);
   const [businessCategory, setBusinessCategory] = useState(savedCategory);
+  const [legalName, setLegalName] = useState(savedLegalName);
+  const [nit, setNit] = useState(savedNit);
+  const [city, setCity] = useState(savedCity);
+  const [address, setAddress] = useState(savedAddress);
+  const [footerMessage, setFooterMessage] = useState(savedFooter);
+  const [showQrOnTicket, setShowQrOnTicket] = useState(savedShowQr);
 
   const [activeTab, setActiveTab] = useState(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -98,7 +112,13 @@ export default function Settings() {
     setLogoData(savedLogo);
     setQrData(savedQr);
     setBusinessCategory(savedCategory);
-  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory]);
+    setLegalName(savedLegalName);
+    setNit(savedNit);
+    setCity(savedCity);
+    setAddress(savedAddress);
+    setFooterMessage(savedFooter);
+    setShowQrOnTicket(savedShowQr);
+  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr]);
 
   useEffect(() => {
     if (business?.joinCode) setJoinCode(business.joinCode);
@@ -123,9 +143,15 @@ export default function Settings() {
     if (logoData !== savedLogo) diffs.push('logo');
     if (qrData !== savedQr) diffs.push('qr');
     if (businessCategory !== savedCategory) diffs.push('rubro');
+    if (legalName !== savedLegalName) diffs.push('razón social');
+    if (nit !== savedNit) diffs.push('nit');
+    if (city !== savedCity) diffs.push('ciudad');
+    if (address !== savedAddress) diffs.push('dirección');
+    if (footerMessage !== savedFooter) diffs.push('mensaje');
+    if (showQrOnTicket !== savedShowQr) diffs.push('qr visible');
     return diffs;
-  }, [slogan, phone, logoData, qrData, businessCategory,
-      savedSlogan, savedPhone, savedLogo, savedQr, savedCategory]);
+  }, [slogan, phone, logoData, qrData, businessCategory, legalName, nit, city, address, footerMessage, showQrOnTicket,
+      savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr]);
 
   const hasChanges = changedFields.length > 0;
 
@@ -331,6 +357,12 @@ export default function Settings() {
     setLogoData(savedLogo);
     setQrData(savedQr);
     setBusinessCategory(savedCategory);
+    setLegalName(savedLegalName);
+    setNit(savedNit);
+    setCity(savedCity);
+    setAddress(savedAddress);
+    setFooterMessage(savedFooter);
+    setShowQrOnTicket(savedShowQr);
   }
 
   async function handleSave() {
@@ -342,6 +374,12 @@ export default function Settings() {
         logo_data: logoData,
         qr_data: qrData,
         business_category: businessCategory,
+        legal_name: legalName.trim(),
+        nit: nit.trim(),
+        city: city.trim(),
+        address: address.trim(),
+        footer_message: footerMessage.trim(),
+        show_qr: showQrOnTicket,
       };
       await saveBusinessSettings(businessId, data);
       refreshSettings(data);
@@ -461,6 +499,23 @@ export default function Settings() {
                   onImagePick={handleImagePick}
                   onQRPick={handleQRPick}
                 />
+                {/* Solo campos inexistentes: fiscal + ubicación + pie de ticket.
+                    Reusa el mismo estilo de tarjetas (rounded-[22px], mg-*). */}
+                <BusinessExtraFields
+                  legalName={legalName}
+                  setLegalName={setLegalName}
+                  nit={nit}
+                  setNit={setNit}
+                  city={city}
+                  setCity={setCity}
+                  address={address}
+                  setAddress={setAddress}
+                  footerMessage={footerMessage}
+                  setFooterMessage={setFooterMessage}
+                  showQrOnTicket={showQrOnTicket}
+                  setShowQrOnTicket={setShowQrOnTicket}
+                  hasQr={!!qrData}
+                />
                 <ReceiptFormatCard />
               </div>
               <div className="lg:col-span-5">
@@ -468,7 +523,12 @@ export default function Settings() {
                   businessName={business?.name || ''}
                   slogan={slogan}
                   phone={phone}
-                  address={settings?.address || ''}
+                  address={address}
+                  city={city}
+                  legalName={legalName}
+                  nit={nit}
+                  footerMessage={footerMessage}
+                  showQrOnTicket={showQrOnTicket}
                   logoData={logoData}
                   qrData={qrData}
                 />

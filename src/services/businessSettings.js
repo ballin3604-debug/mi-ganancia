@@ -34,8 +34,9 @@ export async function getBusinessSettings(businessId) {
   // Fallback to local partial if we have it, otherwise empty object
   return local || {};
 }
-
-export async function saveBusinessSettings(businessId, data) {  const payload = {
+export async function saveBusinessSettings(businessId, data) {
+  const pickStr = (v, max) => (v !== undefined && v !== null ? String(v).slice(0, max) : undefined);
+  const base = {
     business_id: businessId,
     slogan: data.slogan !== undefined ? data.slogan : '',
     phone: data.phone !== undefined ? data.phone : '',
@@ -44,18 +45,54 @@ export async function saveBusinessSettings(businessId, data) {  const payload = 
     business_category: data.business_category || data.businessCategory || 'tienda',
     updated_at: new Date().toISOString()
   };
+  // ── Campos nuevos (antes inexistentes en Ajustes) ──────────────────────
+  // Solo se agregan si vienen definidos, para no pisar datos con vacíos.
+  const legalName = pickStr(data.legal_name ?? data.legalName, 120);
+  const nit = pickStr(data.nit, 30);
+  const city = pickStr(data.city, 80);
+  const address = pickStr(data.address, 200);
+  const footerMessage = pickStr(data.footer_message ?? data.footerMessage, 160);
+  const showQr = data.show_qr ?? data.showQrOnTicket ?? data.showQr;
+
+  const full = { ...base };
+  if (legalName !== undefined) full.legal_name = legalName;
+  if (nit !== undefined) full.nit = nit;
+  if (city !== undefined) full.city = city;
+  if (address !== undefined && address !== '') full.address = address;
+  if (footerMessage !== undefined) full.footer_message = footerMessage;
+  if (showQr !== undefined) full.show_qr = !!showQr;
 
   // Optimistic local update with partial merge
   const existing = await db.business_settings.get(businessId);
-  const updatedObj = { 
-    ...existing, 
-    ...payload,
+  const updatedObj = {
+    ...existing,
+    ...full,
     _fullySynced: existing ? !!existing._fullySynced : false
   };
   await db.business_settings.put(updatedObj);
 
-  // Enqueue outbox operation with clean snake_case payload
-  await enqueueOperation('SAVE_BUSINESS_SETTINGS', payload, businessId);
+  // Enqueue outbox operation with clean snake_case payload.
+  // Si el servidor aún no tiene las columnas nuevas, se reintenta quitando
+  // progresivamente los campos desconocidos (tolerante a schema cache viejo).
+  const OPTIONAL_COLS = ['legal_name', 'nit', 'city', 'address', 'footer_message', 'show_qr'];
+  let payload = full;
+  for (let i = 0; i <= OPTIONAL_COLS.length; i++) {
+    try {
+      await enqueueOperation('SAVE_BUSINESS_SETTINGS', payload, businessId);
+      return;
+    } catch (err) {
+      const msg = err?.message || '';
+      if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw err;
+      // Detecta qué columna reclama el servidor y la quita; si no se detecta,
+      // quita la última opcional restante.
+      const missing = OPTIONAL_COLS.filter((c) => payload[c] !== undefined)
+        .find((c) => new RegExp(c, 'i').test(msg));
+      const drop = missing || OPTIONAL_COLS.filter((c) => payload[c] !== undefined).pop();
+      if (!drop) throw err;
+      const { [drop]: _drop, ...rest } = payload;
+      payload = rest;
+    }
+  }
 }
 
 // Nombre comercial del negocio (tabla businesses). Sale en recibos y PDFs.

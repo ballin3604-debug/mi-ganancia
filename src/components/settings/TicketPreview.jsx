@@ -1,12 +1,53 @@
 import { useState } from 'react';
 import { AppIcon } from '../icons';
 import { getReceiptFormat } from '../../utils/receiptFormat';
+import { amountToWords } from '../../utils/numberToWords';
+import { printReceipt } from '../Receipt';
 
 // Vista previa en vivo del ticket con los datos reales del negocio.
-export function TicketPreview({ businessName, slogan, phone, address, logoData, qrData }) {
+// Estilos existentes intactos; solo se agregan los campos antes inexistentes:
+// razón social, NIT, ciudad, mensaje de pie y QR condicional + botón de prueba.
+export function TicketPreview({
+  businessName, slogan, phone, address, city,
+  legalName, nit, footerMessage, showQrOnTicket = true,
+  logoData, qrData,
+}) {
   const [mode, setMode] = useState(() => {
     try { return getReceiptFormat() === 'sheet' ? 'a4' : 'ticket'; } catch { return 'ticket'; }
   });
+
+  const demoTotal = 445;
+  const footer = (footerMessage || '').trim() || '¡Gracias por su compra! Conserve su recibo.';
+  const fullAddress = [address, city].filter(Boolean).join(' · ') || 'Dirección de la tienda';
+  const showQr = showQrOnTicket && !!qrData;
+
+  function handleTestPrint() {
+    printReceipt({
+      business: { name: businessName || 'MI NEGOCIO' },
+      settings: {
+        slogan, phone, address: fullAddress,
+        legal_name: legalName, legalName,
+        nit, city,
+        footer_message: footer, footerMessage: footer,
+        logoData, qrData,
+        show_qr: showQrOnTicket, showQrOnTicket,
+      },
+      type: 'sale',
+      format: mode === 'a4' ? 'sheet' : 'thermal',
+      saleId: 'TEST-004819',
+      items: [
+        { productName: 'Alimento Nutri-Pet 15kg', quantity: 1, price: 280, subtotal: 280 },
+        { productName: 'Pipeta Antiparasitaria', quantity: 2, price: 60, subtotal: 120 },
+        { productName: 'Collar Reflectivo Canino', quantity: 1, price: 45, subtotal: 45 },
+      ],
+      total: demoTotal,
+      date: new Date(),
+      clientName: 'Consumidor Final',
+      clientNit: '0',
+      sellerName: 'Alan',
+      paymentMethod: 'cash',
+    });
+  }
 
   return (
     <div className="lg:sticky lg:top-4 space-y-3">
@@ -42,7 +83,9 @@ export function TicketPreview({ businessName, slogan, phone, address, logoData, 
             )}
             <div className="font-bold text-sm text-slate-900">{businessName || 'MI NEGOCIO'}</div>
             {slogan && <div className="text-[10px] text-slate-500 italic">"{slogan}"</div>}
-            <div className="text-[10px] text-slate-500">{address || 'Dirección de la tienda'}</div>
+            {legalName && <div className="text-[10px] text-slate-500">{legalName}</div>}
+            {nit && <div className="text-[10px] text-slate-500">NIT: {nit}</div>}
+            <div className="text-[10px] text-slate-500">{fullAddress}</div>
             <div className="text-[10px] text-slate-500">Tel: {phone || '00000000'}</div>
           </div>
           <div className="text-[10px] space-y-0.5 text-slate-600 pb-2 border-b border-dashed border-slate-300">
@@ -53,28 +96,36 @@ export function TicketPreview({ businessName, slogan, phone, address, logoData, 
             <div className="flex justify-between font-bold text-[10px] text-slate-500 uppercase">
               <span>Cant / Detalle</span><span>Subtotal</span>
             </div>
-            <div className="flex justify-between"><span className="truncate pr-2">2x Coca 2L</span><span className="font-bold">Bs 24.00</span></div>
-            <div className="flex justify-between"><span className="truncate pr-2">1x Pan integral</span><span className="font-bold">Bs 8.50</span></div>
+            <div className="flex justify-between"><span className="truncate pr-2">1x Alimento Nutri-Pet 15kg</span><span className="font-bold">Bs 280.00</span></div>
+            <div className="flex justify-between"><span className="truncate pr-2">2x Pipeta Antiparasitaria</span><span className="font-bold">Bs 120.00</span></div>
+            <div className="flex justify-between"><span className="truncate pr-2">1x Collar Reflectivo Canino</span><span className="font-bold">Bs 45.00</span></div>
           </div>
-          <div className="flex justify-between text-sm font-black text-slate-900">
-            <span>TOTAL:</span><span>Bs 32.50</span>
+          <div className="space-y-0.5 text-[11px]">
+            <div className="flex justify-between text-slate-600"><span>SUBTOTAL:</span><span>Bs {demoTotal.toFixed(2)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>DESCUENTO (0%):</span><span>Bs 0.00</span></div>
+            <div className="flex justify-between text-sm font-black text-slate-900 pt-1">
+              <span>TOTAL A PAGAR:</span><span>Bs {demoTotal.toFixed(2)}</span>
+            </div>
+            <div className="text-[9px] text-slate-500">SON: {amountToWords(demoTotal)}</div>
           </div>
-          {qrData ? (
+          {showQr ? (
             <div className="text-center pt-1">
               <img src={qrData} alt="QR de cobro" className="w-24 h-24 object-contain mx-auto rounded-xl border border-slate-300 p-1" />
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mt-1">Escanea para pagar</span>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mt-1">Escanea para pagar con QR Simple</span>
             </div>
           ) : null}
-          <div className="text-center text-[10px] text-slate-500 italic">¡Gracias por su compra!</div>
+          <div className="text-center text-[10px] text-slate-500 italic">{footer}</div>
         </div>
       ) : (
         <div className="bg-white rounded-3xl p-6 border border-[var(--mg-border)] shadow-md text-xs space-y-4 max-w-sm mx-auto">
           <div className="flex justify-between items-start pb-4 border-b border-slate-200">
             <div>
               <h4 className="font-bold text-base text-slate-900">{businessName || 'MI NEGOCIO'}</h4>
-              <p className="text-[11px] text-slate-500">{slogan}</p>
-              <p className="text-[11px] text-slate-600 mt-1">{address}</p>
-              <p className="text-[11px] text-slate-600">Tel: {phone}</p>
+              {slogan && <p className="text-[11px] text-slate-500 italic">"{slogan}"</p>}
+              {legalName && <p className="text-[11px] text-slate-500">{legalName}</p>}
+              {nit && <p className="text-[11px] text-slate-500">NIT: {nit}</p>}
+              <p className="text-[11px] text-slate-600 mt-1">{fullAddress}</p>
+              <p className="text-[11px] text-slate-600">Tel: {phone || '—'}</p>
             </div>
             <div className="text-right">
               <div className="font-mono font-bold text-slate-800 text-sm">RECIBO</div>
@@ -84,12 +135,24 @@ export function TicketPreview({ businessName, slogan, phone, address, logoData, 
           <div className="flex justify-between text-xs text-slate-600">
             <span>Cliente: Consumidor Final</span><span>Fecha: 12 Octubre 2026</span>
           </div>
+          <p className="text-[11px] text-slate-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            SON: {amountToWords(demoTotal)}
+          </p>
           <div className="pt-2 text-right">
             <span className="text-xs text-slate-500 block">Total Recibo:</span>
-            <span className="text-xl font-bold font-mono text-slate-900">Bs 32.50</span>
+            <span className="text-xl font-bold font-mono text-slate-900">Bs {demoTotal.toFixed(2)}</span>
           </div>
+          <p className="text-[11px] text-slate-500 italic text-center">{footer}</p>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={handleTestPrint}
+        className="w-full flex items-center justify-center gap-2 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl py-2.5 text-xs font-bold text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] active:scale-[0.99] transition-all"
+      >
+        <AppIcon name="recibo" size={14} /> Imprimir Ticket de Prueba
+      </button>
     </div>
   );
 }

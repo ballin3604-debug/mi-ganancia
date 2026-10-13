@@ -528,8 +528,36 @@ async function processOperation(op, businessId) {
       break;
     }
     case 'ADD_EXPENSE': {
-      const { error } = await supabase.from('expenses').insert(payload);
-      if (error) throw error;
+      // Tolerante a columnas nuevas (payment_method, invoice_number, notes):
+      // si el servidor aún no las tiene, reintenta sin ellas.
+      let insertPayload = payload;
+      for (let i = 0; i <= 3; i++) {
+        const { error } = await supabase.from('expenses').insert(insertPayload);
+        if (!error) break;
+        const msg = error?.message || '';
+        if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw error;
+        const dropCols = ['payment_method', 'invoice_number', 'notes'].filter((c) => insertPayload[c] !== undefined);
+        if (dropCols.length === 0 || i === 3) throw error;
+        const found = dropCols.find((c) => new RegExp(c, 'i').test(msg)) || dropCols[dropCols.length - 1];
+        const { [found]: _d, ...rest } = insertPayload;
+        insertPayload = rest;
+      }
+      break;
+    }
+    case 'UPDATE_EXPENSE': {
+      const { id, ...updateData } = payload;
+      let upd = updateData;
+      for (let i = 0; i <= 3; i++) {
+        const { error } = await supabase.from('expenses').update(upd).eq('id', id);
+        if (!error) break;
+        const msg = error?.message || '';
+        if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw error;
+        const dropCols = ['payment_method', 'invoice_number', 'notes'].filter((c) => upd[c] !== undefined);
+        if (dropCols.length === 0 || i === 3) throw error;
+        const found = dropCols.find((c) => new RegExp(c, 'i').test(msg)) || dropCols[dropCols.length - 1];
+        const { [found]: _d, ...rest } = upd;
+        upd = rest;
+      }
       break;
     }
     case 'DELETE_EXPENSE': {
@@ -715,6 +743,7 @@ export async function syncCacheFromServer(businessId) {
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;
         case 'ADD_EXPENSE':
+        case 'UPDATE_EXPENSE':
         case 'DELETE_EXPENSE':
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;

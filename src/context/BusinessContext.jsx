@@ -10,11 +10,21 @@ const BusinessContext = createContext(null);
 // business_category) pero las pantallas leen camelCase. Exponemos ambas formas
 // para que el logo, el QR de cobro y el tema por rubro estén disponibles apenas
 // se carga el negocio, y no solo después de guardar en esa misma sesión.
+const DEFAULT_FOOTER = '¡Gracias por su compra! Conserve su recibo.';
+
 function normalizeSettings(raw) {
   if (!raw) return {};
   const logoData = raw.logo_data ?? raw.logoData ?? '';
   const qrData = raw.qr_data ?? raw.qrData ?? '';
   const businessCategory = raw.business_category ?? raw.businessCategory ?? DEFAULT_CATEGORY_ID;
+  const legalName = raw.legal_name ?? raw.legalName ?? '';
+  const nit = raw.nit ?? '';
+  const city = raw.city ?? '';
+  const address = raw.address ?? '';
+  const footerMessage = raw.footer_message ?? raw.footerMessage ?? '';
+  // Por defecto el QR sí se imprime al final del ticket (comportamiento actual).
+  const showQrRaw = raw.show_qr ?? raw.showQrOnTicket ?? raw.showQr;
+  const showQrOnTicket = showQrRaw === undefined || showQrRaw === null ? true : !!showQrRaw;
 
   return {
     ...raw,
@@ -24,8 +34,21 @@ function normalizeSettings(raw) {
     logoData,
     qrData,
     businessCategory,
+    legal_name: legalName,
+    legalName,
+    nit,
+    city,
+    address,
+    footer_message: footerMessage,
+    footerMessage,
+    show_qr: showQrOnTicket,
+    showQrOnTicket,
+    showQr: showQrOnTicket,
+    defaultFooterMessage: DEFAULT_FOOTER,
   };
 }
+
+export { DEFAULT_FOOTER };
 
 export function BusinessProvider({ children }) {
   const { businessId } = useAuth();

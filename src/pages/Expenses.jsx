@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useBusiness } from '../context/BusinessContext';
 import {
-  getRecentExpenses, deleteExpense, EXPENSE_CATEGORIES
+  getRecentExpenses, deleteExpense, exportExpensesCsv, EXPENSE_CATEGORIES, EXPENSE_PAYMENT_LABELS
 } from '../services/expenses';
 import { formatBs } from '../utils/currency';
 import { AddExpenseModal } from '../components/expenses/AddExpenseModal';
+import { ExpenseDetailModal } from '../components/expenses/ExpenseDetailModal';
 import { ExpenseFilters } from '../components/expenses/ExpenseFilters';
 import { ExpensesSkeleton } from '../components/expenses/ExpensesSkeleton';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
@@ -18,7 +20,15 @@ const CATEGORY_ICONS = {
   'Alquiler': '🏠',
   'Transporte': '🚚',
   'Empleados': '👤',
+  'Limpieza': '🧹',
   'Otros': '📝',
+};
+
+const PAY_ICONS = {
+  efectivo: '💵',
+  qr: '📲',
+  transferencia: '🏦',
+  tarjeta: '💳',
 };
 
 function formatDate(ts) {
@@ -42,10 +52,13 @@ const itemVariants = {
 
 export default function Expenses() {
   const { businessId } = useAuth();
+  const { business } = useBusiness();
   const [searchParams] = useSearchParams();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(() => searchParams.get('action') === 'nuevo');
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
   
   // Filter States
   const [selectedDays, setSelectedDays] = useState(30);
@@ -106,13 +119,33 @@ export default function Expenses() {
 
   const maxCat = byCategory.length > 0 ? byCategory[0].total : 1;
 
+  // Conteos por categoría (estilo Inicio7)
+  const categoryCounts = useMemo(() => {
+    const counts = { all: expenses.length };
+    for (const e of expenses) {
+      counts[e.category] = (counts[e.category] || 0) + 1;
+    }
+    return counts;
+  }, [expenses]);
+
+  function handleExport() {
+    exportExpensesCsv(filteredExpenses, business?.name || 'MiNegocio');
+  }
+
+  function openEdit(exp) {
+    setSelectedExpense(null);
+    setEditingExpense(exp);
+    setShowAddModal(true);
+  }
+
   // Filtered Expenses List
   const filteredExpenses = expenses.filter((exp) => {
-    // Search query match
+    // Search query match (concepto, proveedor o comprobante — como Inicio7)
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch = !query ||
       exp.description.toLowerCase().includes(query) ||
-      (exp.supplier && exp.supplier.toLowerCase().includes(query));
+      (exp.supplier && exp.supplier.toLowerCase().includes(query)) ||
+      (exp.invoice_number && exp.invoice_number.toLowerCase().includes(query));
 
     // Type match
     const expType = exp.expense_type || exp.expenseType || 'daily';
@@ -126,25 +159,38 @@ export default function Expenses() {
 
   return (
     <div className="p-3.5 sm:p-5 lg:p-6 pb-24 mg-fade-in w-full mx-auto space-y-3.5 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Header (con Exportar Reporte como Inicio7) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
             Gestión de Egresos
           </h2>
           <p className="text-[var(--mg-text-muted)] text-xs font-semibold mt-0.5">
-            Registro de gastos operativos y costos fijos de tu negocio
+            Registro de gastos operativos, compras de caja y costos fijos de tu negocio
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => setShowAddModal(true)}
-          className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white px-4 py-2.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0 min-h-[42px]"
-        >
-          <span className="text-lg leading-none">+</span>
-          <span className="hidden sm:inline">Registrar</span> Egreso
-        </motion.button>
+        <div className="flex items-center gap-2 shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={handleExport}
+            disabled={filteredExpenses.length === 0}
+            className="bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] px-3.5 py-2.5 rounded-2xl font-extrabold text-xs border border-[var(--mg-border)] transition-all flex items-center gap-1.5 min-h-[42px] disabled:opacity-50"
+          >
+            <span className="text-sm leading-none">⬇️</span>
+            <span className="hidden sm:inline">Exportar Reporte</span>
+            <span className="sm:hidden">Exportar</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => { setEditingExpense(null); setShowAddModal(true); }}
+            className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white px-4 py-2.5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0 min-h-[42px]"
+          >
+            <span className="text-lg leading-none">+</span>
+            <span className="hidden sm:inline">Registrar</span> Egreso
+          </motion.button>
+        </div>
       </div>
 
       {loading ? (
@@ -172,12 +218,16 @@ export default function Expenses() {
                   💸
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-[var(--mg-text-primary)] tracking-tight">
+              <p className="text-2xl sm:text-3xl font-black text-[var(--mg-text-primary)] tracking-tight tabular-nums">
                 {formatBs(totalPeriod)}
               </p>
               <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
                 {expenses.length} {expenses.length === 1 ? 'registro' : 'registros'} en el período
               </p>
+              <div className="pt-2 mt-2 border-t border-[var(--mg-separator)] flex items-center justify-between text-[10px] font-bold text-[var(--mg-text-muted)]">
+                <span>Control general de salidas</span>
+                <span>Actualizado hoy</span>
+              </div>
             </motion.div>
 
             {/* 2. Total Gastos Diarios */}
@@ -194,12 +244,16 @@ export default function Expenses() {
                   ☀️
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">
+              <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight tabular-nums">
                 {formatBs(totalDaily)}
               </p>
               <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
-                {dailyExpenses.length} compras del día
+                {dailyExpenses.length} compras de caja chica / mercadería
               </p>
+              <div className="pt-2 mt-2 border-t border-[var(--mg-separator)] flex items-center justify-between text-[10px] font-bold text-[var(--mg-text-muted)]">
+                <span>{totalPeriod > 0 ? `${Math.round((totalDaily / totalPeriod) * 100)}% del total gastado` : '0% del total'}</span>
+                <span className="text-emerald-700">Caja Chica</span>
+              </div>
             </motion.div>
 
             {/* 3. Total Gastos Fijos */}
@@ -216,12 +270,16 @@ export default function Expenses() {
                   📅
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight">
+              <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight tabular-nums">
                 {formatBs(totalFixed)}
               </p>
               <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-1">
-                {fixedExpenses.length} servicios / alquileres
+                {fixedExpenses.length} servicios / alquileres / personal
               </p>
+              <div className="pt-2 mt-2 border-t border-[var(--mg-separator)] flex items-center justify-between text-[10px] font-bold text-[var(--mg-text-muted)]">
+                <span>{totalPeriod > 0 ? `${Math.round((totalFixed / totalPeriod) * 100)}% del total gastado` : '0% del total'}</span>
+                <span className="text-purple-700">Costos Recurrentes</span>
+              </div>
             </motion.div>
           </motion.div>
 
@@ -274,6 +332,7 @@ export default function Expenses() {
             onTypeChange={setSelectedType}
             selectedCategory={selectedCategory}
             onCategoryChange={setSelectedCategory}
+            categoryCounts={categoryCounts}
           />
 
           {/* Lista de Egresos */}
@@ -285,11 +344,21 @@ export default function Expenses() {
             >
               <p className="text-4xl mb-2">💸</p>
               <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Sin egresos registrados</p>
-              <p className="text-xs text-[var(--mg-text-muted)] mt-1">
+              <p className="text-xs text-[var(--mg-text-muted)] mt-1 max-w-md mx-auto">
                 {expenses.length === 0
-                  ? 'No hay egresos en los últimos ' + selectedDays + ' días. Toca "+ Registrar Egreso" para comenzar.'
+                  ? 'No hay egresos en el período seleccionado. Lleva el control de pagos a proveedores, alquiler, servicios y compras operativas de caja.'
                   : 'No se encontraron resultados con los filtros aplicados.'}
               </p>
+              {expenses.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingExpense(null); setShowAddModal(true); }}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold text-xs shadow-sm transition-all active:scale-95"
+                >
+                  <span className="text-base leading-none">+</span>
+                  <span>Registrar Primer Egreso</span>
+                </button>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -309,10 +378,12 @@ export default function Expenses() {
               <div className="divide-y divide-[var(--mg-separator)]">
                 {filteredExpenses.map((exp) => {
                   const isFixed = (exp.expense_type || exp.expenseType) === 'fixed';
+                  const payMethod = exp.payment_method || 'efectivo';
                   return (
                     <div
                       key={exp.id}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--mg-bg-elevated)] transition-colors group"
+                      onClick={() => setSelectedExpense(exp)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--mg-bg-elevated)] transition-colors group cursor-pointer"
                     >
                       <div className="w-9 h-9 bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] rounded-xl flex items-center justify-center text-lg shrink-0 font-bold border border-[var(--mg-accent-border)] group-hover:scale-105 transition-transform">
                         {CATEGORY_ICONS[exp.category] || '📝'}
@@ -325,7 +396,7 @@ export default function Expenses() {
                             className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 ${
                               isFixed
                                 ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border border-amber-200'
                             }`}
                           >
                             {isFixed ? 'Fijo' : 'Diario'}
@@ -333,16 +404,29 @@ export default function Expenses() {
                         </div>
                         <p className="text-[11px] text-[var(--mg-text-muted)] truncate mt-0.5 font-medium">
                           {exp.supplier ? `${exp.supplier} · ` : ''}{exp.category} · {formatDate(exp.createdAt)}
+                          {exp.invoice_number ? ` · 🧾 ${exp.invoice_number}` : ''}
                         </p>
+                        <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] px-1.5 py-0.5 rounded-md">
+                          <span>{PAY_ICONS[payMethod] || '💵'}</span>
+                          <span>{EXPENSE_PAYMENT_LABELS[payMethod] || 'Efectivo'}</span>
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <p className="font-black text-[var(--mg-text-primary)] text-sm sm:text-base">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <p className="font-black text-[var(--mg-text-primary)] text-sm sm:text-base tabular-nums mr-1">
                           - {formatBs(exp.amount)}
                         </p>
                         <button
                           type="button"
-                          onClick={() => setDeletingExpense(exp)}
+                          onClick={(e) => { e.stopPropagation(); openEdit(exp); }}
+                          className="w-7 h-7 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] text-[var(--mg-text-secondary)] rounded-lg flex items-center justify-center text-xs font-black transition-all active:scale-95 border border-[var(--mg-border)] min-h-[28px]"
+                          title="Editar egreso"
+                        >
+                          <AppIcon name="editar" size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDeletingExpense(exp); }}
                           className="w-7 h-7 bg-[var(--mg-danger-bg)] hover:bg-red-100 text-[var(--mg-danger)] rounded-lg flex items-center justify-center text-xs font-black transition-all active:scale-95 border border-red-200 min-h-[28px]"
                           title="Eliminar egreso"
                         >
@@ -358,15 +442,26 @@ export default function Expenses() {
         </>
       )}
 
-      {/* Modal Agregar Egreso */}
+      {/* Modal Agregar / Editar Egreso */}
       <AddExpenseModal
         businessId={businessId}
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        editingExpense={editingExpense}
+        onClose={() => { setShowAddModal(false); setEditingExpense(null); }}
         onSaved={() => {
           setShowAddModal(false);
+          setEditingExpense(null);
           loadExpenses();
         }}
+      />
+
+      {/* Modal Detalle (estilo Inicio7) */}
+      <ExpenseDetailModal
+        expense={selectedExpense}
+        isOpen={!!selectedExpense}
+        onClose={() => setSelectedExpense(null)}
+        onEdit={openEdit}
+        onDelete={(exp) => { setSelectedExpense(null); setDeletingExpense(exp); }}
       />
 
       {/* Modal Confirmación de Borrado */}
@@ -374,11 +469,11 @@ export default function Expenses() {
         isOpen={!!deletingExpense}
         onClose={() => setDeletingExpense(null)}
         onConfirm={handleConfirmDelete}
-        title="¿Eliminar egreso?"
-        message={`¿Estás seguro de eliminar "${deletingExpense?.description}" por ${formatBs(deletingExpense?.amount)}?`}
+        title="¿Eliminar este egreso?"
+        message={`Se eliminará "${deletingExpense?.description}" por ${formatBs(deletingExpense?.amount)} y se recalcularán los reportes del período.`}
         danger={true}
         loading={deleting}
-        confirmText="Eliminar Egreso"
+        confirmText="Sí, Eliminar"
       />
     </div>
   );

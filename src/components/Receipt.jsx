@@ -24,6 +24,16 @@ function buildThermalHtml(ctx) {
     clientName, clientNit, sellerName, supplier, payLabel,
     montoRecibido, cambio, cleanExtraRows, productsSubtotal,
   } = ctx;
+  const legalName = settings?.legal_name || settings?.legalName || '';
+  const bizNit = settings?.nit || '';
+  const bizCity = settings?.city || '';
+  const bizAddress = settings?.address
+    ? (bizCity ? `${settings.address} · ${bizCity}` : settings.address)
+    : (bizCity || '');
+  const footerMsg = (settings?.footer_message || settings?.footerMessage || '').trim()
+    || (isPurchase ? 'Compra registrada' : '¡Gracias por su compra!');
+  const showQr = (settings?.show_qr ?? settings?.showQrOnTicket ?? settings?.showQr ?? true) && !!settings?.qrData;
+  const logo = settings?.logoData || settings?.logo_data || '';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -62,10 +72,13 @@ function buildThermalHtml(ctx) {
 </head>
 <body>
   <div class="header">
+    ${logo ? `<img src="${logo}" alt="Logo" style="width:48px;height:48px;object-fit:contain;margin:0 auto 2mm;border-radius:8px;"/>` : ''}
     <p class="biz-name">${escapeHtml(business?.name || 'MI NEGOCIO')}</p>
     ${settings?.slogan ? `<p class="sub-info italic">"${escapeHtml(settings.slogan)}"</p>` : ''}
-    ${settings?.phone ? `<p class="sub-info">Tel/WhatsApp: ${escapeHtml(settings.phone)}</p>` : ''}
-    ${settings?.address ? `<p class="sub-info">${escapeHtml(settings.address)}</p>` : ''}
+    ${legalName ? `<p class="sub-info">${escapeHtml(legalName)}</p>` : ''}
+    ${bizNit ? `<p class="sub-info">NIT: ${escapeHtml(bizNit)}</p>` : ''}
+    ${bizAddress ? `<p class="sub-info">${escapeHtml(bizAddress)}</p>` : ''}
+    ${settings?.phone ? `<p class="sub-info">Tel: ${escapeHtml(settings.phone)}</p>` : ''}
   </div>
 
   <div class="separator"></div>
@@ -170,8 +183,17 @@ function buildThermalHtml(ctx) {
     ` : ''}
   </div>
 
+  ${!isPurchase ? `
+  <div class="totals-words" style="margin-top:2mm;font-size:10px;">
+    <span>SON: ${escapeHtml(amountToWords(Number(total) || 0))}</span>
+  </div>` : ''}
+  ${showQr ? `
+  <div class="qr-block" style="text-align:center;margin-top:3mm;">
+    <img src="${settings.qrData || settings.qr_data}" alt="QR" style="width:110px;height:110px;object-fit:contain;margin:0 auto;border:1px solid #000;padding:2mm;"/>
+    <p style="font-size:9px;font-weight:bold;letter-spacing:1px;">ESCANEA PARA PAGAR</p>
+  </div>` : ''}
   <div class="footer">
-    <p class="thanks">${isPurchase ? 'Compra registrada' : '¡Gracias por su compra!'}</p>
+    <p class="thanks">${escapeHtml(footerMsg)}</p>
     <p>Desarrollado por Mi Ganancia</p>
   </div>
 ${AUTO_PRINT_SCRIPT}
@@ -220,8 +242,14 @@ function buildSheetHtml(ctx) {
   const fillerRows = Array.from({ length: fillerCount }).map(() => `
     <tr class="vacia"><td>&nbsp;</td><td></td><td></td><td></td></tr>`).join('');
 
-  const ubicacion = settings?.address ? escapeHtml(settings.address) : '';
+  const bizCity2 = settings?.city || '';
+  const bizAddr2 = settings?.address || '';
+  const ubicacion = [bizAddr2, bizCity2].filter(Boolean).map((s) => escapeHtml(s)).join(' · ');
   const telefono = settings?.phone ? escapeHtml(settings.phone) : '';
+  const legal2 = settings?.legal_name || settings?.legalName || '';
+  const nit2 = settings?.nit || '';
+  const footer2 = (settings?.footer_message || settings?.footerMessage || '').trim()
+    || (isPurchase ? '¡Compra registrada!' : '¡Gracias por su compra!');
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -409,6 +437,8 @@ function buildSheetHtml(ctx) {
         <div>
           <div class="negocio">${escapeHtml(business?.name || 'Mi Negocio')}</div>
           ${settings?.slogan ? `<div class="slogan">"${escapeHtml(settings.slogan)}"</div>` : ''}
+          ${legal2 ? `<div class="slogan">${escapeHtml(legal2)}</div>` : ''}
+          ${nit2 ? `<div class="slogan">NIT: ${escapeHtml(nit2)}</div>` : ''}
         </div>
       </div>
 
@@ -511,7 +541,7 @@ function buildSheetHtml(ctx) {
         ${ubicacion ? `<span class="contacto"><span class="ico">📍</span>${ubicacion}</span>` : ''}
         ${telefono ? `<span class="contacto"><span class="ico">💬</span>${telefono}</span>` : ''}
       </div>
-      <span class="gracias">${isPurchase ? '¡Compra registrada!' : '¡Gracias por su compra!'}</span>
+      <span class="gracias">${escapeHtml(footer2)}</span>
     </div>
     <div class="sello">${escapeHtml(business?.name || 'Mi Negocio')} · Documento generado con Mi Ganancia</div>
 

@@ -11,6 +11,7 @@ export function ExpenseFilters({
   onTypeChange,
   selectedCategory,
   onCategoryChange,
+  categoryCounts = {},
 }) {
   return (
     <motion.div
@@ -85,33 +86,46 @@ export function ExpenseFilters({
         </div>
       </div>
 
-      {/* Bottom row: Category Pills */}
+      {/* Bottom row: Category Pills (con conteos estilo Inicio7) */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5 pb-0.5">
         <button
           type="button"
           onClick={() => onCategoryChange('all')}
-          className={`px-3 py-1 rounded-full text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 min-h-[30px] ${
+          className={`px-3 py-1 rounded-full text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 min-h-[30px] flex items-center gap-1.5 ${
             selectedCategory === 'all'
               ? 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)] shadow-2xs'
               : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
           }`}
         >
-          Todas
+          <span>Todas</span>
+          {(categoryCounts.all ?? 0) > 0 && (
+            <span className={`text-[10px] font-black px-1.5 rounded-full tabular-nums ${selectedCategory === 'all' ? 'bg-[var(--mg-accent)] text-white' : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] border border-[var(--mg-border)]'}`}>
+              {categoryCounts.all}
+            </span>
+          )}
         </button>
-        {EXPENSE_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => onCategoryChange(cat)}
-            className={`px-3 py-1 rounded-full text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 min-h-[30px] ${
-              selectedCategory === cat
-                ? 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)] shadow-2xs'
-                : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {EXPENSE_CATEGORIES.map((cat) => {
+          const count = categoryCounts[cat] ?? 0;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => onCategoryChange(cat)}
+              className={`px-3 py-1 rounded-full text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 min-h-[30px] flex items-center gap-1.5 ${
+                selectedCategory === cat
+                  ? 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)] shadow-2xs'
+                  : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
+              }`}
+            >
+              <span>{cat}</span>
+              {count > 0 && (
+                <span className={`text-[10px] font-black px-1.5 rounded-full tabular-nums ${selectedCategory === cat ? 'bg-[var(--mg-accent)] text-white' : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] border border-[var(--mg-border)]'}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </motion.div>
   );
