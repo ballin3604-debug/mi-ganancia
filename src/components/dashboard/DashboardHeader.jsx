@@ -34,9 +34,9 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
   const showBranch = branches.length > 1;
 
   return (
-    <div className="px-1 space-y-2.5">
+    <div className="px-1 space-y-2">
       {showBranch && (
-        <label className="flex items-center gap-1.5 text-xs">
+        <label className="flex items-center gap-1.5 text-xs leading-none">
           <span className="font-bold text-[var(--mg-text-muted)] shrink-0">Sucursal:</span>
           <select
             value={homeBranch}
@@ -52,7 +52,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
         </label>
       )}
 
-      {/* Saludo + fecha en una sola fila compacta */}
+      {/* Saludo + fecha + QR en una sola fila compacta */}
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--mg-accent)] to-sky-500 text-white flex items-center justify-center font-black text-base shrink-0 overflow-hidden">
           {user?.photoURL ? (
@@ -77,27 +77,23 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
             {today}
           </p>
         </div>
-      </div>
 
-      {/* Inicio minimalista: sin botón Nueva Venta (se accede desde la pestaña Ventas).
-          Solo se muestra el QR si existe. */}
-      {settings?.qrData && (
-        <div className="flex items-center gap-2">
+        {/* QR de cobro: icono compacto a la derecha; el texto aparece en pantallas grandes. */}
+        {settings?.qrData && (
           <button
             onClick={onShowQr}
             type="button"
             aria-label="Ver código QR de cobro"
-            className="px-3.5 py-2 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] text-[var(--mg-text-secondary)] font-bold text-xs rounded-xl border border-[var(--mg-border)] flex items-center gap-2 active:scale-95 transition-all"
+            className="shrink-0 px-2.5 py-2 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] text-[var(--mg-text-secondary)] font-bold text-xs rounded-xl border border-[var(--mg-border)] flex items-center gap-2 active:scale-95 transition-all"
             title="Ver QR de cobro"
           >
             <svg className="w-4 h-4 text-[var(--mg-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
             </svg>
             <span className="hidden sm:inline">Cobrar QR</span>
-            <span className="sm:hidden">QR</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
