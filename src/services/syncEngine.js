@@ -7,6 +7,19 @@ let errorCount = 0;
 let isSyncing = false;
 const listeners = new Set();
 
+// ── Cadencia del sync (antes: pull COMPLETO de todo cada 15 s, que quemaba
+// el egress del plan) ────────────────────────────────────────────────
+//  · Cada POLL_INTERVAL_MS se sincroniza de forma INCREMENTAL: products y
+//    branch_stock por updated_at, y solo las ventas de hoy (acotadas al día).
+//  · Cada FULL_SYNC_INTERVAL_MS se hace un pase COMPLETO de las tablas
+//    chicas (sin updated_at) + una reconciliación de borrados por id.
+const POLL_INTERVAL_MS = 30000;
+const FULL_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+// PostgREST corta las respuestas en max-rows (típicamente 1000). Se pagina
+// con .range() para no truncar catálogos grandes (antes, un producto #1001+
+// no llegaba del server y la caché local lo BORRABA).
+const PAGE_SIZE = 1000;
+
 export async function checkOnlineStatus() {
   if (!navigator.onLine) return false;
   try {
@@ -71,7 +84,7 @@ export async function initializeSyncEngine(businessId) {
   window.addEventListener('online', handleConnectivityChange);
   window.addEventListener('offline', handleConnectivityChange);
 
-  // Periodic ping interval
+  // Periodic ping interval (fallback: el sync incremental ya es barato)
   const intervalId = setInterval(async () => {
     const prevOnline = online;
     online = await checkOnlineStatus();
@@ -81,7 +94,21 @@ export async function initializeSyncEngine(businessId) {
     if (online) {
       triggerSync(businessId);
     }
-  }, 15000);
+  }, POLL_INTERVAL_MS);
+
+  // Al volver la app a primer plano (móvil/PC) se sincroniza de inmediato:
+  // es justo cuando el usuario mira la pantalla y espera datos al día.
+  const handleVisibility = () => {
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+    checkOnlineStatus().then((isOn) => {
+      online = isOn;
+      notifyListeners();
+      if (isOn) triggerSync(businessId);
+    });
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibility);
+  }
 
   // Initial check
   handleConnectivityChange();
@@ -89,6 +116,9 @@ export async function initializeSyncEngine(businessId) {
   return () => {
     window.removeEventListener('online', handleConnectivityChange);
     window.removeEventListener('offline', handleConnectivityChange);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    }
     clearInterval(intervalId);
   };
 }
@@ -884,6 +914,63 @@ async function safeSyncTable(table, serverData, isPendingFn, isEligibleFn = () =
   });
 }
 
+// ── Helpers del sync incremental ────────────────────────────────────
+// Pagina con .range() hasta agotar (ver PAGE_SIZE). buildQuery(from,to)
+// debe devolver una query ya ordenada (orden estable = paginación correcta).
+async function fetchAll(buildQuery) {
+  const rows = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+    if (from > 500000) break;
+  }
+  return rows;
+}
+
+// Upsert SIN borrado (modo incremental: lo que no vino, NO se toca).
+async function upsertRows(table, rows, isPendingFn = () => false) {
+  if (!rows || rows.length === 0) return;
+  const toPut = rows.filter((r) => !isPendingFn(r));
+  if (toPut.length > 0) await table.bulkPut(toPut);
+}
+
+// Reconciliación de borrados: recibe SOLO ids del servidor y elimina locales
+// que ya no existen. Red de seguridad: si el servidor devolvió 0 filas pero
+// hay datos locales, no borra nada (posible error de red/RLS transitorio).
+async function reconcileDeletes(table, businessId, serverRows, isPendingFn = () => false) {
+  if (!serverRows) return;
+  const local = await table.where('business_id').equals(businessId).toArray();
+  if (serverRows.length === 0 && local.length > 0) {
+    console.warn('[SyncEngine] Reconciliación omitida: el servidor devolvió 0 registros pero había datos locales. Se preservó la caché.');
+    return;
+  }
+  const serverIds = new Set(serverRows.map((r) => r.id));
+  const toDelete = local.filter((r) => !serverIds.has(r.id) && !isPendingFn(r));
+  if (toDelete.length > 0) await table.bulkDelete(toDelete.map((r) => r.id));
+}
+
+// Mayor timestamp (ISO) de un lote — el watermark para el próximo gt().
+// Las cadenas ISO UTC se comparan lexicográficamente de forma correcta.
+function maxStamp(rows, field) {
+  let max = null;
+  for (const r of rows || []) {
+    const v = r && r[field];
+    if (v && (max === null || v > max)) max = v;
+  }
+  return max;
+}
+
+async function saveSyncState(businessId, patch) {
+  if (!patch || Object.keys(patch).length === 0) return;
+  const cur = (await db.sync_state.get(businessId)) || { business_id: businessId };
+  await db.sync_state.put({ ...cur, ...patch });
+}
+
 export async function syncCacheFromServer(businessId) {
   if (!businessId) return;
   const isOnline = await checkOnlineStatus();
@@ -965,77 +1052,81 @@ export async function syncCacheFromServer(businessId) {
     // no tocar la caché de otro negocio en un dispositivo compartido.
     const belongsToBiz = (item) => item.business_id === businessId;
 
-    const { data: prods, error: prodsErr } = await assertSupabase().from('products').select('*').eq('business_id', businessId);
-    if (prodsErr) {
-      console.warn('syncEngine: no se pudo sincronizar products:', prodsErr);
-    } else if (prods) {
-      await safeSyncTable(db.products, prods, (item) => pendingIds.has(item.id), belongsToBiz);
-    }
+    const caps = await getServerCaps();
+    const state = (await db.sync_state.get(businessId)) || { business_id: businessId };
+    const fullDue = !state.full_at
+      || (Date.now() - new Date(state.full_at).getTime()) >= FULL_SYNC_INTERVAL_MS;
+    const stampPatch = {};
 
-    const { data: clis, error: clisErr } = await assertSupabase().from('clientes').select('*').eq('business_id', businessId);
-    if (clisErr) {
-      console.warn('syncEngine: no se pudo sincronizar clientes:', clisErr);
-    } else if (clis) {
-      await safeSyncTable(db.clientes, clis, (item) => pendingIds.has(item.id), belongsToBiz);
-    }
-
-    const { data: debts, error: debtsErr } = await assertSupabase().from('debts').select('*').eq('business_id', businessId);
-    if (debtsErr) {
-      console.warn('syncEngine: no se pudo sincronizar debts:', debtsErr);
-    } else if (debts) {
-      await safeSyncTable(db.debts, debts, (item) => pendingIds.has(item.id), belongsToBiz);
-    }
-
-    const { data: exps, error: expsErr } = await assertSupabase().from('expenses').select('*').eq('business_id', businessId);
-    if (expsErr) {
-      console.warn('syncEngine: no se pudo sincronizar expenses:', expsErr);
-    } else if (exps) {
-      await safeSyncTable(db.expenses, exps, (item) => pendingIds.has(item.id), belongsToBiz);
-    }
-
-    const { data: reps, error: repsErr } = await assertSupabase().from('replenishments').select('*').eq('business_id', businessId);
-    if (repsErr) {
-      console.warn('syncEngine: no se pudo sincronizar replenishments:', repsErr);
-    } else if (reps) {
-      await safeSyncTable(db.replenishments, reps, (item) => pendingIds.has(item.id), belongsToBiz);
-    }
-
-    // Fase 2: stock por sede + traspasos (tolerante si faltan las tablas).
-    // branch_stock usa PK compuesta: se normaliza con id local antes de comparar.
+    // ── PRODUCTS: incremental por updated_at. El catálogo ya NO se baja
+    // entero cada ciclo: solo las filas que cambiaron desde el watermark. ──
     try {
-      const { data: bs, error: bsErr } = await assertSupabase().from('branch_stock').select('*').eq('business_id', businessId);
-      if (bsErr) {
-        console.warn('syncEngine: no se pudo sincronizar branch_stock:', bsErr);
-      } else if (bs) {
-        const norm = bs.map((r) => ({ ...r, id: `${r.branch_id}:${r.product_id}` }));
-        await safeSyncTable(db.branch_stock, norm, (item) => pendingIds.has(item.id), belongsToBiz);
+      const wm = state.products || null;
+      const rows = await fetchAll((from, to) => {
+        let q = assertSupabase().from('products').select('*').eq('business_id', businessId);
+        if (wm) q = q.gt('updated_at', wm);
+        return q.order('updated_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
+      });
+      await upsertRows(db.products, rows, (item) => pendingIds.has(item.id));
+      const m = maxStamp(rows, 'updated_at');
+      if (m) stampPatch.products = m;
+    } catch (err) {
+      console.warn('syncEngine: no se pudo sincronizar products:', err);
+    }
+
+    // ── BRANCH_STOCK: incremental por updated_at (tolerante si falta la tabla). ──
+    if (caps.branchTables !== false) {
+      try {
+        const wm = state.branch_stock || null;
+        const rows = await fetchAll((from, to) => {
+          let q = assertSupabase().from('branch_stock').select('*').eq('business_id', businessId);
+          if (wm) q = q.gt('updated_at', wm);
+          return q.order('updated_at', { ascending: true })
+            .order('branch_id', { ascending: true })
+            .order('product_id', { ascending: true })
+            .range(from, to);
+        });
+        const norm = rows.map((r) => ({ ...r, id: `${r.branch_id}:${r.product_id}` }));
+        await upsertRows(db.branch_stock, norm, (item) => pendingIds.has(item.id));
+        const m = maxStamp(rows, 'updated_at');
+        if (m) stampPatch.branch_stock = m;
+      } catch (e) {
+        console.warn('syncEngine: sin tablas de Fase 2 (branch_stock):', e?.message || e);
       }
-      const { data: trs, error: trsErr } = await assertSupabase().from('transfers').select('*').eq('business_id', businessId).order('created_at', { ascending: false }).limit(200);
-      if (trsErr) {
-        console.warn('syncEngine: no se pudo sincronizar transfers:', trsErr);
-      } else if (trs) {
-        await safeSyncTable(db.transfers, trs, (item) => pendingIds.has(item.id), belongsToBiz);
+    }
+
+    // ── TRANSFERS: últimos 200 (barato, se baja en cada ciclo). ──
+    if (caps.branchTables !== false) {
+      try {
+        const { data: trs, error: trsErr } = await assertSupabase()
+          .from('transfers').select('*').eq('business_id', businessId)
+          .order('created_at', { ascending: false }).limit(200);
+        if (trsErr) {
+          console.warn('syncEngine: no se pudo sincronizar transfers:', trsErr);
+        } else if (trs) {
+          await safeSyncTable(db.transfers, trs, (item) => pendingIds.has(item.id), belongsToBiz);
+        }
+      } catch (e) {
+        console.warn('syncEngine: sin tablas de Fase 2 (transfers):', e?.message || e);
       }
-    } catch (e) {
-      console.warn('syncEngine: sin tablas de Fase 2 en el servidor (corre la migración):', e?.message || e);
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { data: sales, error: salesErr } = await assertSupabase()
-      .from('sales')
-      .select('*')
-      .eq('business_id', businessId)
-      .gte('created_at', today.toISOString());
+    try {
+      const sales = await fetchAll((from, to) => assertSupabase()
+        .from('sales')
+        .select('*')
+        .eq('business_id', businessId)
+        .gte('created_at', today.toISOString())
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to));
 
-    if (salesErr) {
-      console.warn('syncEngine: no se pudo sincronizar sales:', salesErr);
-    } else if (sales) {
       // Solo se pidió al servidor "de hoy en adelante" — restringimos el
       // borrado local a ese mismo rango, si no cualquier venta local de un
       // día anterior "no está en el servidor" (porque no se la pidió) y se
-      // borraba igual, dejando el historial local recortado a "solo hoy"
-      // en cada ciclo de sync.
+      // borraba igual, dejando el historial local recortado a "solo hoy".
       const isTodaysSale = (item) => {
         if (item.business_id !== businessId) return false;
         const d = item.created_at ? new Date(item.created_at) : null;
@@ -1045,14 +1136,14 @@ export async function syncCacheFromServer(businessId) {
 
       const saleIds = sales.map((s) => s.id);
       if (saleIds.length > 0) {
-        const { data: items, error: itemsErr } = await assertSupabase().from('sale_items').select('*').in('sale_id', saleIds);
-        if (itemsErr) {
-          console.warn('syncEngine: no se pudo sincronizar sale_items:', itemsErr);
-        } else if (items) {
-          const todaySaleIdSet = new Set(saleIds);
-          await safeSyncTable(db.sale_items, items, (item) => pendingIds.has(item.sale_id), (item) => todaySaleIdSet.has(item.sale_id));
-        }
+        const items = await fetchAll((from, to) => assertSupabase()
+          .from('sale_items').select('*').in('sale_id', saleIds)
+          .order('id', { ascending: true }).range(from, to));
+        const todaySaleIdSet = new Set(saleIds);
+        await safeSyncTable(db.sale_items, items, (item) => pendingIds.has(item.sale_id), (item) => todaySaleIdSet.has(item.sale_id));
       }
+    } catch (err) {
+      console.warn('syncEngine: no se pudo sincronizar sales:', err);
     }
 
     // Sync business settings
@@ -1073,6 +1164,41 @@ export async function syncCacheFromServer(businessId) {
         });
       }
     }
+
+    // ── PASE COMPLETO (cada FULL_SYNC_INTERVAL_MS): tablas chicas + borrados ──
+    // clientes/egresos/deudas/reposiciones no tienen updated_at: se bajan
+    // enteras pero con baja frecuencia (el incremental no vería sus ediciones
+    // ni sus borrados). Acá también se reconcilian los borrados de products,
+    // pidiendo SOLO los ids (no el catálogo entero).
+    if (fullDue) {
+      const smallTables = [
+        { table: db.clientes, name: 'clientes' },
+        { table: db.expenses, name: 'expenses' },
+        { table: db.debts, name: 'debts' },
+        { table: db.replenishments, name: 'replenishments' },
+      ];
+      for (const t of smallTables) {
+        try {
+          const rows = await fetchAll((from, to) => assertSupabase()
+            .from(t.name).select('*').eq('business_id', businessId)
+            .order('id', { ascending: true }).range(from, to));
+          await safeSyncTable(t.table, rows, (item) => pendingIds.has(item.id), belongsToBiz);
+        } catch (err) {
+          console.warn(`syncEngine: no se pudo sincronizar ${t.name}:`, err);
+        }
+      }
+      try {
+        const ids = await fetchAll((from, to) => assertSupabase()
+          .from('products').select('id').eq('business_id', businessId)
+          .order('id', { ascending: true }).range(from, to));
+        await reconcileDeletes(db.products, businessId, ids, (item) => pendingIds.has(item.id));
+      } catch (err) {
+        console.warn('syncEngine: reconciliación de products falló:', err);
+      }
+      stampPatch.full_at = new Date().toISOString();
+    }
+
+    await saveSyncState(businessId, stampPatch);
 
     // Broadcast cache sync event to refresh local service views without circular imports
     if (typeof window !== 'undefined') {

@@ -111,6 +111,27 @@ db.version(8).stores({
   transfers: 'id, business_id, product_id, created_at'
 });
 
+// Version 9 schema: adds sync_state, donde el sync incremental guarda sus
+// watermarks por tabla (máximo updated_at/created_at ya visto del servidor).
+// Sin esto no hay memoria de "hasta dónde bajé" y se volvería a bajar todo.
+db.version(9).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id',
+  branch_stock: 'id, business_id, branch_id, product_id',
+  transfers: 'id, business_id, product_id, created_at',
+  sync_state: 'business_id'
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

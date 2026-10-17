@@ -204,8 +204,8 @@ export function AuthProvider({ children }) {
 
     // initializeSyncEngine is async — it resolves to the cleanup function,
     // it does not return one synchronously. Awaiting it here means the
-    // 'online'/'offline' listeners and the 15s poll interval it sets up were
-    // never removed on businessId change, leaking one full set per switch.
+    // 'online'/'offline'/visibility listeners and the poll interval it sets
+    // up were never removed on businessId change, leaking one set per switch.
     let cleanup = null;
     let cancelled = false;
 
