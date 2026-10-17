@@ -1,4 +1,4 @@
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 /**
  * Resize & optimize images.
@@ -97,6 +97,9 @@ export function useImageUpload() {
    */
   async function uploadProductImage(file, path) {
     if (!file) return null;
+    if (!supabase || !isSupabaseConfigured) {
+      throw new Error('Falta VITE_SUPABASE_URL. Configura tu archivo .env para subir imágenes.');
+    }
     if (!file.type.startsWith('image/')) {
       alert('Por favor selecciona una imagen.');
       return null;

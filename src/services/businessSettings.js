@@ -1,6 +1,6 @@
 import { db } from './localDb';
 import { enqueueOperation } from './syncEngine';
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 export async function getBusinessSettings(businessId) {
   // Read local first
@@ -11,7 +11,7 @@ export async function getBusinessSettings(businessId) {
 
   // If not fully synced, try fetching the complete data from Supabase
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('business_settings')
       .select('*')
       .eq('business_id', businessId)
@@ -71,35 +71,18 @@ export async function saveBusinessSettings(businessId, data) {
   };
   await db.business_settings.put(updatedObj);
 
-  // Enqueue outbox operation with clean snake_case payload.
-  // Si el servidor aún no tiene las columnas nuevas, se reintenta quitando
-  // progresivamente los campos desconocidos (tolerante a schema cache viejo).
-  const OPTIONAL_COLS = ['legal_name', 'nit', 'city', 'address', 'footer_message', 'show_qr'];
-  let payload = full;
-  for (let i = 0; i <= OPTIONAL_COLS.length; i++) {
-    try {
-      await enqueueOperation('SAVE_BUSINESS_SETTINGS', payload, businessId);
-      return;
-    } catch (err) {
-      const msg = err?.message || '';
-      if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw err;
-      // Detecta qué columna reclama el servidor y la quita; si no se detecta,
-      // quita la última opcional restante.
-      const missing = OPTIONAL_COLS.filter((c) => payload[c] !== undefined)
-        .find((c) => new RegExp(c, 'i').test(msg));
-      const drop = missing || OPTIONAL_COLS.filter((c) => payload[c] !== undefined).pop();
-      if (!drop) throw err;
-      const { [drop]: _drop, ...rest } = payload;
-      payload = rest;
-    }
-  }
+  // Enqueue outbox con payload completo en snake_case. El recorte de columnas
+  // desconocidas ocurre en syncEngine (SAVE_BUSINESS_SETTINGS) vía
+  // getServerCaps ANTES del upsert: enqueueOperation solo escribe en Dexie
+  // local y nunca puede fallar por "columna inexistente" del servidor.
+  await enqueueOperation('SAVE_BUSINESS_SETTINGS', full, businessId);
 }
 
 // Nombre comercial del negocio (tabla businesses). Sale en recibos y PDFs.
 export async function renameBusiness(businessId, name) {
   const clean = (name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
   if (clean.length < 2) throw new Error('El nombre debe tener al menos 2 letras.');
-  const { error } = await supabase.from('businesses').update({ name: clean }).eq('id', businessId);
+  const { error } = await assertSupabase().from('businesses').update({ name: clean }).eq('id', businessId);
   if (error) throw error;
   return clean;
 }

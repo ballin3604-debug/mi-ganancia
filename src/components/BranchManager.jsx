@@ -7,7 +7,6 @@ import {
 } from '../services/branches';
 import { transferStock, getBranchStocks, getTransfers, toStockMap, subscribeBranchStock } from '../services/branchStock';
 import { getProducts, subscribeToProducts } from '../services/products';
-import { PremiumGate } from './UpgradeScreen';
 import { AppIcon } from './icons';
 
 function BranchForm({ onDone }) {
@@ -610,9 +609,5 @@ function BranchManagerInner() {
 }
 
 export default function BranchManager() {
-  return (
-    <PremiumGate feature="branches" title="Sucursales y almacenes es Premium">
-      <BranchManagerInner />
-    </PremiumGate>
-  );
+  return <BranchManagerInner />;
 }

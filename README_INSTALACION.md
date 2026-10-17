@@ -49,7 +49,7 @@ Descomprime este ZIP y **copia toda la carpeta `src/`** encima de la tuya, sobre
 - `src/config/` ✓ intacto (businessCategories.js)
 - `src/context/` ✓ intacto (AuthContext, BusinessContext, ThemeContext)
 - `src/hooks/` ✓ intacto
-- `src/services/` ✓ intacto (firebase, sales, products, etc.)
+- `src/services/` ✓ intacto (supabase, sales, products, etc.)
 
 ### 3. Prueba
 

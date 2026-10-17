@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { signInWithPassword, signUp, signInWithGoogle } from '../services/auth';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services/supabaseClient';
 
 function traducirError(message = '') {
   const msg = message.toLowerCase();
@@ -44,6 +44,10 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!supabase || !isSupabaseConfigured) {
+      setError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para poder entrar.');
+      return;
+    }
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
       setError('Escribe tu correo electrónico.');
@@ -90,6 +94,10 @@ export default function Login() {
   }
 
   async function handleGoogle() {
+    if (!supabase || !isSupabaseConfigured) {
+      setError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para poder entrar.');
+      return;
+    }
     setSocialLoading(true);
     setError('');
     try {
@@ -145,6 +153,14 @@ export default function Login() {
 
         {/* Tarjeta */}
         <div className="bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-[20px] p-6 sm:p-7" style={{ boxShadow: 'var(--mg-shadow-lg)' }}>
+          {!isSupabaseConfigured && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 flex gap-2 items-start mb-4">
+              <span className="text-sm leading-none mt-0.5">⛔</span>
+              <p className="text-xs font-semibold text-red-700 leading-relaxed">
+                {supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para poder entrar.'}
+              </p>
+            </div>
+          )}
           {/* Segmented control */}
           {!isReset && (
             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] mb-5">

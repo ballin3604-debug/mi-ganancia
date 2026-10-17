@@ -260,7 +260,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
             <h3 className="text-sm font-black text-[var(--mg-text-primary)] flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Ventas Recientes en Vivo
             </h3>
-            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=reporte')} className="text-[11px] font-bold text-[#1670C2] hover:underline">
+            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=auditoria')} className="text-[11px] font-bold text-[#1670C2] hover:underline">
               Auditoría →
             </button>
           </div>

@@ -14,38 +14,16 @@ import { printReceipt } from '../components/Receipt';
 import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { MagicMetricCards } from '../components/dashboard/MagicMetricCards';
-import { EmptyDayState } from '../components/dashboard/EmptyDayState';
+
 import { DashboardCharts } from '../components/dashboard/DashboardCharts';
-import { SaleDetailModal } from '../components/dashboard/SaleDetailModal';
+
 import { QrModal } from '../components/dashboard/QrModal';
 import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
 import { OwnerPulse } from '../components/OwnerPulse';
-import { usePlan } from '../hooks/usePlan';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
-
-function UpgradeNudge({ title, desc, planName, onGo }) {
-  return (
-    <button
-      type="button"
-      onClick={onGo}
-      className="w-full text-left bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-[22px] p-5 flex items-center gap-3 active:scale-[0.99] transition-all"
-    >
-      <span className="w-10 h-10 rounded-2xl bg-[var(--mg-accent)] text-white flex items-center justify-center shrink-0">
-        <AppIcon name="plan" size={18} color="#fff" />
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-sm font-black text-[var(--mg-text-primary)]">{title}</span>
-        <span className="block text-xs text-[var(--mg-text-secondary)]">{desc}</span>
-      </span>
-      <span className="text-xs font-black text-white bg-[var(--mg-accent)] px-3 py-1.5 rounded-xl shrink-0">
-        {planName} →
-      </span>
-    </button>
-  );
-}
 
 function SectionHeader({ title }) {
   return (
@@ -60,20 +38,14 @@ export default function Dashboard() {
   const isOwner = role === 'owner';
   const { business, settings } = useBusiness();
   const navigate = useNavigate();
-  const { planId, billingReady } = usePlan();
-  // Contenido según plan: Free ve resumen + top + vencimientos;
-  // Pro suma análisis; Premium suma el pulso del dueño.
-  // Sin tablas de facturación (legacy), todo abierto como antes.
-  const showAnalisis = !billingReady || planId !== 'free';
-  const showPulso = !billingReady || planId === 'premium';
-  const goPlanes = () => navigate('/configuracion');
+  // Todo el contenido del inicio siempre visible: sin anuncios de planes.
 
   // Estados
   const [todaySales, setTodaySales] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedSale, setSelectedSale] = useState(null);
+
   const [showQr, setShowQr] = useState(false);
   const [salesItemsMap, setSalesItemsMap] = useState({});
   const [printingSaleId, setPrintingSaleId] = useState(null);
@@ -151,7 +123,7 @@ export default function Dashboard() {
   const branchStockRows = useBranchStocks(businessId, mainBranchId);
   const branchStockMap = useMemo(() => toStockMap(branchStockRows), [branchStockRows]);
 
-  const hasSalesToday = daySales.length > 0;
+
 
   // Cargar los ítems de cada venta visible (gráficos)
   useEffect(() => {
@@ -411,17 +383,10 @@ export default function Dashboard() {
           totalCash={totalCash}
           totalQr={totalQr}
           onNavigate={(path, opts) => navigate(path, opts)}
-          onSelectSale={(sale) => setSelectedSale(sale)}
+          onSelectSale={(sale) => navigate(`/recibo/${sale.id}`)}
           onReimprint={handleReimprint}
           printingSaleId={printingSaleId}
         />
-        {selectedSale && (
-          <SaleDetailModal
-            sale={selectedSale}
-            businessId={businessId}
-            onClose={() => setSelectedSale(null)}
-          />
-        )}
       </>
     );
   }
@@ -431,7 +396,7 @@ export default function Dashboard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="p-4 sm:p-6 space-y-8 max-w-7xl mx-auto pb-16"
+      className="p-4 sm:p-6 space-y-4 sm:space-y-8 max-w-7xl mx-auto pb-16"
     >
       {/* CABECERA: SEDE, SALUDO Y ACCIONES PRINCIPALES */}
       <DashboardHeader
@@ -445,27 +410,20 @@ export default function Dashboard() {
         onBranchChange={setHomeBranch}
       />
 
-      {/* SECCIÓN 1 — RESUMEN DEL DÍA */}
+      {/* SECCIÓN 1 — RESUMEN DEL DÍA (siempre visible, aunque sea 0) */}
       <section>
         <SectionHeader title={homeBranch !== 'all' ? `Resumen del día · ${(branches.find((b) => b.id === homeBranch)?.name) || 'Sucursal'}` : 'Resumen del día'} />
-        {hasSalesToday ? (
-          <MagicMetricCards
-            totalHoy={totalHoy}
-            paidSalesCount={paidSalesCount}
-            totalCash={totalCash}
-            totalQr={totalQr}
-            comprasTotal={comprasHoy.total}
-            comprasCount={comprasHoy.count}
-            gananciaNeta={gananciaHoy}
-            margen={margenHoy}
-            onNavigate={(path) => navigate(path)}
-          />
-        ) : (
-          <EmptyDayState
-            isOwner={isOwner}
-            onNavigate={(path, opts) => navigate(path, opts)}
-          />
-        )}
+        <MagicMetricCards
+          totalHoy={totalHoy}
+          paidSalesCount={paidSalesCount}
+          totalCash={totalCash}
+          totalQr={totalQr}
+          comprasTotal={comprasHoy.total}
+          comprasCount={comprasHoy.count}
+          gananciaNeta={gananciaHoy}
+          margen={margenHoy}
+          onNavigate={(path) => navigate(path)}
+        />
       </section>
 
       {/* Productos top + vencimientos en una fila */}
@@ -479,47 +437,35 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* PULSO DEL NEGOCIO (Premium): mensual, stock, sucursales y en vivo */}
-      {showPulso ? (
-        <OwnerPulse
-          businessId={businessId}
-          liveSales={daySales}
-          salesItemsMap={scopedItemsMap}
-          lowStock={lowStock}
-          branchId={homeBranch}
-          mainBranchId={mainBranchId}
-          branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
-          onNavigate={(path, opts) => navigate(path, opts)}
-          onReimprint={handleReimprint}
-          printingSaleId={printingSaleId}
-        />
-      ) : (
-        <UpgradeNudge
-          title="Pulso del dueño"
-          desc="Rendimiento mensual, sucursales y ventas en vivo en un solo lugar."
-          planName="Premium"
-          onGo={goPlanes}
-        />
-      )}
+      {/* PULSO DEL NEGOCIO: mensual, stock, sucursales y en vivo */}
+      <OwnerPulse
+        businessId={businessId}
+        liveSales={daySales}
+        salesItemsMap={scopedItemsMap}
+        lowStock={lowStock}
+        branchId={homeBranch}
+        mainBranchId={mainBranchId}
+        branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
+        onNavigate={(path, opts) => navigate(path, opts)}
+        onReimprint={handleReimprint}
+        printingSaleId={printingSaleId}
+      />
 
-      {/* SECCIÓN 2 — ANÁLISIS DETALLADO (Pro; solo si hubo ventas hoy) */}
-      {hasSalesToday && showAnalisis && (
-        <section className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4">
+      {/* SECCIÓN 2 — ANÁLISIS DETALLADO (siempre visible) */}
+      <section className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
               <h3 className="font-black text-base text-[var(--mg-text-primary)]">Análisis del día</h3>
               <p className="text-xs text-[var(--mg-text-muted)]">Productos, categorías y tendencia por hora</p>
             </div>
-            {showAnalisis && (
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                type="button"
-                className="text-xs font-bold text-[var(--mg-accent)] hover:underline flex items-center gap-1 disabled:opacity-50"
-              >
-                {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
-              </button>
-            )}
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              type="button"
+              className="text-xs font-bold text-[var(--mg-accent)] hover:underline flex items-center gap-1 disabled:opacity-50"
+            >
+              {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
+            </button>
           </div>
 
           <DashboardCharts
@@ -529,24 +475,7 @@ export default function Dashboard() {
             hourlyTrendData={hourlyTrendData}
           />
         </section>
-      )}
-      {hasSalesToday && !showAnalisis && (
-        <UpgradeNudge
-          title="Análisis avanzado"
-          desc="Tendencia por hora y ventas por categoría del día."
-          planName="Pro"
-          onGo={goPlanes}
-        />
-      )}
-
       {/* MODALES */}
-      {selectedSale && (
-        <SaleDetailModal
-          sale={selectedSale}
-          businessId={businessId}
-          onClose={() => setSelectedSale(null)}
-        />
-      )}
 
       {showQr && (
         <QrModal

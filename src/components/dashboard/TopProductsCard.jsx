@@ -4,7 +4,6 @@
 export function TopProductsCard({ data = [] }) {
   const top = data.filter((p) => p.label !== 'Otros').slice(0, 5);
   const max = Math.max(...top.map((x) => x.value), 1);
-  if (top.length === 0) return null;
 
   return (
     <section className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
@@ -12,6 +11,11 @@ export function TopProductsCard({ data = [] }) {
         Productos más vendidos
       </h3>
       <p className="text-[11px] text-[var(--mg-text-muted)] mb-3">Unidades y dinero de hoy.</p>
+      {top.length === 0 ? (
+        <p className="text-xs font-semibold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-3 text-center">
+          Sin ventas hoy: aquí verás tu producto estrella.
+        </p>
+      ) : (
       <ul className="divide-y divide-[var(--mg-separator)]">
         {top.map((p, i) => (
           <li key={p.label} className="relative py-2 overflow-hidden">
@@ -50,6 +54,7 @@ export function TopProductsCard({ data = [] }) {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

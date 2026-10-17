@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { effectivePlan, daysLeft, getPlan } from '../config/plans';
 
 // Lee la suscripción del negocio y expone plan efectivo + helpers de gating.
@@ -15,6 +15,12 @@ export function usePlan() {
 
   const fetchSub = useCallback(async () => {
     if (!businessId) {
+      setSubscription(null);
+      setLoading(false);
+      return;
+    }
+    if (!supabase || !isSupabaseConfigured) {
+      console.error('Falta VITE_SUPABASE_URL. usePlan sin conexión.');
       setSubscription(null);
       setLoading(false);
       return;

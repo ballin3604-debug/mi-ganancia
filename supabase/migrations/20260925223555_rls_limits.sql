@@ -47,13 +47,15 @@ as $$
 $$;
 
 -- ¿Llamador exento? (servicio interno o admin del proyecto)
+-- Fuente única: src/config/admin.js (VITE_ADMIN_UID). En SQL se centraliza
+-- en public.admin_uid() (ver 20261016000001_admin_uid_helper.sql).
 create or replace function public.is_exempt_caller()
 returns boolean
 language sql
 stable
 as $$
   select coalesce(auth.jwt()->>'role', '') = 'service_role'
-      or auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid
+      or auth.uid() = public.admin_uid()
 $$;
 
 -- Trigger genérico de cupos

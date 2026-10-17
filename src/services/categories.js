@@ -1,6 +1,6 @@
 import { db } from './localDb';
 import { enqueueOperation, buildOutboxOp } from './syncEngine';
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { notifyProductChanges } from './products';
 
 export const DEFAULT_CATEGORIES = [
@@ -45,7 +45,7 @@ export async function getCategories(businessId) {
 
   // Fallback to Supabase if online, write to cache
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('business_settings')
       .select('categories')
       .eq('business_id', businessId)

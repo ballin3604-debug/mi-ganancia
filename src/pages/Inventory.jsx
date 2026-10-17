@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -23,17 +23,17 @@ import { ConfirmModal } from '../components/settings/ConfirmModal';
 import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
 
 // Inventory Subcomponents
+import { formatBs } from '../utils/currency';
 import { InventoryCatalogItem } from '../components/inventory/InventoryCatalogItem';
+import ProductListRow from '../components/ProductListRow';
+import { StockLabel } from '../components/ProductCatalogCard';
 import { ProductDetailModal } from '../components/inventory/ProductDetailModal';
 import { ProductGridSkeleton } from '../components/inventory/ProductGridSkeleton';
 import { InventoryHeader } from '../components/inventory/InventoryHeader';
-import { InventoryValuationCard } from '../components/inventory/InventoryValuationCard';
 import { TransferModal } from '../components/inventory/TransferModal';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { AppIcon } from '../components/icons';
 import PhotoCamera from '../components/PhotoCamera';
-import { UpgradeModal } from '../components/UpgradeScreen';
-import { usePlan } from '../hooks/usePlan';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap, setBranchStock } from '../services/branchStock';
@@ -135,6 +135,21 @@ export default function Inventory() {
   // (o la principal si se ven todas).
   const { branches, activeBranchId } = useBranches();
   const [invBranch, setInvBranch] = useState(() => activeBranchId || 'all');
+  // Panel de filtros colapsable en celular (en PC siempre visible).
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount =
+    (filterCategory !== 'Todas' ? 1 : 0) +
+    (filterExpiry !== 'todos' ? 1 : 0) +
+    (filterRecent ? 1 : 0) +
+    (filterLowStock ? 1 : 0) +
+    (invBranch !== 'all' ? 1 : 0);
+  function clearAllFilters() {
+    setFilterCategory('Todas');
+    setFilterExpiry('todos');
+    setFilterRecent(false);
+    setFilterLowStock(false);
+    setInvBranch('all');
+  }
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
@@ -173,17 +188,10 @@ export default function Inventory() {
   // Escáner de códigos: 'search' busca el producto, 'assign' llena el campo del formulario
   const [scannerMode, setScannerMode] = useState(null); // null | 'search' | 'assign'
   const [scanMsg, setScanMsg] = useState('');
-  // Paywall escáner (Pro)
-  const { can } = usePlan();
-  const [showUpgrade, setShowUpgrade] = useState(false);
-
   function openScanner(mode) {
-    if (can('scanner') && hasPermission('scanner')) {
-      setScanMsg('');
-      setScannerMode(mode);
-    } else {
-      setShowUpgrade(true);
-    }
+    if (!hasPermission('scanner')) return;
+    setScanMsg('');
+    setScannerMode(mode);
   }
   // Cámara interna (no sale del formulario, la foto nunca se pierde)
   const [showCamera, setShowCamera] = useState(false);
@@ -683,15 +691,20 @@ export default function Inventory() {
         filterLowStock={filterLowStock}
         onLowStockFilterToggle={() => setFilterLowStock(!filterLowStock)}
         lowStockCount={lowStockCount}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
+        activeFilterCount={activeFilterCount}
+        onClearFilters={clearAllFilters}
         onOpenAddProduct={() => openAdd()}
         onOpenCatManager={() => setShowCatManager(true)}
         onOpenScanner={() => openScanner('search')}
         expiryCounts={expiryCounts}
       />
 
-      {/* Vista por sede (solo si hay varias): todo lo de abajo muestra ese stock */}
+      {/* Vista por sede (solo si hay varias): todo lo de abajo muestra ese stock.
+          En celular va dentro del panel colapsable de filtros. */}
       {branches.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mt-2">
+        <div className={`${showFilters ? 'flex' : 'hidden'} md:flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mt-2`}>
           <button
             key="all" type="button" onClick={() => setInvBranch('all')}
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${invBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
@@ -709,8 +722,21 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Valorización de la sede vista */}
-      <InventoryValuationCard products={viewProducts} selectedCategory={filterCategory} />
+      {/* Acceso al reporte de inventario (valorización y kardex) */}
+      <button
+        type="button"
+        onClick={() => navigate('/reportes?type=inventory')}
+        className="w-full flex items-center gap-3 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl px-4 py-3 shadow-xs active:scale-[0.99] transition-all text-left"
+      >
+        <span className="w-10 h-10 rounded-xl bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] flex items-center justify-center shrink-0">
+          <AppIcon name="reportes" size={20} />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-black text-[var(--mg-text-primary)]">Reporte de inventario</span>
+          <span className="block text-[11px] text-[var(--mg-text-muted)] font-semibold truncate">Valorización, stock y kardex por producto</span>
+        </span>
+        <span className="text-lg font-black text-[var(--mg-text-faint)] shrink-0">›</span>
+      </button>
 
       {/* Catalog Grid View */}
       {loading ? (
@@ -728,7 +754,7 @@ export default function Inventory() {
           <p className="text-xs text-[var(--mg-text-muted)] mt-1 max-w-xs mx-auto font-medium">
             {search
               ? 'Intenta borrar la búsqueda o seleccionar otra categoría.'
-              : 'Toca "+ Nuevo Producto" para empezar a construir tu catálogo visual.'}
+              : 'Toca el botón + para empezar a construir tu catálogo visual.'}
           </p>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -743,16 +769,46 @@ export default function Inventory() {
         </motion.div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 mg-stagger">
-            {visibleProducts.map((prod) => (
-              <InventoryCatalogItem
-                key={prod.id}
-                product={prod}
-                nearestExpiry={productExpiry[prod.id]}
-                categoryColor={getCatColor(categories, prod.category)}
-                onSelect={(p) => setSelectedDetailProduct(p)}
-              />
-            ))}
+          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3 mg-stagger">
+            {visibleProducts.map((prod) => {
+              const packSize = Number(prod.packageSize || 0);
+              const hasPack = packSize > 1 && prod.packPrice !== '' && prod.packPrice !== null && prod.packPrice !== undefined && Number(prod.packPrice) > 0;
+              return (
+                <Fragment key={prod.id}>
+                  {/* Lista para celular */}
+                  <div className="sm:hidden">
+                    <ProductListRow
+                      product={prod}
+                      subtitle={prod.unitLabel || 'Unidad'}
+                      priceLabel={formatBs(Number(prod.price || 0))}
+                      meta={
+                        <span className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <StockLabel stock={prod.stock} minStock={prod.minStock} />
+                          {hasPack && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]">
+                              📦 {(prod.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
+                            </span>
+                          )}
+                        </span>
+                      }
+                      onSelect={() => setSelectedDetailProduct(prod)}
+                      actionArea={
+                        <span className="text-xl font-black text-[var(--mg-text-faint)] pr-1">›</span>
+                      }
+                    />
+                  </div>
+                  {/* Tarjetas para desktop */}
+                  <div className="hidden sm:block">
+                    <InventoryCatalogItem
+                      product={prod}
+                      nearestExpiry={productExpiry[prod.id]}
+                      categoryColor={getCatColor(categories, prod.category)}
+                      onSelect={(p) => setSelectedDetailProduct(p)}
+                    />
+                  </div>
+                </Fragment>
+              );
+            })}
           </div>
           {/* Sentinela del scroll infinito + botón manual */}
           <div ref={loadMoreRef} />
@@ -778,6 +834,17 @@ export default function Inventory() {
           )}
         </>
       )}
+
+      {/* FAB Nuevo Producto (solo celular, en lugar del ?) */}
+      <button
+        type="button"
+        onClick={() => openAdd()}
+        title="Nuevo Producto"
+        aria-label="Nuevo Producto"
+        className="md:hidden fixed bottom-24 right-4 z-30 w-14 h-14 rounded-full bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow-xl flex items-center justify-center active:scale-90 transition-all"
+      >
+        <AppIcon name="agregar" size={26} color="#fff" />
+      </button>
 
       {/* === MODAL: Ficha Completa de Producto (Bottom Sheet / Modal) === */}
       <ProductDetailModal
@@ -850,11 +917,6 @@ export default function Inventory() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* PAYWALL escáner */}
-      {showUpgrade && (
-        <UpgradeModal feature="scanner" title="El escáner es Pro" onClose={() => setShowUpgrade(false)} />
-      )}
 
       {/* === MODAL: Escáner de código de barras === */}
       <AnimatePresence>

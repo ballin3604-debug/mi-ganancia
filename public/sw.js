@@ -31,15 +31,6 @@ self.addEventListener('fetch', (event) => {
 
   const url = event.request.url;
 
-  // Never cache Firebase or Google API calls
-  if (
-    url.includes('firestore.googleapis.com') ||
-    url.includes('firebase') ||
-    url.includes('googleapis.com') ||
-    url.includes('gstatic.com') ||
-    url.includes('accounts.google.com')
-  ) return;
-
   // Never cache Supabase API/auth/realtime — data must always be fresh.
   // NOTE: Storage object URLs (/storage/v1/object/public/...) intentionally
   // fall through to the cache-first branch below, same as static assets —

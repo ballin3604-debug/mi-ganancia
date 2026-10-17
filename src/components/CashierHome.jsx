@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { formatBs } from '../utils/currency';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useBranches } from '../context/BranchContext';
 import { AppIcon } from './icons';
 
@@ -109,6 +109,10 @@ export function CashierHome({
   async function handleSaveName() {
     const clean = nameDraft.trim().replace(/\s+/g, ' ').slice(0, 40);
     if (!clean || savingName) return;
+    if (!supabase || !isSupabaseConfigured) {
+      alert('Falta VITE_SUPABASE_URL. Configura tu archivo .env para guardar el nombre.');
+      return;
+    }
     setSavingName(true);
     try {
       const uid = user?.id || user?.uid;

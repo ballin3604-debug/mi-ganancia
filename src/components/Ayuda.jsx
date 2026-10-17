@@ -39,7 +39,9 @@ export default function Ayuda() {
         onClick={() => setAbierto(true)}
         title={`¿Qué es esto? ${info.titulo}`}
         aria-label="Ayuda: qué es esta pantalla"
-        className="fixed z-40 bottom-24 lg:bottom-6 right-4 lg:right-6 w-11 h-11 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-lg flex items-center justify-center text-lg font-black text-[var(--mg-accent)] active:scale-90 hover:shadow-xl transition-all"
+        className={`fixed z-40 bottom-24 lg:bottom-6 right-4 lg:right-6 w-11 h-11 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-lg items-center justify-center text-lg font-black text-[var(--mg-accent)] active:scale-90 hover:shadow-xl transition-all ${
+          location.pathname.startsWith('/inventario') ? 'hidden md:flex' : 'flex'
+        }`}
       >
         ?
       </button>

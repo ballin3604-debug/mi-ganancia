@@ -5,13 +5,10 @@ import { PLANS } from '../config/plans';
 import { getMyPayments } from '../services/payments';
 import PaymentModal from './PaymentModal';
 
-// Puerta premium: si el plan no incluye la función, muestra upgrade.
-// Sin billing (SQL sin correr) todo pasa: modo legacy abierto.
-export function PremiumGate({ feature, title, children }) {
-  const { can, loading, billingReady } = usePlan();
-  if (loading) return null;
-  if (!billingReady || can(feature)) return <>{children}</>;
-  return <UpgradeScreen feature={feature} title={title} compact />;
+// Sin anuncios de planes: todo el contenido siempre visible.
+// Se mantiene el componente para no romper importaciones existentes.
+export function PremiumGate({ children }) {
+  return <>{children}</>;
 }
 
 // Modal paywall reutilizable (escáner, etc.)

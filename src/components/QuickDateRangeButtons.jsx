@@ -8,7 +8,7 @@ export default function QuickDateRangeButtons({ startDate, endDate, onChange }) 
   ];
 
   return (
-    <div className="flex items-center gap-1 bg-[var(--mg-bg-surface)] p-1 rounded-xl border border-[var(--mg-border)] shrink-0">
+    <div className="grid grid-cols-3 sm:flex sm:w-auto w-full items-center gap-1 bg-[var(--mg-bg-elevated)] p-1 rounded-xl shrink-0">
       {options.map(({ key, label, range }) => {
         const active = startDate === range.start && endDate === range.end;
         return (
@@ -16,10 +16,10 @@ export default function QuickDateRangeButtons({ startDate, endDate, onChange }) 
             key={key}
             type="button"
             onClick={() => onChange(range.start, range.end)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all text-center whitespace-nowrap ${
               active
                 ? 'bg-[var(--mg-accent)] text-white shadow-sm'
-                : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)]'
+                : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-surface)]'
             }`}
           >
             {label}

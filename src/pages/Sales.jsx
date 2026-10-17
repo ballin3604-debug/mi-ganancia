@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { getProducts, subscribeToProducts } from '../services/products';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
+import ProductListRow, { RowAddButton } from '../components/ProductListRow';
+import { AuditSalesList } from '../components/AuditSalesList';
 import { registerSale, subscribeToSales, subscribeToSaleItems } from '../services/sales';
 import { getBusinessMembers } from '../services/cashier';
 import { getCustomers, addCustomer } from '../services/customers';
@@ -19,8 +21,6 @@ import { getBranchStocks, toStockMap } from '../services/branchStock';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import BarcodeScanner from '../components/BarcodeScanner';
 import PresentationPicker from '../components/PresentationPicker';
-import { UpgradeModal } from '../components/UpgradeScreen';
-import { usePlan } from '../hooks/usePlan';
 import { useBranches } from '../context/BranchContext';
 import { getSellOptions, defaultSellOption, presShortLabel } from '../utils/presentations';
 import { AppIcon } from '../components/icons';
@@ -224,11 +224,13 @@ export default function Sales() {
   const sellingBlocked = activeBranch?.type === 'almacen';
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
-    : searchParams.get('tab') === 'cajeros' ? 'cajeros' : 'venta';
+    : searchParams.get('tab') === 'cajeros' ? 'cajeros'
+    : searchParams.get('tab') === 'auditoria' ? 'auditoria' : 'venta';
   // El cajero no tiene Por Cajero: cae a su reporte propio.
   const activeTab = (!isOwner && requestedTab === 'cajeros') ? 'reporte' : requestedTab;
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
+  const navigate = useNavigate();
   // Si se llega acá desde otro reporte (p.ej. "Total Vendido" en Ganancias
   // Diarias) con ?start=&end=, se respeta ese rango en vez del default de
   // mes-a-la-fecha — así el usuario no tiene que volver a fijarse si las
@@ -266,17 +268,10 @@ export default function Sales() {
   const [recentScans, setRecentScans] = useState([]); // [{ id, at }]
   // ── Picker de presentación (unidad / paquete frío-caliente) ──
   const [pickerProduct, setPickerProduct] = useState(null);
-  // ── Paywall escáner (Pro) ──
-  const { can } = usePlan();
-  const [showUpgrade, setShowUpgrade] = useState(false);
-
   function openScanner() {
-    if (can('scanner') && hasPermission('scanner')) {
-      setScanMsg(null);
-      setShowScanner(true);
-    } else {
-      setShowUpgrade(true);
-    }
+    if (!hasPermission('scanner')) return;
+    setScanMsg(null);
+    setShowScanner(true);
   }
 
   const hasRestoredRef = useRef(false);
@@ -618,6 +613,50 @@ export default function Sales() {
       : salesReportRows.filter((r) => (r.sellerName || 'Sin nombre') === reportCashier)
   ), [salesReportRows, reportCashier]);
 
+  // Auditoría: todos los tickets, sin filtros (el cajero solo ve los suyos).
+  const auditTickets = useMemo(() => {
+    const list = (!isOwner && user?.uid
+      ? salesList.filter((s) => (s.createdBy || s.created_by) === user.uid)
+      : salesList.slice()
+    ).sort((a, b) => {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      return db - da;
+    });
+    return list.map((s) => {
+      const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+      const valid = d instanceof Date && !Number.isNaN(d.getTime());
+      const day = valid ? d.getDate() : '—';
+      const month = valid ? d.toLocaleDateString('es-BO', { month: 'short' }).replace('.', '') : '';
+      const year = valid ? d.getFullYear() : '';
+      const time = valid ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
+      const num = saleNumberById[s.id] || 0;
+      return {
+        id: s.id,
+        raw: s,
+        number: `#${String(num).padStart(4, '0')}`,
+        seller: s.seller_name || 'Sin nombre',
+        dateLabel: `${day} ${month} ${year} · ${time}`.trim(),
+        total: Number(s.total || 0),
+      };
+    });
+  }, [salesList, saleNumberById, isOwner, user?.uid]);
+
+  // Tickets (ventas) del cajero seleccionado: uno por venta, no por ítem.
+  const cashierTickets = useMemo(() => {
+    const list = reportCashier === 'Todos'
+      ? scopedSalesReport
+      : scopedSalesReport.filter((s) => (s.seller_name || 'Sin nombre') === reportCashier);
+    return list.map((s) => ({
+      id: s.id,
+      number: saleNumberById[s.id] || 0,
+      createdAt: s.createdAt,
+      total: Number(s.total || 0),
+      paymentMethod: s.paymentMethod,
+      seller: s.seller_name || 'Sin nombre',
+    }));
+  }, [scopedSalesReport, reportCashier, saleNumberById]);
+
   const METHOD_META = {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-green-50 text-green-700 border-green-200' },
     qr: { label: 'QR', icon: 'qr', pill: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -705,6 +744,59 @@ export default function Sales() {
         footer={visibleFooter}
         columns={visibleColumns}
       />
+    );
+  }
+
+  // Lista de tickets por cajero: a la izquierda N° + fecha y hora,
+  // a la derecha icono de billete con el precio.
+  function renderTicketList() {
+    const emptyMessage = reportCashier === 'Todos'
+      ? 'No se encontraron ventas en el rango de fechas seleccionado.'
+      : `Sin ventas de ${reportCashier} en este período.`;
+    if (cashierTickets.length === 0) {
+      return (
+        <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-6 text-center shadow-sm">
+          <p className="text-4xl mb-2">🧾</p>
+          <p className="text-xs font-bold text-[var(--mg-text-muted)]">{emptyMessage}</p>
+        </div>
+      );
+    }
+    const total = cashierTickets.reduce((sum, t) => sum + t.total, 0);
+    return (
+      <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
+          <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+            Tickets ({cashierTickets.length})
+          </p>
+          <p className="text-[11px] font-black text-[var(--mg-text-primary)] tabular-nums">
+            Total: {formatBs(total)}
+          </p>
+        </div>
+        <div className="divide-y divide-[var(--mg-separator)]">
+          {cashierTickets.map((t) => {
+            const d = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+            const valid = d instanceof Date && !Number.isNaN(d.getTime());
+            const fecha = valid ? d.toLocaleDateString('es-BO') : '—';
+            const hora = valid ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
+            return (
+              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-[var(--mg-text-primary)] text-sm tabular-nums">
+                    Ticket #{String(t.number).padStart(4, '0')}
+                  </p>
+                  <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5 truncate">
+                    {fecha}{hora ? ` · ${hora}` : ''}{reportCashier === 'Todos' ? ` · ${t.seller}` : ''}
+                  </p>
+                </div>
+                <span className="flex items-center gap-1.5 font-black text-emerald-600 text-sm sm:text-base tabular-nums shrink-0">
+                  <AppIcon name="cash" size={20} />
+                  {formatBs(t.total)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     );
   }
 
@@ -1622,13 +1714,17 @@ export default function Sales() {
                 )}
               </div>
 
-              {renderDetailTable(
-                cashierRows,
-                reportCashier === 'Todos'
-                  ? 'No se encontraron ventas en el rango de fechas seleccionado.'
-                  : `Sin ventas de ${reportCashier} en este período.`,
-                `Total ${reportCashier === 'Todos' ? 'del período' : `de ${reportCashier}`}`
-              )}
+              {renderTicketList()}
+            </div>
+          ) : activeTab === 'auditoria' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
+              <AuditSalesList
+                sales={auditTickets}
+                businessName={business?.name || ''}
+                onSelectSale={(t) => navigate(`/recibo/${t.raw.id}`, {
+                  state: { saleNumber: saleNumberById[t.raw.id] },
+                })}
+              />
             </div>
           ) : (
           <>
@@ -1672,7 +1768,7 @@ export default function Sales() {
 
           <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 p-1 mg-stagger">
+              <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-3 p-1 mg-stagger">
                 {filtered.map((product) => {
                   const options = getSellOptions(product);
                   const hasPack = options.some((o) => o.presId === 'pack');
@@ -1684,48 +1780,72 @@ export default function Sales() {
                     ? cart[unitKey].qty
                     : (typeof cart[product.id] === 'number' ? cart[product.id] : 0);
                   const packOpt = options.find((o) => o.presId === 'pack');
+                  const priceLabel = hasPack && packOpt
+                    ? `${formatBs(product.price)} · 📦 ${formatBs(packOpt.price)}`
+                    : formatBs(product.price);
+                  const actionArea = inCart > 0 ? (
+                    <div
+                      className="flex items-center gap-1 bg-[var(--mg-accent)] rounded-full shadow-lg px-1 py-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(product.id)}
+                        className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90"
+                      >
+                        −
+                      </button>
+                      <span className="text-white font-black text-xs w-3 text-center">{inCart}</span>
+                      <button
+                        type="button"
+                        onClick={() => addToCart(product)}
+                        disabled={maxed}
+                        className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90 disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <RowAddButton onAdd={() => handleProductTap(product)} disabled={maxed} />
+                  );
                   return (
-                    <ProductCatalogCard
-                      key={product.id}
-                      product={product}
-                      priceLabel={hasPack && packOpt
-                        ? `${formatBs(product.price)} · 📦 ${formatBs(packOpt.price)}`
-                        : formatBs(product.price)}
-                      metaLabel={<StockLabel stock={product.stock} minStock={product.minStock} />}
-                      selected={usedBase > 0}
-                      disabled={maxed}
-                      onSelect={() => handleProductTap(product)}
-                      actionArea={
-                        inCart > 0 ? (
-                          <div className="flex items-center gap-1 bg-[var(--mg-accent)] rounded-full shadow-lg px-1 py-1">
-                            <button
-                              type="button"
-                              onClick={() => removeFromCart(product.id)}
-                              className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90"
-                            >
-                              −
-                            </button>
-                            <span className="text-white font-black text-xs w-3 text-center">{inCart}</span>
-                            <button
-                              type="button"
-                              onClick={() => addToCart(product)}
-                              disabled={maxed}
-                              className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90 disabled:opacity-40"
-                            >
-                              +
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleProductTap(product)}
-                            className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
-                          >
-                            +
-                          </button>
-                        )
-                      }
-                    />
+                    <Fragment key={product.id}>
+                      {/* Lista para celular */}
+                      <div className="sm:hidden">
+                        <ProductListRow
+                          product={product}
+                          subtitle={product.unitLabel || 'Unidad'}
+                          priceLabel={priceLabel}
+                          meta={<StockLabel stock={product.stock} minStock={product.minStock} />}
+                          selected={usedBase > 0}
+                          disabled={maxed}
+                          onSelect={() => handleProductTap(product)}
+                          actionArea={actionArea}
+                        />
+                      </div>
+                      {/* Tarjetas para desktop */}
+                      <div className="hidden sm:block">
+                        <ProductCatalogCard
+                          product={product}
+                          priceLabel={priceLabel}
+                          metaLabel={<StockLabel stock={product.stock} minStock={product.minStock} />}
+                          selected={usedBase > 0}
+                          disabled={maxed}
+                          onSelect={() => handleProductTap(product)}
+                          actionArea={
+                            inCart > 0 ? actionArea : (
+                              <button
+                                type="button"
+                                onClick={() => handleProductTap(product)}
+                                className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
+                              >
+                                +
+                              </button>
+                            )
+                          }
+                        />
+                      </div>
+                    </Fragment>
                   );
                 })}
               </div>
@@ -2010,12 +2130,8 @@ export default function Sales() {
         />
       )}
 
-      {/* PAYWALL escáner */}
-      {showUpgrade && (
-        <UpgradeModal feature="scanner" title="El escáner es Pro" onClose={() => setShowUpgrade(false)} />
-      )}
-
-      {/* MODAL ESCÁNER DE CÓDIGOS */}      {showScanner && (
+      {/* MODAL ESCÁNER DE CÓDIGOS */}
+      {showScanner && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-end sm:items-center justify-center sm:p-4"
           onClick={() => setShowScanner(false)}
@@ -2105,6 +2221,7 @@ export default function Sales() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

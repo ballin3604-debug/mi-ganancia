@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -36,7 +36,7 @@ export function memberCan(memberOrRole, permId, customPermissions) {
 export async function updateMemberPermissions(memberId, permissions) {
   const clean = [...new Set((permissions || []).filter(Boolean))];
   if (!clean.includes('cobrar')) clean.unshift('cobrar');
-  const { error } = await supabase.from('profiles').update({ custom_permissions: clean }).eq('id', memberId);
+  const { error } = await assertSupabase().from('profiles').update({ custom_permissions: clean }).eq('id', memberId);
   if (error) {
     if (/column|PGRST204|does not exist|schema cache/i.test(error.message || '')) {
       throw new Error('Falta aplicar el SQL de permisos en Supabase (20261008150000_team_permissions.sql).');
@@ -49,14 +49,14 @@ export async function updateMemberPermissions(memberId, permissions) {
 export async function updateMemberName(memberId, name) {
   const clean = (name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
   if (clean.length < 2) throw new Error('El nombre debe tener al menos 2 letras.');
-  const { error } = await supabase.from('profiles').update({ name: clean }).eq('id', memberId);
+  const { error } = await assertSupabase().from('profiles').update({ name: clean }).eq('id', memberId);
   if (error) throw error;
   return clean;
 }
 
 export async function updateMemberBranches(memberId, branchIds) {
   const clean = [...new Set((branchIds || []).filter(Boolean))];
-  const { error } = await supabase
+  const { error } = await assertSupabase()
     .from('profiles')
     .update({ branch_ids: clean.length > 0 ? clean : null })
     .eq('id', memberId);
@@ -70,7 +70,7 @@ export async function updateMemberBranches(memberId, branchIds) {
 }
 
 export async function getBusinessMembers(businessId) {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('profiles')
     .select('*')
     .eq('business_id', businessId);
@@ -95,7 +95,7 @@ export async function getMemberCount(businessId) {
 
 export async function lookupJoinCode(rawCode) {
   const code = rawCode.toUpperCase().trim();
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('business_join_codes')
     .select('*')
     .eq('code', code)
@@ -123,16 +123,16 @@ export async function createJoinCode(businessId, businessName, hoursValid = 48) 
     role: 'cashier',
   };
   const expires = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
-  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
+  const { error: insErr } = await assertSupabase().from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
     // Servidor sin la columna expires_at (migración pendiente): invita sin caducidad.
     if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
-      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
+      const { error: retryErr } = await assertSupabase().from('business_join_codes').insert(row);
       if (retryErr) throw retryErr;
     } else throw insErr;
   }
 
-  const { error: updErr } = await supabase
+  const { error: updErr } = await assertSupabase()
     .from('businesses')
     .update({ join_code: code })
     .eq('id', businessId);
@@ -150,15 +150,15 @@ export async function createOwnerCode(businessId, businessName, hoursValid = 72)
     role: 'owner',
   };
   const expires = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
-  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
+  const { error: insErr } = await assertSupabase().from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
     if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
-      const { error: retryErr } = await supabase.from('business_join_codes').insert(row);
+      const { error: retryErr } = await assertSupabase().from('business_join_codes').insert(row);
       if (retryErr) throw retryErr;
     } else throw insErr;
   }
 
-  const { error: updErr } = await supabase
+  const { error: updErr } = await assertSupabase()
     .from('businesses')
     .update({ owner_code: code })
     .eq('id', businessId);
@@ -188,7 +188,7 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
 
   // La identidad es la cuenta logueada (Google/correo): el perfil se crea
   // o actualiza con el MISMO id de auth, nunca se duplica por nombre.
-  const { error } = await supabase
+  const { error } = await assertSupabase()
     .from('profiles')
     .upsert({
       id: user.id || user.uid,
@@ -203,13 +203,13 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
   // Invitación por correo: se consume al usarse (un solo uso).
   if (biz.email && biz.code) {
     try {
-      await supabase.from('business_join_codes').delete().eq('code', biz.code);
+      await assertSupabase().from('business_join_codes').delete().eq('code', biz.code);
     } catch { /* si no se puede borrar, el código atado igual solo sirve a esa cuenta */ }
   }
 
   // Nombre + cumpleaños en los metadatos de auth (sin migración de BD).
   try {
-    await supabase.auth.updateUser({
+    await assertSupabase().auth.updateUser({
       data: { displayName, ...(birthdate ? { birthdate } : {}) },
     });
   } catch { /* el perfil ya quedó; el saludo usa el nombre igual */ }
@@ -217,7 +217,7 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
   // Correo visible para el dueño (best-effort: si la columna no existe, se ignora).
   if (user.email) {
     try {
-      await supabase.from('profiles').update({ email: user.email }).eq('id', user.id || user.uid);
+      await assertSupabase().from('profiles').update({ email: user.email }).eq('id', user.id || user.uid);
     } catch { /* columna ausente: no bloquea el ingreso */ }
   }
 
@@ -227,7 +227,7 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
 export async function regenerateJoinCode(businessId, businessName, oldCode) {
   if (oldCode) {
     try {
-      await supabase
+      await assertSupabase()
         .from('business_join_codes')
         .delete()
         .eq('code', oldCode);
@@ -239,7 +239,7 @@ export async function regenerateJoinCode(businessId, businessName, oldCode) {
 export async function regenerateOwnerCode(businessId, businessName, oldCode) {
   if (oldCode) {
     try {
-      await supabase
+      await assertSupabase()
         .from('business_join_codes')
         .delete()
         .eq('code', oldCode);
@@ -265,12 +265,12 @@ export async function createInviteCode(businessId, businessName, email, role = '
     role,
     email: clean,
   };
-  const { error: insErr } = await supabase.from('business_join_codes').insert({ ...row, expires_at: expires });
+  const { error: insErr } = await assertSupabase().from('business_join_codes').insert({ ...row, expires_at: expires });
   if (insErr) {
     // Servidor sin las columnas nuevas (migración pendiente): invita sin atar ni caducar.
     if (/column|PGRST204|does not exist|schema cache/i.test(insErr.message || '')) {
       const { email: _dropEmail, ...noNewCols } = row;
-      const { error: retryErr } = await supabase.from('business_join_codes').insert(noNewCols);
+      const { error: retryErr } = await assertSupabase().from('business_join_codes').insert(noNewCols);
       if (retryErr) throw retryErr;
     } else throw insErr;
   }
@@ -278,7 +278,7 @@ export async function createInviteCode(businessId, businessName, email, role = '
 }
 
 export async function listInvites(businessId) {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('business_join_codes')
     .select('*')
     .eq('business_id', businessId)
@@ -294,7 +294,7 @@ export async function listInvites(businessId) {
 }
 
 export async function revokeInvite(code) {
-  const { error } = await supabase.from('business_join_codes').delete().eq('code', code);
+  const { error } = await assertSupabase().from('business_join_codes').delete().eq('code', code);
   if (error) throw error;
 }
 
@@ -303,7 +303,7 @@ export async function findInviteForEmail(email) {
   const clean = (email || '').trim().toLowerCase();
   if (!clean) return null;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('business_join_codes')
       .select('*')
       .eq('email', clean)
@@ -328,12 +328,12 @@ export async function findInviteForEmail(email) {
 // ── Suspender / reactivar / eliminar miembros ─────────────────
 export async function setMemberStatus(memberId, status) {
   if (!['active', 'suspended'].includes(status)) throw new Error('Estado inválido.');
-  const { error } = await supabase.from('profiles').update({ status }).eq('id', memberId);
+  const { error } = await assertSupabase().from('profiles').update({ status }).eq('id', memberId);
   if (error) throw error;
 }
 
 export async function removeMember(memberId) {
-  const { error } = await supabase.from('profiles').delete().eq('id', memberId);
+  const { error } = await assertSupabase().from('profiles').delete().eq('id', memberId);
   if (error) throw error;
 }
 
@@ -344,7 +344,7 @@ export async function updateMemberRole(members, targetUserId, newRole) {
       throw new Error('No puedes quitar el rol al único dueño del negocio.');
     }
   }
-  const { error } = await supabase
+  const { error } = await assertSupabase()
     .from('profiles')
     .update({ role: newRole })
     .eq('id', targetUserId);

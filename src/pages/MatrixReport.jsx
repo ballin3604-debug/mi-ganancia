@@ -949,44 +949,44 @@ export default function MatrixReport() {
                         </div>
                     </div>
                 ) : reportType === 'inventory' ? (
-                    <div className="space-y-6">
-                        {/* Tarjetas de lo que se está mostrando (respetan el filtro) */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
-                                <div>
-                                    <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">Valor Total del Inventario</p>
-                                    <h3 className="text-2xl sm:text-3xl font-black text-[#1670C2]">Bs {inventorySummary.value.toFixed(2)}</h3>
+                    <div className="space-y-3 sm:space-y-6">
+                        {/* Resumen minimalista: hero compacto + 2 mini en móvil */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
+                            <div className="col-span-2 md:col-span-1 bg-blue-50/70 border border-blue-100 rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[9px] sm:text-xs font-extrabold uppercase tracking-widest text-[#1670C2] truncate">Valor total</p>
+                                    <h3 className="text-lg sm:text-3xl font-black text-[#1670C2] tabular-nums truncate leading-tight" title={`Bs ${inventorySummary.value.toFixed(2)}`}>Bs {inventorySummary.value.toFixed(2)}</h3>
                                 </div>
-                                <AppIcon name="caja" size={36} />
+                                <span className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-white border border-blue-100 flex items-center justify-center shrink-0"><AppIcon name="caja" size={20} /></span>
                             </div>
-                            <div className={`border rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm ${inventorySummary.low > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
-                                <div>
-                                    <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock Bajo (Reponer)</p>
-                                    <h3 className={`text-2xl sm:text-3xl font-black ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} {inventorySummary.low === 1 ? 'producto' : 'productos'}</h3>
+                            <div className={`border rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0 ${inventorySummary.low > 0 ? 'bg-amber-50/70 border-amber-100' : 'bg-green-50/70 border-green-100'}`}>
+                                <div className="min-w-0 flex-1">
+                                    <p className={`text-[9px] sm:text-xs font-extrabold uppercase tracking-widest truncate ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock bajo</p>
+                                    <h3 className={`text-base sm:text-3xl font-black tabular-nums truncate leading-tight ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} <span className="text-xs sm:text-lg font-bold opacity-70">{inventorySummary.low === 1 ? 'prod.' : 'prods.'}</span></h3>
                                 </div>
-                                <span><AppIcon name={inventorySummary.low > 0 ? 'reloj' : 'check'} size={36} /></span>
+                                <span className={`w-8 h-8 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center shrink-0 ${inventorySummary.low > 0 ? 'bg-white border-amber-100' : 'bg-white border-green-100'}`}><AppIcon name={inventorySummary.low > 0 ? 'reloj' : 'check'} size={20} /></span>
                             </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
-                                <div>
-                                    <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Total Catálogo</p>
-                                    <h3 className="text-2xl sm:text-3xl font-black text-gray-700">{inventorySummary.count} {inventorySummary.count === 1 ? 'producto' : 'productos'}</h3>
+                            <div className="bg-gray-50/70 border border-gray-100 rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[9px] sm:text-xs font-extrabold uppercase tracking-widest text-gray-500 truncate">Catálogo</p>
+                                    <h3 className="text-base sm:text-3xl font-black text-gray-700 tabular-nums truncate leading-tight">{inventorySummary.count} <span className="text-xs sm:text-lg font-bold opacity-60">{inventorySummary.count === 1 ? 'prod.' : 'prods.'}</span></h3>
                                     {inventoryCategory !== 'Todas' && (
-                                        <p className="text-[11px] font-bold text-gray-500 mt-0.5">en {inventoryCategory} · {products.length} en total</p>
+                                        <p className="hidden sm:block text-[11px] font-bold text-gray-500 mt-0.5 truncate">en {inventoryCategory} · {products.length} en total</p>
                                     )}
                                 </div>
-                                <AppIcon name="nuevoProducto" size={36} />
+                                <span className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0"><AppIcon name="nuevoProducto" size={20} /></span>
                             </div>
                         </div>
 
-                        {/* Filtro por categoría */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">
+                        {/* Filtro por categoría — compacto */}
+                        <div className="flex items-center gap-2">
+                            <label className="hidden sm:block text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)] shrink-0">
                                 Categoría
                             </label>
                             <select
                                 value={inventoryCategory}
                                 onChange={(e) => setInventoryCategory(e.target.value)}
-                                className="mg-input text-xs font-bold py-2 w-auto min-w-44"
+                                className="mg-input text-xs font-bold py-2 flex-1 sm:flex-none sm:w-auto sm:min-w-44 min-w-0"
                                 aria-label="Filtrar inventario por categoría"
                             >
                                 {inventoryCategories.map((cat) => (
@@ -995,12 +995,69 @@ export default function MatrixReport() {
                                     </option>
                                 ))}
                             </select>
-                            <span className="text-[11px] text-[var(--mg-text-muted)] font-medium">
-                                Toca un producto para ver su kardex en el periodo.
+                            <span className="hidden md:inline text-[11px] text-[var(--mg-text-muted)] font-medium truncate">
+                                Toca un producto para ver su kardex.
                             </span>
                         </div>
 
+                        {/* Lista minimalista en celular, tabla completa en PC */}
+                        <div className="lg:hidden">
+                            {inventoryRows.length === 0 ? (
+                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-sm">
+                                    <p className="text-3xl mb-2">📦</p>
+                                    <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">No hay productos en esta categoría.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
+                                    <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
+                                        <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+                                            Productos ({inventoryRows.length})
+                                        </p>
+                                        <p className="text-[11px] font-black text-[#1670C2] tabular-nums">
+                                            Valor: Bs {inventoryRows.reduce((sum, p) => sum + Number(p.stock || 0) * Number(p.price || 0), 0).toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="divide-y divide-[var(--mg-separator)]">
+                                        {inventoryRows.map((p) => {
+                                            const isLowStock = (p.stock || 0) <= (p.minStock || 5);
+                                            return (
+                                                <div
+                                                    key={p.id}
+                                                    onClick={() => setKardexProductId(p.id)}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setKardexProductId(p.id); }}
+                                                    className="flex items-center gap-3 px-4 py-3 active:bg-[var(--mg-bg-elevated)] cursor-pointer"
+                                                >
+                                                    {p.imageData ? (
+                                                        <img src={p.imageData} alt={p.name} loading="lazy" className="w-11 h-11 rounded-xl object-contain border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-0.5 shrink-0" />
+                                                    ) : (
+                                                        <span className="w-11 h-11 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-xl shrink-0">📦</span>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-extrabold text-[var(--mg-text-primary)] text-sm truncate">{p.name}</p>
+                                                        <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold truncate">
+                                                            {p.category || 'Otros'}
+                                                        </p>
+                                                        <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-black ${isLowStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                            {p.stock} und.
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-right shrink-0">
+                                                        <span className="block font-black text-[#1670C2] text-sm tabular-nums">
+                                                            Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-lg font-black text-[var(--mg-text-faint)]">›</span>
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         {/* Tabla detallada de Inventario */}
+                        <div className="hidden lg:block">
                         <DataTable
                             storageKey="mg-reporte-inventario-columns"
                             getRowKey={(p) => p.id}
@@ -1073,6 +1130,7 @@ export default function MatrixReport() {
                         <p className="text-[11px] text-[var(--mg-text-muted)] italic text-right mt-1">
                             Stock actual al día de hoy. Entradas = unidades compradas y salidas = unidades vendidas en el periodo elegido.
                         </p>
+                        </div>
                     </div>
                 ) : reportType === 'profit' ? (
                     <div className="space-y-6">
@@ -1205,8 +1263,58 @@ export default function MatrixReport() {
                             </div>
                         </div>
 
+                        {/* Lista minimalista en celular, tabla completa en PC */}
+                        <div className="lg:hidden">
+                            {profitReportData.days.length === 0 ? (
+                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-sm">
+                                    <p className="text-3xl mb-2">📈</p>
+                                    <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Sin registros en este periodo</p>
+                                    <p className="text-xs text-[var(--mg-text-muted)] mt-1 font-medium">Probá ampliando el rango de fechas.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
+                                    <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
+                                        <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+                                            Ganancia por día ({profitReportData.days.length})
+                                        </p>
+                                        <p className={`text-[11px] font-black tabular-nums ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                            Total: Bs {profitReportData.totalGananciaNeta.toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="divide-y divide-[var(--mg-separator)]">
+                                        {profitReportData.days.map((day, idx) => {
+                                            const dateLabel = new Date(`${day.date}T00:00:00`).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+                                            const isDayPositive = day.gananciaNeta >= 0;
+                                            return (
+                                                <div
+                                                    key={day.date || idx}
+                                                    onClick={() => setSelectedDayDetail(day)}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDayDetail(day); }}
+                                                    className="flex items-center gap-3 px-4 py-3 active:bg-[var(--mg-bg-elevated)] cursor-pointer"
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-black text-[var(--mg-text-primary)] text-sm capitalize">
+                                                            {dateLabel}
+                                                        </p>
+                                                        <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5 truncate tabular-nums">
+                                                            Vendido Bs {day.vendido.toFixed(2)} · Gastos Bs {(Number(day.egresosDiarios || 0) + Number(day.egresosFijos || 0)).toFixed(2)}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`font-black text-sm tabular-nums shrink-0 ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                                        Bs {day.gananciaNeta.toFixed(2)}
+                                                    </span>
+                                                    <span className="text-lg font-black text-[var(--mg-text-faint)] shrink-0">›</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         {/* Tabla de Ganancias Diarias */}
-                        <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
+                        <div className="hidden lg:block overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
                             <table className="w-full text-sm min-w-[800px] border-collapse bg-white">
                                 <thead>
                                     <tr className="text-[11px] uppercase tracking-wider">

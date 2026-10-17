@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 function mapPayment(p) {
   if (!p) return p;
@@ -18,7 +18,7 @@ export async function uploadReceipt(businessId, dataUrl) {
   const blob = await (await fetch(dataUrl)).blob();
   const ext = blob.type.includes('png') ? 'png' : 'jpg';
   const path = `${businessId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage
+  const { error } = await assertSupabase().storage
     .from('payment-receipts')
     .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
   if (error) throw error;
@@ -39,13 +39,25 @@ export async function createPayment(businessId, { planId, billingCycle, amount, 
       status: 'pending',
     })
     .select()
-    .single();
-  if (error) throw error;
+    .maybeSingle();
+  if (error) {
+    // INSERT ok pero SELECT denegado por RLS: reenviar duplicaría el pago.
+    if (error.code === 'PGRST116' || /0 filas|0 rows|permission|policy|rls|recurs/i.test(error.message || '')) {
+      console.error('createPayment: INSERT ok pero SELECT denegado por RLS:', error);
+      throw new Error('Pago creado, pero no se pudo leer por permisos. Recargá la lista en lugar de enviarlo de nuevo para no duplicarlo.');
+    }
+    console.error('createPayment:', error);
+    throw error;
+  }
+  if (!data) {
+    console.error('createPayment: INSERT ok pero SELECT devolvió 0 filas (RLS).');
+    throw new Error('Pago creado. Recargá para verlo (no lo envíes de nuevo).');
+  }
   return mapPayment(data);
 }
 
 export async function getMyPayments(businessId) {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('payments')
     .select('*')
     .eq('business_id', businessId)
@@ -57,7 +69,7 @@ export async function getMyPayments(businessId) {
 
 // ── Admin ──
 export async function getAllPayments(status = null) {
-  let q = supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(100);
+  let q = assertSupabase().from('payments').select('*').order('created_at', { ascending: false }).limit(100);
   if (status) q = q.eq('status', status);
   const { data, error } = await q;
   if (error) throw error;
@@ -67,7 +79,7 @@ export async function getAllPayments(status = null) {
 export async function getReceiptUrl(path) {
   if (!path) return '';
   // Firmada 1h (bucket privado). El admin la ve; expira sola.
-  const { data, error } = await supabase.storage
+  const { data, error } = await assertSupabase().storage
     .from('payment-receipts')
     .createSignedUrl(path, 3600);
   if (error) throw error;
@@ -77,7 +89,7 @@ export async function getReceiptUrl(path) {
 // Vía Edge Function (service_role + auditoría); respaldo directo si no desplegada.
 export async function reviewPayment(paymentId, action, adminNote = '') {
   try {
-    const { data, error } = await supabase.functions.invoke('review-payment', {
+    const { data, error } = await assertSupabase().functions.invoke('review-payment', {
       body: { paymentId, action, adminNote },
     });
     if (error) throw error;
@@ -88,7 +100,7 @@ export async function reviewPayment(paymentId, action, adminNote = '') {
     const patch = action === 'approve'
       ? { status: 'approved', reviewed_at: new Date().toISOString(), admin_note: adminNote }
       : { status: 'rejected', reviewed_at: new Date().toISOString(), admin_note: adminNote };
-    const { error } = await supabase.from('payments').update(patch).eq('id', paymentId);
+    const { error } = await assertSupabase().from('payments').update(patch).eq('id', paymentId);
     if (error) throw error;
     if (action === 'approve') {
       // El fallback directo NO extiende la suscripción (lo hace la función).

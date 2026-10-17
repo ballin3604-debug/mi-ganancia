@@ -168,7 +168,6 @@ export function TeamSection({
   onRemoveMember,
   onSavePermissions,
   onRenameMember,
-  onUpgradePlan,
   businessName = 'Mi Ganancia',
 }) {
   const [confirmModal, setConfirmModal] = useState({
@@ -269,7 +268,6 @@ export function TeamSection({
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)] flex items-center gap-1.5">
               <AppIcon name="equipo" size={14} /> Puestos de equipo
             </p>
-            <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">Plan Pro</span>
           </div>
           <p className="mt-2 text-2xl font-black text-[var(--mg-text-primary)] tabular-nums">
             {members.length}/{MAX_MEMBERS}
@@ -278,9 +276,6 @@ export function TeamSection({
           <div className="h-2 rounded-full bg-slate-100 overflow-hidden mt-2">
             <div className={`h-full rounded-full ${usagePct > 80 ? 'bg-amber-500' : 'bg-[#1670C2]'}`} style={{ width: `${usagePct}%` }} />
           </div>
-          <button type="button" onClick={onUpgradePlan} className="mt-2 text-[11px] font-bold text-[#1670C2] hover:underline">
-            ¿Necesitas más cajeros? Ampliar cupos →
-          </button>
         </div>
 
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs">

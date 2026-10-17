@@ -34,14 +34,15 @@ create policy "dueños ven sus comprobantes"
   );
 
 -- 4. Admin total en comprobantes (ver los de todos para aprobar)
--- UID espejo del VITE_ADMIN_UID del frontend (ya es público en el bundle).
+-- Fuente única: src/config/admin.js (VITE_ADMIN_UID). En SQL se centraliza
+-- en public.admin_uid() (ver 20261016000001_admin_uid_helper.sql).
 drop policy if exists "admin ve comprobantes" on storage.objects;
 create policy "admin ve comprobantes"
   on storage.objects for select
   to authenticated
   using (
     bucket_id = 'payment-receipts'
-    and auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid
+    and auth.uid() = public.admin_uid()
   );
 
 -- 5. Admin gestiona suscripciones y pagos (el Edge Function usa service_role,
@@ -50,12 +51,12 @@ drop policy if exists "admin gestiona suscripciones" on public.subscriptions;
 create policy "admin gestiona suscripciones"
   on public.subscriptions for all
   to authenticated
-  using (auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid)
-  with check (auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid);
+  using (auth.uid() = public.admin_uid())
+  with check (auth.uid() = public.admin_uid());
 
 drop policy if exists "admin gestiona pagos" on public.payments;
 create policy "admin gestiona pagos"
   on public.payments for all
   to authenticated
-  using (auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid)
-  with check (auth.uid() = '8b000c8e-41c8-4836-81ad-544e7fedb3f1'::uuid);
+  using (auth.uid() = public.admin_uid())
+  with check (auth.uid() = public.admin_uid());

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services/supabaseClient';
 import { getUserData } from '../services/auth';
 import { isAdmin } from '../services/admin';
 import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
@@ -117,14 +117,26 @@ export function AuthProvider({ children }) {
 
   // Releer la sesión (perfil) bajo demanda — p.ej. botón "Ya me aprobaron"
   const refreshSession = useCallback(async () => {
+    if (!supabase) {
+      setAuthError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu .env.');
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     await handleUserSession(session?.user || null);
   }, [handleUserSession]);
 
   useEffect(() => {
+    if (!supabase || !isSupabaseConfigured) {
+      setLoading(false);
+      setAuthError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu .env.');
+      return;
+    }
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserSession(session?.user || null);
+    }).catch((err) => {
+      console.error('Error loading session:', err);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -140,7 +152,7 @@ export function AuthProvider({ children }) {
   // sin recargar ni cerrar sesión. Requiere que `profiles` esté en la
   // publicación supabase_realtime (migración realtime_profiles).
   useEffect(() => {
-    if (!user?.id) return;
+    if (!supabase || !user?.id) return;
     const channel = supabase
       .channel(`profile-${user.id}`)
       .on(
@@ -150,13 +162,13 @@ export function AuthProvider({ children }) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) supabase.removeChannel(channel);
     };
   }, [user?.id, refreshSession]);
 
   // Respaldo por polling mientras está pendiente (por si el realtime no llega)
   useEffect(() => {
-    if (!user?.id || userStatus !== 'pending') return;
+    if (!supabase || !user?.id || userStatus !== 'pending') return;
     const t = setInterval(async () => {
       try {
         const { data } = await supabase

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { formatBs, formatBsShort } from '../../utils/currency';
 import { AppIcon } from '../icons';
+import { ProfitIcon } from '../ProfitIcon';
 
 export function MagicMetricCards({
   totalHoy = 0,
@@ -37,11 +38,15 @@ export function MagicMetricCards({
       animate="show"
       className="mg-grid-auto-sm"
     >
-      {/* 1. VENTAS DE HOY */}
+      {/* 1. VENTAS DE HOY: en celular abre la auditoría, en PC el reporte tabla */}
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
+        onClick={() => {
+          const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+          onNavigate && onNavigate(isMobile ? '/ventas?tab=auditoria' : '/ventas?tab=reporte');
+        }}
+        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
@@ -98,19 +103,18 @@ export function MagicMetricCards({
         </div>
       </motion.div>
 
-      {/* 3. GANANCIA DE HOY (ventas − costo − gastos) */}
+      {/* 3. GANANCIA DE HOY (ventas − costo − gastos): sin navegación */}
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        onClick={() => onNavigate && onNavigate('/reportes?type=profit')}
-        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden cursor-pointer"
+        className="bg-[var(--mg-bg-surface)] rounded-[22px] p-5 border border-[var(--mg-border)] shadow-xs hover:shadow-md transition-all group relative overflow-hidden"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
             Ganancia de Hoy
           </span>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-110 transition-transform">
-            <AppIcon name="reportes" size={20} />
+          <div className="group-hover:scale-110 transition-transform">
+            <ProfitIcon className="w-11 h-9" />
           </div>
         </div>
 

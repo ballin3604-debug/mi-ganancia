@@ -186,19 +186,33 @@ export const AYUDA = {
     ejemplo: 'Subes tu QR el lunes. Desde entonces tú y tu ayudante cobran con el mismo QR.',
     tip: 'El recibo térmico sale con tus datos: revísalos aquí si salen mal.',
   },
-  mascotas: {
-    emoji: '🐾',
-    titulo: 'Mascotas: tus pacientes',
-    linea: 'Ficha, historial, recetas, vacunas y recordatorios por WhatsApp.',
+  sucursales: {
+    emoji: '🏪',
+    titulo: 'Sucursales y almacenes',
+    linea: 'Sedes y almacenes donde opera tu negocio.',
     explicacion:
-      'Registra cada mascota con su dueño y teléfono. Anota consultas con diagnóstico, emite recetas imprimibles, registra vacunas (crean su recordatorio solas) y avisa a los dueños por WhatsApp cuando toca volver.',
+      'Crea tus sedes y almacenes. Las ventas se etiquetan por sede para los reportes y el stock se puede llevar por sede con traspasos.',
     pasos: [
-      'Toca "+ Paciente" y carga mascota + dueño con teléfono.',
-      'En su ficha toca Consulta, Receta, Vacuna o Carnet.',
-      'En Recordatorios ves lo vencido y avisás por WhatsApp en 1 toque.',
+      'Toca agregar y ponle nombre a la sede.',
+      'Marca cuál es la principal (Casa matriz).',
+      'Usa traspasos para mover stock entre sedes.',
     ],
-    ejemplo: 'Vacunas a Rocky contra la rabia: queda anotada, se crea el recordatorio del año que viene y le mandas el carnet impreso.',
-    tip: 'Sin teléfono del dueño no hay WhatsApp: pídelo siempre al registrar.',
+    ejemplo: 'Vendes en Casa matriz y guardas mercadería en Bodega Interna: cada una con su stock.',
+    tip: 'Un almacén custodia y distribuye: no vende al público.',
+  },
+  equipo: {
+    emoji: '👥',
+    titulo: 'Equipo y accesos',
+    linea: 'Cajeros, accesos, invitaciones y permisos.',
+    explicacion:
+      'Invita cajeros por código o correo, define sus permisos y suspende accesos cuando lo necesites.',
+    pasos: [
+      'Comparte el código de cajero o invita por correo.',
+      'Ajusta permisos por persona.',
+      'Suspende en 1 toque si hace falta.',
+    ],
+    ejemplo: 'Tu ayudante cobra con su usuario y solo ve sus ventas.',
+    tip: 'Revisa los permisos antes de entregar un acceso.',
   },
 };
 
@@ -215,7 +229,8 @@ export function claveAyudaParaRuta(pathname, search = '') {
   if (pathname === '/compras') return tab === 'historial' ? 'compras-historial' : 'compras';
   if (pathname === '/inventario') return 'inventario';
   if (pathname === '/egresos') return 'egresos';
-  if (pathname === '/mascotas') return 'mascotas';
+  if (pathname === '/sucursales') return 'sucursales';
+  if (pathname === '/equipo') return 'equipo';
   if (pathname === '/configuracion') return 'configuracion';
   if (pathname === '/reportes') {
     if (type === 'ranking') return 'reportes-ranking';

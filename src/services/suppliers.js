@@ -1,6 +1,6 @@
 import { db } from './localDb';
 import { enqueueOperation } from './syncEngine';
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 const supplierListeners = new Set();
 
@@ -39,7 +39,7 @@ export async function getSuppliers(businessId) {
 
   // Fallback to Supabase if online
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('business_settings')
       .select('purchase_suppliers')
       .eq('business_id', businessId)

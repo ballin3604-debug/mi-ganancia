@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { useBranches } from '../context/BranchContext';
-import { usePlan } from '../hooks/usePlan';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { SyncErrorPanel } from './SyncErrorPanel';
 import { LogoutModal } from './LogoutModal';
@@ -60,13 +59,17 @@ function BagIcon() {
     </svg>
   );
 }
-function PawIcon() {
+function StoreIcon() {
   return (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx="7.5" cy="9" r="1.8" />
-      <circle cx="12" cy="7" r="1.8" />
-      <circle cx="16.5" cy="9" r="1.8" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5c-2.8 0-5.5 2.2-5.5 4.7 0 1.4 1.1 2.3 2.5 2.3 1 0 1.9-.5 3-.5s2 .5 3 .5c1.4 0 2.5-.9 2.5-2.3 0-2.5-2.7-4.7-5.5-4.7z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 10l1.2-5A2 2 0 017.17 3.5h9.66a2 2 0 011.97 1.5L20 10m-16 0h16m-16 0v9a2 2 0 002 2h12a2 2 0 002-2v-9m-16 0l1.5 2.5a2.5 2.5 0 004.4 0L12 10m0 0l1.1 2.5a2.5 2.5 0 004.4 0L19 10m-7 0v11" />
+    </svg>
+  );
+}
+function UsersIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m18 0v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   );
 }
@@ -94,13 +97,6 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: 'Mascotas', Icon: PawIcon, ownerOnly: false, key: 'vet', basePath: '/mascotas',
-    children: [
-      { to: '/mascotas?tab=pacientes', label: 'Pacientes', key: 'vet-patients' },
-      { to: '/mascotas?tab=recordatorios', label: 'Recordatorios', key: 'vet-reminders' },
-    ],
-  },
-  {
     label: 'Inventario', Icon: BoxIcon, ownerOnly: true, key: 'inventory', basePath: '/inventario',
     children: [
       { to: '/inventario', label: 'Productos', key: 'inventory-products' },
@@ -112,6 +108,18 @@ const NAV_ITEMS = [
     children: [
       { to: '/egresos', label: 'Egresos', key: 'expenses-list' },
       { to: '/reportes?type=expenses', label: 'Reporte de Egresos', key: 'expenses-report' },
+    ],
+  },
+  {
+    label: 'Sucursales', Icon: StoreIcon, ownerOnly: true, key: 'branches', basePath: '/sucursales',
+    children: [
+      { to: '/sucursales', label: 'Sedes y almacenes', key: 'branches-list' },
+    ],
+  },
+  {
+    label: 'Equipo', Icon: UsersIcon, ownerOnly: true, key: 'team', basePath: '/equipo',
+    children: [
+      { to: '/equipo', label: 'Cajeros y accesos', key: 'team-list' },
     ],
   },
   {
@@ -147,80 +155,11 @@ function isChildActive(location, childTo) {
   return true;
 }
 
-// Selector de sede operativa (solo visible si hay más de una).
-// Las ventas se etiquetan con la sede elegida para reportes por sucursal.
-function BranchSelect({ className = '' }) {
-  const { branches, activeBranchId, selectBranch } = useBranches();
-  if (!branches || branches.length <= 1) return null;
-  return (
-    <select
-      value={activeBranchId || ''}
-      onChange={(e) => selectBranch(e.target.value)}
-      title="Sede operativa"
-      aria-label="Sede operativa"
-      className={`bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-lg text-[11px] font-bold text-[var(--mg-text-secondary)] px-1.5 py-1 max-w-full focus:outline-none focus:border-[var(--mg-accent-border)] ${className}`}
-    >
-      {branches.map((b) => (
-        <option key={b.id} value={b.id}>
-          {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-// Aviso de plan: prueba por vencer o período terminado. Silencioso si
-// el billing no está activo (modo legacy) o si ya es premium.
-function PlanNudge() {
-  const { isTrial, trialDaysLeft, isExpired, loading, billingReady } = usePlan();
-  const sig = isExpired ? 'expired' : (isTrial ? `trial:${trialDaysLeft}` : '');
-  const [dismissedSig, setDismissedSig] = useState(() => {
-    try { return localStorage.getItem('mg-plan-nudge-hide') || ''; } catch { return ''; }
-  });
-  if (loading || !billingReady || dismissedSig === sig || sig === '') return null;
-  const expired = isExpired;
-  const trialSoon = isTrial && trialDaysLeft <= 3 && trialDaysLeft > 0;
-  if (!expired && !trialSoon) return null;
-  const hide = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try { localStorage.setItem('mg-plan-nudge-hide', sig); } catch { /* ignore */ }
-    setDismissedSig(sig);
-  };
-  return (
-    <div
-      className={`mx-4 lg:mx-6 mt-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 text-xs font-bold border ${
-        expired
-          ? 'bg-amber-50 border-amber-200 text-amber-800'
-          : 'bg-[var(--mg-accent-bg-soft)] border-[var(--mg-accent-border)] text-[var(--mg-accent)]'
-      }`}
-    >
-      <span className="text-base">{expired ? '⏳' : '⭐'}</span>
-      <Link to="/configuracion?tab=plan" className="flex-1">
-        {expired
-          ? 'Tu período Pro terminó. Activa tu plan para recuperar todo.'
-          : `Tu prueba Pro termina en ${trialDaysLeft} día${trialDaysLeft === 1 ? '' : 's'}. Actívala.`}
-      </Link>
-      <Link to="/configuracion?tab=plan" className="shrink-0 underline">Ver planes</Link>
-      <button
-        type="button"
-        onClick={hide}
-        aria-label="Ocultar aviso"
-        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center opacity-60 hover:opacity-100"
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
-
 export default function Layout() {
   const { user, role } = useAuth();
   const { business, settings } = useBusiness();
   const { online, pendingCount, errorCount } = useSyncStatus();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { planId } = usePlan();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [isErrorPanelOpen, setIsErrorPanelOpen] = useState(false);
@@ -268,13 +207,14 @@ export default function Layout() {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes'];
+  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes', '/sucursales', '/equipo'];
   if (isCashier && OWNER_ONLY_PATHS.includes(location.pathname)) {
     return <Navigate to="/" replace />;
   }
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || !isCashier);
-  const mobileItems = visibleItems.map((item) =>
+  // En celular no se muestra la sección Reportes (solo PC).
+  const mobileItems = visibleItems.filter((item) => item.key !== 'reports').map((item) =>
     item.children ? { to: item.basePath, label: item.label, Icon: item.Icon, end: false, key: item.key } : item
   );
 
@@ -297,12 +237,12 @@ export default function Layout() {
           </svg>
         </button>
 
-        <div className="px-4 py-4 border-b border-[var(--mg-separator)] overflow-hidden">
-          <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'justify-center'}`}>
+        <div className="px-4 py-3 border-b border-[var(--mg-separator)] overflow-hidden">
+          <div className={`flex items-center gap-2 ${sidebarOpen ? '' : 'justify-center'}`}>
             <img
               src="/logo-icon.png"
               alt="Logo Mi Ganancia"
-              className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shrink-0 shadow-sm border border-[var(--mg-border)]"
+              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
             />
             {sidebarOpen && (
               <div className="min-w-0">
@@ -329,7 +269,6 @@ export default function Layout() {
                     <span>⚠️ {errorCount} con error</span>
                   </button>
                 )}
-                <BranchSelect className="w-full max-w-[150px] mt-1.5" />
               </div>
             )}
           </div>
@@ -424,7 +363,7 @@ export default function Layout() {
                 {user?.displayName?.split(' ')[0]}
               </p>
               <p className="text-[11px] text-[var(--mg-text-muted)] truncate">
-                {planId === 'free' ? 'Gratis' : planId === 'pro' ? 'Pro' : planId === 'premium' ? 'Premium' : ''}
+                {role === 'cashier' ? 'Cajero de la tienda' : 'Dueño de la tienda'}
               </p>
             </div>
           )}
@@ -441,16 +380,6 @@ export default function Layout() {
             </svg>
           </button>
           </div>
-
-          {!isCashier && sidebarOpen && planId !== 'premium' && (
-            <button
-              type="button"
-              onClick={() => navigate('/configuracion?tab=plan')}
-              className="w-full text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2 hover:bg-blue-100 transition-all"
-            >
-              Mejorar el plan
-            </button>
-          )}
         </div>
       </aside>
 
@@ -458,18 +387,28 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:h-screen lg:overflow-hidden">
 
         {/* Mobile header — estilo iOS large title */}
-        <header className="lg:hidden bg-[var(--mg-bg-base)] px-5 pt-12 pb-3 sticky top-0 z-30">
+        <header className="lg:hidden bg-[var(--mg-bg-base)] px-4 pt-10 pb-2 sticky top-0 z-30">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setShowMenuDrawer(true)}
+                aria-label="Abrir menú"
+                className="w-9 h-9 shrink-0 rounded-xl text-[var(--mg-text-primary)] hover:bg-[var(--mg-bg-elevated)] active:scale-90 transition-all flex items-center justify-center"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h10" />
+                </svg>
+              </button>
               <img
                 src="/logo-icon.png"
                 alt="Logo Mi Ganancia"
-                className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shrink-0 shadow-sm border border-[var(--mg-border)]"
+                className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
               />
               <div className="min-w-0">
-                <h1 className="text-[var(--mg-text-primary)] text-base font-black leading-tight truncate flex items-center gap-1.5">
+                <h1 className="text-[var(--mg-text-primary)] text-sm font-black leading-tight truncate flex items-center gap-1.5">
                   Mi Ganancia
-                  <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${online ? 'bg-[var(--mg-success)]' : 'bg-orange-500 animate-pulse'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${online ? 'bg-[var(--mg-success)]' : 'bg-orange-500 animate-pulse'}`} />
                 </h1>
                 <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate max-w-[150px]">
                   {online ? (business?.name || 'Activo') : 'Sin conexión'}
@@ -490,7 +429,6 @@ export default function Layout() {
                     ⚠️ {errorCount} con error
                   </button>
                 )}
-                <BranchSelect className="w-full max-w-[170px] mt-1" />
               </div>
             </div>
             <img
@@ -503,14 +441,13 @@ export default function Layout() {
         </header>
 
         <main className={`flex-1 overflow-y-auto pb-24 lg:pb-0 lg:w-full lg:mx-auto lg:px-6 ${location.pathname === '/ventas' || location.pathname === '/compras' || location.pathname === '/' ? 'lg:max-w-[1800px]' : 'lg:max-w-[1400px]'}`}>
-          <PlanNudge />
           {/* key por ruta: reproduce el fade de entrada en cada navegación */}
           <div key={location.pathname} className="mg-fade-in h-full">
             <Outlet />
           </div>
         </main>
 
-        {/* Bottom tab bar estilo iOS */}
+        {/* Bottom tab bar estilo iOS — solo accesos rápidos. El menú completo se abre con el icono superior izquierdo. */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)]/95 backdrop-blur-xl border-t border-[var(--mg-separator)] flex justify-around z-30 pb-[env(safe-area-inset-bottom)] pt-1 shadow-lg">
           {/* Inicio Link */}
           <NavLink
@@ -534,93 +471,130 @@ export default function Layout() {
             )}
           </NavLink>
 
-          {/* Menú Toggle Button */}
-          {(() => {
-            const menuPaths = ['/ventas', '/compras', '/inventario', '/egresos', '/reportes', '/configuracion'];
-            const isMenuPathActive = menuPaths.some(path => location.pathname === path || (path !== '/' && location.pathname.startsWith(path)));
-            
-            return (
-              <button
-                type="button"
-                onClick={() => setShowMenuDrawer(true)}
-                className={`flex flex-col items-center gap-0.5 py-1 px-2 transition-all flex-1 relative ${
-                  isMenuPathActive ? 'text-[#1670C2] font-bold' : 'text-[var(--mg-text-muted)]'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all relative ${
-                  isMenuPathActive ? 'bg-[#1670C2]/10 text-[#1670C2]' : 'text-gray-400'
+          {/* Ventas — acceso rápido */}
+          <NavLink
+            to="/ventas"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 py-1 px-2 transition-all flex-1 ${
+                isActive ? 'text-[#1670C2] font-bold' : 'text-[var(--mg-text-muted)]'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  isActive ? 'bg-[#1670C2] text-white shadow-sm' : 'text-gray-400'
                 }`}>
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  {isMenuPathActive && (
-                    <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#1670C2] rounded-full border border-white" />
-                  )}
+                  <CartIcon />
                 </div>
-                <span className="text-[9px] mt-0.5">Menú</span>
-              </button>
-            );
-          })()}
+                <span className="text-[9px] mt-0.5">Ventas</span>
+              </>
+            )}
+          </NavLink>
         </nav>
       </div>
 
-      {/* Drawer flotante móvil (bottom sheet) */}
-      {showMenuDrawer && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-xs mg-backdrop-in"
-          onClick={() => setShowMenuDrawer(false)}
-        >
-          <div
-            className="fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)] rounded-t-[32px] p-6 z-50 shadow-2xl mg-slide-up"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))'
-            }}
-          >
-            {/* Tirador del drawer */}
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" onClick={() => setShowMenuDrawer(false)} />
+      {/* Panel lateral móvil (drawer izquierdo estilo app) */}
+      <AnimatePresence>
+        {showMenuDrawer && (
+          <div className="lg:hidden fixed inset-0 z-40">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+              onClick={() => setShowMenuDrawer(false)}
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="absolute top-0 bottom-0 left-0 w-[84%] max-w-xs bg-[var(--mg-bg-surface)] shadow-2xl flex flex-col"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+              {/* Marca */}
+              <div className="flex items-center gap-2.5 px-4 pt-5 pb-4 border-b border-[var(--mg-separator)]">
+                <img
+                  src="/logo-icon.png"
+                  alt="Logo Mi Ganancia"
+                  className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+                />
+                <div className="min-w-0">
+                  <p className="text-[var(--mg-text-primary)] font-black text-base leading-tight truncate">
+                    Mi Ganancia
+                  </p>
+                  <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate">
+                    {business?.name || ''}
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-black text-[var(--mg-text-primary)]">Menú</h3>
-              <button 
-                type="button"
-                onClick={() => setShowMenuDrawer(false)}
-                className="w-7 h-7 rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)] flex items-center justify-center font-bold text-base"
-              >
-                ×
-              </button>
-            </div>
+              {/* Navegación */}
+              <nav className="flex-1 overflow-y-auto py-2">
+                {mobileItems.map(({ to, label, Icon, end, key }) => {
+                  const isActive = to === '/'
+                    ? location.pathname === '/'
+                    : location.pathname === to || location.pathname.startsWith(to);
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      data-tutorial={key}
+                      onClick={() => setShowMenuDrawer(false)}
+                      className={`relative flex items-center gap-3 px-5 py-3 transition-colors active:bg-[var(--mg-bg-elevated)] ${
+                        isActive
+                          ? 'text-[#1670C2] font-black bg-blue-50/70'
+                          : 'text-[var(--mg-text-secondary)] font-semibold'
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#1670C2] rounded-r-full" />
+                      )}
+                      <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                        <Icon />
+                      </span>
+                      <span className="text-[15px]">{label}</span>
+                    </NavLink>
+                  );
+                })}
+              </nav>
 
-            {/* Opciones del Menú (excluyendo Inicio) */}
-            <div className="grid grid-cols-2 gap-3">
-              {mobileItems.filter(item => item.to !== '/').map(({ to, label, Icon, end, key }) => {
-                const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    data-tutorial={key}
-                    onClick={() => setShowMenuDrawer(false)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all active:scale-95 ${
-                      isActive 
-                        ? 'bg-blue-50/70 border-blue-200 text-[#1670C2] font-bold shadow-xs' 
-                        : 'bg-[var(--mg-bg-elevated)] border-transparent text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]/50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 shadow-sm transition-all ${
-                      isActive ? 'bg-[#1670C2] text-white' : 'bg-white text-gray-400 border border-[var(--mg-border)]'
-                    }`}>
-                      <Icon />
-                    </div>
-                    <span className="text-xs font-bold">{label}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
+              {/* Usuario */}
+              <div className="border-t border-[var(--mg-separator)] px-4 py-3 flex items-center gap-2.5">
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Avatar"
+                    className="w-10 h-10 rounded-full object-cover shrink-0"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="w-10 h-10 rounded-full bg-[#1670C2] text-white flex items-center justify-center font-black text-lg shrink-0">
+                    {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <p className="flex-1 min-w-0 text-[13px] text-[var(--mg-text-muted)] font-medium truncate">
+                  {user?.email || ''}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setShowMenuDrawer(false); setShowLogout(true); }}
+                  title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
+                  className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-[var(--mg-text-muted)] hover:text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] active:scale-90 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
+            </motion.aside>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Modal de Errores de Sincronización */}
       <SyncErrorPanel

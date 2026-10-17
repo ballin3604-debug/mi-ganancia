@@ -10,7 +10,6 @@ function fmtDate(d) {
 
 export function ExpiryAlert({ expiredCount = 0, soonCount = 0, items = [], onNavigate }) {
   const total = expiredCount + soonCount;
-  if (total === 0) return null;
 
   return (
     <section className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
@@ -33,6 +32,11 @@ export function ExpiryAlert({ expiredCount = 0, soonCount = 0, items = [], onNav
       </div>
       <p className="text-[11px] text-[var(--mg-text-muted)] mb-3">Revisa fechas antes de vender o reponer.</p>
 
+      {total === 0 ? (
+        <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
+          Sin vencimientos: ningún producto vence pronto.
+        </p>
+      ) : (
       <ul className="space-y-2">
         {items.slice(0, 4).map((it) => (
           <li key={it.productId} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
@@ -48,6 +52,7 @@ export function ExpiryAlert({ expiredCount = 0, soonCount = 0, items = [], onNav
           </li>
         ))}
       </ul>
+      )}
 
       <button
         type="button"

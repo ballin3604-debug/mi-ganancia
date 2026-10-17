@@ -283,6 +283,12 @@ export async function getSaleItems(businessId, saleId) {
   return items.filter((i) => i.business_id === businessId).map(mapSaleItem);
 }
 
+export async function getSaleById(businessId, saleId) {
+  const sale = await db.sales.get(saleId);
+  if (!sale || sale.business_id !== businessId) return null;
+  return mapSale(sale);
+}
+
 export async function exportDetailedCSV(businessId) {
   const sales = await getSales(businessId);
   const items = await getSaleItemsAll(businessId);

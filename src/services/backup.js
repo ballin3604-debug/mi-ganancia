@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { checkOnlineStatus } from './syncEngine';
 
 // Respaldo completo del negocio: baja TODO desde el servidor (no solo la
@@ -17,18 +17,21 @@ export async function exportFullBackup(businessId, businessName) {
 
   // Todas las tablas del negocio, en paralelo.
   const [products, clientes, debts, expenses, replenishments, sales, settingsRes] = await Promise.all([
-    supabase.from('products').select('*').eq('business_id', businessId),
-    supabase.from('clientes').select('*').eq('business_id', businessId),
-    supabase.from('debts').select('*').eq('business_id', businessId),
-    supabase.from('expenses').select('*').eq('business_id', businessId),
-    supabase.from('replenishments').select('*').eq('business_id', businessId),
-    supabase.from('sales').select('*').eq('business_id', businessId),
-    supabase.from('business_settings').select('*').eq('business_id', businessId).maybeSingle(),
+    assertSupabase().from('products').select('*').eq('business_id', businessId),
+    assertSupabase().from('clientes').select('*').eq('business_id', businessId),
+    assertSupabase().from('debts').select('*').eq('business_id', businessId),
+    assertSupabase().from('expenses').select('*').eq('business_id', businessId),
+    assertSupabase().from('replenishments').select('*').eq('business_id', businessId),
+    assertSupabase().from('sales').select('*').eq('business_id', businessId),
+    assertSupabase().from('business_settings').select('*').eq('business_id', businessId).maybeSingle(),
   ]);
 
   const firstError = products.error || clientes.error || debts.error
-    || expenses.error || replenishments.error || sales.error;
-  if (firstError) throw firstError;
+    || expenses.error || replenishments.error || sales.error || settingsRes.error;
+  if (firstError) {
+    console.error('exportFullBackup: error bajando datos del servidor:', firstError);
+    throw firstError;
+  }
 
   const salesData = sales.data || [];
 
@@ -39,7 +42,7 @@ export async function exportFullBackup(businessId, businessName) {
     const saleIds = salesData.map((s) => s.id);
     for (let i = 0; i < saleIds.length; i += 200) {
       const chunk = saleIds.slice(i, i + 200);
-      const { data, error } = await supabase.from('sale_items').select('*').in('sale_id', chunk);
+      const { data, error } = await assertSupabase().from('sale_items').select('*').in('sale_id', chunk);
       if (error) throw error;
       saleItems = saleItems.concat(data || []);
     }

@@ -2,6 +2,16 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { AppIcon } from '../icons';
 
+function FunnelIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+      <path strokeLinecap="round" d="M4 6h16" />
+      <path strokeLinecap="round" d="M7 12h10" />
+      <path strokeLinecap="round" d="M10 18h4" />
+    </svg>
+  );
+}
+
 export function InventoryHeader({
   totalProducts,
   search,
@@ -21,6 +31,10 @@ export function InventoryHeader({
   onOpenCatManager,
   onOpenScanner,
   expiryCounts = { porVencer: 0, vencidos: 0 },
+  showFilters = true,
+  onToggleFilters,
+  activeFilterCount = 0,
+  onClearFilters,
 }) {
   return (
     <div className="space-y-4">
@@ -31,7 +45,7 @@ export function InventoryHeader({
             <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
               Catálogo de Inventario
             </h2>
-            <span className="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+            <span className="hidden sm:inline-block bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs">
               {totalProducts} {totalProducts === 1 ? 'producto' : 'productos'}
             </span>
           </div>
@@ -48,7 +62,7 @@ export function InventoryHeader({
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={onOpenCatManager}
-            className="bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-elevated)] text-[var(--mg-text-primary)] border border-[var(--mg-border)] rounded-2xl px-3.5 py-2 font-extrabold text-xs active:scale-95 transition-all flex items-center gap-1.5 shadow-2xs min-h-[40px]"
+            className="bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-elevated)] text-[var(--mg-text-primary)] border border-[var(--mg-border)] rounded-2xl px-3.5 py-2 font-extrabold text-xs active:scale-95 transition-all hidden md:flex items-center gap-1.5 shadow-2xs min-h-[40px]"
             title="Gestionar categorías"
           >
             <AppIcon name="etiqueta" size={14} />
@@ -61,7 +75,7 @@ export function InventoryHeader({
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={onOpenAddProduct}
-            className="bg-gradient-to-r from-[var(--mg-accent)] to-blue-600 hover:brightness-110 text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2 min-h-[40px] border border-blue-400/20"
+            className="bg-gradient-to-r from-[var(--mg-accent)] to-blue-600 hover:brightness-110 text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all hidden md:flex items-center gap-2 min-h-[40px] border border-blue-400/20"
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center leading-none">
               <AppIcon name="agregar" size={14} color="#fff" />
@@ -74,7 +88,7 @@ export function InventoryHeader({
       {/* Redesigned Search & Filters Toolbar */}
       <div className="bg-[var(--mg-bg-surface)] rounded-[24px] p-3.5 border border-[var(--mg-border)] shadow-xs space-y-3">
         {/* Compact Search Bar & Quick Alerts Row */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+        <div className="flex flex-col items-stretch justify-between gap-2.5">
           {/* Sleek Compact Search Bar + scanner */}
           <div className="flex gap-2 w-full md:max-w-sm">
             <div className="relative flex-1 min-w-0">
@@ -110,7 +124,31 @@ export function InventoryHeader({
                 <AppIcon name="scan" size={20} color="#fff" />
               </button>
             )}
+            {onToggleFilters && (
+              <button
+                type="button"
+                onClick={onToggleFilters}
+                title={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
+                aria-label="Mostrar u ocultar filtros"
+                aria-expanded={showFilters}
+                className={`md:hidden w-9 h-9 shrink-0 rounded-xl border shadow-2xs flex items-center justify-center active:scale-90 transition-all relative ${
+                  showFilters
+                    ? 'bg-[var(--mg-accent)] text-white border-[var(--mg-accent)]'
+                    : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] border-[var(--mg-border)]'
+                }`}
+              >
+                <FunnelIcon />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
+
+          {/* Controles colapsables: solo se esconden en celular */}
+          <div className={`${showFilters ? '' : 'hidden'} md:contents`}>
 
           {/* Quick Filter Status Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
@@ -222,6 +260,16 @@ export function InventoryHeader({
               );
             })}
           </div>
+          {activeFilterCount > 0 && onClearFilters && (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="mt-1.5 text-[11px] font-extrabold text-[var(--mg-danger)] hover:underline"
+            >
+              Limpiar filtros ({activeFilterCount})
+            </button>
+          )}
+        </div>
         </div>
       </div>
     </div>

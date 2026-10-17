@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
 import { getBusinessSettings } from '../services/businessSettings';
 import { DEFAULT_CATEGORY_ID } from '../config/businessCategories';
@@ -62,6 +62,13 @@ export function BusinessProvider({ children }) {
       return;
     }
 
+    if (!supabase || !isSupabaseConfigured) {
+      console.error('Falta VITE_SUPABASE_URL. BusinessContext sin conexión.');
+      setBusiness(null);
+      setSettings({});
+      return;
+    }
+
     // Si businessId cambia dos veces seguido (p.ej. cambio rápido de negocio
     // en la misma sesión), una respuesta más lenta del primer fetch podía
     // resolver DESPUÉS de la segunda y pisar el estado con datos del
@@ -74,8 +81,15 @@ export function BusinessProvider({ children }) {
       getBusinessSettings(businessId),
     ]).then(([res, s]) => {
       if (ignore) return;
-      if (res.data) setBusiness(res.data);
+      if (res.error) {
+        console.error('BusinessContext: no se pudo cargar el negocio:', res.error);
+      } else if (res.data) {
+        setBusiness(res.data);
+      }
       setSettings(normalizeSettings(s));
+    }).catch((err) => {
+      if (ignore) return;
+      console.error('BusinessContext: error cargando negocio/ajustes:', err);
     });
 
     return () => {
@@ -89,8 +103,20 @@ export function BusinessProvider({ children }) {
 
   async function refreshBusiness() {
     if (!businessId) return;
-    const res = await supabase.from('businesses').select('*').eq('id', businessId).single();
-    if (res.data) setBusiness(res.data);
+    if (!supabase) {
+      console.error('Falta VITE_SUPABASE_URL. No se puede refrescar el negocio.');
+      return;
+    }
+    try {
+      const res = await supabase.from('businesses').select('*').eq('id', businessId).single();
+      if (res.error) {
+        console.error('BusinessContext refreshBusiness: no se pudo recargar el negocio:', res.error);
+        return;
+      }
+      if (res.data) setBusiness(res.data);
+    } catch (err) {
+      console.error('BusinessContext refreshBusiness:', err);
+    }
   }
 
   return (

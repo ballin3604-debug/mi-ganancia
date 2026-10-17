@@ -1,9 +1,9 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { getCategoryById, DEFAULT_CATEGORY_ID } from '../config/businessCategories';
 import { db } from './localDb';
 
 export async function signUp(email, password, displayName) {
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await assertSupabase().auth.signUp({
     email,
     password,
     options: {
@@ -17,7 +17,7 @@ export async function signUp(email, password, displayName) {
 }
 
 export async function signInWithPassword(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await assertSupabase().auth.signInWithPassword({
     email,
     password
   });
@@ -31,7 +31,7 @@ export async function signInWithPassword(email, password) {
 // IMPORTANTE: el proveedor debe estar habilitado y configurado en el panel
 // de Supabase (Authentication → Providers) para que esto funcione.
 export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await assertSupabase().auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin },
   });
@@ -40,13 +40,13 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await assertSupabase().auth.signOut();
   if (error) throw error;
 }
 
 export async function getUserData(userId) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -91,7 +91,7 @@ export async function createUserAndBusiness(user, businessName, businessCategory
   const category = getCategoryById(businessCategory);
   const userName = user.user_metadata?.displayName || user.email || '';
 
-  const { data: businessId, error } = await supabase.rpc('crear_negocio', {
+  const { data: businessId, error } = await assertSupabase().rpc('crear_negocio', {
     p_business_name: businessName,
     p_business_nit: '',
     p_user_name: userName,

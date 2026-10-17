@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 // ─────────────────────────────────────────────────────────────
 // Módulo Veterinaria (mascotas caseras). Online-first como sucursales:
@@ -72,7 +72,7 @@ function mustOnline() {
 // ── Dueños ──
 export async function getOwners(businessId) {
   mustOnline();
-  const { data, error } = await supabase.from('pet_owners').select('*')
+  const { data, error } = await assertSupabase().from('pet_owners').select('*')
     .eq('business_id', businessId).order('name');
   if (error) throw error;
   return (data || []).map(mapOwner);
@@ -89,11 +89,11 @@ export async function saveOwner(businessId, owner) {
   };
   if (!body.name) throw new Error('El dueño necesita un nombre.');
   if (owner.id) {
-    const { error } = await supabase.from('pet_owners').update(body).eq('id', owner.id);
+    const { error } = await assertSupabase().from('pet_owners').update(body).eq('id', owner.id);
     if (error) throw error;
     return { ...owner, ...body };
   }
-  const { data, error } = await supabase.from('pet_owners').insert(body).select().single();
+  const { data, error } = await assertSupabase().from('pet_owners').insert(body).select().single();
   if (error) throw error;
   return mapOwner(data);
 }
@@ -101,7 +101,7 @@ export async function saveOwner(businessId, owner) {
 // ── Mascotas ──
 export async function getPets(businessId) {
   mustOnline();
-  const { data, error } = await supabase.from('pets').select('*')
+  const { data, error } = await assertSupabase().from('pets').select('*')
     .eq('business_id', businessId).order('name');
   if (error) throw error;
   return (data || []).map(mapPet);
@@ -125,25 +125,25 @@ export async function savePet(businessId, pet) {
   };
   if (!body.name) throw new Error('La mascota necesita un nombre.');
   if (pet.id) {
-    const { error } = await supabase.from('pets').update(body).eq('id', pet.id);
+    const { error } = await assertSupabase().from('pets').update(body).eq('id', pet.id);
     if (error) throw error;
     return { ...pet, ...body };
   }
-  const { data, error } = await supabase.from('pets').insert(body).select().single();
+  const { data, error } = await assertSupabase().from('pets').insert(body).select().single();
   if (error) throw error;
   return mapPet(data);
 }
 
 export async function deletePet(id) {
   mustOnline();
-  const { error } = await supabase.from('pets').delete().eq('id', id);
+  const { error } = await assertSupabase().from('pets').delete().eq('id', id);
   if (error) throw error;
 }
 
 // ── Historial clínico ──
 export async function getRecords(businessId, petId) {
   mustOnline();
-  const { data, error } = await supabase.from('clinical_records').select('*')
+  const { data, error } = await assertSupabase().from('clinical_records').select('*')
     .eq('business_id', businessId).eq('pet_id', petId)
     .order('visit_date', { ascending: false });
   if (error) throw error;
@@ -164,7 +164,7 @@ export async function saveRecord(businessId, petId, rec) {
     temperature: rec.temperature !== '' && rec.temperature != null ? Number(rec.temperature) : null,
     notes: (rec.notes || '').trim(),
   };
-  const { data, error } = await supabase.from('clinical_records').insert(body).select().single();
+  const { data, error } = await assertSupabase().from('clinical_records').insert(body).select().single();
   if (error) throw error;
   return mapRecord(data);
 }
@@ -172,7 +172,7 @@ export async function saveRecord(businessId, petId, rec) {
 // ── Recetas ──
 export async function getPrescriptions(businessId, petId) {
   mustOnline();
-  const { data, error } = await supabase.from('prescriptions').select('*')
+  const { data, error } = await assertSupabase().from('prescriptions').select('*')
     .eq('business_id', businessId).eq('pet_id', petId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -191,7 +191,7 @@ export async function savePrescription(businessId, petId, { recordId = null, ite
     }))
     .filter((i) => i.name);
   if (clean.length === 0) throw new Error('Agrega al menos un medicamento.');
-  const { data, error } = await supabase.from('prescriptions').insert({
+  const { data, error } = await assertSupabase().from('prescriptions').insert({
     business_id: businessId, pet_id: petId, record_id: recordId,
     items: clean, notes: (notes || '').trim(),
   }).select().single();
@@ -202,7 +202,7 @@ export async function savePrescription(businessId, petId, { recordId = null, ite
 // ── Vacunas (crea recordatorio de próxima dosis automáticamente) ──
 export async function getVaccinations(businessId, petId) {
   mustOnline();
-  const { data, error } = await supabase.from('vaccinations').select('*')
+  const { data, error } = await assertSupabase().from('vaccinations').select('*')
     .eq('business_id', businessId).eq('pet_id', petId)
     .order('date_applied', { ascending: false });
   if (error) throw error;
@@ -222,7 +222,7 @@ export async function saveVaccination(businessId, petId, vac) {
     vet_name: (vac.vetName || '').trim(),
     notes: (vac.notes || '').trim(),
   };
-  const { data, error } = await supabase.from('vaccinations').insert(body).select().single();
+  const { data, error } = await assertSupabase().from('vaccinations').insert(body).select().single();
   if (error) throw error;
   // Recordatorio automático de la próxima dosis
   if (body.next_due) {
@@ -243,7 +243,7 @@ export async function saveVaccination(businessId, petId, vac) {
 // ── Recordatorios ──
 export async function getReminders(businessId) {
   mustOnline();
-  const { data, error } = await supabase.from('reminders').select('*')
+  const { data, error } = await assertSupabase().from('reminders').select('*')
     .eq('business_id', businessId).order('due_date', { ascending: true }).limit(200);
   if (error) throw error;
   return (data || []).map(mapReminder);
@@ -252,7 +252,7 @@ export async function getReminders(businessId) {
 export async function saveReminder(businessId, petId, rem) {
   mustOnline();
   if (!rem.title?.trim() || !rem.dueDate) throw new Error('Título y fecha son obligatorios.');
-  const { data, error } = await supabase.from('reminders').insert({
+  const { data, error } = await assertSupabase().from('reminders').insert({
     business_id: businessId,
     pet_id: petId,
     type: rem.type || 'control',
@@ -269,7 +269,7 @@ export async function setReminderStatus(id, status) {
   mustOnline();
   const body = { status };
   if (status === 'sent') body.sent_at = new Date().toISOString();
-  const { error } = await supabase.from('reminders').update(body).eq('id', id);
+  const { error } = await assertSupabase().from('reminders').update(body).eq('id', id);
   if (error) throw error;
 }
 

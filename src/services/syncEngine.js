@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { db, generateUUID } from './localDb';
 
 let online = navigator.onLine;
@@ -220,35 +220,87 @@ let serverCaps = null;
 
 async function getServerCaps() {
   if (serverCaps) return serverCaps;
-  serverCaps = { productPres: true, productBarcode: true, itemPres: true, salesBranch: true };
+  serverCaps = {
+    productPres: true, productBarcode: true, itemPres: true, salesBranch: true,
+    branchTables: true,
+    businessSettings: null, // null = aún no probado; objeto {col: true/false}
+    expenseExtra: null,
+    atomicTransfer: null, // null = no probado; true/false tras primer uso
+    atomicStock: null,
+    atomicSale: null,
+  };
   try {
-    const { error } = await supabase.from('products').select('unit_label').limit(0);
+    const { error } = await assertSupabase().from('products').select('unit_label').limit(0);
     if (error) serverCaps.productPres = false;
   } catch {
     serverCaps.productPres = false;
   }
   try {
-    const { error } = await supabase.from('products').select('barcode').limit(0);
+    const { error } = await assertSupabase().from('products').select('barcode').limit(0);
     if (error) serverCaps.productBarcode = false;
   } catch {
     serverCaps.productBarcode = false;
   }
   try {
-    const { error } = await supabase.from('sale_items').select('presentation').limit(0);
+    const { error } = await assertSupabase().from('sale_items').select('presentation').limit(0);
     if (error) serverCaps.itemPres = false;
   } catch {
     serverCaps.itemPres = false;
   }
   try {
-    const { error } = await supabase.from('sales').select('branch_id').limit(0);
+    const { error } = await assertSupabase().from('sales').select('branch_id').limit(0);
     if (error) serverCaps.salesBranch = false;
   } catch {
     serverCaps.salesBranch = false;
   }
-  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.itemPres || !serverCaps.salesBranch) {
-    console.warn('syncEngine: columnas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
+  // Tablas Fase 2: si no existen, todo lo de sedes se omite (local sigue válido).
+  try {
+    const { error } = await assertSupabase().from('branch_stock').select('branch_id').limit(0);
+    if (error) serverCaps.branchTables = false;
+  } catch {
+    serverCaps.branchTables = false;
+  }
+  if (serverCaps.branchTables) {
+    try {
+      const { error } = await assertSupabase().from('transfers').select('id').limit(0);
+      if (error) serverCaps.branchTables = false;
+    } catch {
+      serverCaps.branchTables = false;
+    }
+  }
+  // Columnas opcionales de business_settings: se prueban una vez para poder
+  // recortar ANTES del upsert en vez de reintentar a ciegas.
+  try {
+    serverCaps.businessSettings = await probeOptionalColumns('business_settings',
+      ['legal_name', 'nit', 'city', 'address', 'footer_message', 'show_qr']);
+  } catch {
+    serverCaps.businessSettings = null;
+  }
+  try {
+    const cols = await probeOptionalColumns('expenses',
+      ['payment_method', 'invoice_number', 'notes']);
+    serverCaps.expenseExtra = cols;
+  } catch {
+    serverCaps.expenseExtra = null;
+  }
+  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
+    console.warn('syncEngine: columnas/tablas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
   }
   return serverCaps;
+}
+
+// Prueba qué columnas opcionales existen (true) sin traer datos.
+async function probeOptionalColumns(table, cols) {
+  const out = {};
+  for (const c of cols) {
+    try {
+      const { error } = await assertSupabase().from(table).select(c).limit(0);
+      out[c] = !error;
+    } catch {
+      out[c] = false;
+    }
+  }
+  return out;
 }
 
 const NEW_PRES_KEYS = ['unit_label', 'pack_label', 'pack_price', 'pack_price_hot'];
@@ -263,9 +315,64 @@ async function stripUnknownProductKeys(obj) {
   return copy;
 }
 
+// Recorte previo para business_settings: quita las keys que el servidor aún
+// no tiene (migración pendiente) para que el upsert entre al primer intento.
+async function stripUnknownBusinessSettingsKeys(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const caps = await getServerCaps();
+  const known = caps.businessSettings;
+  if (!known) return { ...obj };
+  if (Object.values(known).every(Boolean)) return { ...obj };
+  const copy = { ...obj };
+  for (const [col, ok] of Object.entries(known)) {
+    if (!ok) delete copy[col];
+  }
+  return copy;
+}
+
+async function stripUnknownExpenseKeys(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const caps = await getServerCaps();
+  const known = caps.expenseExtra;
+  if (!known) return { ...obj };
+  if (Object.values(known).every(Boolean)) return { ...obj };
+  const copy = { ...obj };
+  for (const [col, ok] of Object.entries(known)) {
+    if (!ok) delete copy[col];
+  }
+  return copy;
+}
+
 function isMissingColumnError(err) {
   const msg = String(err?.message || '').toLowerCase();
   return err?.code === 'PGRST204' || msg.includes('column') || msg.includes('columna');
+}
+
+function isMissingFunctionError(err) {
+  const msg = String((err?.message || '') + ' ' + (err?.hint || '')).toLowerCase();
+  const code = String(err?.code || '');
+  return code === 'PGRST202' || code === '42883'
+    || msg.includes('function') || msg.includes('could not find the function')
+    || msg.includes('no existe la función') || msg.includes('does not exist');
+}
+
+function isBranchTablesMissingError(err) {
+  const msg = String((err?.message || '') + ' ' + (err?.details || '') + ' ' + (err?.hint || '')).toLowerCase();
+  return isMissingColumnError(err)
+    || msg.includes('branch_stock') || msg.includes('transfers')
+    || String(err?.code || '') === '42P01'; // undefined_table
+}
+
+// Un maybeSingle/select con error (red, RLS, sesión expirada) NO significa
+// "no existe": se propaga para reintentar, nunca se asume 0 ni se sobrescribe.
+function throwIfReadError(res, context) {
+  if (res?.error) {
+    const e = new Error(`${context}: ${res.error.message || 'error de lectura'}`);
+    e.cause = res.error;
+    e.code = res.error.code;
+    throw e;
+  }
+  return res?.data;
 }
 
 async function processOperation(op, businessId) {
@@ -274,26 +381,26 @@ async function processOperation(op, businessId) {
   switch (operation_type) {
     case 'ADD_PRODUCT': {
       const body = await stripUnknownProductKeys(payload);
-      const { error } = await supabase.from('products').insert(body);
+      const { error } = await assertSupabase().from('products').insert(body);
       if (error) throw error;
       break;
     }
     case 'UPDATE_PRODUCT': {
       const { id, ...updateData } = payload;
       const body = await stripUnknownProductKeys(updateData);
-      const { error } = await supabase.from('products').update(body).eq('id', id);
+      const { error } = await assertSupabase().from('products').update(body).eq('id', id);
       if (error) throw error;
       break;
     }
     case 'DELETE_PRODUCT': {
-      const { error } = await supabase.from('products').delete().eq('id', payload.id);
+      const { error } = await assertSupabase().from('products').delete().eq('id', payload.id);
       if (error) throw error;
       break;
     }
     case 'SET_BRANCH_STOCK': {
       // Upsert tolerante del stock de una sede (Fase 2)
       try {
-        const { error } = await supabase.from('branch_stock').upsert({
+        const { error } = await assertSupabase().from('branch_stock').upsert({
           branch_id: payload.branch_id,
           product_id: payload.product_id,
           business_id: businessId,
@@ -310,61 +417,66 @@ async function processOperation(op, businessId) {
       break;
     }
     case 'TRANSFER_STOCK': {
-      // Traspaso en el servidor: idempotente por transfer_id
+      // Traspaso ATÓMICO: un solo RPC con SELECT ... FOR UPDATE + idempotencia
+      // por transfer_id. Sin read-modify-write del lado cliente: dos traspasos
+      // concurrentes no se pisan porque Postgres serializa por row lock.
+      // Ante error de lectura/red/RLS se lanza (reintenta), nunca se asume 0.
+      const capsT = await getServerCaps();
+      if (capsT.branchTables === false) break;
       try {
-        const { data: done } = await supabase
-          .from('transfers')
-          .select('id')
-          .eq('id', payload.transfer_id)
-          .maybeSingle();
-        if (!done) {
-          const qty = Number(payload.quantity || 0);
-          const fromRow = await supabase.from('branch_stock')
-            .select('stock').eq('branch_id', payload.from_branch_id).eq('product_id', payload.product_id)
-            .maybeSingle();
-          const toRow = await supabase.from('branch_stock')
-            .select('stock').eq('branch_id', payload.to_branch_id).eq('product_id', payload.product_id)
-            .maybeSingle();
-          const fromStock = Math.max(0, Number(fromRow?.data?.stock || 0) - qty);
-          const toStock = Number(toRow?.data?.stock || 0) + qty;
-          await supabase.from('branch_stock').upsert([
-            { branch_id: payload.from_branch_id, product_id: payload.product_id, business_id: businessId, stock: fromStock, updated_at: new Date().toISOString() },
-            { branch_id: payload.to_branch_id, product_id: payload.product_id, business_id: businessId, stock: toStock, updated_at: new Date().toISOString() },
-          ], { onConflict: 'branch_id,product_id' });
-          const { error: tErr } = await supabase.from('transfers').insert({
-            id: payload.transfer_id,
-            business_id: businessId,
-            product_id: payload.product_id,
-            from_branch_id: payload.from_branch_id,
-            to_branch_id: payload.to_branch_id,
-            quantity: qty,
-            created_by: payload.created_by || null,
-          });
-          if (tErr) throw tErr;
+        const { error: rpcErr } = await assertSupabase().rpc('transfer_stock_atomico', {
+          p_transfer_id: payload.transfer_id,
+          p_business_id: businessId,
+          p_product_id: payload.product_id,
+          p_from_branch_id: payload.from_branch_id,
+          p_to_branch_id: payload.to_branch_id,
+          p_quantity: Number(payload.quantity || 0),
+          p_created_by: payload.created_by || null,
+        });
+        if (!rpcErr) {
+          capsT.atomicTransfer = true;
+          break;
         }
+        if (isBranchTablesMissingError(rpcErr)) {
+          capsT.branchTables = false;
+          break; // Fase 2 sin migrar: local sigue válido, nada que sincronizar.
+        }
+        if (isMissingFunctionError(rpcErr)) {
+          capsT.atomicTransfer = false;
+          // Sin RPC atómico NO se hace read-modify-write (perdería stock bajo
+          // concurrencia y asumiría 0 ante errores de lectura). Se deja la op
+          // pendiente hasta que corra la migración SQL.
+          throw new Error('Falta RPC transfer_stock_atomico en el servidor (corre la migración SQL).');
+        }
+        throw rpcErr;
       } catch (err) {
-        if (isMissingColumnError(err) || String(err?.message || '').includes('branch_stock') || String(err?.message || '').includes('transfers')) {
-          const caps = await getServerCaps();
-          caps.branchTables = false;
-        } else throw err;
+        if (isBranchTablesMissingError(err)) {
+          (await getServerCaps()).branchTables = false;
+          break;
+        }
+        throw err;
       }
-      break;
     }
     case 'REGISTER_SALE': {
-      // 1. Idempotency Check using the client generated ID
-      const { data: existing } = await supabase
+      // 1. Idempotencia: un error de lectura (red/RLS/sesión) NO es "no existe".
+      // Se propaga para reintentar; nunca se crea duplicado ni se asume stock.
+      const existRes = await assertSupabase()
         .from('sales')
         .select('id')
         .eq('id', payload.client_generated_id)
         .maybeSingle();
+      const existing = throwIfReadError(existRes, 'idempotencia de venta');
 
-      // Solo se compensa stock si el RPC realmente creó la venta ahora.
+      // Solo se descuenta stock si el RPC realmente creó la venta ahora.
       // En reintentos (ya sincronizada) se omite para no descontar doble.
       let didCreate = false;
+      // true si el RPC nuevo ya descontó TODO (base + sede) en una transacción.
+      let stockYaDescontado = false;
 
       if (!existing) {
-        // 2. Call the server side RPC transaction
-        const { data: saleId, error } = await supabase.rpc('registrar_venta', {
+        const factors = Array.isArray(payload.p_factors) ? payload.p_factors : [];
+        const branchId = payload.extraFields?.branchId || null;
+        const baseArgs = {
           p_client_generated_id: payload.client_generated_id,
           p_business_id: payload.business_id,
           p_client_name: payload.client_name,
@@ -374,215 +486,298 @@ async function processOperation(op, businessId) {
           p_item_count: Number(payload.item_count || 0),
           p_seller_name: payload.seller_name || '',
           p_created_by: payload.created_by || null,
-          p_items: payload.p_items
+          p_items: payload.p_items,
+        };
+        // 2a. Intento atómico total: venta + ítems + stock base + stock sede
+        // en UNA transacción del servidor (row locks, sin lost update).
+        const { error: atomicErr } = await assertSupabase().rpc('registrar_venta', {
+          ...baseArgs,
+          p_factors: factors,
+          p_branch_id: branchId,
         });
-        if (error) throw error;
-        didCreate = true;
+        if (!atomicErr) {
+          didCreate = true;
+          stockYaDescontado = true;
+          (await getServerCaps()).atomicSale = true;
+        } else if (isMissingFunctionError(atomicErr)) {
+          // Servidor con RPC viejo (sin p_factors/p_branch_id): venta vieja +
+          // decrementos atómicos por helper (nunca read-modify-write).
+          (await getServerCaps()).atomicSale = false;
+          const { error: oldErr } = await assertSupabase().rpc('registrar_venta', baseArgs);
+          if (oldErr) throw oldErr;
+          didCreate = true;
+          stockYaDescontado = false;
+        } else if (isBranchTablesMissingError(atomicErr) && branchId) {
+          // La parte de sede falló por tablas ausentes: reintentar sin sede.
+          // La venta global igual debe crearse (local ya la tiene por sede).
+          const { error: noBranchErr } = await assertSupabase().rpc('registrar_venta', {
+            ...baseArgs,
+            p_factors: factors,
+            p_branch_id: null,
+          });
+          if (noBranchErr) {
+            if (isMissingFunctionError(noBranchErr)) {
+              const { error: oldErr2 } = await assertSupabase().rpc('registrar_venta', baseArgs);
+              if (oldErr2) throw oldErr2;
+            } else throw noBranchErr;
+          }
+          didCreate = true;
+          stockYaDescontado = false;
+          (await getServerCaps()).branchTables = false;
+        } else {
+          throw atomicErr;
+        }
+
+        // 2b. Servidor viejo: compensar paquetes + sede con RPCs atómicos
+        // (UPDATE ... SET stock = stock - X). Sin lecturas previas: dos ventas
+        // concurrentes se serializan por row lock y ninguna se pierde.
+        if (didCreate && !stockYaDescontado) {
+          const capsA = await getServerCaps();
+          // Paquetes: el RPC viejo descontó `quantity` (paquetes); falta
+          // qty×(factor−1) en unidades base.
+          for (const f of factors) {
+            const factor = Number(f.factor || 1);
+            const qty = Number(f.quantity || 0);
+            if (!(factor > 1 && qty > 0)) continue;
+            const extra = qty * (factor - 1);
+            try {
+              const { error: decErr } = await assertSupabase().rpc('descontar_stock_atomico', {
+                p_product_id: f.product_id,
+                p_qty: extra,
+              });
+              if (!decErr) {
+                capsA.atomicStock = true;
+                continue;
+              }
+              if (isMissingFunctionError(decErr)) {
+                capsA.atomicStock = false;
+                // Sin helper atómico NO se hace read-modify-write: asumiría 0
+                // ante errores de lectura y perdería ventas concurrentes.
+                console.warn('syncEngine: falta RPC descontar_stock_atomico (corre la migración); se omite compensación de paquete para no corromper stock.', f.product_id);
+                continue;
+              }
+              throw decErr;
+            } catch (decErr) {
+              if (isMissingFunctionError(decErr)) continue;
+              throw decErr;
+            }
+          }
+          // Sede: descuenta unidades base por producto (agregado).
+          if (branchId && capsA.branchTables !== false) {
+            const byProduct = {};
+            for (const f of factors) {
+              const pid = f.product_id;
+              if (!pid) continue;
+              byProduct[pid] = (byProduct[pid] || 0) + Number(f.quantity || 0) * Number(f.factor || 1);
+            }
+            // Sin p_factors (ventas viejas) se cae a p_items en unidades.
+            if (Object.keys(byProduct).length === 0 && Array.isArray(payload.p_items)) {
+              for (const it of payload.p_items) {
+                if (!it.product_id) continue;
+                byProduct[it.product_id] = (byProduct[it.product_id] || 0) + Number(it.quantity || 0);
+              }
+            }
+            for (const [pid, baseQty] of Object.entries(byProduct)) {
+              if (!(Number(baseQty) > 0)) continue;
+              try {
+                const { error: bsErr } = await assertSupabase().rpc('descontar_branch_stock_atomico', {
+                  p_branch_id: branchId,
+                  p_product_id: pid,
+                  p_business_id: payload.business_id,
+                  p_qty: Number(baseQty),
+                });
+                if (!bsErr) continue;
+                if (isBranchTablesMissingError(bsErr)) {
+                  (await getServerCaps()).branchTables = false;
+                  break;
+                }
+                if (isMissingFunctionError(bsErr)) {
+                  (await getServerCaps()).atomicStock = false;
+                  console.warn('syncEngine: falta RPC descontar_branch_stock_atomico (corre la migración); se omite descuento por sede para no corromper stock.', pid);
+                  break;
+                }
+                throw bsErr;
+              } catch (bsErr) {
+                if (isBranchTablesMissingError(bsErr)) {
+                  (await getServerCaps()).branchTables = false;
+                  break;
+                }
+                if (isMissingFunctionError(bsErr)) break;
+                throw bsErr;
+              }
+            }
+          }
+        }
       } else {
         console.log(`Sale ${payload.client_generated_id} already synced.`);
       }
 
-      // 3. Write extra mixed payment fields if applicable (idempotente)
-      if (payload.extraFields && Object.keys(payload.extraFields).length > 0) {
+      // 3. Campos extra de pago mixto (idempotente, ciego: sin lecturas).
+      if (payload.extraFields && (payload.extraFields.montoEfectivo !== undefined || payload.extraFields.montoQR !== undefined)) {
         const updateData = {};
         if (payload.extraFields.montoEfectivo !== undefined) updateData.monto_efectivo = Number(payload.extraFields.montoEfectivo);
         if (payload.extraFields.montoQR !== undefined) updateData.monto_qr = Number(payload.extraFields.montoQR);
-
-        const { error: updErr } = await supabase
-          .from('sales')
-          .update(updateData)
-          .eq('id', payload.client_generated_id);
-        if (updErr) throw updErr;
-      }
-
-      // 3b. Compensación de stock por paquetes (solo si se creó ahora).      // El RPC descuenta `quantity` por ítem; en paquetes eso son paquetes,
-      // no unidades base. Se descuenta la diferencia qty×(factor−1) y se
-      // estampan los datos de presentación en los ítems del servidor
-      // (tolerante si aún no corrieron la migración SQL).
-      if (didCreate && Array.isArray(payload.p_factors)) {
-        const caps = await getServerCaps();
-        for (const f of payload.p_factors) {
-          const factor = Number(f.factor || 1);
-          const qty = Number(f.quantity || 0);
-          if (factor > 1 && qty > 0) {
-            try {
-              const { data: srv } = await supabase
-                .from('products')
-                .select('stock')
-                .eq('id', f.product_id)
-                .single();
-              if (srv) {
-                const extra = qty * (factor - 1);
-                await supabase
-                  .from('products')
-                  .update({ stock: Math.max(0, Number(srv.stock || 0) - extra) })
-                  .eq('id', f.product_id);
-              }
-            } catch (compErr) {
-              console.error('syncEngine: compensación de stock por paquete falló:', compErr);
+        if (Object.keys(updateData).length > 0) {
+          try {
+            const { error: updErr } = await assertSupabase()
+              .from('sales')
+              .update(updateData)
+              .eq('id', payload.client_generated_id);
+            if (updErr) {
+              if (isMissingColumnError(updErr)) {
+                console.warn('syncEngine: sales sin columnas monto_*; se omite pago mixto.', updErr.message);
+              } else throw updErr;
             }
+          } catch (updErr) {
+            if (!isMissingColumnError(updErr)) throw updErr;
+            console.warn('syncEngine: sales sin columnas monto_*; se omite pago mixto.');
           }
         }
-        if (caps.itemPres) {
-          for (const f of payload.p_factors || []) {
-            const factor = Number(f?.factor || 1);
-            if (factor <= 1) continue;
-            try {
-              const { error: presErr } = await supabase
-                .from('sale_items')
-                .update({
-                  presentation: f.presentation || '',
-                  presentation_factor: factor,
-                  variant: f.variant || '',
-                })
-                .eq('sale_id', payload.client_generated_id)
-                .eq('product_id', f.product_id)
-                .eq('quantity', Number(f.quantity))
-                .eq('price', Number(f.price));
-              if (presErr) {
-                if (isMissingColumnError(presErr)) {
-                  serverCaps.itemPres = false;
-                  break;
-                }
-                throw presErr;
-              }
-            } catch (presErr) {
+      }
+
+      // 3b. Presentación en ítems (ciego, idempotente; solo metadata).
+      // Si el RPC nuevo ya la estampó, este update es no-op.
+      if (didCreate && Array.isArray(payload.p_factors) && (await getServerCaps()).itemPres) {
+        for (const f of payload.p_factors || []) {
+          const factor = Number(f?.factor || 1);
+          if (factor <= 1) continue;
+          try {
+            const { error: presErr } = await assertSupabase()
+              .from('sale_items')
+              .update({
+                presentation: f.presentation || '',
+                presentation_factor: factor,
+                variant: f.variant || '',
+              })
+              .eq('sale_id', payload.client_generated_id)
+              .eq('product_id', f.product_id)
+              .eq('quantity', Number(f.quantity))
+              .eq('price', Number(f.price));
+            if (presErr) {
               if (isMissingColumnError(presErr)) {
-                serverCaps.itemPres = false;
+                (await getServerCaps()).itemPres = false;
                 break;
               }
               throw presErr;
             }
+          } catch (presErr) {
+            if (isMissingColumnError(presErr)) {
+              (await getServerCaps()).itemPres = false;
+              break;
+            }
+            throw presErr;
           }
         }
       }
 
-      // 3c. Stock por sede en el servidor (Fase 2): descuenta las unidades
-      // base de la sede de la venta. Tolerante si faltan las tablas.
-      if (didCreate && payload.extraFields?.branchId && (await getServerCaps()).branchTables !== false) {
-        try {
-          const byProduct = {};
-          for (const f of payload.p_factors || []) {
-            const pid = f.product_id;
-            byProduct[pid] = (byProduct[pid] || 0) + Number(f.quantity || 0) * Number(f.factor || 1);
-          }
-          for (const [pid, baseQty] of Object.entries(byProduct)) {
-            const { data: row } = await supabase.from('branch_stock')
-              .select('stock').eq('branch_id', payload.extraFields.branchId).eq('product_id', pid)
-              .maybeSingle();
-            const cur = Number(row?.stock || 0);
-            const { error: bsErr } = await supabase.from('branch_stock').upsert({
-              branch_id: payload.extraFields.branchId,
-              product_id: pid,
-              business_id: payload.business_id,
-              stock: Math.max(0, cur - baseQty),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'branch_id,product_id' });
-            if (bsErr) throw bsErr;
-          }
-        } catch (bsErr) {
-          if (isMissingColumnError(bsErr) || String(bsErr?.message || '').includes('branch_stock')) {
-            (await getServerCaps()).branchTables = false;
-          } else throw bsErr;
-        }
-      }
-
-      // 3d. Sello de sucursal en la venta del servidor (tolerante a migración:
-      // sin columna, la venta queda sin sede en la nube pero local sí la tiene).
+      // 3d. Sello de sucursal en la venta del servidor (ciego, tolerante).
       if (didCreate && payload.extraFields?.branchId && (await getServerCaps()).salesBranch) {
         try {
-          const { error: brErr } = await supabase
+          const { error: brErr } = await assertSupabase()
             .from('sales')
             .update({ branch_id: payload.extraFields.branchId })
             .eq('id', payload.client_generated_id);
           if (brErr) {
-            if (isMissingColumnError(brErr)) serverCaps.salesBranch = false;
+            if (isMissingColumnError(brErr)) (await getServerCaps()).salesBranch = false;
             else throw brErr;
           }
         } catch (brErr) {
-          if (isMissingColumnError(brErr)) serverCaps.salesBranch = false;
+          if (isMissingColumnError(brErr)) (await getServerCaps()).salesBranch = false;
           else throw brErr;
         }
       }
 
-      // 4. Verify stock levels to raise negative stock alerts (solo al crear)
-      if (didCreate) for (const item of payload.p_items) {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('name, stock')
-          .eq('id', item.product_id)
-          .single();
-
-        if (prod && prod.stock < 0) {
-          // Record the stock alert
-          await supabase.from('stock_alerts').insert({
-            business_id: payload.business_id,
-            product_id: item.product_id,
-            product_name: prod.name,
-            current_stock: prod.stock,
-            sale_id: payload.client_generated_id,
-            message: `Stock negativo detected para ${prod.name} (Cantidad: ${prod.stock}) tras sincronización offline.`
-          });
+      // 4. Alertas de stock negativo (solo lectura; nunca bloquea la venta).
+      if (didCreate) {
+        for (const item of payload.p_items || []) {
+          try {
+            const res = await assertSupabase()
+              .from('products')
+              .select('name, stock')
+              .eq('id', item.product_id)
+              .maybeSingle();
+            if (res?.error) {
+              console.warn('syncEngine: no se pudo verificar stock para alerta:', res.error.message);
+              continue;
+            }
+            const prod = res?.data;
+            if (prod && Number(prod.stock) < 0) {
+              try {
+                await assertSupabase().from('stock_alerts').insert({
+                  business_id: payload.business_id,
+                  product_id: item.product_id,
+                  product_name: prod.name,
+                  current_stock: prod.stock,
+                  sale_id: payload.client_generated_id,
+                  message: `Stock negativo detected para ${prod.name} (Cantidad: ${prod.stock}) tras sincronización offline.`
+                });
+              } catch (alertErr) {
+                console.warn('syncEngine: no se pudo registrar alerta de stock:', alertErr?.message || alertErr);
+              }
+            }
+          } catch (alertErr) {
+            console.warn('syncEngine: verificación de stock omitida:', alertErr?.message || alertErr);
+          }
         }
       }
       break;
     }
     case 'ADD_EXPENSE': {
-      // Tolerante a columnas nuevas (payment_method, invoice_number, notes):
-      // si el servidor aún no las tiene, reintenta sin ellas.
-      let insertPayload = payload;
-      for (let i = 0; i <= 3; i++) {
-        const { error } = await supabase.from('expenses').insert(insertPayload);
-        if (!error) break;
-        const msg = error?.message || '';
-        if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw error;
-        const dropCols = ['payment_method', 'invoice_number', 'notes'].filter((c) => insertPayload[c] !== undefined);
-        if (dropCols.length === 0 || i === 3) throw error;
-        const found = dropCols.find((c) => new RegExp(c, 'i').test(msg)) || dropCols[dropCols.length - 1];
-        const { [found]: _d, ...rest } = insertPayload;
-        insertPayload = rest;
+      // Recorte previo por capacidades (un intento); si el schema cambió a
+      // mitad de sesión se refresca caps y se reintenta una vez.
+      let insertPayload = await stripUnknownExpenseKeys(payload);
+      {
+        const { error } = await assertSupabase().from('expenses').insert(insertPayload);
+        if (error) {
+          if (isMissingColumnError(error)) {
+            serverCaps = null;
+            insertPayload = await stripUnknownExpenseKeys(payload);
+            const { error: e2 } = await assertSupabase().from('expenses').insert(insertPayload);
+            if (e2) throw e2;
+          } else throw error;
+        }
       }
       break;
     }
     case 'UPDATE_EXPENSE': {
       const { id, ...updateData } = payload;
-      let upd = updateData;
-      for (let i = 0; i <= 3; i++) {
-        const { error } = await supabase.from('expenses').update(upd).eq('id', id);
-        if (!error) break;
-        const msg = error?.message || '';
-        if (!/column|PGRST204|does not exist|schema cache/i.test(msg)) throw error;
-        const dropCols = ['payment_method', 'invoice_number', 'notes'].filter((c) => upd[c] !== undefined);
-        if (dropCols.length === 0 || i === 3) throw error;
-        const found = dropCols.find((c) => new RegExp(c, 'i').test(msg)) || dropCols[dropCols.length - 1];
-        const { [found]: _d, ...rest } = upd;
-        upd = rest;
+      let upd = await stripUnknownExpenseKeys(updateData);
+      {
+        const { error } = await assertSupabase().from('expenses').update(upd).eq('id', id);
+        if (error) {
+          if (isMissingColumnError(error)) {
+            serverCaps = null;
+            upd = await stripUnknownExpenseKeys(updateData);
+            const { error: e2 } = await assertSupabase().from('expenses').update(upd).eq('id', id);
+            if (e2) throw e2;
+          } else throw error;
+        }
       }
       break;
     }
     case 'DELETE_EXPENSE': {
-      const { error } = await supabase.from('expenses').delete().eq('id', payload.id);
+      const { error } = await assertSupabase().from('expenses').delete().eq('id', payload.id);
       if (error) throw error;
       break;
     }
     case 'ADD_REPLENISHMENT': {
-      const { error } = await supabase.from('replenishments').insert(payload);
+      const { error } = await assertSupabase().from('replenishments').insert(payload);
       if (error) throw error;
       break;
     }
     case 'UPDATE_REPLENISHMENT': {
       const { id, ...updateData } = payload;
-      const { error } = await supabase.from('replenishments').update(updateData).eq('id', id);
+      const { error } = await assertSupabase().from('replenishments').update(updateData).eq('id', id);
       if (error) throw error;
       break;
     }
     case 'ADD_DEBT': {
-      const { error } = await supabase.from('debts').insert(payload);
+      const { error } = await assertSupabase().from('debts').insert(payload);
       if (error) throw error;
       break;
     }
     case 'PAY_DEBT': {
-      const { error: dErr } = await supabase
+      const { error: dErr } = await assertSupabase()
         .from('debts')
         .update({
           status: 'paid',
@@ -595,32 +790,48 @@ async function processOperation(op, businessId) {
       break;
     }
     case 'DELETE_DEBT': {
-      const { error } = await supabase.from('debts').delete().eq('id', payload.id);
+      const { error } = await assertSupabase().from('debts').delete().eq('id', payload.id);
       if (error) throw error;
       break;
     }
     case 'ADD_CUSTOMER': {
-      const { error } = await supabase.from('clientes').insert(payload);
+      const { error } = await assertSupabase().from('clientes').insert(payload);
       if (error) throw error;
       break;
     }
     case 'UPDATE_CUSTOMER': {
       const { id, ...updateData } = payload;
-      const { error } = await supabase.from('clientes').update(updateData).eq('id', id);
+      const { error } = await assertSupabase().from('clientes').update(updateData).eq('id', id);
       if (error) throw error;
       break;
     }
     case 'DELETE_CUSTOMER': {
-      const { error } = await supabase.from('clientes').delete().eq('id', payload.id);
+      const { error } = await assertSupabase().from('clientes').delete().eq('id', payload.id);
       if (error) throw error;
       break;
     }
     case 'SAVE_BUSINESS_SETTINGS': {
+      // Recorte PREVIO por capacidades: un solo upsert con las columnas que el
+      // servidor realmente tiene (getServerCaps), en vez de reintentar N veces
+      // parseando mensajes de error. Si el schema cambió a mitad de sesión se
+      // refresca caps una vez y se reintenta.
       const { business_id, ...data } = payload;
-      const { error } = await supabase
-        .from('business_settings')
-        .upsert({ business_id, ...data });
-      if (error) throw error;
+      let body = await stripUnknownBusinessSettingsKeys(data);
+      {
+        const { error } = await assertSupabase()
+          .from('business_settings')
+          .upsert({ business_id, ...body });
+        if (error) {
+          if (isMissingColumnError(error)) {
+            serverCaps = null; // caps obsoletas: reprobar y recortar de nuevo
+            body = await stripUnknownBusinessSettingsKeys(data);
+            const { error: e2 } = await assertSupabase()
+              .from('business_settings')
+              .upsert({ business_id, ...body });
+            if (e2) throw e2;
+          } else throw error;
+        }
+      }
       break;
     }
     default:
@@ -754,41 +965,55 @@ export async function syncCacheFromServer(businessId) {
     // no tocar la caché de otro negocio en un dispositivo compartido.
     const belongsToBiz = (item) => item.business_id === businessId;
 
-    const { data: prods } = await supabase.from('products').select('*').eq('business_id', businessId);
-    if (prods) {
+    const { data: prods, error: prodsErr } = await assertSupabase().from('products').select('*').eq('business_id', businessId);
+    if (prodsErr) {
+      console.warn('syncEngine: no se pudo sincronizar products:', prodsErr);
+    } else if (prods) {
       await safeSyncTable(db.products, prods, (item) => pendingIds.has(item.id), belongsToBiz);
     }
 
-    const { data: clis } = await supabase.from('clientes').select('*').eq('business_id', businessId);
-    if (clis) {
+    const { data: clis, error: clisErr } = await assertSupabase().from('clientes').select('*').eq('business_id', businessId);
+    if (clisErr) {
+      console.warn('syncEngine: no se pudo sincronizar clientes:', clisErr);
+    } else if (clis) {
       await safeSyncTable(db.clientes, clis, (item) => pendingIds.has(item.id), belongsToBiz);
     }
 
-    const { data: debts } = await supabase.from('debts').select('*').eq('business_id', businessId);
-    if (debts) {
+    const { data: debts, error: debtsErr } = await assertSupabase().from('debts').select('*').eq('business_id', businessId);
+    if (debtsErr) {
+      console.warn('syncEngine: no se pudo sincronizar debts:', debtsErr);
+    } else if (debts) {
       await safeSyncTable(db.debts, debts, (item) => pendingIds.has(item.id), belongsToBiz);
     }
 
-    const { data: exps } = await supabase.from('expenses').select('*').eq('business_id', businessId);
-    if (exps) {
+    const { data: exps, error: expsErr } = await assertSupabase().from('expenses').select('*').eq('business_id', businessId);
+    if (expsErr) {
+      console.warn('syncEngine: no se pudo sincronizar expenses:', expsErr);
+    } else if (exps) {
       await safeSyncTable(db.expenses, exps, (item) => pendingIds.has(item.id), belongsToBiz);
     }
 
-    const { data: reps } = await supabase.from('replenishments').select('*').eq('business_id', businessId);
-    if (reps) {
+    const { data: reps, error: repsErr } = await assertSupabase().from('replenishments').select('*').eq('business_id', businessId);
+    if (repsErr) {
+      console.warn('syncEngine: no se pudo sincronizar replenishments:', repsErr);
+    } else if (reps) {
       await safeSyncTable(db.replenishments, reps, (item) => pendingIds.has(item.id), belongsToBiz);
     }
 
     // Fase 2: stock por sede + traspasos (tolerante si faltan las tablas).
     // branch_stock usa PK compuesta: se normaliza con id local antes de comparar.
     try {
-      const { data: bs } = await supabase.from('branch_stock').select('*').eq('business_id', businessId);
-      if (bs) {
+      const { data: bs, error: bsErr } = await assertSupabase().from('branch_stock').select('*').eq('business_id', businessId);
+      if (bsErr) {
+        console.warn('syncEngine: no se pudo sincronizar branch_stock:', bsErr);
+      } else if (bs) {
         const norm = bs.map((r) => ({ ...r, id: `${r.branch_id}:${r.product_id}` }));
         await safeSyncTable(db.branch_stock, norm, (item) => pendingIds.has(item.id), belongsToBiz);
       }
-      const { data: trs } = await supabase.from('transfers').select('*').eq('business_id', businessId).order('created_at', { ascending: false }).limit(200);
-      if (trs) {
+      const { data: trs, error: trsErr } = await assertSupabase().from('transfers').select('*').eq('business_id', businessId).order('created_at', { ascending: false }).limit(200);
+      if (trsErr) {
+        console.warn('syncEngine: no se pudo sincronizar transfers:', trsErr);
+      } else if (trs) {
         await safeSyncTable(db.transfers, trs, (item) => pendingIds.has(item.id), belongsToBiz);
       }
     } catch (e) {
@@ -797,13 +1022,15 @@ export async function syncCacheFromServer(businessId) {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { data: sales } = await supabase
+    const { data: sales, error: salesErr } = await assertSupabase()
       .from('sales')
       .select('*')
       .eq('business_id', businessId)
       .gte('created_at', today.toISOString());
 
-    if (sales) {
+    if (salesErr) {
+      console.warn('syncEngine: no se pudo sincronizar sales:', salesErr);
+    } else if (sales) {
       // Solo se pidió al servidor "de hoy en adelante" — restringimos el
       // borrado local a ese mismo rango, si no cualquier venta local de un
       // día anterior "no está en el servidor" (porque no se la pidió) y se
@@ -818,8 +1045,10 @@ export async function syncCacheFromServer(businessId) {
 
       const saleIds = sales.map((s) => s.id);
       if (saleIds.length > 0) {
-        const { data: items } = await supabase.from('sale_items').select('*').in('sale_id', saleIds);
-        if (items) {
+        const { data: items, error: itemsErr } = await assertSupabase().from('sale_items').select('*').in('sale_id', saleIds);
+        if (itemsErr) {
+          console.warn('syncEngine: no se pudo sincronizar sale_items:', itemsErr);
+        } else if (items) {
           const todaySaleIdSet = new Set(saleIds);
           await safeSyncTable(db.sale_items, items, (item) => pendingIds.has(item.sale_id), (item) => todaySaleIdSet.has(item.sale_id));
         }
@@ -827,13 +1056,15 @@ export async function syncCacheFromServer(businessId) {
     }
 
     // Sync business settings
-    const { data: settingsData } = await supabase
+    const { data: settingsData, error: settingsErr } = await assertSupabase()
       .from('business_settings')
       .select('*')
       .eq('business_id', businessId)
       .maybeSingle();
 
-    if (settingsData) {
+    if (settingsErr) {
+      console.warn('syncEngine: no se pudo sincronizar business_settings:', settingsErr);
+    } else if (settingsData) {
       const isSettingsPending = pendingOps.some(op => op.operation_type === 'SAVE_BUSINESS_SETTINGS');
       if (!isSettingsPending) {
         await db.business_settings.put({

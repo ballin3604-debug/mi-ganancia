@@ -1,16 +1,13 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { createJoinCode } from './cashier';
 import { getCategoryById, DEFAULT_CATEGORY_ID } from '../config/businessCategories';
-
-export const ADMIN_UID = import.meta.env.VITE_ADMIN_UID;
-
-export function isAdmin(uid) {
-  return uid === ADMIN_UID;
-}
+// Fuente única del UID admin (lee VITE_ADMIN_UID). Re-exportado aquí
+// por compatibilidad con imports existentes.
+export { ADMIN_UID, isAdmin } from '../config/admin';
 
 // ── Planes por negocio (solo admin, 3 botones: free/pro/premium) ──
 export async function getBusinessPlans() {
-  const { data, error } = await supabase.from('subscriptions').select('business_id,plan_id,status');
+  const { data, error } = await assertSupabase().from('subscriptions').select('business_id,plan_id,status');
   if (error) throw error;
   const map = {};
   (data || []).forEach((s) => { map[s.business_id] = s.plan_id || 'free'; });
@@ -19,7 +16,7 @@ export async function getBusinessPlans() {
 
 export async function setBusinessPlan(businessId, planId) {
   if (!['free', 'pro', 'premium'].includes(planId)) throw new Error('Plan inválido.');
-  const { error } = await supabase.from('subscriptions').upsert({
+  const { error } = await assertSupabase().from('subscriptions').upsert({
     business_id: businessId,
     plan_id: planId,
     status: 'active',
@@ -56,11 +53,23 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
       status: 'pending',
     })
     .select()
-    .single();
+    .maybeSingle();
 
-  if (reqErr) throw reqErr;
+  if (reqErr) {
+    // INSERT ok pero SELECT denegado por RLS: reenviar crearía un duplicado.
+    if (reqErr.code === 'PGRST116' || /0 filas|0 rows|permission|policy|rls|recurs/i.test(reqErr.message || '')) {
+      console.error('submitRequest: INSERT ok pero SELECT denegado por RLS:', reqErr);
+      throw new Error('Solicitud creada, pero no se pudo leer por permisos. Recargá en lugar de reenviarla para no duplicarla.');
+    }
+    console.error('submitRequest:', reqErr);
+    throw reqErr;
+  }
+  if (!req) {
+    console.error('submitRequest: INSERT ok pero SELECT devolvió 0 filas (RLS).');
+    throw new Error('Solicitud creada. Recargá para verla (no la reenvíes).');
+  }
 
-  const { error: profErr } = await supabase
+  const { error: profErr } = await assertSupabase()
     .from('profiles')
     .insert({
       id: user.uid || user.id,
@@ -75,7 +84,7 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
 }
 
 export async function getAllRequests() {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('subscription_requests')
     .select('*')
     .order('created_at', { ascending: false });
@@ -85,7 +94,7 @@ export async function getAllRequests() {
 }
 
 export async function getAllBusinesses() {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('businesses')
     .select('*')
     .order('created_at', { ascending: false });
@@ -107,7 +116,7 @@ export async function getAllBusinesses() {
     let reqByBizId = {};
 
     if (ownerIds.length > 0) {
-      const { data: profs, error: profErr } = await supabase
+      const { data: profs, error: profErr } = await assertSupabase()
         .from('profiles')
         .select('*')
         .in('id', ownerIds);
@@ -117,10 +126,13 @@ export async function getAllBusinesses() {
     }
 
     if (bizIds.length > 0) {
-      const { data: reqs } = await supabase
+      const { data: reqs, error: reqsErr } = await supabase
         .from('subscription_requests')
         .select('email,user_id,business_id,display_name')
         .in('business_id', bizIds);
+      if (reqsErr) {
+        console.warn('getAllBusinesses: no se pudieron leer subscription_requests por business_id:', reqsErr);
+      }
       (reqs || []).forEach((r) => {
         if (r.business_id) reqByBizId[r.business_id] = r;
         if (r.user_id) reqByUserId[r.user_id] = r;
@@ -131,10 +143,13 @@ export async function getAllBusinesses() {
     if (ownerIds.length > 0) {
       const missingOwners = ownerIds.filter((id) => !reqByUserId[id]);
       if (missingOwners.length > 0) {
-        const { data: reqs2 } = await supabase
+        const { data: reqs2, error: reqs2Err } = await supabase
           .from('subscription_requests')
           .select('email,user_id,business_id,display_name')
           .in('user_id', missingOwners);
+        if (reqs2Err) {
+          console.warn('getAllBusinesses: no se pudieron leer subscription_requests por user_id:', reqs2Err);
+        }
         (reqs2 || []).forEach((r) => {
           if (r.user_id && !reqByUserId[r.user_id]) reqByUserId[r.user_id] = r;
         });
@@ -165,13 +180,25 @@ export async function approveRequest(request, adminNote = '') {
       status: 'active',
     })
     .select()
-    .single();
+    .maybeSingle();
 
-  if (bizErr) throw bizErr;
+  if (bizErr) {
+    // INSERT ok pero SELECT denegado por RLS: reintentarlo duplicaría el negocio.
+    if (bizErr.code === 'PGRST116' || /0 filas|0 rows|permission|policy|rls|recurs/i.test(bizErr.message || '')) {
+      console.error('approveRequest: INSERT ok pero SELECT denegado por RLS:', bizErr);
+      throw new Error('Negocio creado, pero no se pudo leer por permisos. Recargá la lista en lugar de aprobar de nuevo para no duplicarlo.');
+    }
+    console.error('approveRequest:', bizErr);
+    throw bizErr;
+  }
+  if (!biz) {
+    console.error('approveRequest: INSERT ok pero SELECT devolvió 0 filas (RLS).');
+    throw new Error('Negocio creado. Recargá para verlo (no lo apruebes de nuevo).');
+  }
 
   const businessId = biz.id;
 
-  const { error: profErr } = await supabase
+  const { error: profErr } = await assertSupabase()
     .from('profiles')
     .update({
       business_id: businessId,
@@ -182,7 +209,7 @@ export async function approveRequest(request, adminNote = '') {
 
   if (profErr) throw profErr;
 
-  const { error: reqErr } = await supabase
+  const { error: reqErr } = await assertSupabase()
     .from('subscription_requests')
     .update({
       status: 'approved',
@@ -196,7 +223,7 @@ export async function approveRequest(request, adminNote = '') {
 
   const category = getCategoryById(request.businessCategory || request.business_category || DEFAULT_CATEGORY_ID);
   try {
-    await supabase
+    await assertSupabase()
       .from('business_settings')
       .upsert({
         business_id: businessId,
@@ -215,7 +242,7 @@ export async function approveRequest(request, adminNote = '') {
 }
 
 export async function rejectRequest(requestId, userId, adminNote = '') {
-  const { error: reqErr } = await supabase
+  const { error: reqErr } = await assertSupabase()
     .from('subscription_requests')
     .update({
       status: 'rejected',
@@ -226,7 +253,7 @@ export async function rejectRequest(requestId, userId, adminNote = '') {
 
   if (reqErr) throw reqErr;
 
-  const { error: profErr } = await supabase
+  const { error: profErr } = await assertSupabase()
     .from('profiles')
     .update({
       status: 'rejected',
@@ -237,7 +264,7 @@ export async function rejectRequest(requestId, userId, adminNote = '') {
 }
 
 export async function suspendBusiness(businessId, userId) {
-  const { error: bizErr } = await supabase
+  const { error: bizErr } = await assertSupabase()
     .from('businesses')
     .update({ status: 'suspended' })
     .eq('id', businessId);
@@ -246,7 +273,7 @@ export async function suspendBusiness(businessId, userId) {
 
   // Suspender a TODOS los miembros del negocio (dueño + cajeros).
   // Antes solo se suspendía al owner y los cajeros seguían entrando.
-  const { error: membersErr } = await supabase
+  const { error: membersErr } = await assertSupabase()
     .from('profiles')
     .update({ status: 'suspended' })
     .eq('business_id', businessId);
@@ -256,7 +283,7 @@ export async function suspendBusiness(businessId, userId) {
   // Compat: si se pasó el userId del dueño, asegurar su suspensión aunque
   // su profile no tenga business_id seteado.
   if (userId) {
-    const { error: profErr } = await supabase
+    const { error: profErr } = await assertSupabase()
       .from('profiles')
       .update({ status: 'suspended' })
       .eq('id', userId);
@@ -266,14 +293,14 @@ export async function suspendBusiness(businessId, userId) {
 }
 
 export async function reactivateBusiness(businessId, userId) {
-  const { error: bizErr } = await supabase
+  const { error: bizErr } = await assertSupabase()
     .from('businesses')
     .update({ status: 'active' })
     .eq('id', businessId);
 
   if (bizErr) throw bizErr;
 
-  const { error: membersErr } = await supabase
+  const { error: membersErr } = await assertSupabase()
     .from('profiles')
     .update({ status: 'active' })
     .eq('business_id', businessId);
@@ -281,7 +308,7 @@ export async function reactivateBusiness(businessId, userId) {
   if (membersErr) console.error('reactivateBusiness: no se pudo reactivar miembros:', membersErr);
 
   if (userId) {
-    const { error: profErr } = await supabase
+    const { error: profErr } = await assertSupabase()
       .from('profiles')
       .update({ status: 'active' })
       .eq('id', userId);
@@ -296,7 +323,7 @@ export async function reactivateBusiness(businessId, userId) {
 export async function deleteBusiness(businessId) {
   if (!businessId) throw new Error('Falta el ID del negocio.');
   try {
-    const { data, error } = await supabase.functions.invoke('delete-business', {
+    const { data, error } = await assertSupabase().functions.invoke('delete-business', {
       body: { businessId },
     });
     if (error) throw error;
@@ -324,7 +351,7 @@ async function deleteBusinessLocal(businessId) {
   // 1. Items de ventas (necesitan los sale_ids primero)
   let saleIds = [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('sales')
       .select('id')
       .eq('business_id', businessId);
@@ -340,7 +367,7 @@ async function deleteBusinessLocal(businessId) {
     for (let i = 0; i < saleIds.length; i += 100) {
       const chunk = saleIds.slice(i, i + 100);
       await tryDelete(`sale_items (${i / 100 + 1})`, async () => {
-        const { error } = await supabase.from('sale_items').delete().in('sale_id', chunk);
+        const { error } = await assertSupabase().from('sale_items').delete().in('sale_id', chunk);
         if (error) throw error;
       });
     }
@@ -360,7 +387,7 @@ async function deleteBusinessLocal(businessId) {
   ];
   for (const table of tables) {
     await tryDelete(table, async () => {
-      const { error } = await supabase.from(table).delete().eq('business_id', businessId);
+      const { error } = await assertSupabase().from(table).delete().eq('business_id', businessId);
       if (error) throw error;
     });
   }
@@ -368,12 +395,12 @@ async function deleteBusinessLocal(businessId) {
   // 3. Perfiles: eliminarlos para liberar a los usuarios (dueño + cajeros).
   // Al no tener profile, AuthContext los manda a Setup como usuario nuevo.
   await tryDelete('profiles', async () => {
-    const { error } = await supabase.from('profiles').delete().eq('business_id', businessId);
+    const { error } = await assertSupabase().from('profiles').delete().eq('business_id', businessId);
     if (error) throw error;
   });
 
   // 4. Finalmente el negocio
-  const { error: bizErr } = await supabase
+  const { error: bizErr } = await assertSupabase()
     .from('businesses')
     .delete()
     .eq('id', businessId);

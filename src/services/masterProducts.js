@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { generateUUID } from './localDb';
 
 function mapMasterProduct(p) {
@@ -19,7 +19,7 @@ export function masterImagePath(masterProductId) {
 }
 
 export async function getMasterProducts() {
-  const { data, error } = await supabase
+  const { data, error } = await assertSupabase()
     .from('master_products')
     .select('*')
     .order('name');
@@ -48,7 +48,7 @@ export async function addMasterProduct(data) {
     updated_at: now,
   };
 
-  const { error } = await supabase.from('master_products').insert(row);
+  const { error } = await assertSupabase().from('master_products').insert(row);
   if (error) throw error;
   return mapMasterProduct(row);
 }
@@ -70,19 +70,19 @@ export async function updateMasterProduct(id, data) {
   };
   if (data.isActive !== undefined) updateData.is_active = data.isActive;
 
-  const { error } = await supabase.from('master_products').update(updateData).eq('id', id);
+  const { error } = await assertSupabase().from('master_products').update(updateData).eq('id', id);
   if (error) throw error;
   return mapMasterProduct({ id, ...updateData });
 }
 
 export async function deleteMasterProduct(id) {
-  const { error } = await supabase.from('master_products').delete().eq('id', id);
+  const { error } = await assertSupabase().from('master_products').delete().eq('id', id);
   if (error) throw error;
 }
 
 // items: [{ id: masterProductId, stock, salePrice, supplierPrice, expiryDate }]
 export async function importCatalogToBusiness(businessId, items) {
-  const { data, error } = await supabase.rpc('importar_productos_catalogo', {
+  const { data, error } = await assertSupabase().rpc('importar_productos_catalogo', {
     p_business_id: businessId,
     p_items: items.map((it) => ({
       master_id: it.id,

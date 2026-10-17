@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
@@ -8,10 +8,10 @@ import { getPurchaseDraft } from '../services/purchaseDraft';
 import PurchaseForm from '../components/PurchaseForm';
 import DataTable from '../components/DataTable';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
+import { AuditPurchasesList } from '../components/AuditPurchasesList';
+import ProductListRow, { RowAddButton } from '../components/ProductListRow';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { AppIcon } from '../components/icons';
-import { UpgradeModal } from '../components/UpgradeScreen';
-import { usePlan } from '../hooks/usePlan';
 import { useBranches } from '../context/BranchContext';
 import { toStockMap } from '../services/branchStock';
 import { useBranchStocks } from '../hooks/useBranchStocks';
@@ -47,16 +47,10 @@ export default function Compras() {
   const [purchaseDraft, setPurchaseDraft] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scanMsg, setScanMsg] = useState('');
-  const { can } = usePlan();
-  const [showUpgrade, setShowUpgrade] = useState(false);
-
   function openScanner() {
-    if (can('scanner') && hasPermission('scanner')) {
-      setScanMsg('');
-      setShowScanner(true);
-    } else {
-      setShowUpgrade(true);
-    }
+    if (!hasPermission('scanner')) return;
+    setScanMsg('');
+    setShowScanner(true);
   }
   const hasTriedRestoreRef = useRef(false);
   // Fase 2: catálogo con stock de la sede operativa
@@ -190,6 +184,15 @@ export default function Compras() {
       const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
       return db - da;
     }), [replenishments, start, end]);
+
+  // Lista móvil sin filtros: todas las compras, recientes primero (como auditoría).
+  const allReplenishmentsSorted = useMemo(() => replenishments
+    .slice()
+    .sort((a, b) => {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      return db - da;
+    }), [replenishments]);
 
   // Última compra por producto: sirve para que el modal "aprenda" cómo se
   // suele comprar cada producto (por unidad o por caja de N) y se abra ya
@@ -381,25 +384,41 @@ export default function Compras() {
 
               <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
                 {filteredProducts.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 p-1 mg-stagger">
+                  <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-3 p-1 mg-stagger">
                     {filteredProducts.map((product) => (
-                      <ProductCatalogCard
-                        key={product.id}
-                        product={product}
-                        priceLabel={`Costo: ${formatBs(product.supplierPrice)}`}
-                        metaLabel={<StockLabel stock={product.stock} minStock={product.minStock} />}
-                        selected={selectedProduct?.id === product.id}
-                        onSelect={() => handleSelectProduct(product)}
-                        actionArea={
-                          <button
-                            type="button"
-                            onClick={() => handleSelectProduct(product)}
-                            className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
-                          >
-                            +
-                          </button>
-                        }
-                      />
+                      <Fragment key={product.id}>
+                        {/* Lista para celular */}
+                        <div className="sm:hidden">
+                          <ProductListRow
+                            product={product}
+                            subtitle={product.unitLabel || 'Unidad'}
+                            priceLabel={`Costo: ${formatBs(product.supplierPrice)}`}
+                            meta={<StockLabel stock={product.stock} minStock={product.minStock} />}
+                            selected={selectedProduct?.id === product.id}
+                            onSelect={() => handleSelectProduct(product)}
+                            actionArea={<RowAddButton onAdd={() => handleSelectProduct(product)} />}
+                          />
+                        </div>
+                        {/* Tarjetas para desktop */}
+                        <div className="hidden sm:block">
+                          <ProductCatalogCard
+                            product={product}
+                            priceLabel={`Costo: ${formatBs(product.supplierPrice)}`}
+                            metaLabel={<StockLabel stock={product.stock} minStock={product.minStock} />}
+                            selected={selectedProduct?.id === product.id}
+                            onSelect={() => handleSelectProduct(product)}
+                            actionArea={
+                              <button
+                                type="button"
+                                onClick={() => handleSelectProduct(product)}
+                                className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
+                              >
+                                +
+                              </button>
+                            }
+                          />
+                        </div>
+                      </Fragment>
                     ))}
                   </div>
                 ) : (
@@ -413,30 +432,44 @@ export default function Compras() {
             </>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
-              <ReportHeader
-                icon="🛍️"
-                title="Reporte de Compras"
-                subtitle="Historial detallado de tus compras y reposiciones de stock."
-                startDate={startDate}
-                endDate={endDate}
-                onStartDateChange={setStartDate}
-                onEndDateChange={setEndDate}
-                onExport={handleExportPurchases}
-                exportDisabled={filteredReplenishments.length === 0}
-              />
+              {/* Filtros y exportar solo en PC; en celular lista minimalista como auditoría */}
+              <div className="hidden lg:block">
+                <ReportHeader
+                  icon="🛍️"
+                  title="Reporte de Compras"
+                  subtitle="Historial detallado de tus compras y reposiciones de stock."
+                  startDate={startDate}
+                  endDate={endDate}
+                  onStartDateChange={setStartDate}
+                  onEndDateChange={setEndDate}
+                  onExport={handleExportPurchases}
+                  exportDisabled={filteredReplenishments.length === 0}
+                />
+              </div>
 
-              <DataTable
-                columns={historyColumns}
-                rows={filteredReplenishments}
-                storageKey="mg-compras-report-columns"
-                getRowKey={(r) => r.id}
-                emptyMessage="No hay compras registradas en el rango de fechas seleccionado."
-                footer={[
-                  { key: 'cantidad', label: 'Total del período', value: filteredReplenishments.reduce((sum, r) => sum + Number(r.quantity || 0), 0) },
-                  { key: 'gastosExtras', value: formatBs(filteredReplenishments.reduce((sum, r) => sum + Number(r.additionalExpenses || 0), 0)) },
-                  { key: 'total', value: formatBs(filteredReplenishments.reduce((sum, r) => sum + Number(r.totalCost || 0), 0)) },
-                ]}
-              />
+              {/* Lista simple en celular, tabla completa en PC */}
+              <div className="lg:hidden">
+                <AuditPurchasesList
+                  rows={allReplenishmentsSorted.map((r) => ({
+                    ...r,
+                    number: `#C${String(replenishmentNumberById[r.id]).padStart(3, '0')}`,
+                  }))}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <DataTable
+                  columns={historyColumns}
+                  rows={filteredReplenishments}
+                  storageKey="mg-compras-report-columns"
+                  getRowKey={(r) => r.id}
+                  emptyMessage="No hay compras registradas en el rango de fechas seleccionado."
+                  footer={[
+                    { key: 'cantidad', label: 'Total del período', value: filteredReplenishments.reduce((sum, r) => sum + Number(r.quantity || 0), 0) },
+                    { key: 'gastosExtras', value: formatBs(filteredReplenishments.reduce((sum, r) => sum + Number(r.additionalExpenses || 0), 0)) },
+                    { key: 'total', value: formatBs(filteredReplenishments.reduce((sum, r) => sum + Number(r.totalCost || 0), 0)) },
+                  ]}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -504,11 +537,6 @@ export default function Compras() {
             />
           </div>
         </div>
-      )}
-
-      {/* PAYWALL escáner */}
-      {showUpgrade && (
-        <UpgradeModal feature="scanner" title="El escáner es Pro" onClose={() => setShowUpgrade(false)} />
       )}
 
       {/* MODAL ESCÁNER */}

@@ -1,6 +1,6 @@
 import { db } from './localDb';
 import { enqueueOperation } from './syncEngine';
-import { supabase } from './supabaseClient';
+import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 
 export const DEFAULT_REPLENISHMENT_CONCEPTS = [
   'Transporte',
@@ -21,7 +21,7 @@ export async function getReplenishmentConcepts(businessId) {
 
   // Fallback to Supabase if online
   try {
-    const { data, error } = await supabase
+    const { data, error } = await assertSupabase()
       .from('business_settings')
       .select('purchase_expense_concepts')
       .eq('business_id', businessId)
