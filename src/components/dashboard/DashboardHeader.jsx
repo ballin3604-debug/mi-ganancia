@@ -1,4 +1,5 @@
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { BranchSelect } from '../BranchSelect';
 
 function SyncBadge() {
   const { online, pendingCount, errorCount } = useSyncStatus();
@@ -31,26 +32,16 @@ function SyncBadge() {
 
 export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, branches = [], homeBranch = 'all', onBranchChange }) {
   const userFirstName = user?.displayName?.split(' ')[0] || 'Vendedor';
-  const showBranch = branches.length > 1;
 
   return (
     <div className="px-1 space-y-2">
-      {showBranch && (
-        <label className="flex items-center gap-1.5 text-xs leading-none">
-          <span className="font-bold text-[var(--mg-text-muted)] shrink-0">Sucursal:</span>
-          <select
-            value={homeBranch}
-            onChange={(e) => onBranchChange && onBranchChange(e.target.value)}
-            className="bg-transparent font-black text-[var(--mg-text-primary)] focus:outline-none cursor-pointer min-w-0 truncate"
-            aria-label="Elegir sucursal"
-          >
-            <option value="all">Todas (Consolidado)</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        </label>
-      )}
+      <BranchSelect
+        branches={branches}
+        value={homeBranch}
+        onChange={onBranchChange}
+        label="Sucursal"
+        allLabel="Todas (Consolidado)"
+      />
 
       {/* Saludo + fecha + QR en una sola fila compacta */}
       <div className="flex items-center gap-2.5 min-w-0">

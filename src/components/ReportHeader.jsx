@@ -5,18 +5,22 @@ export default function ReportHeader({
   icon, title, subtitle,
   startDate, endDate, onStartDateChange, onEndDateChange,
   onExport, exportLabel = 'Exportar PDF', exportDisabled = false,
+  branchSelector = null,
 }) {
   return (
     <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-3 sm:p-5 shadow-sm mb-4 w-full min-w-0 overflow-hidden">
-      {/* Título compacto */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        {icon && <span className="text-2xl sm:text-3xl shrink-0">{icon}</span>}
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-2xl font-black text-[#1670C2] tracking-tight leading-tight truncate">{title}</h1>
-          {subtitle && (
-            <p className="text-[var(--mg-text-secondary)] text-[11px] sm:text-sm font-medium mt-0.5 leading-snug line-clamp-2">{subtitle}</p>
-          )}
+      {/* Título + selector de sede al centro */}
+      <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {icon && <span className="text-2xl sm:text-3xl shrink-0">{icon}</span>}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-2xl font-black text-[#1670C2] tracking-tight leading-tight truncate">{title}</h1>
+            {subtitle && (
+              <p className="text-[var(--mg-text-secondary)] text-[11px] sm:text-sm font-medium mt-0.5 leading-snug line-clamp-2">{subtitle}</p>
+            )}
+          </div>
         </div>
+        {branchSelector}
       </div>
 
       {/* Controles: minimalista en móvil, expandido en PC */}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { AppIcon } from '../icons';
+import { BranchSelect } from '../BranchSelect';
 
 function FunnelIcon() {
   return (
@@ -35,12 +36,15 @@ export function InventoryHeader({
   onToggleFilters,
   activeFilterCount = 0,
   onClearFilters,
+  branches = [],
+  invBranch = 'all',
+  onBranchChange,
 }) {
   return (
     <div className="space-y-4">
       {/* Top Header Bar: Title & Primary Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+        <div className="shrink-0">
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
               Catálogo de Inventario
@@ -54,8 +58,20 @@ export function InventoryHeader({
           </p>
         </div>
 
+        {/* Selector de sede: solo cambia la vista del stock (no es filtro) */}
+        {branches.length > 1 && onBranchChange && (
+          <div className="sm:flex-1 sm:px-4">
+            <BranchSelect
+              branches={branches}
+              value={invBranch}
+              onChange={onBranchChange}
+              allLabel="Todo el stock"
+            />
+          </div>
+        )}
+
         {/* Buttons Row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Gestor de Categorías */}
           <motion.button
             whileHover={{ scale: 1.02 }}

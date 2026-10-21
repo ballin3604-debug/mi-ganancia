@@ -141,14 +141,12 @@ export default function Inventory() {
     (filterCategory !== 'Todas' ? 1 : 0) +
     (filterExpiry !== 'todos' ? 1 : 0) +
     (filterRecent ? 1 : 0) +
-    (filterLowStock ? 1 : 0) +
-    (invBranch !== 'all' ? 1 : 0);
+    (filterLowStock ? 1 : 0);
   function clearAllFilters() {
     setFilterCategory('Todas');
     setFilterExpiry('todos');
     setFilterRecent(false);
     setFilterLowStock(false);
-    setInvBranch('all');
   }
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const stockRows = useBranchStocks(businessId, mainBranchId);
@@ -699,28 +697,12 @@ export default function Inventory() {
         onOpenCatManager={() => setShowCatManager(true)}
         onOpenScanner={() => openScanner('search')}
         expiryCounts={expiryCounts}
+        branches={branches}
+        invBranch={invBranch}
+        onBranchChange={setInvBranch}
       />
 
-      {/* Vista por sede (solo si hay varias): todo lo de abajo muestra ese stock.
-          En celular va dentro del panel colapsable de filtros. */}
-      {branches.length > 1 && (
-        <div className={`${showFilters ? 'flex' : 'hidden'} md:flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mt-2`}>
-          <button
-            key="all" type="button" onClick={() => setInvBranch('all')}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${invBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
-          >
-            🏬 Todo el stock
-          </button>
-          {branches.map((b) => (
-            <button
-              key={b.id} type="button" onClick={() => setInvBranch(b.id)}
-              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${invBranch === b.id ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
-            >
-              {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Acceso al reporte de inventario (valorización y kardex) */}
 
       {/* Acceso al reporte de inventario (valorización y kardex) */}
       <button

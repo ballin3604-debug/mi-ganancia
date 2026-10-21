@@ -8,6 +8,7 @@ import { getBusinessSettings } from '../services/businessSettings';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DataTable from '../components/DataTable';
 import ReportHeader from '../components/ReportHeader';
+import { BranchSelect } from '../components/BranchSelect';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
 import { AppIcon } from '../components/icons';
@@ -735,26 +736,16 @@ export default function MatrixReport() {
                 onExport={handleExport}
                 exportLabel="Exportar PDF"
                 exportDisabled={!currentReportHasData}
+                branchSelector={
+                    <BranchSelect
+                        branches={branches}
+                        value={reportBranch}
+                        onChange={setReportBranch}
+                        label="Sede"
+                        allLabel="Todas"
+                    />
+                }
             />
-
-            {branches.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide mt-4">
-                    <button
-                        key="all" type="button" onClick={() => setReportBranch('all')}
-                        className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
-                    >
-                        🏬 Todas
-                    </button>
-                    {branches.map((b) => (
-                        <button
-                            key={b.id} type="button" onClick={() => setReportBranch(b.id)}
-                            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === b.id ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
-                        >
-                            {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
-                        </button>
-                    ))}
-                </div>
-            )}
 
             <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-3 sm:p-6 lg:p-8 shadow-sm">
                 {reportType === 'expenses' ? (

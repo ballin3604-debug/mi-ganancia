@@ -24,6 +24,7 @@ import PresentationPicker from '../components/PresentationPicker';
 import { useBranches } from '../context/BranchContext';
 import { getSellOptions, defaultSellOption, presShortLabel } from '../utils/presentations';
 import { AppIcon } from '../components/icons';
+import { BranchSelect } from '../components/BranchSelect';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -555,22 +556,13 @@ export default function Sales() {
     if (branches.length <= 1) return null;
     const pick = (id) => { setReportBranch(id); setReportCashier('Todos'); };
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <button
-          key="all" type="button" onClick={() => pick('all')}
-          className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === 'all' ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}
-        >
-          🏬 Todas
-        </button>
-        {branches.map((b) => (
-          <button
-            key={b.id} type="button" onClick={() => pick(b.id)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${reportBranch === b.id ? 'bg-[var(--mg-accent)] text-white shadow-sm' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}
-          >
-            {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
-          </button>
-        ))}
-      </div>
+      <BranchSelect
+        branches={branches}
+        value={reportBranch}
+        onChange={pick}
+        label="Sede"
+        allLabel="Todas"
+      />
     );
   }
 
@@ -1587,9 +1579,9 @@ export default function Sales() {
                 onEndDateChange={setReportEndDate}
                 onExport={canExport ? handleExportSales : undefined}
                 exportDisabled={salesReportRows.length === 0}
+                branchSelector={renderBranchPills()}
               />
 
-              {renderBranchPills()}
               {renderDetailTable(salesReportRows, 'No se encontraron ventas en el rango de fechas seleccionado.', 'Total del período')}
             </div>
           ) : activeTab === 'cajeros' ? (
@@ -1604,10 +1596,10 @@ export default function Sales() {
                 onEndDateChange={setReportEndDate}
                 onExport={handleExportSales}
                 exportDisabled={cashierRows.length === 0}
+                branchSelector={renderBranchPills()}
               />
 
               {/* ── Por cajero ── */}
-              {renderBranchPills()}
               <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-4 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h3 className="font-black text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5"><AppIcon name="equipo" size={15} /> Ventas por cajero</h3>
