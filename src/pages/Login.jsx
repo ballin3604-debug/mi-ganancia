@@ -124,28 +124,30 @@ export default function Login() {
       <div className="w-full max-w-[420px] relative mg-slide-up">
         {/* Logo + título */}
         <div className="text-center mb-5">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 overflow-hidden"
-            style={{
-              background: imgError ? 'linear-gradient(135deg, var(--mg-accent) 0%, var(--mg-accent-deep) 100%)' : '#fff',
-              boxShadow: 'var(--mg-shadow-lg)',
-              border: '1px solid var(--mg-border)',
-            }}
-          >
-            {!imgError ? (
-              <img
-                src="/logo-icon.png"
-                alt="Logo Mi Ganancia"
-                onError={() => setImgError(true)}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <span className="text-2xl font-extrabold text-white">M</span>
-            )}
-          </div>
-          <h1 className="text-[26px] font-extrabold tracking-tight text-[var(--mg-text-primary)]">
-            Mi Ganancia
-          </h1>
+          {!imgError ? (
+            <img
+              src="/logo-horizontal.png"
+              alt="Mi Ganancia"
+              onError={() => setImgError(true)}
+              className="h-14 sm:h-16 mx-auto mb-2 object-contain"
+            />
+          ) : (
+            <div className="mb-2">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, var(--mg-accent) 0%, var(--mg-accent-deep) 100%)',
+                  boxShadow: 'var(--mg-shadow-lg)',
+                  border: '1px solid var(--mg-border)',
+                }}
+              >
+                <span className="text-2xl font-extrabold text-white">M</span>
+              </div>
+              <h1 className="text-[26px] font-extrabold tracking-tight text-[var(--mg-text-primary)]">
+                Mi Ganancia
+              </h1>
+            </div>
+          )}
           <p className="text-sm text-[var(--mg-text-muted)] mt-0.5">
             {isReset ? 'Recupera tu acceso' : isRegister ? 'Crea tu cuenta gratis' : 'Tu negocio, simple'}
           </p>
