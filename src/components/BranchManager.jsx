@@ -8,6 +8,7 @@ import {
 import { transferStock, getBranchStocks, getTransfers, toStockMap, subscribeBranchStock } from '../services/branchStock';
 import { getProducts, subscribeToProducts } from '../services/products';
 import { AppIcon } from './icons';
+import MetricCard from './ui/MetricCard';
 
 function BranchForm({ onDone }) {
   const { businessId } = useAuth();
@@ -181,7 +182,7 @@ function BranchTransferModal({ businessId, userId, branches, products, stockMap,
               placeholder="Ej: 12" className="mg-input text-xs font-bold"
             />
           </div>
-          {error && <p className="text-xs font-bold text-[var(--mg-danger)] bg-[var(--mg-danger-bg)] border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+          {error && <p className="rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 py-2 text-xs font-bold text-[var(--mg-danger)]">{error}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="flex-1 mg-btn-tertiary !py-2.5 text-sm">Cancelar</button>
             <button type="submit" disabled={saving} className="flex-1 mg-btn-primary !py-2.5 text-sm">
@@ -316,9 +317,11 @@ function BranchManagerInner() {
 
   if (loadError === 'missing-table') {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-        <p className="text-2xl mb-1">🗄️</p>
-        <p className="text-xs font-bold text-amber-800">
+      <div className="rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-4 text-center">
+        <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-bg-surface)]">
+          <AppIcon name="almacen" size={20} />
+        </span>
+        <p className="text-xs font-bold text-[var(--mg-gold-text)]">
           Falta aplicar el SQL de sucursales en Supabase (scripts/migraciones-saas.sql).
         </p>
       </div>
@@ -335,78 +338,61 @@ function BranchManagerInner() {
 
   return (
     <div className="space-y-4">
-      {/* Título + acciones */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-black text-[var(--mg-text-primary)] tracking-tight">Sucursales y Almacenes</h1>
-          <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">Sedes, puntos de venta y bodegas donde opera y almacena inventario tu negocio.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mg-text-muted)]">Gestión de sedes</p>
+        <div className="flex items-center gap-2 sm:shrink-0">
           <button
             type="button"
             onClick={() => { setShowHistory((v) => { if (!v) loadHistory(); return !v; }); }}
-            className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 ${showHistory ? 'bg-slate-200 border-slate-300' : 'bg-[var(--mg-bg-surface)] border-[var(--mg-border)]'}`}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+              showHistory
+                ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)]'
+            }`}
           >
-            <AppIcon name="historial" size={14} /> Historial de Traspasos{transfers.length > 0 ? ` (${transfers.length})` : ''}
+            <AppIcon name="historial" size={14} /> Historial{transfers.length > 0 ? ` (${transfers.length})` : ''}
           </button>
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 text-xs font-black text-white bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] rounded-xl transition-all flex items-center gap-1.5"
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--mg-accent)] px-4 py-2 text-xs font-black text-white transition-all hover:bg-[var(--mg-accent-hover)]"
           >
-            <AppIcon name="mas" size={14} color="#fff" /> Añadir Sede o Bodega
+            <AppIcon name="mas" size={14} color="#fff" /> Añadir sede
           </button>
         </div>
       </div>
 
-      {/* Aviso de sede operativa */}
-      <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg-soft)] p-4">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div className="flex items-start gap-3">
-            <span className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]">
               <AppIcon name="tienda" size={18} />
             </span>
             <div>
-              <p className="text-sm font-bold text-[var(--mg-text-primary)]">
-                Operando actualmente en: {activeBranch?.name || '—'} <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md ml-1">Punto de Venta Activo</span>
+              <p className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-[var(--mg-text-primary)]">
+                Operando en: {activeBranch?.name || '—'}
+                <span className="rounded-md bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-accent)]">Punto de venta activo</span>
               </p>
-              <p className="text-xs text-[var(--mg-text-secondary)] mt-1 leading-relaxed">
-                Las ventas se registran automáticamente en esta sede. Los <strong>almacenes</strong> abastecen a tus sucursales con traspasos.
+              <p className="mt-1 text-xs leading-relaxed text-[var(--mg-text-secondary)]">
+                Las ventas se registran en esta sede. Los <strong>almacenes</strong> abastecen a tus sucursales con traspasos.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => { setTransferFrom(null); setShowTransfer(true); }}
-            className="px-3 py-2 text-xs font-bold text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-bg-surface)] px-3 py-2 text-xs font-bold text-[var(--mg-accent)] transition-all hover:bg-[var(--mg-accent-bg)]"
           >
-            <AppIcon name="traspaso" size={14} /> Traspasar stock entre sedes
+            <AppIcon name="traspaso" size={14} /> Traspasar stock
           </button>
         </div>
       </div>
 
-      {/* Métricas */}
-      <div className="mg-grid-auto-sm">
-        <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border border-[var(--mg-border)] shadow-xs">
-          <p className="text-[11px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider">Total de Sedes</p>
-          <p className="text-2xl font-black text-[var(--mg-text-primary)] tabular-nums mt-1">{branches.length} <span className="text-xs font-bold text-[var(--mg-text-muted)]">habilitadas</span></p>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mt-1">{sucCount} Puntos de Venta · {almCount} Almacenes</p>
-        </div>
-        <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border border-[var(--mg-border)] shadow-xs">
-          <p className="text-[11px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider">Sucursales (POS)</p>
-          <p className="text-2xl font-black text-[var(--mg-text-primary)] tabular-nums mt-1">{sucCount} <span className="text-xs font-bold text-blue-600">atención al público</span></p>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mt-1">Cajas y tickets por sede</p>
-        </div>
-        <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border border-[var(--mg-border)] shadow-xs">
-          <p className="text-[11px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider">Almacenes y Bodegas</p>
-          <p className="text-2xl font-black text-[var(--mg-text-primary)] tabular-nums mt-1">{almCount} <span className="text-xs font-bold text-amber-600">custodia y logística</span></p>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mt-1">Recepción de compras y despacho</p>
-        </div>
-        <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border border-[var(--mg-border)] shadow-xs">
-          <p className="text-[11px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider">Stock Consolidado</p>
-          <p className="text-2xl font-black text-[var(--mg-text-primary)] tabular-nums mt-1">{consolidated.toLocaleString('es-BO')} <span className="text-xs font-bold text-[var(--mg-text-muted)]">unidades</span></p>
-          <p className="text-[11px] text-emerald-700 font-bold mt-1 truncate">Operando en {activeBranch?.name || '—'}</p>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Total de sedes" value={branches.length} hint={`${sucCount} POS · ${almCount} almacenes`} icon="sucursales" tone="brand" />
+        <MetricCard label="Sucursales (POS)" value={sucCount} hint="Cajas y tickets por sede" icon="tienda" tone="action" />
+        <MetricCard label="Almacenes y bodegas" value={almCount} hint="Recepción y despacho" icon="almacen" tone="warning" />
+        <MetricCard label="Stock consolidado" value={consolidated.toLocaleString('es-BO')} hint={`Operando en ${activeBranch?.name || '—'}`} icon="paquete" tone="success" />
       </div>
 
       {/* Historial de traspasos */}

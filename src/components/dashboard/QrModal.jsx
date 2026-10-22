@@ -19,23 +19,23 @@ export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
       onClick={onClose}
     >
       <div
-        className="bg-[var(--mg-bg-surface)] rounded-[28px] p-6 w-full max-w-sm text-center shadow-2xl relative mg-modal-in border border-[var(--mg-border)]"
+        className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-sm text-center shadow-[var(--mg-shadow-lg)] relative mg-modal-in border border-[var(--mg-border)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           type="button"
           aria-label="Cerrar modal QR"
-          className="absolute top-4 right-4 w-9 h-9 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-full text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)] font-bold text-lg flex items-center justify-center min-h-[44px] min-w-[44px]"
+          className="absolute top-4 right-4 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-full text-[var(--mg-text-muted)] hover:text-[var(--mg-brand)] hover:border-[var(--mg-brand-border)] flex items-center justify-center min-h-[44px] min-w-[44px] transition-colors"
         >
-          ×
+          <AppIcon name="cerrar" size={18} />
         </button>
 
         <h3 className="text-lg font-black text-[var(--mg-text-primary)] mb-4 flex items-center gap-2"><AppIcon name="qr" size={20} /> QR de Cobro</h3>
 
         {settings?.qrData ? (
           <div className="space-y-4">
-            <div className="p-3 bg-white rounded-2xl border-2 border-[var(--mg-accent-border)] inline-block shadow-sm">
+            <div className="p-3 bg-[var(--mg-bg-surface)] rounded-2xl border-2 border-[var(--mg-accent-border)] inline-block shadow-[var(--mg-shadow-sm)]">
               <img
                 src={settings.qrData}
                 alt="QR de Cobro para escanear"
@@ -48,7 +48,7 @@ export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
           </div>
         ) : (
           <div className="py-6 space-y-4">
-            <span className="text-5xl block">⚠️</span>
+            <span className="flex justify-center"><AppIcon name="recordatorio" size={40} /></span>
             <p className="text-xs font-semibold text-[var(--mg-text-secondary)] px-4 leading-relaxed">
               Aún no has configurado tu código QR de cobro. Puedes subirlo en la sección de Ajustes.
             </p>
@@ -58,7 +58,7 @@ export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
                 onNavigateSettings();
               }}
               type="button"
-              className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold py-3 px-6 rounded-xl text-xs active:scale-95 transition-all shadow-md min-h-[44px]"
+              className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold py-3 px-6 rounded-xl text-xs active:scale-95 transition-all shadow-[var(--mg-shadow-sm)] min-h-[44px]"
             >
               Ir a Ajustes
             </button>

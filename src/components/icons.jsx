@@ -50,15 +50,20 @@ import {
   History,
   ArrowRightLeft,
   CheckCircle2,
+  CreditCard,
+  Ban,
+  UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
+import { palette } from '../design/tokens.js';
 
-// Azul banca, verde éxito, ámbar alerta, rojo peligro, morado QR
+// Petróleo marca, esmeralda éxito, ámbar alerta, rojo peligro, petróleo QR
 export const BRAND_COLORS = {
-  primary: '#1670C2',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  qr: '#8b5cf6',
+  primary: palette.brand[700],
+  success: palette.emerald[600],
+  warning: palette.amber[600],
+  danger: palette.red[600],
+  qr: palette.brand[500],
 };
 
 const ICONS = {
@@ -107,6 +112,10 @@ const ICONS = {
   almacen: { Component: Warehouse, color: BRAND_COLORS.warning },
   historial: { Component: History, color: BRAND_COLORS.primary },
   traspaso: { Component: ArrowRightLeft, color: BRAND_COLORS.primary },
+  tarjeta: { Component: CreditCard, color: BRAND_COLORS.primary },
+  suspender: { Component: Ban, color: BRAND_COLORS.warning },
+  reactivar: { Component: UserCheck, color: BRAND_COLORS.success },
+  permisos: { Component: ShieldCheck, color: BRAND_COLORS.primary },
   mas: { Component: Plus, color: BRAND_COLORS.primary },
   ok: { Component: CheckCircle2, color: BRAND_COLORS.success },
 };

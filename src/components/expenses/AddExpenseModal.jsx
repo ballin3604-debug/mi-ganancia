@@ -2,22 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXPENSE_CATEGORIES, addExpense, updateExpense, EXPENSE_PAYMENT_LABELS } from '../../services/expenses';
 import { clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';
+import { AppIcon } from '../icons';
 
 const CATEGORY_ICONS = {
-  'Mercadería': '📦',
-  'Servicios básicos': '💡',
-  'Alquiler': '🏠',
-  'Transporte': '🚚',
-  'Empleados': '👤',
-  'Limpieza': '🧹',
-  'Otros': '📝',
+  'Mercadería': 'paquete',
+  'Servicios básicos': 'reloj',
+  'Alquiler': 'tienda',
+  'Transporte': 'traspaso',
+  'Empleados': 'equipo',
+  'Limpieza': 'check',
+  'Otros': 'etiqueta',
 };
 
 const PAYMENT_OPTIONS = [
-  { id: 'efectivo', label: 'Efectivo', icon: '💵' },
-  { id: 'qr', label: 'QR Simple', icon: '📲' },
-  { id: 'transferencia', label: 'Transfer.', icon: '🏦' },
-  { id: 'tarjeta', label: 'Tarjeta', icon: '💳' },
+  { id: 'efectivo', label: 'Efectivo', icon: 'cash' },
+  { id: 'qr', label: 'QR Simple', icon: 'qr' },
+  { id: 'transferencia', label: 'Transfer.', icon: 'traspaso' },
+  { id: 'tarjeta', label: 'Tarjeta', icon: 'tarjeta' },
 ];
 
 export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingExpense = null }) {
@@ -99,28 +100,31 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="bg-[var(--mg-bg-surface)] rounded-t-[28px] sm:rounded-[28px] w-full max-w-lg border border-[var(--mg-border)] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+          className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-2xl sm:rounded-3xl"
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expense-form-title"
         >
-          {/* Header */}
-          <div className="p-5 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)] shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] flex items-center justify-center text-xl shrink-0 font-bold">
-                💸
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] p-4 sm:p-5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)]">
+                <AppIcon name="gastos" size={19} />
               </div>
-              <div>
-                <h3 className="text-lg font-black text-[var(--mg-text-primary)]">
-                  {isEditing ? 'Editar Egreso' : 'Registrar Egreso'}
+              <div className="min-w-0">
+                <h3 id="expense-form-title" className="truncate text-base font-black text-[var(--mg-text-primary)] sm:text-lg">
+                  {isEditing ? 'Editar egreso' : 'Registrar egreso'}
                 </h3>
-                <p className="text-xs text-[var(--mg-text-muted)] font-medium">Ingresa los detalles del gasto o salida de dinero</p>
+                <p className="text-[11px] font-medium text-[var(--mg-text-muted)] sm:text-xs">Detalle del gasto o salida de dinero</p>
               </div>
             </div>
             <button
               onClick={onClose}
               type="button"
-              className="w-9 h-9 bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-section)] border border-[var(--mg-border)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] text-lg font-bold transition-all active:scale-95"
+              aria-label="Cerrar formulario de egreso"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
             >
-              ×
+              <AppIcon name="cerrar" size={17} />
             </button>
           </div>
 
@@ -135,26 +139,28 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 <button
                   type="button"
                   onClick={() => setExpenseType('daily')}
-                  className={`py-3 px-3 rounded-xl text-xs font-extrabold border-2 transition-all active:scale-95 min-h-[46px] flex items-center justify-center gap-2 ${
+                  aria-pressed={expenseType === 'daily'}
+                  className={`flex min-h-[50px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-extrabold transition-all active:scale-95 ${
                     expenseType === 'daily'
-                      ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-xs'
+                      ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] shadow-[var(--mg-shadow-sm)]'
                       : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                   }`}
                 >
-                  <span className="text-base">☀️</span>
-                  <span className="leading-tight text-left">Diario<br /><span className="font-semibold text-[10px] opacity-70">Operativo / Caja chica</span></span>
+                  <AppIcon name="cash" size={17} />
+                  <span className="text-left leading-tight">Diario<br /><span className="text-[10px] font-semibold opacity-70">Operativo / Caja chica</span></span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setExpenseType('fixed')}
-                  className={`py-3 px-3 rounded-xl text-xs font-extrabold border-2 transition-all active:scale-95 min-h-[46px] flex items-center justify-center gap-2 ${
+                  aria-pressed={expenseType === 'fixed'}
+                  className={`flex min-h-[50px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-extrabold transition-all active:scale-95 ${
                     expenseType === 'fixed'
-                      ? 'border-indigo-400 bg-indigo-50 text-indigo-900 shadow-xs'
+                      ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-[var(--mg-shadow-sm)]'
                       : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                   }`}
                 >
-                  <span className="text-base">📅</span>
-                  <span className="leading-tight text-left">Fijo<br /><span className="font-semibold text-[10px] opacity-70">Alquiler / Servicios / Mes</span></span>
+                  <AppIcon name="reloj" size={17} />
+                  <span className="text-left leading-tight">Fijo<br /><span className="text-[10px] font-semibold opacity-70">Alquiler / Servicios / Mes</span></span>
                 </button>
               </div>
             </div>
@@ -193,7 +199,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Ej: Pago de bolsas para mostrador, pago de luz..."
-                className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--mg-accent)] text-sm text-[var(--mg-text-primary)] font-semibold placeholder:text-[var(--mg-text-faint)] transition-all min-h-[46px]"
+                className="mg-input min-h-[46px] text-sm font-semibold"
                 maxLength={100}
                 required
               />
@@ -205,33 +211,25 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 Categoría
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {EXPENSE_CATEGORIES.filter((c) => c !== 'Otros').map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`p-2 rounded-xl text-xs font-extrabold border-2 flex items-center gap-1.5 transition-all active:scale-95 min-h-[42px] ${
-                      category === cat
-                        ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-xs'
-                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
-                    }`}
-                  >
-                    <span className="text-base">{CATEGORY_ICONS[cat] || '📝'}</span>
-                    <span className="truncate">{cat}</span>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCategory('Otros')}
-                  className={`p-2 rounded-xl text-xs font-extrabold border-2 flex items-center gap-1.5 transition-all active:scale-95 min-h-[42px] ${
-                    category === 'Otros'
-                      ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-xs'
-                      : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
-                  }`}
-                >
-                  <span className="text-base">📝</span>
-                  <span className="truncate">Otros</span>
-                </button>
+                {[...EXPENSE_CATEGORIES.filter((c) => c !== 'Otros'), 'Otros'].map((cat) => {
+                  const active = category === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      aria-pressed={active}
+                      className={`flex min-h-[42px] items-center gap-1.5 rounded-xl border p-2 text-xs font-extrabold transition-all active:scale-95 ${
+                        active
+                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-[var(--mg-shadow-sm)]'
+                          : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
+                      }`}
+                    >
+                      <AppIcon name={CATEGORY_ICONS[cat] || 'etiqueta'} size={15} />
+                      <span className="truncate">{cat}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -246,7 +244,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
                   placeholder="Ej: Distribuidora Oriente, CRE..."
-                  className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--mg-accent)] text-xs text-[var(--mg-text-primary)] font-medium placeholder:text-[var(--mg-text-faint)] transition-all min-h-[44px]"
+                  className="mg-input min-h-[44px] text-xs font-medium"
                   maxLength={80}
                 />
               </div>
@@ -259,7 +257,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="Ej: FAC-0492 o Recibo N° 12"
-                  className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--mg-accent)] text-xs text-[var(--mg-text-primary)] font-mono placeholder:text-[var(--mg-text-faint)] placeholder:font-sans transition-all min-h-[44px]"
+                  className="mg-input min-h-[44px] font-mono text-xs placeholder:font-sans"
                   maxLength={40}
                 />
               </div>
@@ -271,28 +269,26 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 Método de Pago
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {PAYMENT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setPaymentMethod(opt.id)}
-                    title={EXPENSE_PAYMENT_LABELS[opt.id]}
-                    className={`p-2 rounded-xl border-2 flex items-center justify-center gap-1.5 text-[11px] font-extrabold transition-all active:scale-95 min-h-[42px] ${
-                      paymentMethod === opt.id
-                        ? opt.id === 'efectivo'
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-                          : opt.id === 'qr'
-                            ? 'border-blue-500 bg-blue-50 text-blue-800'
-                            : opt.id === 'transferencia'
-                              ? 'border-purple-500 bg-purple-50 text-purple-800'
-                              : 'border-slate-600 bg-slate-100 text-slate-900'
-                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
-                    }`}
-                  >
-                    <span className="text-sm">{opt.icon}</span>
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
+                {PAYMENT_OPTIONS.map((opt) => {
+                  const active = paymentMethod === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(opt.id)}
+                      title={EXPENSE_PAYMENT_LABELS[opt.id]}
+                      aria-pressed={active}
+                      className={`flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border p-2 text-[11px] font-extrabold transition-all active:scale-95 ${
+                        active
+                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                          : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                      }`}
+                    >
+                      <AppIcon name={opt.icon} size={15} />
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -306,13 +302,14 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notas opcionales sobre el pago..."
-                className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--mg-accent)] text-xs text-[var(--mg-text-primary)] font-medium placeholder:text-[var(--mg-text-faint)] transition-all min-h-[44px]"
+                className="mg-input min-h-[44px] text-xs font-medium"
                 maxLength={200}
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-[var(--mg-danger-bg)] border border-red-200 rounded-xl text-[var(--mg-danger)] text-xs font-bold text-center">
+              <div className="flex items-start gap-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-3 text-xs font-bold text-[var(--mg-danger)]">
+                <AppIcon name="cancelar" size={15} className="mt-0.5" />
                 {error}
               </div>
             )}

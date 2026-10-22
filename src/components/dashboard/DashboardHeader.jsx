@@ -5,8 +5,8 @@ function SyncBadge() {
   const { online, pendingCount, errorCount } = useSyncStatus();
 
   let label = 'Sincronizado';
-  let styles = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  let dot = 'bg-emerald-500 animate-pulse';
+  let styles = 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]';
+  let dot = 'bg-[var(--mg-success)] animate-pulse';
 
   if (!online) {
     label = 'Sin conexión';
@@ -14,7 +14,7 @@ function SyncBadge() {
     dot = 'bg-[var(--mg-text-faint)]';
   } else if (errorCount > 0) {
     label = 'Error al sincronizar';
-    styles = 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-red-200';
+    styles = 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]';
     dot = 'bg-[var(--mg-danger)]';
   } else if (pendingCount > 0) {
     label = `Sincronizando (${pendingCount})`;
@@ -34,7 +34,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
   const userFirstName = user?.displayName?.split(' ')[0] || 'Vendedor';
 
   return (
-    <div className="px-1 space-y-2">
+    <div className="space-y-3">
       <BranchSelect
         branches={branches}
         value={homeBranch}
@@ -43,47 +43,52 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
         allLabel="Todas (Consolidado)"
       />
 
-      {/* Saludo + fecha + QR en una sola fila compacta */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--mg-accent)] to-sky-500 text-white flex items-center justify-center font-black text-base shrink-0 overflow-hidden">
-          {user?.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={userFirstName}
-              className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-          ) : (
-            <span>{userFirstName.charAt(0)}</span>
+      <div className="relative overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 sm:p-5 shadow-[var(--mg-shadow-sm)]">
+        <div className="relative flex items-start gap-3 sm:gap-4">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-lg shrink-0 overflow-hidden border border-[var(--mg-brand-border)]">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={userFirstName}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : (
+              <span>{userFirstName.charAt(0)}</span>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)] truncate">
+              {today}
+            </p>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-[var(--mg-brand)] tracking-tight truncate">
+                Hola, {userFirstName}
+              </h1>
+              <SyncBadge />
+            </div>
+            <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-secondary)] truncate">
+              Así va tu negocio hoy
+            </p>
+          </div>
+
+          {/* QR de cobro: icono compacto en móvil; texto en pantallas grandes. */}
+          {settings?.qrData && (
+            <button
+              onClick={onShowQr}
+              type="button"
+              aria-label="Ver código QR de cobro"
+              className="shrink-0 inline-flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-10 sm:px-3 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-accent-bg)] text-[var(--mg-text-secondary)] hover:text-[var(--mg-accent)] font-bold text-xs rounded-xl border border-[var(--mg-border)] hover:border-[var(--mg-accent-border)] active:scale-95 transition-all"
+              title="Ver QR de cobro"
+            >
+              <svg className="w-4 h-4 text-[var(--mg-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              <span className="hidden sm:inline">Cobrar QR</span>
+            </button>
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-base sm:text-lg font-black text-[var(--mg-text-primary)] tracking-tight truncate">
-              ¡Hola, {userFirstName}!
-            </h1>
-            <SyncBadge />
-          </div>
-          <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold capitalize truncate">
-            {today}
-          </p>
-        </div>
-
-        {/* QR de cobro: icono compacto a la derecha; el texto aparece en pantallas grandes. */}
-        {settings?.qrData && (
-          <button
-            onClick={onShowQr}
-            type="button"
-            aria-label="Ver código QR de cobro"
-            className="shrink-0 px-2.5 py-2 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] text-[var(--mg-text-secondary)] font-bold text-xs rounded-xl border border-[var(--mg-border)] flex items-center gap-2 active:scale-95 transition-all"
-            title="Ver QR de cobro"
-          >
-            <svg className="w-4 h-4 text-[var(--mg-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-            </svg>
-            <span className="hidden sm:inline">Cobrar QR</span>
-          </button>
-        )}
       </div>
     </div>
   );

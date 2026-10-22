@@ -107,7 +107,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                   >
                     Seleccionar todo
                   </button>
-                  <span className="text-gray-300 text-[11px]">|</span>
+                  <span className="text-[var(--mg-text-faint)] text-[11px]">|</span>
                   <button
                     type="button"
                     onClick={() => setVisibleKeys([columns[0].key])}
@@ -140,7 +140,8 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
-            className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-2.5 py-2 text-xs font-bold text-[var(--mg-text-secondary)] focus:outline-none cursor-pointer"
+            aria-label="Filas por página"
+            className="cursor-pointer rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2.5 py-2 text-xs font-bold text-[var(--mg-text-secondary)] focus:outline-none"
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -150,7 +151,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
       </div>
 
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
+      <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-[var(--mg-border)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-[var(--mg-bg-elevated)]">
         <table className="w-full text-sm border-collapse bg-[var(--mg-bg-surface)]">
           <thead>
             <tr>
@@ -158,9 +159,9 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c)}
-                  className={`bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
+                  className={`bg-[var(--mg-bg-section)] text-[var(--mg-brand)] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
                     c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
-                  } ${c.width || ''} ${c.sortable ? 'cursor-pointer hover:bg-blue-100 transition-colors' : ''}`}
+                  } ${c.width || ''} ${c.sortable ? 'cursor-pointer hover:bg-[var(--mg-brand-bg)] transition-colors' : ''}`}
                 >
                   <span className={`inline-flex items-center gap-1 ${c.align === 'right' ? 'flex-row-reverse' : ''}`}>
                     {c.label}
@@ -176,7 +177,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
           </thead>
           <tbody>
             {pageRows.map((row, i) => (
-              <tr key={getRowKey ? getRowKey(row) : i} className="hover:bg-blue-50/20 transition-colors even:bg-slate-50/60">
+              <tr key={getRowKey ? getRowKey(row) : i} className="hover:bg-[var(--mg-accent-bg-soft)] transition-colors even:bg-[var(--mg-bg-elevated)]">
                 {visibleColumns.map((c) => (
                   <td
                     key={c.key}
@@ -191,7 +192,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
             ))}
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={visibleColumns.length || 1} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
+                <td colSpan={visibleColumns.length || 1} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-[var(--mg-bg-elevated)]">
                   {emptyMessage}
                 </td>
               </tr>
@@ -207,7 +208,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
             const label = footer.find((f) => f.label)?.label || 'Total del período';
             return (
               <tfoot>
-                <tr className="bg-blue-50/50">
+                <tr className="bg-[var(--mg-bg-section)]">
                   {firstIdx > 0 && (
                     <td
                       colSpan={firstIdx}
@@ -219,7 +220,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                   {visibleColumns.slice(firstIdx).map((c) => (
                     <td
                       key={c.key}
-                      className={`p-3 border border-[var(--mg-border)] font-black text-[#1670C2] ${
+                      className={`p-3 border border-[var(--mg-border)] font-black text-[var(--mg-text-primary)] ${
                         c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
                       }`}
                     >
@@ -235,25 +236,27 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
 
       {/* Paginación */}
       {rows.length > 0 && (
-        <div className="relative flex items-center text-xs">
-          <span className="text-[var(--mg-text-muted)] font-medium">
+        <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-medium text-[var(--mg-text-muted)]">
             Mostrando {startIdx + 1}–{Math.min(startIdx + pageSize, rows.length)} de {rows.length}
           </span>
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="w-8 h-8 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] font-bold disabled:opacity-40 flex items-center justify-center active:scale-95"
+              aria-label="Página anterior"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] font-bold text-[var(--mg-text-secondary)] transition-colors hover:text-[var(--mg-text-primary)] disabled:opacity-40 active:scale-95"
             >
               ‹
             </button>
-            <span className="px-2 font-bold text-[var(--mg-text-primary)]">{safePage} / {totalPages}</span>
+            <span className="px-2 font-bold tabular-nums text-[var(--mg-text-primary)]">{safePage} / {totalPages}</span>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="w-8 h-8 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] font-bold disabled:opacity-40 flex items-center justify-center active:scale-95"
+              aria-label="Página siguiente"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] font-bold text-[var(--mg-text-secondary)] transition-colors hover:text-[var(--mg-text-primary)] disabled:opacity-40 active:scale-95"
             >
               ›
             </button>

@@ -1,70 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import './styles/tokens.generated.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────────────────────
-   MI GANANCIA · iOS Style 🍎
-   Diseño minimalista inspirado en Apple — claro, universal
+   MI GANANCIA · Sistema visual
+   Tokens: src/design/tokens.js → src/styles/tokens.generated.css
    ───────────────────────────────────────────────────────────────────────── */
-
-:root {
-  /* ── Fondos (modo claro Fintech) ── */
-  --mg-bg-base: #f4f6fa;          /* Fondo gris claro moderno */
-  --mg-bg-surface: #ffffff;        /* Blanco puro para tarjetas de contenido */
-  --mg-bg-elevated: #f8fafc;       /* Hover sutil */
-  --mg-bg-input: #ffffff;
-  --mg-bg-section: #f1f5f9;
-
-  /* ── Bordes ── */
-  --mg-border: rgba(60, 60, 67, 0.12);
-  --mg-border-hover: rgba(60, 60, 67, 0.18);
-  --mg-border-focus: #007aff;
-  --mg-separator: rgba(60, 60, 67, 0.1);
-
-  /* ── Texto (jerarquía iOS) ── */
-  --mg-text-primary: #000000;
-  --mg-text-secondary: #3c3c43;
-  --mg-text-muted: rgba(60, 60, 67, 0.6);
-  --mg-text-faint: rgba(60, 60, 67, 0.3);
-
-  /* ── MARCA: AZUL BANCA DIGITAL ── */
-  --mg-accent: #1670C2;
-  --mg-accent-hover: #0f5c9e;
-  --mg-accent-deep: #0c3457;
-  --mg-accent-mid: #0f4d85;
-  --mg-accent-bg: rgba(22, 112, 194, 0.08);
-  --mg-accent-bg-soft: rgba(22, 112, 194, 0.04);
-  --mg-accent-border: rgba(22, 112, 194, 0.25);
-  --mg-accent-text: #1670C2;
-
-  /* ── MARCA: DORADO (flecha de crecimiento del logo) ── */
-  --mg-gold: #d99a2b;
-  --mg-gold-hover: #c1861f;
-  --mg-gold-bg: rgba(217, 154, 43, 0.1);
-  --mg-gold-border: rgba(217, 154, 43, 0.28);
-  --mg-gold-text: #a4670f;
-
-  /* ── Semánticos iOS ── */
-  --mg-success: #34c759;          /* iOS green */
-  --mg-success-bg: rgba(52, 199, 89, 0.1);
-  --mg-success-text: #248a3d;
-  --mg-danger: #ff3b30;           /* iOS red */
-  --mg-danger-bg: rgba(255, 59, 48, 0.1);
-  --mg-warning: #ff9500;          /* iOS orange */
-  --mg-warning-bg: rgba(255, 149, 0, 0.1);
-  --mg-info: #5ac8fa;             /* iOS light blue */
-  --mg-info-bg: rgba(90, 200, 250, 0.1);
-
-  /* ── Sombras iOS (muy sutiles) ── */
-  --mg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --mg-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --mg-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
-
-  /* ── Tipografía ── */
-  --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
-}
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -126,7 +70,8 @@ input[type="number"]::-webkit-outer-spin-button {
            text-[var(--mg-text-primary)] placeholder:text-[var(--mg-text-muted)]
            rounded-xl px-4 py-3 w-full transition-all
            focus:outline-none focus:border-[var(--mg-accent)]
-           focus:ring-2 focus:ring-[var(--mg-accent-bg)];
+           focus:ring-2 focus:ring-[var(--mg-accent-bg)]
+           disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[var(--mg-bg-elevated)];
   }
 
   /* Botón primario iOS — azul sólido */
@@ -141,7 +86,8 @@ input[type="number"]::-webkit-outer-spin-button {
   .mg-btn-secondary {
     @apply bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)]
            text-[var(--mg-accent)] font-semibold px-4 py-3.5 rounded-xl
-           transition-all active:scale-[0.97];
+           transition-all active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* Botón terciario iOS — fondo gris muy claro */
@@ -149,7 +95,8 @@ input[type="number"]::-webkit-outer-spin-button {
     @apply bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)]
            border border-[var(--mg-border)]
            text-[var(--mg-text-primary)] font-semibold px-4 py-3.5 rounded-xl
-           transition-all active:scale-[0.97];
+           transition-all active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* Badge iOS */
@@ -215,7 +162,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
   /* Esqueleto de carga (shimmer) */
   .mg-skeleton {
-    background: linear-gradient(100deg, var(--mg-bg-elevated) 30%, #eef2f7 50%, var(--mg-bg-elevated) 70%);
+    background: linear-gradient(100deg, var(--mg-bg-elevated) 30%, var(--mg-bg-section) 50%, var(--mg-bg-elevated) 70%);
     background-size: 200% 100%;
     animation: mgShimmer 1.4s ease-in-out infinite;
     border-radius: 12px;
@@ -258,6 +205,12 @@ button, a, [role="button"], select, .mg-tappable {
 }
 button:not(:disabled):active, [role="button"]:active, .mg-tappable:active {
   transform: scale(0.97);
+}
+
+/* Foco visible solo con teclado (anillo azul de acción) */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:focus-visible {
+  outline: 2px solid var(--mg-accent);
+  outline-offset: 2px;
 }
 
 /* Respeto por usuarios que prefieren menos movimiento (accesibilidad).

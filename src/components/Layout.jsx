@@ -76,7 +76,7 @@ function UsersIcon() {
 
 const NAV_ITEMS = [
   {
-    label: 'Inicio', Icon: HomeIcon, ownerOnly: false, key: 'dashboard', basePath: '/',
+    label: 'Inicio', Icon: HomeIcon, ownerOnly: false, key: 'dashboard', basePath: '/', section: 'Operación',
     children: [
       { to: '/', label: 'Resumen', key: 'dashboard-home' },
     ],
@@ -97,7 +97,7 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: 'Inventario', Icon: BoxIcon, ownerOnly: true, key: 'inventory', basePath: '/inventario',
+    label: 'Inventario', Icon: BoxIcon, ownerOnly: true, key: 'inventory', basePath: '/inventario', section: 'Gestión',
     children: [
       { to: '/inventario', label: 'Productos', key: 'inventory-products' },
       { to: '/reportes?type=inventory', label: 'Reporte de Inventario', key: 'inventory-report' },
@@ -111,7 +111,7 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: 'Sucursales', Icon: StoreIcon, ownerOnly: true, key: 'branches', basePath: '/sucursales',
+    label: 'Sucursales', Icon: StoreIcon, ownerOnly: true, key: 'branches', basePath: '/sucursales', section: 'Administración',
     children: [
       { to: '/sucursales', label: 'Sedes y almacenes', key: 'branches-list' },
     ],
@@ -197,6 +197,13 @@ export default function Layout() {
   }, [showMenuDrawer]);
 
   useEffect(() => {
+    if (!showMenuDrawer) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [showMenuDrawer]);
+
+  useEffect(() => {
     const activeGroup = NAV_ITEMS.find((item) => item.children && location.pathname === item.basePath);
     if (activeGroup) {
       setExpandedGroups((prev) => (prev[activeGroup.key] ? prev : { ...prev, [activeGroup.key]: true }));
@@ -227,7 +234,9 @@ export default function Layout() {
           type="button"
           onClick={() => setSidebarOpen((v) => !v)}
           title={sidebarOpen ? 'Contraer menú' : 'Expandir menú'}
-          className="absolute -right-3.5 top-6 w-7 h-7 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-secondary)] shadow-md flex items-center justify-center z-30 active:scale-90 transition-transform"
+          aria-label={sidebarOpen ? 'Contraer menú' : 'Expandir menú'}
+          aria-expanded={sidebarOpen}
+          className="absolute -right-3.5 top-7 w-7 h-7 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)] hover:border-[var(--mg-border-hover)] shadow-md flex items-center justify-center z-30 active:scale-90 transition-all"
         >
           <svg
             className={`w-4 h-4 transition-transform duration-300 ${sidebarOpen ? '' : 'rotate-180'}`}
@@ -237,26 +246,26 @@ export default function Layout() {
           </svg>
         </button>
 
-        <div className="px-4 py-3 border-b border-[var(--mg-separator)] overflow-hidden">
-          <div className={`flex items-center gap-2 ${sidebarOpen ? '' : 'justify-center'}`}>
+        <div className="px-3 py-4 border-b border-[var(--mg-separator)] overflow-hidden">
+          <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'justify-center'}`}>
             <img
               src="/logo-icon.png"
               alt="Logo Mi Ganancia"
-              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+              className="w-10 h-10 rounded-xl object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
             />
             {sidebarOpen && (
               <div className="min-w-0">
-                <p className="text-[var(--mg-text-primary)] font-black text-sm leading-tight truncate">
+                <p className="text-[var(--mg-brand)] font-black text-[15px] leading-tight tracking-tight truncate">
                   Mi Ganancia
                 </p>
                 <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight mt-0.5 flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-[var(--mg-success)] mg-pulse-dot' : 'bg-orange-500 animate-pulse'}`} />
-                  {online ? (business?.name || 'Activo') : 'Sin conexión'}
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${online ? 'bg-[var(--mg-success)] mg-pulse-dot' : 'bg-[var(--mg-warning)] animate-pulse'}`} />
+                  <span className="truncate">{online ? (business?.name || 'Activo') : 'Sin conexión'}</span>
                 </p>
                 {pendingCount > 0 && (
                   <button
                     onClick={() => setIsErrorPanelOpen(true)}
-                    className="mt-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-orange-100 w-max flex items-center gap-1 shrink-0 cursor-pointer transition-all hover:scale-105"
+                    className="mt-1.5 bg-[var(--mg-gold-bg)] hover:brightness-95 text-[var(--mg-gold-text)] text-[9px] font-bold px-2 py-0.5 rounded-full border border-[var(--mg-gold-border)] w-max flex items-center gap-1 shrink-0 cursor-pointer transition-all"
                   >
                     <span>⏳ {pendingCount} por sincronizar</span>
                   </button>
@@ -264,7 +273,7 @@ export default function Layout() {
                 {errorCount > 0 && (
                   <button
                     onClick={() => setIsErrorPanelOpen(true)}
-                    className="mt-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-red-100 w-max flex items-center gap-1 shrink-0 cursor-pointer transition-all hover:scale-105"
+                    className="mt-1.5 bg-[var(--mg-danger-bg)] hover:brightness-95 text-[var(--mg-danger)] text-[9px] font-bold px-2 py-0.5 rounded-full border border-[var(--mg-danger-border)] w-max flex items-center gap-1 shrink-0 cursor-pointer transition-all"
                   >
                     <span>⚠️ {errorCount} con error</span>
                   </button>
@@ -274,11 +283,13 @@ export default function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          {visibleItems.map((item) => {
+        <nav aria-label="Navegación principal" className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
+          {visibleItems.map((item, index) => {
             const isOpen = !!expandedGroups[item.key];
             const isGroupActive = location.pathname === item.basePath;
             const GroupIcon = item.Icon;
+            const prevItem = visibleItems[index - 1];
+            const showSection = sidebarOpen && item.section && item.section !== prevItem?.section;
 
             if (!sidebarOpen) {
               return (
@@ -286,11 +297,12 @@ export default function Layout() {
                   key={item.key}
                   to={item.basePath}
                   title={item.label}
+                  aria-label={item.label}
                   data-tutorial={item.key}
-                  className="flex items-center justify-center py-1.5 rounded-[14px] transition-all"
+                  className="flex items-center justify-center py-1 rounded-xl"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${
-                    isGroupActive ? 'bg-[#1670C2] text-white shadow-sm' : 'text-gray-400 hover:bg-[var(--mg-bg-elevated)]'
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
+                    isGroupActive ? 'bg-[var(--mg-brand)] text-white shadow-sm' : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
                   }`}>
                     <span className="scale-[0.85] flex items-center justify-center">
                       <GroupIcon />
@@ -302,16 +314,22 @@ export default function Layout() {
 
             return (
               <div key={item.key}>
+                {showSection && (
+                  <p className={`px-3 pb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-secondary)] ${index === 0 ? 'pt-1' : 'pt-4'}`}>
+                    {item.section}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => toggleGroup(item.key)}
                   data-tutorial={item.key}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[14px] text-[13px] font-bold transition-all ${
-                    isGroupActive ? 'text-[#1670C2] bg-blue-50/60' : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                  aria-expanded={isOpen}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-colors ${
+                    isGroupActive ? 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)]' : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
                   }`}
                 >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0 ${
-                    isGroupActive ? 'bg-[#1670C2] text-white shadow-sm' : 'text-gray-400'
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                    isGroupActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
                   }`}>
                     <span className="scale-[0.85] flex items-center justify-center">
                       <GroupIcon />
@@ -319,22 +337,22 @@ export default function Layout() {
                   </div>
                   <span className="flex-1 text-left">{item.label}</span>
                   <svg
-                    className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+                    className={`w-3.5 h-3.5 shrink-0 text-[var(--mg-text-faint)] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
                 {isOpen && (
-                  <div className="ml-9 mt-0.5 mb-1 space-y-0.5 border-l-2 border-[var(--mg-border)] pl-3">
+                  <div className="ml-[22px] mt-0.5 mb-1 space-y-0.5 border-l border-[var(--mg-border)] pl-3">
                     {item.children.filter((child) => !child.ownerOnly || !isCashier).map((child) => {
                       const childActive = isChildActive(location, child.to);
                       return (
                         <Link
                           key={child.key}
                           to={child.to}
-                          className={`block px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
-                            childActive ? 'text-[#1670C2] bg-blue-50/60' : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)]'
+                          className={`block px-2.5 py-1.5 rounded-lg text-[12px] transition-colors ${
+                            childActive ? 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)] font-bold' : 'text-[var(--mg-text-muted)] font-semibold hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
                           }`}
                         >
                           {child.label}
@@ -348,25 +366,34 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className={`px-4 py-4 border-t border-[var(--mg-separator)] overflow-hidden ${sidebarOpen ? 'space-y-2' : 'flex flex-col justify-center px-0'}`}>
+        <div className={`px-3 py-3 border-t border-[var(--mg-separator)] overflow-hidden ${sidebarOpen ? '' : 'flex flex-col items-center px-0'}`}>
           <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'flex-col justify-center px-0'}`}>
-          <img
-            src={user?.photoURL || ''}
-            alt="Avatar"
-            title={sidebarOpen ? undefined : (user?.displayName || user?.email)}
-            className="w-9 h-9 rounded-full shrink-0 object-cover"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-          {sidebarOpen && (
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-[var(--mg-text-primary)] truncate">
-                {user?.displayName?.split(' ')[0]}
-              </p>
-              <p className="text-[11px] text-[var(--mg-text-muted)] truncate">
-                {role === 'cashier' ? 'Cajero de la tienda' : 'Dueño de la tienda'}
-              </p>
-            </div>
-          )}
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt="Avatar"
+                title={sidebarOpen ? undefined : (user?.displayName || user?.email)}
+                className="w-9 h-9 rounded-full shrink-0 object-cover ring-1 ring-[var(--mg-border)]"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            ) : (
+              <span
+                title={sidebarOpen ? undefined : (user?.displayName || user?.email)}
+                className="w-9 h-9 rounded-full shrink-0 bg-[var(--mg-brand)] text-white flex items-center justify-center text-sm font-black"
+              >
+                {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+              </span>
+            )}
+            {sidebarOpen && (
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-[var(--mg-text-primary)] truncate">
+                  {user?.displayName?.split(' ')[0]}
+                </p>
+                <p className="text-[11px] text-[var(--mg-text-muted)] truncate">
+                  {role === 'cashier' ? 'Cajero de la tienda' : 'Dueño de la tienda'}
+                </p>
+              </div>
+            )}
 
           <button
             type="button"
@@ -386,15 +413,16 @@ export default function Layout() {
       {/* ── MAIN ── */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:h-screen lg:overflow-hidden">
 
-        {/* Mobile header — estilo iOS large title */}
-        <header className="lg:hidden bg-[var(--mg-bg-base)] px-4 pt-10 pb-2 sticky top-0 z-30">
-          <div className="flex items-center justify-between">
+        {/* Mobile header — compacto, con marca y estado */}
+        <header className="lg:hidden bg-[var(--mg-bg-base)]/95 backdrop-blur-xl px-3 pt-3 pb-2.5 sticky top-0 z-30 border-b border-[var(--mg-separator)]">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <button
                 type="button"
                 onClick={() => setShowMenuDrawer(true)}
                 aria-label="Abrir menú"
-                className="w-9 h-9 shrink-0 rounded-xl text-[var(--mg-text-primary)] hover:bg-[var(--mg-bg-elevated)] active:scale-90 transition-all flex items-center justify-center"
+                aria-expanded={showMenuDrawer}
+                className="w-11 h-11 shrink-0 rounded-xl text-[var(--mg-text-primary)] hover:bg-[var(--mg-bg-elevated)] active:scale-90 transition-all flex items-center justify-center -ml-1"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h10" />
@@ -403,40 +431,48 @@ export default function Layout() {
               <img
                 src="/logo-icon.png"
                 alt="Logo Mi Ganancia"
-                className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+                className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
               />
               <div className="min-w-0">
-                <h1 className="text-[var(--mg-text-primary)] text-sm font-black leading-tight truncate flex items-center gap-1.5">
+                <h1 className="text-[var(--mg-brand)] text-[15px] font-black leading-tight truncate flex items-center gap-1.5 tracking-tight">
                   Mi Ganancia
-                  <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${online ? 'bg-[var(--mg-success)]' : 'bg-orange-500 animate-pulse'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${online ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-warning)] animate-pulse'}`} />
                 </h1>
-                <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate max-w-[150px]">
+                <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate max-w-[160px]">
                   {online ? (business?.name || 'Activo') : 'Sin conexión'}
                 </p>
-                {pendingCount > 0 && (
-                  <button
-                    onClick={() => setIsErrorPanelOpen(true)}
-                    className="inline-block bg-orange-50 hover:bg-orange-100 text-orange-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-orange-100 mt-0.5 cursor-pointer transition-all hover:scale-105"
-                  >
-                    ⏳ {pendingCount} pend.
-                  </button>
-                )}
-                {errorCount > 0 && (
-                  <button
-                    onClick={() => setIsErrorPanelOpen(true)}
-                    className="inline-block bg-red-50 hover:bg-red-100 text-red-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-red-100 mt-0.5 ml-1 transition-all cursor-pointer"
-                  >
-                    ⚠️ {errorCount} con error
-                  </button>
-                )}
+                <div className="flex items-center gap-1 mt-0.5">
+                  {pendingCount > 0 && (
+                    <button
+                      onClick={() => setIsErrorPanelOpen(true)}
+                      className="inline-block bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-[var(--mg-gold-border)] cursor-pointer hover:brightness-95 transition-all"
+                    >
+                      ⏳ {pendingCount} pend.
+                    </button>
+                  )}
+                  {errorCount > 0 && (
+                    <button
+                      onClick={() => setIsErrorPanelOpen(true)}
+                      className="inline-block bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-[var(--mg-danger-border)] transition-all cursor-pointer hover:brightness-95"
+                    >
+                      ⚠️ {errorCount} con error
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-            <img
-              src={user?.photoURL || ''}
-              alt="Avatar"
-              className="w-9 h-9 rounded-full shrink-0 object-cover"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt="Avatar"
+                className="w-10 h-10 rounded-full shrink-0 object-cover ring-1 ring-[var(--mg-border)]"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            ) : (
+              <span className="w-10 h-10 rounded-full shrink-0 bg-[var(--mg-brand)] text-white flex items-center justify-center text-sm font-black">
+                {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
         </header>
 
@@ -447,26 +483,26 @@ export default function Layout() {
           </div>
         </main>
 
-        {/* Bottom tab bar estilo iOS — solo accesos rápidos. El menú completo se abre con el icono superior izquierdo. */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)]/95 backdrop-blur-xl border-t border-[var(--mg-separator)] flex justify-around z-30 pb-[env(safe-area-inset-bottom)] pt-1 shadow-lg">
+        {/* Bottom tab bar — solo accesos rápidos. El menú completo se abre con el icono superior izquierdo. */}
+        <nav aria-label="Accesos rápidos" className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--mg-bg-surface)]/95 backdrop-blur-xl border-t border-[var(--mg-separator)] flex justify-around z-30 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[var(--mg-shadow-md)]">
           {/* Inicio Link */}
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-1 px-2 transition-all flex-1 ${
-                isActive ? 'text-[#1670C2] font-bold' : 'text-[var(--mg-text-muted)]'
+              `flex flex-col items-center justify-center gap-0.5 pt-1 pb-1 px-2 min-h-[48px] flex-1 transition-colors ${
+                isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  isActive ? 'bg-[#1670C2] text-white shadow-sm' : 'text-gray-400'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
                 }`}>
                   <HomeIcon />
                 </div>
-                <span className="text-[9px] mt-0.5">Inicio</span>
+                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-semibold'}`}>Inicio</span>
               </>
             )}
           </NavLink>
@@ -475,19 +511,19 @@ export default function Layout() {
           <NavLink
             to="/ventas"
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-1 px-2 transition-all flex-1 ${
-                isActive ? 'text-[#1670C2] font-bold' : 'text-[var(--mg-text-muted)]'
+              `flex flex-col items-center justify-center gap-0.5 pt-1 pb-1 px-2 min-h-[48px] flex-1 transition-colors ${
+                isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  isActive ? 'bg-[#1670C2] text-white shadow-sm' : 'text-gray-400'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
                 }`}>
                   <CartIcon />
                 </div>
-                <span className="text-[9px] mt-0.5">Ventas</span>
+                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-semibold'}`}>Ventas</span>
               </>
             )}
           </NavLink>
@@ -511,28 +547,41 @@ export default function Layout() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="absolute top-0 bottom-0 left-0 w-[84%] max-w-xs bg-[var(--mg-bg-surface)] shadow-2xl flex flex-col"
-              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú de navegación"
+              className="absolute top-0 bottom-0 left-0 w-[84%] max-w-xs bg-[var(--mg-bg-surface)] border-r border-[var(--mg-border)] shadow-2xl flex flex-col"
+              style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               {/* Marca */}
-              <div className="flex items-center gap-2.5 px-4 pt-5 pb-4 border-b border-[var(--mg-separator)]">
+              <div className="flex items-center gap-2.5 px-4 pt-4 pb-3.5 border-b border-[var(--mg-separator)]">
                 <img
                   src="/logo-icon.png"
                   alt="Logo Mi Ganancia"
-                  className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+                  className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
                 />
-                <div className="min-w-0">
-                  <p className="text-[var(--mg-text-primary)] font-black text-base leading-tight truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[var(--mg-brand)] font-black text-base leading-tight truncate tracking-tight">
                     Mi Ganancia
                   </p>
                   <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate">
                     {business?.name || ''}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMenuDrawer(false)}
+                  aria-label="Cerrar menú"
+                  className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)] active:scale-90 transition-all -mr-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
               {/* Navegación */}
-              <nav className="flex-1 overflow-y-auto py-2">
+              <nav aria-label="Secciones" className="flex-1 overflow-y-auto py-2">
                 {mobileItems.map(({ to, label, Icon, end, key }) => {
                   const isActive = to === '/'
                     ? location.pathname === '/'
@@ -544,16 +593,16 @@ export default function Layout() {
                       end={end}
                       data-tutorial={key}
                       onClick={() => setShowMenuDrawer(false)}
-                      className={`relative flex items-center gap-3 px-5 py-3 transition-colors active:bg-[var(--mg-bg-elevated)] ${
+                      className={`relative flex items-center gap-3 px-4 py-3 min-h-[48px] transition-colors active:bg-[var(--mg-bg-elevated)] ${
                         isActive
-                          ? 'text-[#1670C2] font-black bg-blue-50/70'
-                          : 'text-[var(--mg-text-secondary)] font-semibold'
+                          ? 'text-[var(--mg-brand)] font-bold bg-[var(--mg-brand-bg)]'
+                          : 'text-[var(--mg-text-secondary)] font-semibold hover:bg-[var(--mg-bg-elevated)]'
                       }`}
                     >
                       {isActive && (
-                        <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#1670C2] rounded-r-full" />
+                        <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--mg-brand)] rounded-r-full" />
                       )}
-                      <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`w-6 h-6 flex items-center justify-center shrink-0 ${isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)]'}`}>
                         <Icon />
                       </span>
                       <span className="text-[15px]">{label}</span>
@@ -572,7 +621,7 @@ export default function Layout() {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : (
-                  <span className="w-10 h-10 rounded-full bg-[#1670C2] text-white flex items-center justify-center font-black text-lg shrink-0">
+                  <span className="w-10 h-10 rounded-full bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-lg shrink-0">
                     {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
                   </span>
                 )}

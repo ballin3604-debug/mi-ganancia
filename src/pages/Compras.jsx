@@ -16,6 +16,8 @@ import { useBranches } from '../context/BranchContext';
 import { toStockMap } from '../services/branchStock';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import ReportHeader from '../components/ReportHeader';
+import MetricCard from '../components/ui/MetricCard';
+import EmptyState from '../components/ui/EmptyState';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
 
@@ -185,6 +187,13 @@ export default function Compras() {
       return db - da;
     }), [replenishments, start, end]);
 
+  const periodSummary = useMemo(() => ({
+    total: filteredReplenishments.reduce((sum, r) => sum + Number(r.totalCost || 0), 0),
+    units: filteredReplenishments.reduce((sum, r) => sum + Number(r.quantity || 0), 0),
+    extras: filteredReplenishments.reduce((sum, r) => sum + Number(r.additionalExpenses || 0), 0),
+    suppliers: new Set(filteredReplenishments.map((r) => (r.supplier || '').trim()).filter(Boolean)).size,
+  }), [filteredReplenishments]);
+
   // Lista móvil sin filtros: todas las compras, recientes primero (como auditoría).
   const allReplenishmentsSorted = useMemo(() => replenishments
     .slice()
@@ -239,7 +248,7 @@ export default function Compras() {
     },
     {
       key: 'proveedor', label: 'Proveedor', align: 'left', width: 'w-32',
-      render: (r) => r.supplier || <span className="text-gray-300">—</span>,
+      render: (r) => r.supplier || <span className="text-[var(--mg-text-faint)]">—</span>,
     },
     {
       key: 'cantidad', label: 'Cantidad', align: 'right', width: 'w-24',
@@ -255,13 +264,13 @@ export default function Compras() {
     {
       key: 'vencimiento', label: 'Vencimiento', align: 'center', width: 'w-28',
       render: (r) => {
-        if (!r.expiryDate) return <span className="text-gray-300">—</span>;
+        if (!r.expiryDate) return <span className="text-[var(--mg-text-faint)]">—</span>;
         const expiry = new Date(`${r.expiryDate}T00:00:00`);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
         const label = expiry.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-        const color = daysLeft < 0 ? 'text-red-500' : daysLeft <= 30 ? 'text-amber-600' : 'text-[var(--mg-text-secondary)]';
+        const color = daysLeft < 0 ? 'text-[var(--mg-danger)]' : daysLeft <= 30 ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-text-secondary)]';
         return <span className={`font-mono text-xs font-semibold ${color}`}>{label}</span>;
       },
     },
@@ -275,7 +284,7 @@ export default function Compras() {
     },
     {
       key: 'total', label: 'Total', align: 'right', width: 'w-28',
-      render: (r) => <span className="font-black text-[var(--mg-accent)]">{formatBs(r.totalCost)}</span>,
+      render: (r) => <span className="font-black text-[var(--mg-brand)]">{formatBs(r.totalCost)}</span>,
     },
   ];
 
@@ -327,7 +336,7 @@ export default function Compras() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-[var(--mg-accent-border)] border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--mg-brand-border)] border-t-transparent" />
       </div>
     );
   }
@@ -338,30 +347,47 @@ export default function Compras() {
       <div className="flex-1 flex flex-col min-h-0 lg:pr-4">
         <div className="p-4 space-y-3 flex-1 flex flex-col min-h-0">
           {activeTab === 'comprar' && (
-            <div className="flex items-center justify-between shrink-0">
-              <h2 className="text-xl font-bold text-[var(--mg-text-primary)]">Comprar</h2>
+            <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-white">
+                  <AppIcon name="paquete" size={19} color="#fff" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Reposición</p>
+                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)]">Comprar</h2>
+                  <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                    {branches.find((b) => b.id === activeBranchId)?.name
+                      ? `${branches.find((b) => b.id === activeBranchId).name} · `
+                      : ''}Registra lo que entra al inventario
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'comprar' ? (
             <>
-              <div className="shrink-0 flex gap-2">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="🔍  Buscar producto, marca o código..."
-                  className="flex-1 min-w-0 border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 focus:outline-none focus:border-[var(--mg-accent-border)] text-base"
-                />
+              <div className="flex shrink-0 gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
+                    <AppIcon name="search" size={18} />
+                  </span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar producto, marca o código..."
+                    className="mg-input min-h-[52px] pl-11 text-base"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={openScanner}
                   title="Escanear código de barras"
                   aria-label="Escanear código de barras"
-                  className="w-[52px] h-[52px] shrink-0 rounded-2xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow-lg flex items-center justify-center active:scale-90 transition-all"
-                  style={{ boxShadow: '0 8px 20px rgba(22,112,194,0.35)' }}
+                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
                 >
-                  <AppIcon name="scan" size={24} color="#fff" />
+                  <AppIcon name="scan" size={23} color="#fff" />
                 </button>
               </div>
 
@@ -371,10 +397,10 @@ export default function Compras() {
                     key={cat}
                     type="button"
                     onClick={() => setFilterCategory(cat)}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                       filterCategory === cat
-                        ? 'bg-[var(--mg-accent)] text-white shadow-sm'
-                        : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                        ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-white shadow-sm'
+                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
                     }`}
                   >
                     {cat}
@@ -411,7 +437,7 @@ export default function Compras() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectProduct(product)}
-                                className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-white shadow-sm active:scale-90"
                               >
                                 +
                               </button>
@@ -422,20 +448,22 @@ export default function Compras() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                    <p className="text-5xl mb-3">📦</p>
-                    <p className="font-semibold">{search ? 'No encontrado' : 'Sin productos'}</p>
-                    {!search && <p className="text-sm mt-1">Ve a Inventario para agregar productos</p>}
-                  </div>
+                  <EmptyState
+                    icon="paquete"
+                    title={search ? 'No encontramos ese producto' : 'Sin productos para comprar'}
+                    description={search
+                      ? 'Prueba con otro nombre, marca o código de barras.'
+                      : 'Ve a Inventario para agregar tu primer producto.'}
+                  />
                 )}
               </div>
             </>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
               {/* Filtros y exportar solo en PC; en celular lista minimalista como auditoría */}
-              <div className="hidden lg:block">
+              <div className="hidden space-y-4 lg:block">
                 <ReportHeader
-                  icon="🛍️"
+                  icon={<AppIcon name="paquete" size={21} />}
                   title="Reporte de Compras"
                   subtitle="Historial detallado de tus compras y reposiciones de stock."
                   startDate={startDate}
@@ -445,10 +473,50 @@ export default function Compras() {
                   onExport={handleExportPurchases}
                   exportDisabled={filteredReplenishments.length === 0}
                 />
+
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                  <MetricCard
+                    label="Total comprado"
+                    value={formatBs(periodSummary.total)}
+                    hint={`${filteredReplenishments.length} ${filteredReplenishments.length === 1 ? 'compra' : 'compras'}`}
+                    icon="caja"
+                    tone="brand"
+                  />
+                  <MetricCard
+                    label="Unidades"
+                    value={periodSummary.units}
+                    hint="Ingresadas al inventario"
+                    icon="paquete"
+                    tone="action"
+                  />
+                  <MetricCard
+                    label="Gastos extra"
+                    value={formatBs(periodSummary.extras)}
+                    hint="Flete y otros costos"
+                    icon="gastos"
+                    tone="warning"
+                  />
+                  <MetricCard
+                    label="Proveedores"
+                    value={periodSummary.suppliers}
+                    hint="Distintos en el período"
+                    icon="equipo"
+                    tone="neutral"
+                  />
+                </div>
               </div>
 
               {/* Lista simple en celular, tabla completa en PC */}
-              <div className="lg:hidden">
+              <div className="space-y-3 lg:hidden">
+                <div className="flex items-center gap-2.5 px-1">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                    <AppIcon name="historial" size={17} />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Historial de compras</h2>
+                    <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">Todas tus reposiciones, de la más reciente a la más antigua.</p>
+                  </div>
+                </div>
                 <AuditPurchasesList
                   rows={allReplenishmentsSorted.map((r) => ({
                     ...r,
@@ -507,10 +575,13 @@ export default function Compras() {
               onSaved={handleCloseSelection}
             />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[var(--mg-text-faint)] p-6">
-              <AppIcon name="nuevoProducto" size={48} />
-              <p className="font-semibold text-sm mt-3">Selecciona un producto</p>
-              <p className="text-xs text-center mt-1">Elegí un producto del catálogo para registrar una compra</p>
+            <div className="flex flex-1 items-center justify-center p-5">
+              <EmptyState
+                icon="nuevoProducto"
+                title="Selecciona un producto"
+                description="Elige un producto del catálogo para registrar su compra y actualizar el stock."
+                className="w-full border-0 bg-transparent px-2 py-0 shadow-none"
+              />
             </div>
           )}
         </aside>
@@ -526,7 +597,7 @@ export default function Compras() {
             style={{ maxHeight: '90vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3" />
+            <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[var(--mg-border-hover)]" />
             <PurchaseForm
               businessId={businessId}
               product={selectedProduct}
@@ -549,24 +620,31 @@ export default function Compras() {
             className="bg-[var(--mg-bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden mg-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-[var(--mg-text-primary)]">Escanear para comprar</h3>
-                <p className="text-[11px] text-[var(--mg-text-muted)]">El producto se abrirá para registrar la compra</p>
+            <div className="flex items-center justify-between border-b border-[var(--mg-separator)] p-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                  <AppIcon name="scan" size={17} />
+                </span>
+                <div>
+                  <h3 className="font-black text-[var(--mg-text-primary)]">Escanear para comprar</h3>
+                  <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">El producto se abrirá para registrar la compra</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowScanner(false)}
-                className="w-8 h-8 bg-[var(--mg-bg-elevated)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-lg shrink-0"
+                aria-label="Cerrar escáner"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]"
               >
-                ×
+                <AppIcon name="cerrar" size={15} />
               </button>
             </div>
             <div className="p-4">
               <BarcodeScanner onScan={handleScan} />
               {scanMsg && (
-                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-amber-700">
-                  ⚠️ {scanMsg}
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--mg-gold-text)]">
+                  <AppIcon name="ayuda" size={14} />
+                  <span>{scanMsg}</span>
                 </div>
               )}
             </div>

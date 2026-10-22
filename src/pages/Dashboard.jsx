@@ -24,10 +24,12 @@ import { OwnerPulse } from '../components/OwnerPulse';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
+import { palette } from '../design/tokens.js';
 
 function SectionHeader({ title }) {
   return (
-    <h2 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-muted)] mb-3">
+    <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-secondary)] mb-3 flex items-center gap-2">
+      <span className="w-1 h-3.5 rounded-full bg-[var(--mg-brand)]" />
       {title}
     </h2>
   );
@@ -166,7 +168,16 @@ export default function Dashboard() {
       top.push({ label: 'Otros', value: othersSum });
     }
 
-    const colors = ['#1670C2', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#34d399', '#94a3b8'];
+    const colors = [
+      palette.brand[700],
+      palette.action[600],
+      palette.emerald[600],
+      palette.amber[600],
+      palette.red[600],
+      palette.neutral[400],
+      palette.brand[400],
+      palette.action[400],
+    ];
     return top.map((item, i) => ({ ...item, color: colors[i % colors.length] }));
   }, [scopedItemsMap]);
 
@@ -182,7 +193,16 @@ export default function Dashboard() {
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value);
 
-    const colors = ['#8b5cf6', '#10b981', '#1670C2', '#f59e0b', '#f43f5e', '#38bdf8', '#34d399', '#94a3b8'];
+    const colors = [
+      palette.action[600],
+      palette.brand[700],
+      palette.emerald[600],
+      palette.amber[600],
+      palette.red[600],
+      palette.neutral[400],
+      palette.action[400],
+      palette.brand[400],
+    ];
     return sorted.map((item, i) => ({ ...item, color: colors[i % colors.length] }));
   }, [scopedItemsMap]);
 
@@ -396,7 +416,7 @@ export default function Dashboard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="p-4 sm:p-6 space-y-4 sm:space-y-8 max-w-7xl mx-auto pb-16"
+      className="p-4 sm:p-6 space-y-5 sm:space-y-7 max-w-7xl mx-auto pb-16"
     >
       {/* CABECERA: SEDE, SALUDO Y ACCIONES PRINCIPALES */}
       <DashboardHeader
@@ -452,17 +472,17 @@ export default function Dashboard() {
       />
 
       {/* SECCIÓN 2 — ANÁLISIS DETALLADO (siempre visible) */}
-      <section className="bg-[var(--mg-bg-surface)] rounded-[24px] p-5 border border-[var(--mg-border)] shadow-xs space-y-4">
+      <section className="bg-[var(--mg-bg-surface)] rounded-3xl p-4 sm:p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
-              <h3 className="font-black text-base text-[var(--mg-text-primary)]">Análisis del día</h3>
+              <h3 className="font-black text-base text-[var(--mg-brand)]">Análisis del día</h3>
               <p className="text-xs text-[var(--mg-text-muted)]">Productos, categorías y tendencia por hora</p>
             </div>
             <button
               onClick={handleExport}
               disabled={exporting}
               type="button"
-              className="text-xs font-bold text-[var(--mg-accent)] hover:underline flex items-center gap-1 disabled:opacity-50"
+              className="text-xs font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline flex items-center gap-1 disabled:opacity-50 min-h-[32px]"
             >
               {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
             </button>

@@ -131,8 +131,8 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
     return (
       <section>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 animate-pulse">
-          <div className="lg:col-span-3 h-64 rounded-[22px] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)]" />
-          <div className="lg:col-span-2 h-64 rounded-[22px] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)]" />
+          <div className="lg:col-span-3 h-64 rounded-3xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)]" />
+          <div className="lg:col-span-2 h-64 rounded-3xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)]" />
         </div>
       </section>
     );
@@ -142,15 +142,18 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
     <section className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Rendimiento mensual */}
-        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
+        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-text-primary)] flex items-center gap-1.5">
-              <AppIcon name="reportes" size={16} /> Rendimiento del Negocio (6 meses)
+            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
+                <AppIcon name="reportes" size={16} />
+              </span>
+              Rendimiento del Negocio (6 meses)
             </h3>
             <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--mg-text-muted)]">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Ingresos</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Costos</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#1670C2]" /> Utilidad</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-success)]" /> Ingresos</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-text-muted)]" /> Costos</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-brand)]" /> Utilidad</span>
             </div>
           </div>
           <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">
@@ -161,32 +164,35 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
             {monthly.map((m) => (
               <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
                 <div className="flex items-end gap-1 h-32 w-full justify-center">
-                  <div className="w-3 sm:w-4 rounded-t-md bg-emerald-500" style={{ height: `${Math.max((m.income / maxBar) * 100, 2)}%` }} title={`Ingresos ${formatBs(m.income)}`} />
-                  <div className="w-3 sm:w-4 rounded-t-md bg-slate-400" style={{ height: `${Math.max((m.cogs / maxBar) * 100, 2)}%` }} title={`Costos ${formatBs(m.cogs)}`} />
-                  <div className="w-3 sm:w-4 rounded-t-md bg-[#1670C2]" style={{ height: `${Math.max((Math.max(m.net, 0) / maxBar) * 100, 2)}%` }} title={`Utilidad ${formatBs(m.net)}`} />
+                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${Math.max((m.income / maxBar) * 100, 2)}%` }} title={`Ingresos ${formatBs(m.income)}`} />
+                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${Math.max((m.cogs / maxBar) * 100, 2)}%` }} title={`Costos ${formatBs(m.cogs)}`} />
+                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${Math.max((Math.max(m.net, 0) / maxBar) * 100, 2)}%` }} title={`Utilidad ${formatBs(m.net)}`} />
                 </div>
                 <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs">
+          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs flex-wrap">
             <span className="text-[var(--mg-text-muted)] font-medium">
               Margen Neto Promedio: <strong className="text-[var(--mg-text-primary)]">{avgMargin.toFixed(1)}%</strong>
             </span>
-            <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[#1670C2] hover:underline">
+            <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline">
               Ver análisis mensual detallado →
             </button>
           </div>
         </div>
 
         {/* Alertas de stock */}
-        <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-text-primary)] flex items-center gap-1.5">
-              <AppIcon name="reloj" size={16} /> Alertas de Bajo Stock
+        <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] flex items-center justify-center shrink-0">
+                <AppIcon name="reloj" size={16} />
+              </span>
+              Alertas de Bajo Stock
             </h3>
             {lowStock.length > 0 && (
-              <span className="text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--mg-danger)] bg-[var(--mg-danger-bg)] border border-[var(--mg-danger-border)] px-2 py-0.5 rounded-full shrink-0">
                 Urgente
               </span>
             )}
@@ -195,15 +201,15 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
           {lowStock.length > 0 ? (
             <ul className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
               {lowStock.slice(0, 6).map((p) => (
-                <li key={p.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                <li key={p.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-black text-[var(--mg-text-primary)] truncate">{p.name}</p>
-                    <p className="text-[10px] font-bold text-red-600">{p.stock} en stock · Mín: {p.minStock || 5}</p>
+                    <p className="text-[10px] font-bold text-[var(--mg-danger)]">{p.stock} en stock · Mín: {p.minStock || 5}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => onNavigate && onNavigate('/compras', { state: { reorderProductId: p.id } })}
-                    className="text-[11px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg shrink-0"
+                    className="text-[11px] font-black text-white bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] px-2.5 py-1.5 rounded-lg shrink-0 transition-colors"
                   >
                     + Reordenar
                   </button>
@@ -211,26 +217,29 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
               ))}
             </ul>
           ) : (
-            <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+            <p className="text-xs font-bold text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] border border-[var(--mg-success-border)] rounded-xl px-3 py-2.5">
               Todo el stock está sano. Sin alertas.
             </p>
           )}
           <button
             type="button"
             onClick={() => onNavigate && onNavigate('/inventario')}
-            className="w-full mt-3 text-xs font-bold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-elevated)] hover:bg-slate-100 border border-[var(--mg-border)] rounded-xl py-2.5"
+            className="w-full mt-3 text-xs font-bold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] border border-[var(--mg-border)] rounded-xl py-2.5 min-h-[44px] transition-colors"
           >
             Gestionar Inventario Completo{lowStock.length > 0 ? ` (${lowStock.length} alertas)` : ''}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 lg:items-start gap-4">
         {/* Sucursales */}
-        <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
+        <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-text-primary)] flex items-center gap-1.5">
-              <AppIcon name="sucursales" size={16} /> Desempeño por Sucursal
+            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
+                <AppIcon name="sucursales" size={16} />
+              </span>
+              Desempeño por Sucursal
             </h3>
           </div>
           <p className="text-[11px] text-[var(--mg-text-muted)] mb-3">Ventas del mes actual por sede.</p>
@@ -240,10 +249,10 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                 <li key={b.id}>
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
                     <span className="text-[var(--mg-text-primary)] truncate">{b.name}</span>
-                    <span className="tabular-nums text-[#1670C2] shrink-0 ml-2">{formatBs(b.total)}</span>
+                    <span className="tabular-nums text-[var(--mg-brand-text)] shrink-0 ml-2">{formatBs(b.total)}</span>
                   </div>
-                  <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-[#1670C2]" style={{ width: `${Math.max((b.total / maxBranch) * 100, 4)}%` }} />
+                  <div className="h-2.5 rounded-full bg-[var(--mg-bg-section)] overflow-hidden">
+                    <div className="h-full rounded-full bg-[var(--mg-brand)]" style={{ width: `${Math.max((b.total / maxBranch) * 100, 4)}%` }} />
                   </div>
                   <p className="text-[10px] text-[var(--mg-text-muted)] font-semibold mt-0.5">{b.count} {b.count === 1 ? 'venta' : 'ventas'} este mes</p>
                 </li>
@@ -255,12 +264,15 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         </div>
 
         {/* Ventas en vivo */}
-        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
+        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-text-primary)] flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Ventas Recientes en Vivo
+            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] flex items-center justify-center shrink-0">
+                <span className="w-2 h-2 rounded-full bg-[var(--mg-success)] animate-pulse" />
+              </span>
+              Ventas Recientes en Vivo
             </h3>
-            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=auditoria')} className="text-[11px] font-bold text-[#1670C2] hover:underline">
+            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=auditoria')} className="text-[11px] font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline">
               Auditoría →
             </button>
           </div>
@@ -271,21 +283,21 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                 const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
                 const items = (salesItemsMap[s.id] || []).slice(0, 2).map((it) => `${it.quantity}x ${it.productName}`).join(', ');
                 return (
-                  <li key={s.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                  <li key={s.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-[var(--mg-text-primary)] truncate">
                         {s.sellerName || s.clientName || 'Venta'} <span className="font-semibold text-[var(--mg-text-muted)]">· {timeAgo(d)}</span>
                       </p>
                       <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{items || '—'}</p>
                     </div>
-                    <span className="text-sm font-black text-emerald-600 tabular-nums shrink-0">+{formatBs(s.total)}</span>
+                    <span className="text-sm font-black text-[var(--mg-success-text)] tabular-nums shrink-0">+{formatBs(s.total)}</span>
                     {onReimprint && (
                       <button
                         type="button"
                         onClick={() => onReimprint(s)}
                         disabled={printingSaleId === s.id}
                         title="Reimprimir recibo"
-                        className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shrink-0 disabled:opacity-50"
+                        className="w-8 h-8 rounded-lg bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white flex items-center justify-center shrink-0 disabled:opacity-50 transition-colors"
                       >
                         <AppIcon name="recibo" size={14} color="#fff" />
                       </button>

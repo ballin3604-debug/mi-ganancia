@@ -3,8 +3,10 @@ import { motion } from 'motion/react';
 function CardImage({ imageData, name }) {
   if (!imageData) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-4xl text-[var(--mg-text-faint)] bg-[var(--mg-bg-elevated)]">
-        📦
+      <div className="flex h-full w-full items-center justify-center bg-[var(--mg-bg-elevated)] text-[var(--mg-text-faint)]">
+        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
       </div>
     );
   }
@@ -22,10 +24,10 @@ export function StockLabel({ stock, minStock }) {
   const isLow = stock > 0 && stock <= (minStock || 5);
 
   const styles = isOut
-    ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-red-200'
+    ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]'
     : isLow
-      ? 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)] border-amber-200'
-      : 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-green-200';
+      ? 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)] border-[var(--mg-gold-border)]'
+      : 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]';
 
   return (
     <span className={`inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black ${styles}`}>
@@ -40,9 +42,9 @@ export default function ProductCatalogCard({ product, priceLabel, metaLabel, sel
       whileHover={disabled ? undefined : { y: -4, scale: 1.02 }}
       whileTap={disabled ? undefined : { scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-      className={`group rounded-[22px] overflow-hidden border bg-[var(--mg-bg-surface)] shadow-xs hover:shadow-lg transition-shadow duration-300 relative flex flex-col ${
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-[var(--mg-bg-surface)] shadow-sm transition-all duration-300 hover:shadow-md ${
         selected
-          ? 'ring-2 ring-[var(--mg-accent)] border-transparent'
+          ? 'border-transparent ring-2 ring-[var(--mg-brand)]'
           : 'border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
       } ${disabled ? 'opacity-50' : ''}`}
     >
@@ -57,7 +59,7 @@ export default function ProductCatalogCard({ product, priceLabel, metaLabel, sel
         </div>
 
         <div className="p-3 pr-11">
-          <p className="font-extrabold text-[var(--mg-text-primary)] text-xs leading-snug line-clamp-2 min-h-[2rem] tracking-tight group-hover:text-[var(--mg-accent)] transition-colors">
+          <p className="min-h-[2rem] font-extrabold text-xs leading-snug tracking-tight text-[var(--mg-text-primary)] line-clamp-2 transition-colors group-hover:text-[var(--mg-brand)]">
             {product.name}
           </p>
 

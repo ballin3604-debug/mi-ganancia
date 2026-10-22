@@ -17,11 +17,11 @@ export function DonutChart({ data, totalLabel, isCurrency }) {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-8 p-3">
+    <div className="flex flex-col md:flex-row items-center justify-center gap-5 xl:gap-8 p-3">
       {/* CÍRCULO PROTAGONISTA, CUERPUDITO Y ELEGANTE */}
       <div className="relative w-48 h-48 sm:w-56 sm:h-56 shrink-0 group">
         {/* Glow de fondo tenue y elegante */}
-        <div className="absolute inset-3 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-500" />
+        <div className="absolute inset-3 bg-[var(--mg-brand-bg)] rounded-full blur-2xl group-hover:bg-[var(--mg-accent-bg)] transition-all duration-500" />
 
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 relative z-10 drop-shadow-md">
           {data.map((item, idx) => {
@@ -63,34 +63,34 @@ export function DonutChart({ data, totalLabel, isCurrency }) {
           <span className="text-base sm:text-lg font-black text-[var(--mg-text-primary)] font-mono tracking-tight truncate max-w-[120px] my-0.5">
             {isCurrency ? `${formatBsShort(total)} Bs` : total}
           </span>
-          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100 shadow-2xs">
+          <span className="text-[10px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] px-2.5 py-0.5 rounded-full border border-[var(--mg-accent-border)]">
             100% Total
           </span>
         </div>
       </div>
 
       {/* Leyenda en tarjeta limpia con proporciones armoniosas */}
-      <div className="flex-1 space-y-2.5 w-full min-w-0 bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] shadow-2xs">
+      <div className="w-full min-w-0 flex-1 space-y-2.5 bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] shadow-2xs">
         {data.map((item, idx) => {
           const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
           return (
             <motion.div
               key={idx}
               whileHover={{ x: 4 }}
-              className="flex items-center justify-between text-xs text-[var(--mg-text-primary)] font-bold p-2 rounded-xl hover:bg-white hover:shadow-2xs transition-all cursor-default"
+              className="flex items-center justify-between text-xs text-[var(--mg-text-primary)] font-bold p-2 rounded-xl hover:bg-[var(--mg-bg-surface)] hover:shadow-[var(--mg-shadow-sm)] transition-all cursor-default"
             >
               <div className="flex items-center gap-2.5 truncate pr-2">
                 <span
-                  className="w-3.5 h-3.5 rounded-lg shrink-0 shadow-xs border border-white/50"
+                  className="w-3.5 h-3.5 rounded-lg shrink-0 border border-[var(--mg-bg-surface)]"
                   style={{ backgroundColor: item.color }}
                 />
                 <span className="truncate font-black text-[12px]">{item.label}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 font-mono">
-                <span className="text-[10px] bg-white border border-[var(--mg-border)] px-2 py-0.5 rounded-md font-extrabold text-[var(--mg-text-muted)]">
+                <span className="text-[10px] bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] px-2 py-0.5 rounded-md font-extrabold text-[var(--mg-text-muted)]">
                   {percentage}%
                 </span>
-                <span className="font-black text-slate-900 text-xs">
+                <span className="font-black text-[var(--mg-text-primary)] text-xs">
                   {isCurrency ? formatBs(item.value) : `${item.value} ud.`}
                 </span>
               </div>
@@ -177,7 +177,7 @@ export function LineChart({ data, labelEvery = 4 }) {
               cy={p.y}
               r="4"
               fill="var(--mg-accent)"
-              stroke="#ffffff"
+              stroke="var(--mg-bg-surface)"
               strokeWidth="1.5"
             />
             <text x={p.x} y={p.y - 8} fontSize="7.5" fontWeight="bold" fill="var(--mg-text-primary)" textAnchor="middle">
@@ -197,12 +197,6 @@ export function LineChart({ data, labelEvery = 4 }) {
   );
 }
 
-function getPaymentMethodLabel(method) {
-  if (method === 'qr') return '📲 QR';
-  if (method === 'cash') return '💵 Efectivo';
-  if (method === 'mixto') return '🔀 Mixto';
-  return '💵 Efectivo';
-}
 
 export function DashboardCharts({
   visibleSalesCount,
@@ -232,15 +226,17 @@ export function DashboardCharts({
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-          <div className="mg-grid-auto">
-            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="min-w-0 bg-[var(--mg-bg-elevated)] rounded-3xl border border-[var(--mg-border)] p-4 sm:p-5">
+              <h4 className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-secondary)] mb-3 flex items-center gap-2">
+                <span className="w-1 h-3.5 rounded-full bg-[var(--mg-brand)]" />
                 Ventas por Categoría (Bs)
               </h4>
               <DonutChart data={categorySalesChartData} totalLabel="Total" isCurrency={true} />
             </div>
-            <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] p-5 shadow-xs">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-primary)] mb-3">
+            <div className="min-w-0 bg-[var(--mg-bg-elevated)] rounded-3xl border border-[var(--mg-border)] p-4 sm:p-5">
+              <h4 className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-secondary)] mb-3 flex items-center gap-2">
+                <span className="w-1 h-3.5 rounded-full bg-[var(--mg-accent)]" />
                 Tendencia de Ingresos por Media Hora (Bs)
               </h4>
               <LineChart data={hourlyTrendData} labelEvery={4} />

@@ -12,6 +12,9 @@ import { BranchSelect } from '../components/BranchSelect';
 import { toLocalISODate } from '../utils/dateRanges';
 import { exportReportToPDF } from '../utils/pdfExport';
 import { AppIcon } from '../components/icons';
+import MetricCard from '../components/ui/MetricCard';
+import EmptyState from '../components/ui/EmptyState';
+import SectionCard from '../components/ui/SectionCard';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
@@ -20,13 +23,19 @@ function getExpenseFlow(e) {
     return (e.expense_type === 'fixed' || e.expenseType === 'fixed') ? 'fixed' : 'daily';
 }
 
+function formatReportDate(value) {
+    if (!value) return '—';
+    const d = value.toDate ? value.toDate() : new Date(value);
+    return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 const VALID_REPORT_TYPES = ['ranking', 'expenses', 'inventory', 'profit', 'costoVendido'];
 const REPORT_TYPE_META = {
-    ranking: { icon: '🏆', title: 'Ranking de Productos', subtitle: 'Productos más vendidos por unidades e ingresos.' },
-    expenses: { icon: '💵', title: 'Reporte de Egresos', subtitle: 'Egresos registrados y su distribución por categoría.' },
-    inventory: { icon: '📦', title: 'Reporte de Inventario', subtitle: 'Stock actual al día de hoy · entradas y salidas del período elegido.' },
-    profit: { icon: '📈', title: 'Ganancias Diarias', subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.' },
-    costoVendido: { icon: '📦', title: 'Costo de lo Vendido', subtitle: 'Costo de proveedor de cada producto vendido en el periodo.' },
+    ranking: { icon: 'ranking', title: 'Ranking de Productos', subtitle: 'Productos más vendidos por unidades e ingresos.' },
+    expenses: { icon: 'gastos', title: 'Reporte de Egresos', subtitle: 'Egresos registrados y su distribución por categoría.' },
+    inventory: { icon: 'almacen', title: 'Reporte de Inventario', subtitle: 'Stock actual al día de hoy · entradas y salidas del período elegido.' },
+    profit: { icon: 'reportes', title: 'Ganancias Diarias', subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.' },
+    costoVendido: { icon: 'etiqueta', title: 'Costo de lo Vendido', subtitle: 'Costo de proveedor de cada producto vendido en el periodo.' },
 };
 
 export default function MatrixReport() {
@@ -726,7 +735,7 @@ export default function MatrixReport() {
     return (
         <div className="p-4 lg:p-6 pb-24 mg-fade-in w-full mx-auto">
             <ReportHeader
-                icon={meta?.icon}
+                icon={<AppIcon name={meta?.icon || 'reportes'} size={21} />}
                 title={reportType === 'expenses' && flowFilter === 'daily' ? 'Gastos Diarios' : (meta?.title || 'Reportes y Estadísticas')}
                 subtitle={reportType === 'expenses' && flowFilter === 'daily' ? 'Egresos diarios (no fijos) registrados en el periodo.' : meta?.subtitle}
                 startDate={startDate}
@@ -747,226 +756,294 @@ export default function MatrixReport() {
                 }
             />
 
-            <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-3 sm:p-6 lg:p-8 shadow-sm">
+            <div className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 shadow-[var(--mg-shadow-sm)] sm:p-6 lg:p-8">
                 {reportType === 'expenses' ? (
-                    <div className="space-y-6">
-                        {/* Tarjetas de Total destacado */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
-                                <div>
-                                    <p className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] mb-1">
-                                        {flowFilter === 'daily' ? 'Total Gastos Diarios en Periodo' : 'Total Egresos en Periodo'}
-                                    </p>
-                                    <h3 className="text-2xl sm:text-3xl font-black text-[#1670C2]">Bs {totalExpenses.toFixed(2)}</h3>
-                                </div>
-                                <AppIcon name="gastos" size={36} />
-                            </div>
-                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm">
-                                <div>
-                                    <p className="text-xs font-extrabold uppercase tracking-widest text-gray-500 mb-1">Transacciones Registradas</p>
-                                    <h3 className="text-2xl sm:text-3xl font-black text-gray-700">{filteredExpenses.length}</h3>
-                                </div>
-                                <AppIcon name="texto" size={36} />
-                            </div>
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <MetricCard
+                                label={flowFilter === 'daily' ? 'Total gastos diarios' : 'Total egresos'}
+                                value={`Bs ${totalExpenses.toFixed(2)}`}
+                                hint={`${filteredExpenses.length} ${filteredExpenses.length === 1 ? 'egreso registrado' : 'egresos registrados'}`}
+                                icon="gastos"
+                                tone="danger"
+                            />
+                            <MetricCard
+                                label="Transacciones"
+                                value={filteredExpenses.length}
+                                hint={flowFilter === 'daily' ? 'Gastos diarios del período' : 'Movimientos del período'}
+                                icon="recibo"
+                                tone="neutral"
+                            />
                         </div>
 
-                        {/* Desglose por categoría (Gráfico de barras CSS) */}
                         {expensesByCategory.length > 0 && (
-                            <div className="bg-white border border-[var(--mg-border)] rounded-[20px] p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-[var(--mg-text-primary)] mb-4 flex items-center gap-2"><AppIcon name="reportes" size={20} /> Distribución de Egresos por Categoría</h3>
+                            <SectionCard
+                                title="Distribución por categoría"
+                                subtitle="Participación de cada categoría en el total de egresos."
+                                bodyClassName="p-4 sm:p-5"
+                            >
                                 <div className="space-y-4">
                                     {expensesByCategory.map(({ category, amount, percentage }) => (
-                                        <div key={category} className="space-y-1">
-                                            <div className="flex justify-between text-sm font-semibold text-[var(--mg-text-primary)]">
-                                                <span>{category}</span>
-                                                <span>Bs {amount.toFixed(2)} ({percentage.toFixed(1)}%)</span>
+                                        <div key={category} className="space-y-1.5">
+                                            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--mg-text-primary)]">
+                                                <span className="truncate">{category}</span>
+                                                <span className="shrink-0 tabular-nums text-[var(--mg-text-secondary)]">
+                                                    Bs {amount.toFixed(2)} <span className="text-[var(--mg-text-muted)]">({percentage.toFixed(1)}%)</span>
+                                                </span>
                                             </div>
-                                            <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="bg-gradient-to-r from-blue-500 to-[#1670C2] h-full rounded-full transition-all duration-500" 
+                                            <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--mg-bg-elevated)]">
+                                                <div
+                                                    className="h-full rounded-full bg-[var(--mg-brand)] transition-all duration-500"
                                                     style={{ width: `${percentage}%` }}
                                                 />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </SectionCard>
                         )}
 
-                        {/* Listado detallado de Egresos */}
-                        <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
-                            <table className="w-full text-sm min-w-[700px] border-collapse bg-white">
-                                <thead>
-                                    <tr>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-36">
-                                            Fecha
-                                        </th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">
-                                            Concepto / Descripción
-                                        </th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-44">
-                                            Proveedor
-                                        </th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-36">
-                                            Categoría
-                                        </th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-24">
-                                            Tipo
-                                        </th>
-                                        <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-36">
-                                            Monto
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredExpenses.map((exp, idx) => {
-                                        const dateStr = exp.createdAt?.toDate
-                                            ? exp.createdAt.toDate().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
-                                            : new Date(exp.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-                                        const isFixed = getExpenseFlow(exp) === 'fixed';
-                                        return (
-                                            <tr key={exp.id || idx} className="hover:bg-blue-50/20 transition-colors">
-                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-[var(--mg-text-primary)]">
-                                                    {dateStr}
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-[var(--mg-text-primary)] font-medium">
-                                                    {exp.description}
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-[var(--mg-text-secondary)]">
-                                                    {exp.supplier || <span className="text-gray-300">—</span>}
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-center">
-                                                    <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full">
-                                                        {exp.category || 'Otros'}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-center">
-                                                    <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-full ${isFixed ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                        {isFixed ? 'Fijo' : 'Diario'}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right font-black text-[#1670C2]">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2.5 px-1">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                                    <AppIcon name="gastos" size={17} />
+                                </span>
+                                <div>
+                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Detalle de egresos</h2>
+                                    <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                                        {filteredExpenses.length} {filteredExpenses.length === 1 ? 'movimiento registrado' : 'movimientos registrados'} en el período.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 lg:hidden">
+                                {filteredExpenses.map((exp, idx) => {
+                                    const dateStr = exp.createdAt?.toDate
+                                        ? exp.createdAt.toDate().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
+                                        : new Date(exp.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+                                    const isFixed = getExpenseFlow(exp) === 'fixed';
+                                    return (
+                                        <div key={exp.id || idx} className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{exp.description}</p>
+                                                    <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                                        {dateStr} · {exp.supplier || 'Sin proveedor'}
+                                                    </p>
+                                                </div>
+                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
                                                     Bs {Number(exp.amount || 0).toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span className="rounded-full bg-[var(--mg-bg-elevated)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
+                                                    {exp.category || 'Otros'}
+                                                </span>
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
+                                                    {isFixed ? 'Fijo' : 'Diario'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {filteredExpenses.length === 0 && (
+                                    <EmptyState
+                                        icon="gastos"
+                                        title="Sin egresos en este período"
+                                        description="Cambia el rango de fechas para consultar otros movimientos."
+                                    />
+                                )}
+                            </div>
+
+                            <div className="hidden overflow-x-auto rounded-2xl border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] lg:block">
+                                <table className="w-full min-w-[700px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
+                                    <thead>
+                                        <tr>
+                                            {['Fecha', 'Concepto / Descripción', 'Proveedor', 'Categoría', 'Tipo', 'Monto'].map((label, idx) => (
+                                                <th
+                                                    key={label}
+                                                    className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                        idx === 5 ? 'text-right' : idx >= 3 ? 'text-center' : 'text-left'
+                                                    }`}
+                                                >
+                                                    {label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredExpenses.map((exp, idx) => {
+                                            const dateStr = exp.createdAt?.toDate
+                                                ? exp.createdAt.toDate().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
+                                                : new Date(exp.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+                                            const isFixed = getExpenseFlow(exp) === 'fixed';
+                                            return (
+                                                <tr key={exp.id || idx} className="border-t border-[var(--mg-separator)] transition-colors hover:bg-[var(--mg-bg-elevated)]">
+                                                    <td className="whitespace-nowrap p-3.5 text-xs font-semibold tabular-nums text-[var(--mg-text-secondary)]">{dateStr}</td>
+                                                    <td className="p-3.5 font-semibold text-[var(--mg-text-primary)]">{exp.description}</td>
+                                                    <td className="p-3.5 text-[var(--mg-text-secondary)]">{exp.supplier || <span className="text-[var(--mg-text-faint)]">—</span>}</td>
+                                                    <td className="p-3.5 text-center">
+                                                        <span className="inline-block rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">
+                                                            {exp.category || 'Otros'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3.5 text-center">
+                                                        <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
+                                                            {isFixed ? 'Fijo' : 'Diario'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand)]">
+                                                        Bs {Number(exp.amount || 0).toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {filteredExpenses.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="bg-[var(--mg-bg-elevated)] p-10 text-center text-sm font-semibold text-[var(--mg-text-muted)]">
+                                                    No se encontraron egresos en el rango de fechas seleccionado.
                                                 </td>
                                             </tr>
-                                        );
-                                    })}
-                                    {filteredExpenses.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                                No se encontraron egresos en el rango de fechas seleccionado.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 ) : reportType === 'costoVendido' ? (
-                    <div className="space-y-6">
-                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 sm:p-6 gap-3 flex items-center justify-between shadow-sm max-w-md">
-                            <div>
-                                <p className="text-xs font-extrabold uppercase tracking-widest text-orange-700 mb-1">Total Costo de lo Vendido</p>
-                                <h3 className="text-2xl sm:text-3xl font-black text-orange-700">Bs {totalCostOfGoodsRows.toFixed(2)}</h3>
-                            </div>
-                            <AppIcon name="nuevoProducto" size={36} />
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <MetricCard
+                                label="Total costo de lo vendido"
+                                value={`Bs ${totalCostOfGoodsRows.toFixed(2)}`}
+                                hint="Costo de proveedor del período"
+                                icon="etiqueta"
+                                tone="warning"
+                            />
+                            <MetricCard
+                                label="Líneas vendidas"
+                                value={costOfGoodsRows.length}
+                                hint="Productos registrados en el período"
+                                icon="recibo"
+                                tone="neutral"
+                            />
                         </div>
 
-                        <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
-                            <table className="w-full text-sm min-w-[720px] border-collapse bg-white">
-                                <thead>
-                                    <tr>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-28">Fecha</th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap w-24">N° Venta</th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">Producto</th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-32">Categoría</th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-24">Cantidad</th>
-                                        <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-32">Costo Unitario</th>
-                                        <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-32">Costo Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {costOfGoodsRows.map((r) => {
-                                        const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-                                        const dateStr = d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-                                        return (
-                                            <tr key={r.rowKey} className="hover:bg-blue-50/20 transition-colors">
-                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-xs text-[var(--mg-text-primary)]">{dateStr}</td>
-                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-xs font-bold text-[var(--mg-text-primary)]">{`#${String(r.saleNumber).padStart(4, '0')}`}</td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-[var(--mg-text-primary)] font-medium">{r.productName}</td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-center">
-                                                    <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full">{r.category}</span>
-                                                </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right">{r.quantity}</td>
-                                                {r.unitCost !== null ? (
-                                                    <>
-                                                        <td className="p-3 border border-[var(--mg-border)] text-right">Bs {r.unitCost.toFixed(2)}</td>
-                                                        <td className="p-3 border border-[var(--mg-border)] text-right font-black text-orange-700">Bs {r.costTotal.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="p-3 border border-[var(--mg-border)] text-right">
-                                                            <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 text-xs font-semibold">Sin costo</span>
-                                                        </td>
-                                                        <td className="p-3 border border-[var(--mg-border)] text-right">
-                                                            <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 text-xs font-semibold">Sin costo</span>
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                        );
-                                    })}
-                                    {costOfGoodsRows.length === 0 && (
-                                        <tr>
-                                            <td colSpan={7} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                                No se encontraron productos vendidos en el rango de fechas seleccionado.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                                {costOfGoodsRows.length > 0 && (
-                                    <tfoot>
-                                        <tr>
-                                            <td colSpan={6} className="p-3 border border-[var(--mg-border)] text-right font-bold text-[var(--mg-text-secondary)] bg-gray-50">
-                                                Total Costo de lo Vendido
-                                            </td>
-                                            <td className="p-3 border border-[var(--mg-border)] text-right font-black text-orange-700 bg-gray-50">
-                                                Bs {totalCostOfGoodsRows.toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2.5 px-1">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]">
+                                    <AppIcon name="etiqueta" size={17} />
+                                </span>
+                                <div>
+                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Detalle de costos</h2>
+                                    <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                                        Costo de proveedor de cada producto vendido.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 lg:hidden">
+                                {costOfGoodsRows.map((r) => (
+                                    <div key={r.rowKey} className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{r.productName}</p>
+                                                <p className="mt-0.5 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                                    {formatReportDate(r.createdAt)} · #{String(r.saleNumber).padStart(4, '0')} · {r.quantity} und.
+                                                </p>
+                                            </div>
+                                            <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-gold-text)]">
+                                                {r.costTotal !== null ? `Bs ${r.costTotal.toFixed(2)}` : 'Sin costo'}
+                                            </span>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                            <span className="rounded-full bg-[var(--mg-bg-elevated)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">{r.category}</span>
+                                            {r.unitCost !== null && (
+                                                <span className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                                    Unitario: Bs {r.unitCost.toFixed(2)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {costOfGoodsRows.length === 0 && (
+                                    <EmptyState
+                                        icon="etiqueta"
+                                        title="Sin productos vendidos"
+                                        description="No hay ventas registradas en el rango de fechas seleccionado."
+                                    />
                                 )}
-                            </table>
+                            </div>
+
+                            <div className="hidden lg:block">
+                                <DataTable
+                                    storageKey="mg-reporte-costo-columns"
+                                    getRowKey={(r) => r.rowKey}
+                                    emptyMessage="No se encontraron productos vendidos en el rango de fechas seleccionado."
+                                    rows={costOfGoodsRows}
+                                    columns={[
+                                        {
+                                            key: 'fecha', label: 'Fecha', width: 'w-28',
+                                            render: (r) => <span className="text-xs font-semibold tabular-nums text-[var(--mg-text-secondary)]">{formatReportDate(r.createdAt)}</span>,
+                                        },
+                                        {
+                                            key: 'venta', label: 'N° Venta', width: 'w-24',
+                                            render: (r) => <span className="font-mono text-xs font-bold text-[var(--mg-text-secondary)]">{`#${String(r.saleNumber).padStart(4, '0')}`}</span>,
+                                        },
+                                        {
+                                            key: 'producto', label: 'Producto',
+                                            render: (r) => <span className="font-semibold text-[var(--mg-text-primary)]">{r.productName}</span>,
+                                        },
+                                        {
+                                            key: 'categoria', label: 'Categoría', align: 'center', width: 'w-32',
+                                            render: (r) => <span className="inline-block rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">{r.category}</span>,
+                                        },
+                                        {
+                                            key: 'cantidad', label: 'Cantidad', align: 'right', width: 'w-24',
+                                            render: (r) => <span className="tabular-nums">{r.quantity}</span>,
+                                        },
+                                        {
+                                            key: 'costoUnitario', label: 'Costo Unitario', align: 'right', width: 'w-32',
+                                            render: (r) => r.unitCost !== null
+                                                ? <span className="tabular-nums">Bs {r.unitCost.toFixed(2)}</span>
+                                                : <span className="rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-gold-text)]">Sin costo</span>,
+                                        },
+                                        {
+                                            key: 'costoTotal', label: 'Costo Total', align: 'right', width: 'w-32',
+                                            render: (r) => r.costTotal !== null
+                                                ? <span className="font-black tabular-nums text-[var(--mg-gold-text)]">Bs {r.costTotal.toFixed(2)}</span>
+                                                : <span className="rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-gold-text)]">Sin costo</span>,
+                                        },
+                                    ]}
+                                    footer={[{ key: 'costoTotal', label: 'Total costo de lo vendido', value: `Bs ${totalCostOfGoodsRows.toFixed(2)}` }]}
+                                />
+                            </div>
                         </div>
                     </div>
                 ) : reportType === 'inventory' ? (
-                    <div className="space-y-3 sm:space-y-6">
-                        {/* Resumen minimalista: hero compacto + 2 mini en móvil */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
-                            <div className="col-span-2 md:col-span-1 bg-blue-50/70 border border-blue-100 rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0">
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[9px] sm:text-xs font-extrabold uppercase tracking-widest text-[#1670C2] truncate">Valor total</p>
-                                    <h3 className="text-lg sm:text-3xl font-black text-[#1670C2] tabular-nums truncate leading-tight" title={`Bs ${inventorySummary.value.toFixed(2)}`}>Bs {inventorySummary.value.toFixed(2)}</h3>
-                                </div>
-                                <span className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-white border border-blue-100 flex items-center justify-center shrink-0"><AppIcon name="caja" size={20} /></span>
-                            </div>
-                            <div className={`border rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0 ${inventorySummary.low > 0 ? 'bg-amber-50/70 border-amber-100' : 'bg-green-50/70 border-green-100'}`}>
-                                <div className="min-w-0 flex-1">
-                                    <p className={`text-[9px] sm:text-xs font-extrabold uppercase tracking-widest truncate ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>Stock bajo</p>
-                                    <h3 className={`text-base sm:text-3xl font-black tabular-nums truncate leading-tight ${inventorySummary.low > 0 ? 'text-amber-700' : 'text-green-700'}`}>{inventorySummary.low} <span className="text-xs sm:text-lg font-bold opacity-70">{inventorySummary.low === 1 ? 'prod.' : 'prods.'}</span></h3>
-                                </div>
-                                <span className={`w-8 h-8 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center shrink-0 ${inventorySummary.low > 0 ? 'bg-white border-amber-100' : 'bg-white border-green-100'}`}><AppIcon name={inventorySummary.low > 0 ? 'reloj' : 'check'} size={20} /></span>
-                            </div>
-                            <div className="bg-gray-50/70 border border-gray-100 rounded-2xl px-3 py-2.5 sm:p-6 flex items-center justify-between gap-2 min-w-0">
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[9px] sm:text-xs font-extrabold uppercase tracking-widest text-gray-500 truncate">Catálogo</p>
-                                    <h3 className="text-base sm:text-3xl font-black text-gray-700 tabular-nums truncate leading-tight">{inventorySummary.count} <span className="text-xs sm:text-lg font-bold opacity-60">{inventorySummary.count === 1 ? 'prod.' : 'prods.'}</span></h3>
-                                    {inventoryCategory !== 'Todas' && (
-                                        <p className="hidden sm:block text-[11px] font-bold text-gray-500 mt-0.5 truncate">en {inventoryCategory} · {products.length} en total</p>
-                                    )}
-                                </div>
-                                <span className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0"><AppIcon name="nuevoProducto" size={20} /></span>
-                            </div>
+                    <div className="space-y-4 sm:space-y-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <MetricCard
+                                label="Valor total"
+                                value={`Bs ${inventorySummary.value.toFixed(2)}`}
+                                hint={`${inventoryRows.length} ${inventoryRows.length === 1 ? 'producto visible' : 'productos visibles'}`}
+                                icon="caja"
+                                tone="brand"
+                            />
+                            <MetricCard
+                                label="Stock bajo"
+                                value={inventorySummary.low}
+                                hint={inventorySummary.low === 1 ? 'producto en el mínimo' : 'productos en o bajo el mínimo'}
+                                icon={inventorySummary.low > 0 ? 'reloj' : 'check'}
+                                tone={inventorySummary.low > 0 ? 'warning' : 'success'}
+                            />
+                            <MetricCard
+                                label="Catálogo"
+                                value={inventorySummary.count}
+                                hint={inventoryCategory === 'Todas' ? `${products.length} productos en total` : `${inventoryCategory} · ${products.length} en total`}
+                                icon="nuevoProducto"
+                                tone="neutral"
+                            />
                         </div>
 
                         {/* Filtro por categoría — compacto */}
@@ -991,20 +1068,20 @@ export default function MatrixReport() {
                             </span>
                         </div>
 
-                        {/* Lista minimalista en celular, tabla completa en PC */}
                         <div className="lg:hidden">
                             {inventoryRows.length === 0 ? (
-                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-sm">
-                                    <p className="text-3xl mb-2">📦</p>
-                                    <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">No hay productos en esta categoría.</p>
-                                </div>
+                                <EmptyState
+                                    icon="almacen"
+                                    title="No hay productos en esta categoría"
+                                    description="Prueba con otra categoría o registra productos en el inventario."
+                                />
                             ) : (
-                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
-                                    <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
-                                        <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+                                <div className="overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+                                    <div className="flex items-center justify-between gap-2 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-4 py-3">
+                                        <p className="text-[11px] font-black uppercase tracking-wider text-[var(--mg-text-secondary)]">
                                             Productos ({inventoryRows.length})
                                         </p>
-                                        <p className="text-[11px] font-black text-[#1670C2] tabular-nums">
+                                        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand)]">
                                             Valor: Bs {inventoryRows.reduce((sum, p) => sum + Number(p.stock || 0) * Number(p.price || 0), 0).toFixed(2)}
                                         </p>
                                     </div>
@@ -1018,27 +1095,29 @@ export default function MatrixReport() {
                                                     role="button"
                                                     tabIndex={0}
                                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setKardexProductId(p.id); }}
-                                                    className="flex items-center gap-3 px-4 py-3 active:bg-[var(--mg-bg-elevated)] cursor-pointer"
+                                                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors active:bg-[var(--mg-bg-elevated)]"
                                                 >
                                                     {p.imageData ? (
-                                                        <img src={p.imageData} alt={p.name} loading="lazy" className="w-11 h-11 rounded-xl object-contain border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-0.5 shrink-0" />
+                                                        <img src={p.imageData} alt={p.name} loading="lazy" className="h-11 w-11 shrink-0 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] object-contain p-0.5" />
                                                     ) : (
-                                                        <span className="w-11 h-11 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-xl shrink-0">📦</span>
+                                                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]">
+                                                            <AppIcon name="paquete" size={19} />
+                                                        </span>
                                                     )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-extrabold text-[var(--mg-text-primary)] text-sm truncate">{p.name}</p>
-                                                        <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold truncate">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{p.name}</p>
+                                                        <p className="truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">
                                                             {p.category || 'Otros'}
                                                         </p>
-                                                        <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-black ${isLowStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-black ${isLowStock ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'}`}>
                                                             {p.stock} und.
                                                         </span>
                                                     </div>
-                                                    <span className="text-right shrink-0">
-                                                        <span className="block font-black text-[#1670C2] text-sm tabular-nums">
+                                                    <span className="shrink-0 text-right">
+                                                        <span className="block text-sm font-black tabular-nums text-[var(--mg-brand)]">
                                                             Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}
                                                         </span>
-                                                        <span className="text-lg font-black text-[var(--mg-text-faint)]">›</span>
+                                                        <AppIcon name="detalle" size={15} className="ml-auto mt-0.5 text-[var(--mg-text-faint)]" />
                                                     </span>
                                                 </div>
                                             );
@@ -1061,7 +1140,7 @@ export default function MatrixReport() {
                                         <button
                                             type="button"
                                             onClick={() => setKardexProductId(p.id)}
-                                            className="font-bold text-[var(--mg-text-primary)] text-left hover:text-[#1670C2] hover:underline transition-colors cursor-pointer"
+                                            className="cursor-pointer text-left font-bold text-[var(--mg-text-primary)] transition-colors hover:text-[var(--mg-accent)] hover:underline"
                                             title="Ver kardex del producto en el periodo"
                                         >
                                             {p.name}
@@ -1071,14 +1150,14 @@ export default function MatrixReport() {
                                 },
                                 {
                                     key: 'categoria', label: 'Categoría', align: 'left', width: 'w-36',
-                                    render: (p) => p.category || 'Otros',
+                                    render: (p) => <span className="rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">{p.category || 'Otros'}</span>,
                                 },
                                 {
                                     key: 'stock', label: 'Stock Actual', align: 'center', width: 'w-28',
                                     render: (p) => {
                                         const isLowStock = (p.stock || 0) <= (p.minStock || 5);
                                         return (
-                                            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${isLowStock ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-green-100 text-green-700'}`}>
+                                            <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${isLowStock ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'}`}>
                                                 {p.stock} und.
                                             </span>
                                         );
@@ -1086,12 +1165,12 @@ export default function MatrixReport() {
                                 },
                                 {
                                     key: 'precioUnitario', label: 'Precio Unitario', align: 'right', width: 'w-28',
-                                    render: (p) => `Bs ${(p.price || 0).toFixed(2)}`,
+                                    render: (p) => <span className="tabular-nums">Bs {(p.price || 0).toFixed(2)}</span>,
                                 },
                                 {
                                     key: 'valorTotal', label: 'Valor Total', align: 'right', width: 'w-32',
                                     render: (p) => (
-                                        <span className="font-black text-[#1670C2]">Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}</span>
+                                        <span className="font-black tabular-nums text-[var(--mg-brand)]">Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}</span>
                                     ),
                                 },
                                 {
@@ -1099,9 +1178,9 @@ export default function MatrixReport() {
                                     render: (p) => {
                                         const entries = productEntries[p.id] || 0;
                                         return entries > 0 ? (
-                                            <span className="text-green-600 bg-green-50 px-2 py-1 rounded-full font-black tabular-nums">+{entries} und.</span>
+                                            <span className="rounded-full bg-[var(--mg-success-bg)] px-2 py-1 font-black tabular-nums text-[var(--mg-success-text)]">+{entries} und.</span>
                                         ) : (
-                                            <span className="text-[var(--mg-text-faint)] font-bold tabular-nums">0 und.</span>
+                                            <span className="font-bold tabular-nums text-[var(--mg-text-faint)]">0 und.</span>
                                         );
                                     },
                                 },
@@ -1110,64 +1189,59 @@ export default function MatrixReport() {
                                     render: (p) => {
                                         const exits = productMovements[p.id] || 0;
                                         return exits > 0 ? (
-                                            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-full font-black tabular-nums">−{exits} und.</span>
+                                            <span className="rounded-full bg-[var(--mg-accent-bg)] px-2 py-1 font-black tabular-nums text-[var(--mg-accent)]">−{exits} und.</span>
                                         ) : (
-                                            <span className="text-[var(--mg-text-faint)] font-bold tabular-nums">0 und.</span>
+                                            <span className="font-bold tabular-nums text-[var(--mg-text-faint)]">0 und.</span>
                                         );
                                     },
                                 },
                             ]}
                         />
-                        <p className="text-[11px] text-[var(--mg-text-muted)] italic text-right mt-1">
+                        <p className="mt-1 text-right text-[11px] font-medium text-[var(--mg-text-muted)]">
                             Stock actual al día de hoy. Entradas = unidades compradas y salidas = unidades vendidas en el periodo elegido.
                         </p>
                         </div>
                     </div>
                 ) : reportType === 'profit' ? (
                     <div className="space-y-6">
-                        {/* Tarjetas de ganancias destacadas */}
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mg-stagger">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 {[
                                     {
-                                        label: 'Total Vendido',
+                                        label: 'Total vendido',
                                         value: profitReportData.totalVendido,
-                                        hint: 'Ver Reporte de Ventas ›',
+                                        hint: 'Ver reporte de ventas',
                                         title: 'Ver el detalle de ventas que justifica este total',
                                         to: `/ventas?tab=reporte&start=${startDate}&end=${endDate}`,
-                                        accent: 'text-[var(--mg-accent)]',
-                                        chip: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]',
-                                        icon: '💰',
+                                        icon: 'caja',
+                                        tone: 'brand',
                                     },
                                     {
-                                        label: 'Costo de lo Vendido',
+                                        label: 'Costo de lo vendido',
                                         value: profitReportData.totalCostoVendido,
-                                        hint: 'Ver detalle de costos ›',
+                                        hint: 'Ver detalle de costos',
                                         title: 'Ver el detalle de costos que justifica este total',
                                         to: `/reportes?type=costoVendido&start=${startDate}&end=${endDate}`,
-                                        accent: 'text-orange-600',
-                                        chip: 'bg-orange-50 text-orange-600 border-orange-100',
-                                        icon: '📦',
+                                        icon: 'etiqueta',
+                                        tone: 'warning',
                                     },
                                     {
-                                        label: 'Ganancia Bruta',
+                                        label: 'Ganancia bruta',
                                         value: profitReportData.totalGananciaBruta,
-                                        hint: 'Ver Reporte de Ventas ›',
+                                        hint: 'Ver reporte de ventas',
                                         title: 'Ver el detalle de ventas y ganancia por producto que justifica este total',
                                         to: `/ventas?tab=reporte&start=${startDate}&end=${endDate}`,
-                                        accent: 'text-emerald-600',
-                                        chip: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-                                        icon: '📈',
+                                        icon: 'reportes',
+                                        tone: 'success',
                                     },
                                     {
-                                        label: 'Gastos Diarios',
+                                        label: 'Gastos diarios',
                                         value: profitReportData.totalEgresosDiarios,
-                                        hint: 'Ver detalle de gastos ›',
+                                        hint: 'Ver detalle de gastos',
                                         title: 'Ver el detalle de egresos que justifica este total',
                                         to: `/reportes?type=expenses&flow=daily&start=${startDate}&end=${endDate}`,
-                                        accent: 'text-purple-600',
-                                        chip: 'bg-purple-50 text-purple-600 border-purple-100',
-                                        icon: '💸',
+                                        icon: 'gastos',
+                                        tone: 'danger',
                                     },
                                 ].map((card) => (
                                     <button
@@ -1175,97 +1249,86 @@ export default function MatrixReport() {
                                         type="button"
                                         onClick={() => navigate(card.to)}
                                         title={card.title}
-                                        className="group text-left bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-[22px] p-5 shadow-xs hover:shadow-md hover:-translate-y-1 active:scale-98 transition-all"
+                                        className="group h-full text-left"
                                     >
-                                        <div className="flex items-center justify-between gap-2 mb-3">
-                                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                                                {card.label}
-                                            </span>
-                                            <span className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base shrink-0 group-hover:scale-110 transition-transform ${card.chip}`}>
-                                                {card.icon}
-                                            </span>
-                                        </div>
-
-                                        <p className={`text-2xl lg:text-2xl sm:text-3xl font-black tracking-tight ${card.accent}`}>
-                                            Bs {card.value.toFixed(2)}
-                                        </p>
-
-                                        <p className="text-[11px] font-bold text-[var(--mg-text-muted)] mt-3 pt-2.5 border-t border-[var(--mg-separator)] group-hover:text-[var(--mg-accent)] transition-colors">
-                                            {card.hint}
-                                        </p>
+                                        <MetricCard
+                                            label={card.label}
+                                            value={`Bs ${card.value.toFixed(2)}`}
+                                            hint={card.hint}
+                                            icon={card.icon}
+                                            tone={card.tone}
+                                            className="h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-md"
+                                        />
                                     </button>
                                 ))}
                             </div>
 
-                            {/* Tarjeta Ganancia Neta Real (Destacada con Desglose) */}
-                            <div className={`relative overflow-hidden border-2 rounded-[24px] p-6 flex flex-col md:flex-row md:items-center md:justify-between shadow-sm transition-all gap-6 ${
+                            <div className={`rounded-3xl border p-5 shadow-[var(--mg-shadow-sm)] sm:p-6 ${
                                 profitReportData.totalGananciaNeta >= 0
-                                    ? 'bg-[var(--mg-success-bg)] border-green-200'
-                                    : 'bg-[var(--mg-danger-bg)] border-red-200'
+                                    ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]'
+                                    : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'
                             }`}>
-                                {/* Halo suave, en el tono del resultado */}
-                                <div
-                                    className="absolute -top-20 -right-16 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-40"
-                                    style={{ background: profitReportData.totalGananciaNeta >= 0 ? 'var(--mg-success)' : 'var(--mg-danger)' }}
-                                />
-
-                                <div className="relative space-y-1">
-                                    <p className={`text-[11px] font-black uppercase tracking-wider mb-1 ${
-                                        profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                    }`}>
-                                        🌟 Ganancia Neta Real del Periodo
-                                    </p>
-                                    <h3 className={`text-3xl lg:text-4xl font-black tracking-tight ${
-                                        profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                    }`}>
-                                        Bs {profitReportData.totalGananciaNeta.toFixed(2)}
-                                    </h3>
-                                    <p className="text-xs text-[var(--mg-text-secondary)] mt-2 font-medium max-w-md">
-                                        Resultado neto de la operación comercial restando todos los costos y gastos del periodo.
-                                    </p>
-                                    {profitReportData.totalItemsSinCosto > 0 && (
-                                        <p className="text-xs text-[var(--mg-warning)] bg-[var(--mg-warning-bg)] border border-amber-200 rounded-xl px-2.5 py-1.5 mt-2 font-bold">
-                                            ⚠️ {profitReportData.totalItemsSinCosto} {profitReportData.totalItemsSinCosto === 1 ? 'producto vendido no tiene' : 'productos vendidos no tienen'} costo de proveedor registrado — la ganancia real podría ser menor a la mostrada.
+                                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                                    <div className="min-w-0 space-y-1">
+                                        <p className={`flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${
+                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
+                                        }`}>
+                                            <AppIcon name={profitReportData.totalGananciaNeta >= 0 ? 'ok' : 'reloj'} size={15} />
+                                            Ganancia neta real del período
                                         </p>
-                                    )}
-                                </div>
+                                        <h3 className={`text-3xl font-black tracking-tight tabular-nums lg:text-4xl ${
+                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
+                                        }`}>
+                                            Bs {profitReportData.totalGananciaNeta.toFixed(2)}
+                                        </h3>
+                                        <p className="mt-2 max-w-md text-xs font-medium text-[var(--mg-text-secondary)]">
+                                            Resultado neto de la operación comercial restando todos los costos y gastos del período.
+                                        </p>
+                                        {profitReportData.totalItemsSinCosto > 0 && (
+                                            <div className="mt-2 flex items-start gap-2 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--mg-gold-text)]">
+                                                <AppIcon name="ayuda" size={14} className="mt-0.5" />
+                                                <span>
+                                                    {profitReportData.totalItemsSinCosto} {profitReportData.totalItemsSinCosto === 1 ? 'producto vendido no tiene' : 'productos vendidos no tienen'} costo de proveedor registrado — la ganancia real podría ser menor a la mostrada.
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
 
-                                {/* Panel de Desglose Matemático */}
-                                <div className="relative bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl p-4 text-xs space-y-2 min-w-[260px] shadow-sm shrink-0">
-                                    <div className="flex justify-between gap-4">
-                                        <span className="text-[var(--mg-text-muted)] font-bold">Ganancia Bruta:</span>
-                                        <span className="font-black text-[var(--mg-text-primary)]">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between gap-4 text-[var(--mg-danger)] font-bold">
-                                        <span>(-) Gastos Diarios:</span>
-                                        <span className="font-black">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between gap-4 text-purple-600 font-bold">
-                                        <span>(-) Gastos Fijos (Periodo):</span>
-                                        <span className="font-black">Bs {profitReportData.totalEgresosFijos.toFixed(2)}</span>
-                                    </div>
-                                    <div className={`border-t border-dashed border-[var(--mg-border)] pt-2 flex justify-between gap-4 font-black text-sm ${
-                                        profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                    }`}>
-                                        <span>Ganancia Neta Real:</span>
-                                        <span>Bs {profitReportData.totalGananciaNeta.toFixed(2)}</span>
+                                    <div className="w-full shrink-0 space-y-2 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 text-xs shadow-[var(--mg-shadow-sm)] md:w-auto md:min-w-[280px]">
+                                        <div className="flex justify-between gap-4">
+                                            <span className="font-bold text-[var(--mg-text-muted)]">Ganancia bruta:</span>
+                                            <span className="font-black tabular-nums text-[var(--mg-text-primary)]">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4 font-bold text-[var(--mg-danger)]">
+                                            <span>(-) Gastos diarios:</span>
+                                            <span className="font-black tabular-nums">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4 font-bold text-[var(--mg-gold-text)]">
+                                            <span>(-) Gastos fijos:</span>
+                                            <span className="font-black tabular-nums">Bs {profitReportData.totalEgresosFijos.toFixed(2)}</span>
+                                        </div>
+                                        <div className={`flex justify-between gap-4 border-t border-dashed border-[var(--mg-border)] pt-2 text-sm font-black ${
+                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
+                                        }`}>
+                                            <span>Ganancia neta:</span>
+                                            <span className="tabular-nums">Bs {profitReportData.totalGananciaNeta.toFixed(2)}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Lista minimalista en celular, tabla completa en PC */}
                         <div className="lg:hidden">
                             {profitReportData.days.length === 0 ? (
-                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-sm">
-                                    <p className="text-3xl mb-2">📈</p>
-                                    <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Sin registros en este periodo</p>
-                                    <p className="text-xs text-[var(--mg-text-muted)] mt-1 font-medium">Probá ampliando el rango de fechas.</p>
-                                </div>
+                                <EmptyState
+                                    icon="reportes"
+                                    title="Sin registros en este período"
+                                    description="Prueba ampliando el rango de fechas."
+                                />
                             ) : (
-                                <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
-                                    <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
-                                        <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+                                <div className="overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+                                    <div className="flex items-center justify-between gap-2 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-4 py-3">
+                                        <p className="text-[11px] font-black uppercase tracking-wider text-[var(--mg-text-secondary)]">
                                             Ganancia por día ({profitReportData.days.length})
                                         </p>
                                         <p className={`text-[11px] font-black tabular-nums ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
@@ -1283,20 +1346,22 @@ export default function MatrixReport() {
                                                     role="button"
                                                     tabIndex={0}
                                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDayDetail(day); }}
-                                                    className="flex items-center gap-3 px-4 py-3 active:bg-[var(--mg-bg-elevated)] cursor-pointer"
+                                                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors active:bg-[var(--mg-bg-elevated)]"
                                                 >
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-black text-[var(--mg-text-primary)] text-sm capitalize">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-bold capitalize text-[var(--mg-text-primary)]">
                                                             {dateLabel}
                                                         </p>
-                                                        <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5 truncate tabular-nums">
-                                                            Vendido Bs {day.vendido.toFixed(2)} · Gastos Bs {(Number(day.egresosDiarios || 0) + Number(day.egresosFijos || 0)).toFixed(2)}
+                                                        <p className="mt-0.5 text-[11px] font-semibold leading-4 tabular-nums text-[var(--mg-text-muted)]">
+                                                            <span className="whitespace-nowrap">Vendido Bs {day.vendido.toFixed(2)}</span>
+                                                            <span className="mx-1 text-[var(--mg-text-faint)]">·</span>
+                                                            <span className="whitespace-nowrap">Gastos Bs {(Number(day.egresosDiarios || 0) + Number(day.egresosFijos || 0)).toFixed(2)}</span>
                                                         </p>
                                                     </div>
-                                                    <span className={`font-black text-sm tabular-nums shrink-0 ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                                    <span className={`shrink-0 text-sm font-black tabular-nums ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                                                         Bs {day.gananciaNeta.toFixed(2)}
                                                     </span>
-                                                    <span className="text-lg font-black text-[var(--mg-text-faint)] shrink-0">›</span>
+                                                    <AppIcon name="detalle" size={15} className="shrink-0 text-[var(--mg-text-faint)]" />
                                                 </div>
                                             );
                                         })}
@@ -1304,29 +1369,20 @@ export default function MatrixReport() {
                                 </div>
                             )}
                         </div>
-                        {/* Tabla de Ganancias Diarias */}
-                        <div className="hidden lg:block overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
-                            <table className="w-full text-sm min-w-[800px] border-collapse bg-white">
+                        <div className="hidden overflow-x-auto rounded-2xl border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] lg:block">
+                            <table className="w-full min-w-[800px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
                                 <thead>
-                                    <tr className="text-[11px] uppercase tracking-wider">
-                                        <th className="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-extrabold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">
-                                            Fecha
-                                        </th>
-                                        <th className="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-extrabold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap">
-                                            Total Vendido
-                                        </th>
-                                        <th className="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-extrabold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap">
-                                            Costo Vendido
-                                        </th>
-                                        <th className="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-extrabold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap">
-                                            Ganancia Bruta
-                                        </th>
-                                        <th className="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-extrabold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap">
-                                            Gastos Diarios
-                                        </th>
-                                        <th className="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] font-extrabold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap">
-                                            Ganancia Neta Diaria
-                                        </th>
+                                    <tr>
+                                        {['Fecha', 'Total vendido', 'Costo vendido', 'Ganancia bruta', 'Gastos diarios', 'Ganancia neta'].map((label, idx) => (
+                                            <th
+                                                key={label}
+                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                    idx === 0 ? 'text-left' : 'text-right'
+                                                } ${idx === 5 ? 'text-[var(--mg-accent)]' : ''}`}
+                                            >
+                                                {label}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1334,34 +1390,34 @@ export default function MatrixReport() {
                                         const dateLabel = new Date(`${day.date}T00:00:00`).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
                                         const isDayPositive = day.gananciaNeta >= 0;
                                         return (
-                                            <tr 
-                                                key={day.date || idx} 
-                                                className="hover:bg-[var(--mg-bg-elevated)] transition-colors cursor-pointer group"
+                                            <tr
+                                                key={day.date || idx}
+                                                className="group cursor-pointer border-t border-[var(--mg-separator)] transition-colors hover:bg-[var(--mg-bg-elevated)]"
                                                 onClick={() => setSelectedDayDetail(day)}
                                                 title="Ver detalle del día"
                                             >
-                                                <td className="p-3 border border-[var(--mg-border)] font-mono text-[var(--mg-text-primary)] font-bold">
-                                                    {dateLabel}{' '}
-                                                    <span className="text-[10px] text-[var(--mg-text-faint)] font-normal opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
+                                                <td className="whitespace-nowrap p-3.5">
+                                                    <span className="font-semibold tabular-nums text-[var(--mg-text-primary)]">{dateLabel}</span>
+                                                    <AppIcon name="detalle" size={13} className="ml-1.5 inline-block text-[var(--mg-text-faint)] opacity-0 transition-opacity group-hover:opacity-100" />
                                                 </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right font-medium text-[var(--mg-text-primary)]">
+                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-text-primary)]">
                                                     Bs {day.vendido.toFixed(2)}
                                                 </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right text-[var(--mg-text-secondary)]">
+                                                <td className="p-3.5 text-right tabular-nums text-[var(--mg-text-secondary)]">
                                                     {day.costoVendido > 0 ? `Bs ${day.costoVendido.toFixed(2)}` : '—'}
                                                 </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right font-bold text-emerald-600">
+                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-success-text)]">
                                                     Bs {day.gananciaBruta.toFixed(2)}
                                                 </td>
-                                                <td className="p-3 border border-[var(--mg-border)] text-right text-[var(--mg-danger)] font-medium">
+                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-danger)]">
                                                     <div>Bs {day.egresosDiarios.toFixed(2)}</div>
                                                     {day.egresosFijos > 0 && (
-                                                        <span className="text-[9px] text-purple-600 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded-md inline-block font-bold mt-0.5" title="Gasto fijo registrado este día (se descuenta al final en el global)">
+                                                        <span className="mt-0.5 inline-block rounded-md border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--mg-gold-text)]" title="Gasto fijo registrado este día (se descuenta al final en el global)">
                                                             + Bs {day.egresosFijos.toFixed(2)} fijos
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className={`p-3 border border-[var(--mg-border)] text-right font-black ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                                <td className={`p-3.5 text-right font-black tabular-nums ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                                                     Bs {day.gananciaNeta.toFixed(2)}
                                                 </td>
                                             </tr>
@@ -1369,10 +1425,10 @@ export default function MatrixReport() {
                                     })}
                                     {profitReportData.days.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="p-12 text-center bg-[var(--mg-bg-elevated)]">
-                                                <p className="text-3xl mb-2">📈</p>
-                                                <p className="font-extrabold text-[var(--mg-text-primary)] text-sm">Sin registros en este periodo</p>
-                                                <p className="text-xs text-[var(--mg-text-muted)] mt-1 font-medium">Probá ampliando el rango de fechas.</p>
+                                            <td colSpan={6} className="bg-[var(--mg-bg-elevated)] p-12 text-center">
+                                                <AppIcon name="reportes" size={24} className="mx-auto text-[var(--mg-text-muted)]" />
+                                                <p className="mt-2 text-sm font-bold text-[var(--mg-text-primary)]">Sin registros en este período</p>
+                                                <p className="mt-1 text-xs font-medium text-[var(--mg-text-muted)]">Prueba ampliando el rango de fechas.</p>
                                             </td>
                                         </tr>
                                     )}
@@ -1381,88 +1437,142 @@ export default function MatrixReport() {
                         </div>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-[20px] shadow-sm border border-[var(--mg-border)] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-50">
-                        <table className="w-full text-sm min-w-[600px] border-collapse bg-white">
-                            <thead>
-                                <tr>
-                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-20">
-                                        Posición
-                                    </th>
-                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-left whitespace-nowrap">
-                                        Nombre del Producto
-                                    </th>
-                                    <th className="bg-blue-50 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-center whitespace-nowrap w-32">
-                                        Unidades Vendidas
-                                    </th>
-                                    <th className="bg-blue-100 text-[#1670C2] font-bold p-3.5 border border-[var(--mg-border)] text-right whitespace-nowrap w-40">
-                                        Monto Total Generado
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rankingMatrix.map((item, index) => {
-                                    const pos = index + 1;
-                                    const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
-                                    const isTop3 = pos <= 3;
-                                    return (
-                                        <tr key={index} className={`hover:bg-blue-50/20 transition-colors group ${isTop3 ? 'bg-blue-50/5' : ''}`}>
-                                            <td className="p-3 border border-[var(--mg-border)] text-center font-bold text-base whitespace-nowrap">
-                                                {isTop3 ? (
-                                                    <span className="text-xl" title={`Puesto ${pos}`}>{medal}</span>
-                                                ) : (
-                                                    <span className="text-gray-400 font-semibold">{medal}</span>
-                                                )}
-                                            </td>
-                                            <td className="p-3 border border-[var(--mg-border)] font-bold text-[var(--mg-text-primary)]">
-                                                <div className="flex items-center gap-3">
-                                                    {item.image ? (
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.productName}
-                                                            className="w-10 h-10 rounded-xl object-cover border border-[var(--mg-border)] shrink-0 bg-gray-50"
-                                                            loading="lazy"
-                                                        />
-                                                    ) : (
-                                                        <span className="w-10 h-10 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-lg shrink-0">
-                                                            📦
-                                                        </span>
-                                                    )}
-                                                    <span className="min-w-0 break-words">{item.productName}</span>
-                                                </div>
-                                            </td>
-                                            <td className="p-3 border border-[var(--mg-border)] text-center font-black text-sm text-[var(--mg-text-primary)]">
-                                                {item.quantity} und.
-                                            </td>
-                                            <td className="p-3 border border-[var(--mg-border)] text-right font-black text-[#1670C2] text-[14px]">
-                                                Bs {item.totalRevenue.toFixed(2)}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2.5 px-1">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]">
+                                <AppIcon name="ranking" size={17} />
+                            </span>
+                            <div>
+                                <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Ranking de productos</h2>
+                                <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                                    Ordenado por unidades vendidas e ingresos del período.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 lg:hidden">
+                            {rankingMatrix.map((item, index) => {
+                                const pos = index + 1;
+                                return (
+                                    <div key={`${item.productName}-${index}`} className="flex items-center gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+                                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                            pos === 1
+                                                ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
+                                                : pos <= 3
+                                                    ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                                                    : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                                        }`}>
+                                            {pos}
+                                        </span>
+                                        {item.image ? (
+                                            <img src={item.image} alt={item.productName} loading="lazy" className="h-10 w-10 shrink-0 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] object-cover" />
+                                        ) : (
+                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]">
+                                                <AppIcon name="paquete" size={18} />
+                                            </span>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{item.productName}</p>
+                                            <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">{item.quantity} und. vendidas</p>
+                                        </div>
+                                        <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
+                                            Bs {item.totalRevenue.toFixed(2)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                            {rankingMatrix.length === 0 && (
+                                <EmptyState
+                                    icon="ranking"
+                                    title="Sin productos vendidos"
+                                    description="No hay ventas registradas en el rango de fechas seleccionado."
+                                />
+                            )}
+                        </div>
+
+                        <div className="hidden overflow-x-auto rounded-2xl border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] lg:block">
+                            <table className="w-full min-w-[600px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
+                                <thead>
+                                    <tr>
+                                        {['Posición', 'Producto', 'Unidades vendidas', 'Monto generado'].map((label, idx) => (
+                                            <th
+                                                key={label}
+                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                    idx === 0 || idx === 2 ? 'text-center' : idx === 3 ? 'text-right' : 'text-left'
+                                                } ${idx === 0 ? 'w-24' : idx === 2 ? 'w-32' : idx === 3 ? 'w-40' : ''}`}
+                                            >
+                                                {label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rankingMatrix.map((item, index) => {
+                                        const pos = index + 1;
+                                        return (
+                                            <tr key={`${item.productName}-${index}`} className="border-t border-[var(--mg-separator)] transition-colors hover:bg-[var(--mg-bg-elevated)]">
+                                                <td className="p-3.5 text-center">
+                                                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black ${
+                                                        pos === 1
+                                                            ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
+                                                            : pos <= 3
+                                                                ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                                                                : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                                                    }`}>
+                                                        {pos}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        {item.image ? (
+                                                            <img src={item.image} alt={item.productName} loading="lazy" className="h-10 w-10 shrink-0 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] object-cover" />
+                                                        ) : (
+                                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]">
+                                                                <AppIcon name="paquete" size={18} />
+                                                            </span>
+                                                        )}
+                                                        <span className="min-w-0 break-words font-semibold text-[var(--mg-text-primary)]">{item.productName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-3.5 text-center font-black tabular-nums text-[var(--mg-text-primary)]">
+                                                    {item.quantity} und.
+                                                </td>
+                                                <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand)]">
+                                                    Bs {item.totalRevenue.toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {rankingMatrix.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="bg-[var(--mg-bg-elevated)] p-10 text-center text-sm font-semibold text-[var(--mg-text-muted)]">
+                                                No hay productos vendidos en este período.
                                             </td>
                                         </tr>
-                                    );
-                                })}
-                                {rankingMatrix.length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} className="p-10 text-center text-[var(--mg-text-muted)] font-medium text-base bg-gray-50/30">
-                                            No hay productos vendidos en este periodo.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
-                <div className="mt-8 text-center text-xs text-[var(--mg-text-muted)] border-t border-dashed border-[var(--mg-border)] pt-5 flex justify-center gap-6 flex-wrap">
-                    {reportType === 'ranking'
-                        ? <span>🏆 Ranking ordenado de los productos con mayor demanda física e ingresos totales.</span>
-                        : reportType === 'costoVendido'
-                        ? <span>📦 Costo de proveedor de cada producto vendido — su suma es el "Costo de lo Vendido" de Ganancias Diarias.</span>
-                        : reportType === 'expenses'
-                        ? <span>💵 Resumen detallado y desglose de egresos en tu negocio en el periodo.</span>
-                        : reportType === 'profit'
-                        ? <span>📈 Resumen detallado de ingresos, costos de reposición y egresos generales con ganancia neta.</span>
-                        : <span>📦 Reporte de stock actual, valorización de inventario y movimientos en el rango de fechas.</span>
-                    }
-                    <span>⚡ Datos 100% reales calculados a partir de tu base de datos de ventas.</span>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-dashed border-[var(--mg-border)] pt-5 text-center text-[11px] font-medium text-[var(--mg-text-muted)]">
+                    <span className="inline-flex items-center gap-1.5">
+                        <AppIcon name="reportes" size={14} />
+                        {reportType === 'ranking'
+                            ? 'Ranking ordenado por demanda física e ingresos totales.'
+                            : reportType === 'costoVendido'
+                            ? 'Costo de proveedor de cada producto vendido en el período.'
+                            : reportType === 'expenses'
+                            ? 'Resumen y desglose de egresos del negocio en el período.'
+                            : reportType === 'profit'
+                            ? 'Ingresos, costos de reposición, egresos y ganancia neta.'
+                            : 'Stock actual, valorización y movimientos del período.'}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-[var(--mg-success-text)]">
+                        <AppIcon name="check" size={13} />
+                        Calculado con los datos de tu negocio.
+                    </span>
                 </div>
             </div>
             {selectedDayDetail && (
@@ -1488,74 +1598,86 @@ export default function MatrixReport() {
 function KardexModal({ data, periodLabel, onClose }) {
     const { product, rows, totalIn, totalOut, initialStock, currentStock } = data;
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200" onClick={onClose}>
             <div
-                className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200"
-                style={{ maxHeight: '90vh' }}
+                className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-2xl animate-in zoom-in duration-200"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Kardex del producto"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="p-5 border-b border-[var(--mg-border)] flex items-center justify-between bg-blue-50/20">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-5 py-4">
                     <div className="min-w-0">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2]">Kardex · {periodLabel}</span>
-                        <h3 className="text-lg font-black text-[var(--mg-text-primary)] mt-0.5 truncate">{product.name}</h3>
-                        {product.brand && <p className="text-xs text-[var(--mg-text-muted)]">{product.brand}</p>}
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand)]">Kardex · {periodLabel}</p>
+                        <h3 className="mt-0.5 truncate text-lg font-black text-[var(--mg-text-primary)]">{product.name}</h3>
+                        {product.brand && <p className="text-xs font-medium text-[var(--mg-text-muted)]">{product.brand}</p>}
                     </div>
-                    <button onClick={onClose}
-                        className="w-9 h-9 shrink-0 bg-[var(--mg-bg-elevated)] hover:bg-gray-200 rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-xl transition-all">×</button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar kardex"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
+                    >
+                        <AppIcon name="cerrar" size={17} />
+                    </button>
                 </div>
 
-                <div className="px-5 pt-4 grid grid-cols-3 gap-2.5">
-                    <div className="bg-[var(--mg-bg-elevated)] p-2.5 rounded-2xl border border-[var(--mg-border)] text-center">
-                        <span className="text-[9px] text-[var(--mg-text-faint)] uppercase font-bold tracking-wider block">Stock inicial</span>
-                        <span className="text-sm font-black text-[var(--mg-text-primary)] mt-0.5 block tabular-nums">{initialStock} und.</span>
+                <div className="grid grid-cols-3 gap-2.5 px-5 pt-4">
+                    <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-2.5 text-center">
+                        <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-text-muted)]">Stock inicial</span>
+                        <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-text-primary)]">{initialStock} und.</span>
                     </div>
-                    <div className="bg-green-50 p-2.5 rounded-2xl border border-green-100 text-center">
-                        <span className="text-[9px] text-green-600 uppercase font-bold tracking-wider block">Entradas</span>
-                        <span className="text-sm font-black text-green-700 mt-0.5 block tabular-nums">+{totalIn}</span>
+                    <div className="rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] p-2.5 text-center">
+                        <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-success-text)]">Entradas</span>
+                        <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-success-text)]">+{totalIn}</span>
                     </div>
-                    <div className="bg-blue-50 p-2.5 rounded-2xl border border-blue-100 text-center">
-                        <span className="text-[9px] text-blue-600 uppercase font-bold tracking-wider block">Salidas</span>
-                        <span className="text-sm font-black text-blue-700 mt-0.5 block tabular-nums">−{totalOut}</span>
+                    <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] p-2.5 text-center">
+                        <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-accent)]">Salidas</span>
+                        <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-accent)]">−{totalOut}</span>
                     </div>
                 </div>
 
-                <div className="p-5 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="min-h-0 flex-1 overflow-y-auto p-5">
                     {rows.length > 0 ? (
-                        <table className="w-full text-xs text-left border-collapse">
+                        <table className="w-full border-collapse text-left text-[11px] sm:text-xs">
                             <thead>
-                                <tr className="border-b border-[var(--mg-border)] text-[var(--mg-text-muted)] font-extrabold uppercase text-[10px] bg-[var(--mg-bg-elevated)]">
-                                    <th className="py-2 px-3 rounded-l-xl">Fecha</th>
-                                    <th className="py-2 px-3">Movimiento</th>
-                                    <th className="py-2 px-3 text-center">Cant.</th>
-                                    <th className="py-2 px-3 text-right rounded-r-xl">Saldo</th>
+                                <tr className="bg-[var(--mg-bg-elevated)] text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">
+                                    <th className="rounded-l-xl px-2 py-2 sm:px-3">Fecha</th>
+                                    <th className="px-2 py-2 sm:px-3">Movimiento</th>
+                                    <th className="whitespace-nowrap px-2 py-2 text-center sm:px-3">Cant.</th>
+                                    <th className="whitespace-nowrap rounded-r-xl px-2 py-2 text-right sm:px-3">Saldo</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[var(--mg-separator)] font-bold">
+                            <tbody className="divide-y divide-[var(--mg-separator)] font-semibold">
                                 {rows.map((m, i) => (
-                                    <tr key={i} className="hover:bg-blue-50/20">
-                                        <td className="py-2.5 px-3 font-mono whitespace-nowrap">
-                                            {m.date.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit' })} · {m.date.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
+                                    <tr key={i} className="transition-colors hover:bg-[var(--mg-bg-elevated)]">
+                                        <td className="whitespace-nowrap px-2 py-2.5 text-[var(--mg-text-secondary)] sm:px-3">
+                                            {m.date.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit' })} · {m.date.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false })}
                                         </td>
-                                        <td className="py-2.5 px-3">
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${m.type === 'entrada' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
-                                                {m.type === 'entrada' ? '⤴ Entrada' : '⤵ Salida'}
+                                        <td className="px-2 py-2.5 sm:px-3">
+                                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${
+                                                m.type === 'entrada'
+                                                    ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
+                                                    : 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                                            }`}>
+                                                {m.type === 'entrada' ? 'Entrada' : 'Salida'}
                                             </span>
                                         </td>
-                                        <td className="py-2.5 px-3 text-center tabular-nums">{m.type === 'entrada' ? `+${m.qty}` : `−${m.qty}`}</td>
-                                        <td className="py-2.5 px-3 text-right font-black tabular-nums">{m.balance} und.</td>
+                                        <td className="whitespace-nowrap px-2 py-2.5 text-center tabular-nums text-[var(--mg-text-primary)] sm:px-3">{m.type === 'entrada' ? `+${m.qty}` : `−${m.qty}`}</td>
+                                        <td className="whitespace-nowrap px-2 py-2.5 text-right font-black tabular-nums text-[var(--mg-text-primary)] sm:px-3">{m.balance} und.</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     ) : (
-                        <p className="text-xs text-[var(--mg-text-muted)] text-center py-6 font-medium">
+                        <p className="py-6 text-center text-xs font-medium text-[var(--mg-text-muted)]">
                             Sin movimientos en este periodo. El stock actual es {currentStock} und.
                         </p>
                     )}
                 </div>
 
                 <div className="px-5 pb-4">
-                    <div className="bg-blue-50/60 border border-blue-100 rounded-2xl px-4 py-2.5 flex items-center justify-between text-sm font-black text-[#1670C2]">
+                    <div className="flex items-center justify-between rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-4 py-2.5 text-sm font-black text-[var(--mg-brand)]">
                         <span>Stock actual</span>
                         <span className="tabular-nums">{currentStock} und.</span>
                     </div>
@@ -1600,103 +1722,111 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
     }, [daySaleItems]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-            <div 
-                className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200"
-                style={{ maxHeight: '90vh' }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div
+                className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-2xl animate-in zoom-in duration-200"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Detalle de ganancia del ${dateLabel}`}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="p-5 border-b border-[var(--mg-border)] flex items-center justify-between bg-blue-50/20">
-                    <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#1670C2]">Detalle de Ganancia</span>
-                        <h3 className="text-lg font-black text-[var(--mg-text-primary)] mt-0.5">{dateLabel}</h3>
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-5 py-4">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand)]">Detalle de ganancia</p>
+                        <h3 className="mt-0.5 truncate text-lg font-black text-[var(--mg-text-primary)]">{dateLabel}</h3>
                     </div>
-                    <button onClick={onClose}
-                        className="w-9 h-9 bg-[var(--mg-bg-elevated)] hover:bg-gray-200 rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-xl transition-all">×</button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar detalle del día"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
+                    >
+                        <AppIcon name="cerrar" size={17} />
+                    </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-5 overflow-y-auto space-y-6 flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
-                    
-                    {/* Tarjetas de Resumen del Día */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl border border-[var(--mg-border)] text-center">
-                            <span className="text-[9px] text-[var(--mg-text-faint)] uppercase font-bold tracking-wider block">Vendido</span>
-                            <span className="text-sm font-black text-[var(--mg-text-primary)] mt-1 block">Bs {day.vendido.toFixed(2)}</span>
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
+                            <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-text-muted)]">Vendido</span>
+                            <span className="mt-1 block text-sm font-black tabular-nums text-[var(--mg-text-primary)]">Bs {day.vendido.toFixed(2)}</span>
                         </div>
-                        <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl border border-[var(--mg-border)] text-center">
-                            <span className="text-[9px] text-[var(--mg-text-faint)] uppercase font-bold tracking-wider block">Costo de Ventas</span>
-                            <span className="text-sm font-black text-[var(--mg-text-secondary)] mt-1 block">
+                        <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
+                            <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-text-muted)]">Costo de ventas</span>
+                            <span className="mt-1 block text-sm font-black tabular-nums text-[var(--mg-text-secondary)]">
                                 {day.costoVendido > 0 ? `Bs ${day.costoVendido.toFixed(2)}` : '—'}
                             </span>
                         </div>
-                        <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100 text-center">
-                            <span className="text-[9px] text-emerald-600 uppercase font-bold tracking-wider block">Ganancia Bruta</span>
-                            <span className="text-sm font-black text-emerald-700 mt-1 block">Bs {day.gananciaBruta.toFixed(2)}</span>
+                        <div className="rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] p-3 text-center">
+                            <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-success-text)]">Ganancia bruta</span>
+                            <span className="mt-1 block text-sm font-black tabular-nums text-[var(--mg-success-text)]">Bs {day.gananciaBruta.toFixed(2)}</span>
                         </div>
                     </div>
 
-                    {/* Ventas del Día */}
                     <div className="space-y-3">
-                        <h4 className="text-xs font-extrabold uppercase tracking-widest text-[#1670C2] flex items-center gap-1.5 border-b border-[var(--mg-border)] pb-1 font-bold">
-                            🛒 Ventas del día ({daySales.length})
+                        <h4 className="flex items-center gap-1.5 border-b border-[var(--mg-separator)] pb-2 text-xs font-black uppercase tracking-widest text-[var(--mg-brand)]">
+                            <AppIcon name="carrito" size={14} />
+                            Ventas del día ({daySales.length})
                         </h4>
                         {daySales.length === 0 ? (
-                            <p className="text-xs text-[var(--mg-text-faint)] italic">No hubo ventas registradas.</p>
+                            <p className="text-xs font-medium text-[var(--mg-text-muted)]">No hubo ventas registradas.</p>
                         ) : (
-                            <div className="space-y-3.5">
+                            <div className="space-y-3">
                                 {daySales.map(sale => {
                                     const saleItemsList = itemsBySale[sale.id] || [];
-                                    const paymentLabel = sale.paymentMethod === 'cash' ? '💵 Efectivo' : (sale.paymentMethod === 'qr' ? '📱 QR' : '🔄 Mixto');
+                                    const payment = sale.paymentMethod === 'cash'
+                                        ? { icon: 'cash', label: 'Efectivo' }
+                                        : sale.paymentMethod === 'qr'
+                                            ? { icon: 'qr', label: 'QR' }
+                                            : { icon: 'mixto', label: 'Mixto' };
                                     const saleTime = (() => {
                                         const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.created_at || sale.createdAt);
                                         return d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
                                     })();
 
                                     return (
-                                        <div key={sale.id} className="border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3 bg-[var(--mg-bg-surface)] hover:shadow-sm transition-all">
-                                            {/* Cabecera Venta */}
-                                            <div className="flex justify-between items-start text-xs border-b border-[var(--mg-border)] pb-2">
-                                                <div>
-                                                    <span className="font-black text-[var(--mg-text-primary)] block">
+                                        <div key={sale.id} className="space-y-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+                                            <div className="flex items-start justify-between gap-3 border-b border-[var(--mg-separator)] pb-2 text-xs">
+                                                <div className="min-w-0">
+                                                    <span className="block truncate font-bold text-[var(--mg-text-primary)]">
                                                         {sale.clientName || sale.client_name || 'Cliente Casual'}
                                                     </span>
-                                                    <span className="text-[10px] text-[var(--mg-text-faint)] mt-0.5 block font-semibold">
-                                                        {saleTime} · {paymentLabel}
+                                                    <span className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                                        {saleTime}
+                                                        <span>·</span>
+                                                        <AppIcon name={payment.icon} size={11} />
+                                                        {payment.label}
                                                     </span>
                                                 </div>
-                                                <span className="font-extrabold text-[#1670C2] text-sm">
+                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
                                                     Bs {(sale.total || 0).toFixed(2)}
                                                 </span>
                                             </div>
 
-                                            {/* Items de Venta */}
                                             <div className="space-y-2.5">
                                                 {saleItemsList.map(item => {
-                                                    const supplierPriceVal = item.supplier_price !== undefined && item.supplier_price !== null 
-                                                        ? Number(item.supplier_price) 
-                                                        : (item.supplierPrice !== undefined && item.supplierPrice !== null 
-                                                            ? Number(item.supplierPrice) 
+                                                    const supplierPriceVal = item.supplier_price !== undefined && item.supplier_price !== null
+                                                        ? Number(item.supplier_price)
+                                                        : (item.supplierPrice !== undefined && item.supplierPrice !== null
+                                                            ? Number(item.supplierPrice)
                                                             : null);
 
                                                     const isCostAvailable = supplierPriceVal !== null;
-                                                    const lineCost = isCostAvailable ? supplierPriceVal * Number(item.quantity) : null;
                                                     const lineProfit = isCostAvailable ? (Number(item.price) - supplierPriceVal) * Number(item.quantity) : null;
 
                                                     return (
-                                                        <div key={item.id} className="text-xs flex flex-col md:flex-row md:justify-between md:items-center gap-1 pb-1.5 border-b border-dashed border-[var(--mg-border)] last:border-0 last:pb-0">
+                                                        <div key={item.id} className="flex flex-col gap-1 border-b border-dashed border-[var(--mg-separator)] pb-1.5 text-xs last:border-0 last:pb-0 md:flex-row md:items-center md:justify-between">
                                                             <div className="min-w-0">
-                                                                <span className="font-bold text-[var(--mg-text-primary)] block truncate">{item.productName}</span>
-                                                                <span className="text-[10px] text-[var(--mg-text-muted)] mt-0.5 block">
+                                                                <span className="block truncate font-semibold text-[var(--mg-text-primary)]">{item.productName}</span>
+                                                                <span className="mt-0.5 block text-[10px] text-[var(--mg-text-muted)]">
                                                                     {item.quantity} und. × Bs {Number(item.price).toFixed(2)}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex flex-wrap items-center gap-x-3 text-[10px] md:text-right font-medium">
+                                                            <div className="flex flex-wrap items-center gap-x-3 text-[10px] font-medium md:text-right">
                                                                 <div className="text-[var(--mg-text-secondary)]">
                                                                     Costo: <span className="font-bold">{isCostAvailable ? `Bs ${supplierPriceVal.toFixed(2)}` : '—'}</span>
                                                                 </div>
-                                                                <div className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded font-extrabold">
+                                                                <div className="rounded bg-[var(--mg-success-bg)] px-1.5 py-0.5 font-bold text-[var(--mg-success-text)]">
                                                                     Ganancia: {isCostAvailable ? `Bs ${lineProfit.toFixed(2)}` : '—'}
                                                                 </div>
                                                             </div>
@@ -1711,45 +1841,44 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                         )}
                     </div>
 
-                    {/* Gastos del Día */}
                     <div className="space-y-3">
-                        <h4 className="text-xs font-extrabold uppercase tracking-widest text-purple-700 flex items-center gap-1.5 border-b border-[var(--mg-border)] pb-1 font-bold">
-                            💸 Gastos del día ({dayExpenses.length})
+                        <h4 className="flex items-center gap-1.5 border-b border-[var(--mg-separator)] pb-2 text-xs font-black uppercase tracking-widest text-[var(--mg-danger)]">
+                            <AppIcon name="gastos" size={14} />
+                            Gastos del día ({dayExpenses.length})
                         </h4>
                         {dayExpenses.length === 0 ? (
-                            <p className="text-xs text-[var(--mg-text-faint)] italic">No hubo gastos registrados.</p>
+                            <p className="text-xs font-medium text-[var(--mg-text-muted)]">No hubo gastos registrados.</p>
                         ) : (
                             <div className="space-y-3">
                                 <div className="space-y-2">
                                     {dayExpenses.map(exp => {
                                         const isFixed = exp.expense_type === 'fixed' || exp.expenseType === 'fixed';
                                         return (
-                                            <div key={exp.id} className="flex justify-between items-center text-xs p-3 border border-[var(--mg-border)] rounded-2xl bg-purple-50/10">
-                                                <div>
+                                            <div key={exp.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-xs">
+                                                <div className="min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="font-bold text-[var(--mg-text-primary)]">{exp.description}</span>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase shrink-0 ${
-                                                            isFixed ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'
+                                                        <span className="truncate font-semibold text-[var(--mg-text-primary)]">{exp.description}</span>
+                                                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-black uppercase ${
+                                                            isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
                                                         }`}>
                                                             {isFixed ? 'Fijo' : 'Diario'}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[10px] text-[var(--mg-text-faint)] font-semibold uppercase mt-0.5 block">{exp.category || 'Otros'}</span>
+                                                    <span className="mt-0.5 block text-[10px] font-semibold uppercase text-[var(--mg-text-muted)]">{exp.category || 'Otros'}</span>
                                                 </div>
-                                                <span className="font-bold text-red-600">- Bs {Number(exp.amount).toFixed(2)}</span>
+                                                <span className="shrink-0 font-bold tabular-nums text-[var(--mg-danger)]">- Bs {Number(exp.amount).toFixed(2)}</span>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                
-                                {/* Subtotales de gastos del día */}
-                                <div className="flex flex-col gap-1 border-t border-dashed border-[var(--mg-border)] pt-3 text-[11px] font-medium text-right text-gray-500">
+
+                                <div className="flex flex-col gap-1 border-t border-dashed border-[var(--mg-border)] pt-3 text-right text-[11px] font-medium text-[var(--mg-text-muted)]">
                                     <div>
-                                        Subtotal Gastos Diarios: <span className="font-bold text-gray-700">Bs {day.egresosDiarios.toFixed(2)}</span>
+                                        Subtotal gastos diarios: <span className="font-bold text-[var(--mg-text-primary)]">Bs {day.egresosDiarios.toFixed(2)}</span>
                                     </div>
                                     {day.egresosFijos > 0 && (
-                                        <div className="text-purple-600">
-                                            Gastos Fijos registrados hoy (informativo): <span className="font-bold">Bs {day.egresosFijos.toFixed(2)}</span>
+                                        <div className="text-[var(--mg-gold-text)]">
+                                            Gastos fijos registrados hoy (informativo): <span className="font-bold">Bs {day.egresosFijos.toFixed(2)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1758,23 +1887,24 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-[var(--mg-border)] bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col gap-3 border-t border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-faint)] block">Ganancia Neta Diaria (Venta − Costo − G. Diarios)</span>
-                        <span className={`text-xl font-black ${day.gananciaNeta >= 0 ? 'text-green-600' : 'text-red-500'} mt-0.5 block`}>
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-[var(--mg-text-muted)]">Ganancia neta diaria</span>
+                        <span className={`mt-0.5 block text-xl font-black tabular-nums ${day.gananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                             Bs {day.gananciaNeta.toFixed(2)}
                         </span>
                         {day.egresosFijos > 0 && (
-                            <span className="text-[9px] text-purple-600 block mt-1 font-semibold">
+                            <span className="mt-1 block text-[9px] font-semibold text-[var(--mg-gold-text)]">
                                 * Se registraron Bs {day.egresosFijos.toFixed(2)} fijos hoy (se restan del total del mes).
                             </span>
                         )}
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="bg-[#1670C2] text-white font-bold px-6 py-3 rounded-2xl text-xs active:scale-95 transition-all shadow-md sm:self-center"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--mg-accent)] px-6 py-3 text-xs font-bold text-white shadow-md transition-all hover:bg-[var(--mg-accent-hover)] active:scale-95 sm:self-center"
                     >
+                        <AppIcon name="check" size={15} color="#fff" />
                         Entendido
                     </button>
                 </div>

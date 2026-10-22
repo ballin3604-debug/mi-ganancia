@@ -14,7 +14,7 @@ export function RowAddButton({ onAdd, disabled, title = 'Agregar' }) {
       disabled={disabled}
       title={title}
       aria-label={title}
-      className="w-11 h-11 min-w-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center active:scale-90 transition-all font-black text-2xl leading-none shrink-0 disabled:opacity-40"
+      className="flex h-11 min-w-[44px] w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-2xl font-black leading-none text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90 disabled:opacity-40"
     >
       +
     </button>
@@ -43,11 +43,11 @@ export default function ProductListRow({
           onSelect?.();
         }
       }}
-      className={`w-full flex items-center gap-3 bg-[var(--mg-bg-surface)] rounded-2xl border p-2.5 pr-3 text-left shadow-xs transition-colors min-h-[76px] ${
+      className={`w-full flex items-center gap-3 bg-[var(--mg-bg-surface)] rounded-2xl border p-2.5 pr-3 text-left shadow-sm transition-colors min-h-[76px] ${
         disabled ? 'opacity-50' : 'cursor-pointer'
       } ${
         selected
-          ? 'ring-2 ring-[var(--mg-accent)] border-transparent'
+          ? 'border-transparent ring-2 ring-[var(--mg-brand)]'
           : 'border-[var(--mg-border)]'
       }`}
     >
@@ -61,7 +61,11 @@ export default function ProductListRow({
             className="w-full h-full object-contain"
           />
         ) : (
-          <span className="text-2xl text-[var(--mg-text-faint)]">📦</span>
+          <span className="text-[var(--mg-text-faint)]">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          </span>
         )}
       </span>
 

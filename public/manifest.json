@@ -6,7 +6,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#007aff",
+  "theme_color": "#153449",
   "orientation": "portrait",
   "categories": ["business", "finance", "productivity"],
   "icons": [

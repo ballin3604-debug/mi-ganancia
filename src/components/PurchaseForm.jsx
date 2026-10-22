@@ -18,8 +18,8 @@ function formatBs(amount) {
 function ProductImage({ imageData, name }) {
   if (!imageData) {
     return (
-      <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shrink-0 text-2xl">
-        📦
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]">
+        <AppIcon name="paquete" size={24} />
       </div>
     );
   }
@@ -324,16 +324,16 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
           className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-xs text-center shadow-2xl relative cursor-default mg-modal-in"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-[var(--mg-accent-bg)] rounded-full flex items-center justify-center border-2 border-[var(--mg-accent-border)]">
-              <svg className="w-9 h-9 text-[var(--mg-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]">
+              <svg className="h-9 w-9 text-[var(--mg-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" className="mg-draw-check" />
               </svg>
             </div>
           </div>
 
-          <h3 className="text-lg font-black text-[var(--mg-text-primary)]">¡Compra Registrada!</h3>
-          <p className="text-3xl font-black text-[var(--mg-accent)] my-2">{formatBs(successDetails.totalCost)}</p>
+          <h3 className="text-lg font-black text-[var(--mg-text-primary)]">Compra registrada</h3>
+          <p className="my-2 text-3xl font-black text-[var(--mg-success-text)]">{formatBs(successDetails.totalCost)}</p>
 
           <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-left text-xs space-y-1.5 border border-[var(--mg-border)] my-4 text-[var(--mg-text-secondary)]">
             <div className="flex justify-between">
@@ -368,14 +368,14 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <button
               type="button"
               onClick={handlePrintPurchase}
-              className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
             >
               <AppIcon name="recibo" size={14} /> Imprimir detalle
             </button>
             <button
               type="button"
               onClick={handleContinue}
-              className="w-full bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition-all shadow-md"
+              className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
             >
               Continuar
             </button>
@@ -386,31 +386,40 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
   }
 
   return (
-    <div className="p-5 pb-10 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-[var(--mg-text-primary)]">Registrar compra</h3>
+    <div className="space-y-4 p-5 pb-10">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Entrada de inventario</p>
+          <h3 className="text-xl font-black tracking-tight text-[var(--mg-brand)]">Registrar compra</h3>
+        </div>
         {onClose && (
           <button
+            type="button"
             onClick={() => { clearPurchaseDraft(businessId, user?.uid); onClose(); }}
             title="Cambiar producto"
-            className="w-8 h-8 bg-[var(--mg-bg-elevated)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-lg">×</button>
+            aria-label="Cerrar y cambiar producto"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]"
+          >
+            <AppIcon name="cerrar" size={15} />
+          </button>
         )}
       </div>
 
       {/* Encabezado del producto seleccionado */}
-          <div className="bg-[var(--mg-bg-elevated)] p-3.5 rounded-2xl border border-[var(--mg-border)] flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3.5">
             <ProductImage imageData={product.imageData} name={product.name} />
             <div className="min-w-0">
-              <p className="text-xs text-[var(--mg-text-muted)] font-semibold uppercase tracking-wider">Producto seleccionado</p>
-              <p className="font-black text-[var(--mg-text-primary)] text-base truncate mt-0.5">{product.name}</p>
-              <p className="text-xs text-[var(--mg-text-faint)] font-semibold mt-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Producto seleccionado</p>
+              <p className="mt-0.5 truncate text-base font-black text-[var(--mg-text-primary)]">{product.name}</p>
+              <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
                 {product.brand && `${product.brand} · `}Stock{branches.length > 1 ? ` en ${(branches.find((b) => b.id === (purchaseBranchId || activeBranchId))?.name) || 'sede'}` : ''}: <strong className="text-[var(--mg-text-secondary)]">{product.stock} und.</strong>
               </p>
               {lastPurchase && (
-                <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1">
+                <p className="mt-1 flex items-start gap-1 text-[11px] font-semibold text-[var(--mg-brand)]">
+                  <AppIcon name="paquete" size={12} />
                   {lastPurchase.purchaseUnitType === 'package' && lastPurchase.packageSize
-                    ? `📦 La última vez lo compraste por caja de ${lastPurchase.packageSize}.`
-                    : '📦 La última vez lo compraste por unidad.'}
+                    ? `La última vez lo compraste por caja de ${lastPurchase.packageSize}.`
+                    : 'La última vez lo compraste por unidad.'}
                 </p>
               )}
             </div>
@@ -427,13 +436,14 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       key={b.id}
                       type="button"
                       onClick={() => setPurchaseBranchId(b.id)}
-                      className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                      className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${
                         (purchaseBranchId || activeBranchId) === b.id
-                          ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                          ? 'border-[var(--mg-brand)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
                           : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'
                       }`}
                     >
-                      {b.type === 'almacen' ? '📦' : '🏪'} {b.name}
+                      <AppIcon name={b.type === 'almacen' ? 'almacen' : 'tienda'} size={14} />
+                      {b.name}
                     </button>
                   ))}
                 </div>
@@ -450,14 +460,14 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     if (purchaseUnitType !== 'unit') setSupplierPrice('');
                     setPurchaseUnitType('unit');
                   }}
-                  className={`text-left p-3.5 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                  className={`text-left p-3.5 rounded-2xl border transition-all active:scale-[0.98] ${
                     purchaseUnitType === 'unit'
-                      ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]'
+                      ? 'border-[var(--mg-brand)] bg-[var(--mg-brand-bg)]'
                       : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'unit' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)]' : 'border-gray-300'}`}>
+                    <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'unit' ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)]' : 'border-[var(--mg-border-hover)]'}`}>
                       {purchaseUnitType === 'unit' && <span className="w-2 h-2 rounded-full bg-white" />}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -477,7 +487,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré unidades sueltas</p>
                       <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 12 botellas sueltas a Bs 8 cada una</p>
                       {helpTopic === 'unit' && (
-                        <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1.5 bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand)]">
                           Elegí esto si el proveedor te cobra por cada unidad suelta. El costo que pongas abajo es el de UNA unidad.
                         </p>
                       )}
@@ -491,14 +501,14 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     if (purchaseUnitType !== 'package') setSupplierPrice('');
                     setPurchaseUnitType('package');
                   }}
-                  className={`text-left p-3.5 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                  className={`text-left p-3.5 rounded-2xl border transition-all active:scale-[0.98] ${
                     purchaseUnitType === 'package'
-                      ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]'
+                      ? 'border-[var(--mg-brand)] bg-[var(--mg-brand-bg)]'
                       : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'package' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)]' : 'border-gray-300'}`}>
+                    <span className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${purchaseUnitType === 'package' ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)]' : 'border-[var(--mg-border-hover)]'}`}>
                       {purchaseUnitType === 'package' && <span className="w-2 h-2 rounded-full bg-white" />}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -518,7 +528,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré cajas, pacas o fardos que traen varias unidades adentro</p>
                       <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 10 cajas de 12 botellas, cada caja a Bs 84</p>
                       {helpTopic === 'pack' && (
-                        <p className="text-[11px] text-[var(--mg-accent)] font-semibold mt-1.5 bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand)]">
                           Elegí esto si pagás por caja cerrada. Abajo poné cuántas cajas compraste, cuántas unidades trae cada una y el costo POR CAJA: la app saca sola el costo por unidad.
                         </p>
                       )}
@@ -540,7 +550,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       onChange={(e) => setPackageCount(clampNumberInput(e.target.value, { min: 1, max: 9999 }))}
                       onKeyDown={blockInvalidNumberKeys}
                       placeholder="Ej: 10"
-                      className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-bold text-[var(--mg-text-primary)]"
+                      className="mg-input py-2 text-sm font-bold"
                       required
                     />
                   </div>
@@ -552,13 +562,13 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       onChange={(e) => setPackageSize(clampNumberInput(e.target.value, { min: 1, max: 9999 }))}
                       onKeyDown={blockInvalidNumberKeys}
                       placeholder="Ej: 12"
-                      className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-bold text-[var(--mg-text-primary)]"
+                      className="mg-input py-2 text-sm font-bold"
                       required
                     />
                   </div>
                 </div>
                 {packageCountVal > 0 && packageSizeVal > 0 && (
-                  <p className="text-xs font-bold text-[var(--mg-accent)] mt-1.5">= {qtyVal} unidades totales</p>
+                  <p className="mt-1.5 text-xs font-bold text-[var(--mg-brand)]">= {qtyVal} unidades totales</p>
                 )}
               </div>
             ) : (
@@ -570,7 +580,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                   onChange={(e) => setQuantity(clampNumberInput(e.target.value, { min: 1, max: 999999 }))}
                   onKeyDown={blockInvalidNumberKeys}
                   placeholder="Ej: 10"
-                  className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-bold text-[var(--mg-text-primary)]"
+                  className="mg-input py-2 text-sm font-bold"
                   required
                 />
               </div>
@@ -591,7 +601,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 onChange={(e) => setSupplierPrice(clampNumberInput(e.target.value, { max: 999999 }))}
                 onKeyDown={blockInvalidNumberKeys}
                 placeholder="0.00"
-                className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-bold text-[var(--mg-text-primary)]"
+                className="mg-input py-2 text-sm font-bold"
               />
               {purchaseUnitType === 'package' && (
                 <p className="text-[11px] text-[var(--mg-text-faint)] mt-1">El precio de una sola caja, no el total de todas.</p>
@@ -609,7 +619,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 onChange={(e) => setSalePrice(clampNumberInput(e.target.value, { max: 999999 }))}
                 onKeyDown={blockInvalidNumberKeys}
                 placeholder="0.00"
-                className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-bold text-[var(--mg-text-primary)]"
+                className="mg-input py-2 text-sm font-bold"
                 required
               />
               {purchaseUnitType === 'package' && (
@@ -624,7 +634,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)]"
+                className="mg-input py-2 text-sm font-semibold"
               />
             </div>
 
@@ -638,13 +648,13 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                   onChange={(e) => setSupplier(e.target.value)}
                   placeholder="Nombre del proveedor"
                   autoFocus
-                  className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)]"
+                  className="mg-input py-2 text-sm font-semibold"
                 />
               ) : (
                 <select
                   value={supplier}
                   onChange={(e) => handleSupplierSelect(e.target.value)}
-                  className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-surface)]"
+                  className="mg-input py-2 text-sm font-semibold"
                 >
                   <option value="">Sin proveedor</option>
                   {suppliers.map((s) => (
@@ -679,13 +689,13 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                           onChange={(e) => updateRow(row.id, { concept: e.target.value })}
                           placeholder="Nombre del gasto"
                           autoFocus
-                          className="w-full border-2 border-[var(--mg-border)] rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)]"
+                          className="mg-input px-2.5 py-2 text-xs font-semibold"
                         />
                       ) : (
                         <select
                           value={row.concept}
                           onChange={(e) => handleConceptSelect(row.id, e.target.value)}
-                          className="w-full border-2 border-[var(--mg-border)] rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-surface)]"
+                          className="mg-input px-2.5 py-2 text-xs font-semibold"
                         >
                           <option value="" disabled>Concepto...</option>
                           {concepts.map((c) => (
@@ -702,16 +712,16 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                         onChange={(e) => updateRow(row.id, { amount: clampNumberInput(e.target.value, { max: 999999 }) })}
                         onKeyDown={blockInvalidNumberKeys}
                         placeholder="0.00"
-                        className="w-full border-2 border-[var(--mg-border)] rounded-xl px-2 py-2 text-xs focus:outline-none focus:border-[var(--mg-accent-border)] font-semibold text-[var(--mg-text-secondary)]"
+                        className="mg-input px-2 py-2 text-xs font-semibold"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => removeRow(row.id)}
-                      className="w-8 h-8 mt-0.5 shrink-0 bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] rounded-full flex items-center justify-center font-bold text-sm active:scale-95"
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] active:scale-95"
                       aria-label="Quitar gasto"
                     >
-                      ×
+                      <AppIcon name="cerrar" size={14} />
                     </button>
                   </div>
                 ))}
@@ -720,7 +730,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               <button
                 type="button"
                 onClick={addExtraCostRow}
-                className="w-full mt-2 border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95 flex items-center justify-center gap-1.5"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--mg-brand-border)] py-2 text-xs font-bold text-[var(--mg-brand)] transition-colors hover:bg-[var(--mg-brand-bg)] active:scale-95"
               >
                 <AppIcon name="agregar" size={14} /> Agregar gasto extra
               </button>
@@ -728,7 +738,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
             {/* Resumen en lenguaje natural — solo dueño (muestra costos y ganancia) */}
             {canSeeCosts && (
-            <div className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-2xl p-3.5 text-sm leading-relaxed text-[var(--mg-text-secondary)]">
+            <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3.5 text-sm leading-relaxed text-[var(--mg-text-secondary)]">
               <p>
                 {purchaseUnitType === 'package' ? (
                   <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(packageCountVal)}</strong> paquetes × <strong className="text-[var(--mg-text-primary)]">{numOr(packageSizeVal)}</strong> unidades = <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades de {shortName}. </>
@@ -738,15 +748,15 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 Le pagás <strong className="text-[var(--mg-text-primary)]">{bsOr(merchandiseTotal)}</strong> al proveedor por la mercadería
                 {totalExtra > 0 && <> (más {formatBs(totalExtra)} de gastos extra)</>}. Cada unidad te sale a <strong className="text-[var(--mg-text-primary)]">{bsOr(costoUnitarioReal)}</strong> y la vendés a <strong className="text-[var(--mg-text-primary)]">{bsOr(salePriceVal)}</strong>.
                 {salePriceVal > 0 && qtyVal > 0 && (
-                  <> <strong className={profitMontoVal >= 0 ? 'text-green-700' : 'text-red-600'}>
+                  <> <strong className={profitMontoVal >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}>
                     {profitMontoVal >= 0 ? 'Ganás' : 'Perdés'} {formatBs(Math.abs(profitMontoVal))} por unidad ({profitPercentVal.toFixed(1)}% del precio de venta).
                   </strong></>
                 )}
               </p>
               {/* Lo que realmente importa: ganancia total si vende TODO */}
               {salePriceVal > 0 && qtyVal > 0 && (
-                <div className={`mt-2.5 rounded-xl px-3 py-2.5 text-center font-black text-sm ${profitMontoVal >= 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                  💰 Si vendés {purchaseUnitType === 'package' ? 'todo' : `las ${qtyVal} unidades}`} — {profitMontoVal >= 0 ? 'ganás' : 'perdés'} {formatBs(Math.abs(profitMontoVal) * qtyVal)} en total
+                <div className={`mt-2.5 rounded-xl px-3 py-2.5 text-center text-sm font-black ${profitMontoVal >= 0 ? 'bg-[var(--mg-success)] text-white' : 'bg-[var(--mg-danger)] text-white'}`}>
+                  Si vendés {purchaseUnitType === 'package' ? 'todo' : `las ${qtyVal} unidades`} — {profitMontoVal >= 0 ? 'ganás' : 'perdés'} {formatBs(Math.abs(profitMontoVal) * qtyVal)} en total
                 </div>
               )}
             </div>
@@ -754,9 +764,9 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
             {/* Alerta de venta a pérdida (advertencia, no bloqueo) */}
             {canSeeCosts && showLossAlert && (
-              <div className="bg-[var(--mg-warning-bg)] border-2 border-[var(--mg-warning)] rounded-2xl p-3.5">
-                <p className="text-sm font-bold text-[var(--mg-warning)] mb-1 flex items-center gap-1.5">
-                  <span>⚠️</span> Estás vendiendo a pérdida
+              <div className="rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-3.5">
+                <p className="mb-1 flex items-center gap-1.5 text-sm font-bold text-[var(--mg-gold-text)]">
+                  <AppIcon name="ayuda" size={15} /> Estás vendiendo a pérdida
                 </p>
                 <p className="text-xs text-[var(--mg-text-secondary)] leading-relaxed">
                   Cada unidad te cuesta <strong>{formatBs(costoUnitarioReal)}</strong> y la vendés a <strong>{formatBs(salePriceVal)}</strong>.{' '}
@@ -772,15 +782,15 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             {/* Bloques CALCULADOS (no editables) — solo dueño */}
             {canSeeCosts && qtyVal > 0 && (
               <div className="grid grid-cols-2 gap-2.5">
-                <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl text-center relative">
-                  <span className="absolute top-1.5 right-2 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">🔒 calculado</span>
-                  <p className="text-[10px] text-[var(--mg-text-faint)] uppercase font-semibold mt-2">Costo real por unidad</p>
-                  <p className="text-base font-black mt-0.5 text-[var(--mg-accent)]">{formatBs(costoUnitarioReal)}</p>
+                <div className="relative rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
+                  <span className="absolute right-2 top-1.5 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">Calculado</span>
+                  <p className="mt-2 text-[10px] font-semibold uppercase text-[var(--mg-text-muted)]">Costo real por unidad</p>
+                  <p className="mt-0.5 text-base font-black text-[var(--mg-brand)]">{formatBs(costoUnitarioReal)}</p>
                 </div>
-                <div className="bg-[var(--mg-bg-elevated)] p-3 rounded-2xl text-center relative">
-                  <span className="absolute top-1.5 right-2 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">🔒 calculado</span>
-                  <p className="text-[10px] text-[var(--mg-text-faint)] uppercase font-semibold mt-2">Ganancia por unidad</p>
-                  <p className={`text-base font-black mt-0.5 ${profitMontoVal >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                <div className="relative rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
+                  <span className="absolute right-2 top-1.5 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">Calculado</span>
+                  <p className="mt-2 text-[10px] font-semibold uppercase text-[var(--mg-text-muted)]">Ganancia por unidad</p>
+                  <p className={`mt-0.5 text-base font-black ${profitMontoVal >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                     {formatBs(profitMontoVal)} <span className="text-xs">({profitPercentVal.toFixed(1)}%)</span>
                   </p>
                 </div>
@@ -789,7 +799,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
             {/* Desglose de lo que se desembolsa — el número que el tendero tiene en la mano */}
             {qtyVal > 0 && (
-              <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3.5 space-y-1.5 text-sm">
+              <div className="space-y-1.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3.5 text-sm">
                 <div className="flex justify-between items-center text-[var(--mg-text-secondary)]">
                   <span>Mercadería {purchaseUnitType === 'package' ? `(${packageCountVal} × ${formatBs(costInputVal)})` : `(${qtyVal} × ${formatBs(costInputVal)})`}</span>
                   <span className="font-semibold">{formatBs(merchandiseTotal)}</span>
@@ -800,7 +810,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 </div>
                 <div className="flex justify-between items-center border-t border-[var(--mg-border)] pt-2 mt-1">
                   <span className="font-black text-[var(--mg-text-primary)]">Total desembolsado</span>
-                  <span className="font-black text-[var(--mg-accent)] text-lg">{formatBs(totalCostVal)}</span>
+                  <span className="text-lg font-black text-[var(--mg-brand)]">{formatBs(totalCostVal)}</span>
                 </div>
                 <p className="text-[10px] text-[var(--mg-text-faint)] font-bold pt-1">
                   Stock final tras compra: <strong className="text-[var(--mg-text-secondary)]">{(product.stock || 0) + qtyVal} unidades</strong>
@@ -811,7 +821,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <button
               type="submit"
               disabled={saving || !salePrice || qtyVal <= 0}
-              className="w-full bg-[var(--mg-accent)] text-white font-bold py-3.5 rounded-2xl text-sm active:scale-95 transition-all disabled:opacity-50 mt-2 shadow-md"
+              className="mt-2 w-full rounded-2xl bg-[var(--mg-brand)] py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
             >
               {saving ? 'Guardando...' : 'Confirmar compra'}
             </button>

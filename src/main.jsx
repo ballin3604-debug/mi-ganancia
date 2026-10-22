@@ -57,7 +57,7 @@ function showUpdateBanner(worker) {
       </div>
     </div>
     <div style="display: flex; gap: 8px; shrink: 0;">
-      <button id="pwa-update-btn" style="background: #007aff; color: white; border: none; font-weight: 700; font-size: 12px; padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+      <button id="pwa-update-btn" style="background: var(--mg-accent); color: white; border: none; font-weight: 700; font-size: 12px; padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
         Actualizar
       </button>
       <button id="pwa-close-btn" style="background: transparent; color: #64748b; border: none; font-size: 18px; cursor: pointer; padding: 0 4px;">

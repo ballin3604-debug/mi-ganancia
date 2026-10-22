@@ -1,5 +1,6 @@
 import { formatBs } from '../utils/currency';
 import { CartBillIcon } from './CartBillIcon';
+import EmptyState from './ui/EmptyState';
 
 // Auditoría de compras: lista simple de reposiciones para celular.
 // Izquierda: N° de compra + producto + proveedor + fecha y hora.
@@ -9,23 +10,21 @@ export function AuditPurchasesList({ rows }) {
 
   if (!rows || rows.length === 0) {
     return (
-      <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center shadow-xs">
-        <p className="text-4xl mb-2">🛍️</p>
-        <h3 className="text-sm font-black text-[var(--mg-text-primary)]">No hay compras registradas</h3>
-        <p className="text-xs text-[var(--mg-text-muted)] mt-1">
-          Las compras y reposiciones aparecerán aquí automáticamente.
-        </p>
-      </div>
+      <EmptyState
+        icon="paquete"
+        title="No hay compras registradas"
+        description="Las compras y reposiciones aparecerán aquí automáticamente."
+      />
     );
   }
 
   return (
-    <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
-      <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
-        <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
+    <div className="overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-4 py-2.5">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--mg-text-secondary)]">
           Compras ({rows.length})
         </p>
-        <p className="text-[11px] font-black text-[var(--mg-text-primary)] tabular-nums">
+        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand)]">
           Total: {formatBs(total)}
         </p>
       </div>
@@ -37,21 +36,21 @@ export function AuditPurchasesList({ rows }) {
           const hora = valid ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
           return (
             <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="font-black text-[var(--mg-text-primary)] text-sm tabular-nums">
-                  COMPRA {r.number}
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-muted)] tabular-nums">
+                  Compra {r.number}
                 </p>
-                <p className="text-xs font-bold text-[var(--mg-text-primary)] truncate mt-0.5">
+                <p className="mt-0.5 truncate text-sm font-bold text-[var(--mg-text-primary)]">
                   {r.productName}
                   {r.supplier ? <span className="font-semibold text-[var(--mg-text-muted)]"> · {r.supplier}</span> : null}
                 </p>
-                <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5 truncate uppercase font-mono">
-                  Fecha y hora: {fecha}{hora ? ` · ${hora}` : ''}
+                <p className="mt-0.5 truncate font-mono text-[11px] font-semibold uppercase text-[var(--mg-text-muted)]">
+                  {fecha}{hora ? ` · ${hora}` : ''}
                 </p>
               </div>
-              <span className="flex items-center gap-1.5 font-black text-[#1670C2] text-sm tabular-nums shrink-0">
+              <span className="flex shrink-0 items-center gap-1.5 text-sm font-black tabular-nums text-[var(--mg-brand)]">
                 {formatBs(r.totalCost)}
-                <CartBillIcon className="w-9 h-8" />
+                <CartBillIcon className="h-8 w-9" />
               </span>
             </div>
           );

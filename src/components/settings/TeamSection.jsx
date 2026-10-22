@@ -16,8 +16,8 @@ function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {
   ));
   if (isOwner) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-        <div className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Permisos de ${member.displayName}`} onClick={onClose}>
+        <div className="w-full max-w-md rounded-3xl bg-[var(--mg-bg-surface)] p-6 shadow-[var(--mg-shadow-lg)]" onClick={(e) => e.stopPropagation()}>
           <p className="font-black text-[var(--mg-text-primary)]">Permisos de {member.displayName}</p>
           <p className="text-xs text-[var(--mg-text-muted)] mt-1">Los dueños siempre tienen todos los permisos.</p>
           <button type="button" onClick={onClose} className="mt-4 w-full py-2.5 rounded-xl bg-[var(--mg-bg-elevated)] font-bold text-xs">Cerrar</button>
@@ -34,8 +34,8 @@ function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {
     setSelectedBranches((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[88vh]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Permisos de ${member.displayName}`} onClick={onClose}>
+      <div className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b border-[var(--mg-border)]">
           <p className="font-black text-[var(--mg-text-primary)]">Permisos de {member.displayName}</p>
           <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">Se aplican al instante en su teléfono.</p>
@@ -53,10 +53,10 @@ function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {
                   type="button" role="switch" aria-checked={on}
                   disabled={p.locked || busy}
                   onClick={() => toggle(p.id)}
-                  className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${on ? 'bg-emerald-500' : 'bg-slate-300'} ${p.locked ? 'opacity-60' : ''}`}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-border-hover)]'} ${p.locked ? 'opacity-60' : ''}`}
                   title={p.locked ? 'Siempre activo para cobrar' : undefined}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-[var(--mg-bg-surface)] shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
                 </button>
               </div>
             );
@@ -95,7 +95,7 @@ function BranchesPicker({ branches, selectedBranches, onToggle }) {
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${on ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-secondary)]'}`}
             >
               <span className="truncate">{b.name}</span>
-              <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)] text-white' : 'border-slate-300 text-transparent'}`}>
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)] text-white' : 'border-[var(--mg-border-hover)] text-transparent'}`}>
                 ✓
               </span>
             </button>
@@ -109,8 +109,8 @@ function BranchesPicker({ branches, selectedBranches, onToggle }) {
 function EditNameModal({ member, busy, onClose, onSave }) {
   const [name, setName] = useState(member.displayName || '');
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl p-5 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label="Editar colaborador" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-3xl bg-[var(--mg-bg-surface)] p-5 shadow-[var(--mg-shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         <p className="font-black text-[var(--mg-text-primary)]">Editar colaborador</p>
         <p className="text-xs text-[var(--mg-text-muted)] mt-0.5 mb-3">Así aparece en ventas y equipo.</p>
         <input
@@ -132,13 +132,13 @@ function EditNameModal({ member, busy, onClose, onSave }) {
 function RoleBadge({ role }) {
   if (role !== 'cashier') {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-amber-50 text-amber-800 border border-amber-200">
+      <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1 text-[11px] font-black text-[var(--mg-gold-text)]">
         👑 Dueño
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-blue-50 text-blue-800 border border-blue-200">
+    <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-1 text-[11px] font-black text-[var(--mg-accent)]">
       <AppIcon name="equipo" size={12} /> Cajero
     </span>
   );
@@ -273,17 +273,17 @@ export function TeamSection({
             {members.length}/{MAX_MEMBERS}
             <span className="text-[11px] font-bold text-[var(--mg-text-muted)] ml-2">({MAX_MEMBERS - members.length} disponibles)</span>
           </p>
-          <div className="h-2 rounded-full bg-slate-100 overflow-hidden mt-2">
-            <div className={`h-full rounded-full ${usagePct > 80 ? 'bg-amber-500' : 'bg-[#1670C2]'}`} style={{ width: `${usagePct}%` }} />
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--mg-bg-elevated)]">
+            <div className={`h-full rounded-full ${usagePct > 80 ? 'bg-[var(--mg-gold)]' : 'bg-[var(--mg-accent)]'}`} style={{ width: `${usagePct}%` }} />
           </div>
         </div>
 
         <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)] flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Estado del personal
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--mg-success)]" /> Estado del personal
             </p>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Operativo</span>
+            <span className="rounded-md bg-[var(--mg-success-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-success-text)]">Operativo</span>
           </div>
           <p className="mt-2 text-2xl font-black text-[var(--mg-text-primary)] tabular-nums">
             {activeCount}
@@ -336,7 +336,7 @@ export function TeamSection({
             ].map((f) => (
               <button
                 key={f.id} type="button" onClick={() => setRoleFilter(f.id)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${roleFilter === f.id ? 'bg-slate-900 text-white' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}
+                className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${roleFilter === f.id ? 'bg-[var(--mg-brand)] text-white' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)]'}`}
               >
                 {f.label}
               </button>
@@ -416,7 +416,7 @@ export function TeamSection({
       {toast && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 pointer-events-none">
           <div className="flex items-center gap-3 bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-accent-border)] rounded-3xl px-5 py-4 shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
-            <span className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-success)] text-white">
               <AppIcon name="check" size={24} color="#fff" />
             </span>
             <span className="min-w-0">
@@ -452,17 +452,17 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
     <tr className={isSuspended ? 'opacity-70' : ''}>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <span className="relative w-9 h-9 rounded-full bg-slate-600 text-white flex items-center justify-center font-black text-xs shrink-0">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-xs font-black text-white">
             {m.displayName?.charAt(0)?.toUpperCase() || 'U'}
             {m.status === 'active' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--mg-bg-surface)] bg-[var(--mg-success)]" />
             )}
           </span>
           <span className="min-w-0">
             <span className="font-bold text-[var(--mg-text-primary)] text-xs flex items-center gap-1.5">
               {m.displayName}
               {isCurrentUser && (
-                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">TÚ</span>
+                <span className="rounded border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--mg-success-text)]">TÚ</span>
               )}
             </span>
             <span className="block text-[11px] text-[var(--mg-text-muted)] truncate">
@@ -474,31 +474,33 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
       <td className="px-3 py-3 whitespace-nowrap"><RoleBadge role={m.role} /></td>
       <td className="px-3 py-3 whitespace-nowrap">
         {isSuspended ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Suspendido</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--mg-gold-text)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-gold)]" /> Suspendido</span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Activo</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--mg-success-text)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-success)]" /> Activo</span>
         )}
       </td>
       <td className="px-3 py-3 text-right whitespace-nowrap">
         <span className="inline-flex items-center gap-1">
           {!isCurrentUser && (
-            <button type="button" onClick={onRole} disabled={busy} title="Cambiar rol (Dueño/Cajero)" className="p-1.5 rounded-lg text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)] disabled:opacity-50 text-[11px] font-black">
-              ⇄
+            <button type="button" onClick={onRole} disabled={busy} title="Cambiar rol" aria-label={`Cambiar rol de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)] disabled:opacity-50">
+              <AppIcon name="traspaso" size={14} />
             </button>
           )}
-          <button type="button" onClick={onPerms} title="Ver permisos" className="p-1.5 rounded-lg text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)]">
-            <AppIcon name="plan" size={14} />
+          <button type="button" onClick={onPerms} title="Ver permisos" aria-label={`Ver permisos de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
+            <AppIcon name="permisos" size={14} />
           </button>
-          <button type="button" onClick={onEdit} title="Editar nombre" className="p-1.5 rounded-lg text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)]">
+          <button type="button" onClick={onEdit} title="Editar nombre" aria-label={`Editar nombre de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
             <AppIcon name="editar" size={14} />
           </button>
           {!isCurrentUser && (
             <>
               <button
-                type="button" onClick={onStatus} disabled={busy} title={isSuspended ? 'Reactivar' : 'Suspender'}
-                className={`p-1.5 rounded-lg disabled:opacity-50 ${isSuspended ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
+                type="button" onClick={onStatus} disabled={busy}
+                title={isSuspended ? 'Reactivar' : 'Suspender'}
+                aria-label={`${isSuspended ? 'Reactivar' : 'Suspender'} a ${m.displayName}`}
+                className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${isSuspended ? 'text-[var(--mg-success-text)] hover:bg-[var(--mg-success-bg)]' : 'text-[var(--mg-gold-text)] hover:bg-[var(--mg-gold-bg)]'}`}
               >
-                <span className="text-sm font-black leading-none">{isSuspended ? '▶' : '⏸'}</span>
+                <AppIcon name={isSuspended ? 'reactivar' : 'suspender'} size={14} />
               </button>
               <button
                 type="button" onClick={onRemove} disabled={busy} title="Eliminar"

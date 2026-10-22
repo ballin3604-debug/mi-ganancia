@@ -67,54 +67,57 @@ export function exportReportToPDF({
     @page { size: A4 ${finalOrientation}; margin: 12mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      color: #333;
+      font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #111827;
       background: #fff;
       font-size: 11px;
       line-height: 1.5;
+    }
+    @media screen {
+      body { padding: 12mm; }
     }
     .header-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid #1670C2;
+      border-bottom: 2px solid #153449;
       padding-bottom: 5mm;
       margin-bottom: 6mm;
     }
     .business-info h1 {
       font-size: 20px;
       font-weight: 800;
-      color: #1670C2;
+      color: #153449;
       text-transform: uppercase;
       margin-bottom: 1mm;
     }
-    .business-info p { font-size: 10px; color: #666; font-weight: 500; }
+    .business-info p { font-size: 10px; color: #667085; font-weight: 500; }
     .brand-logo { text-align: right; }
-    .brand-logo .logo-text { font-size: 15px; font-weight: 900; color: #1670C2; }
+    .brand-logo .logo-text { font-size: 15px; font-weight: 900; color: #153449; }
     .brand-logo .logo-sub {
-      font-size: 8px; color: #999; text-transform: uppercase;
+      font-size: 8px; color: #98A2B3; text-transform: uppercase;
       letter-spacing: 1px; margin-top: 0.5mm;
     }
-    .report-title { font-size: 15px; font-weight: 800; color: #333; margin-bottom: 1.5mm; }
-    .report-subtitle { font-size: 10px; color: #888; font-weight: 500; margin-bottom: 2mm; }
-    .report-dates { font-size: 10px; color: #666; font-weight: 600; margin-bottom: 6mm; }
+    .report-title { font-size: 15px; font-weight: 800; color: #153449; margin-bottom: 1.5mm; }
+    .report-subtitle { font-size: 10px; color: #667085; font-weight: 500; margin-bottom: 2mm; }
+    .report-dates { font-size: 10px; color: #667085; font-weight: 600; margin-bottom: 6mm; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 8mm; font-size: 10px; }
     th {
-      background-color: #f0f7ff; color: #1670C2; font-weight: 700;
-      padding: 2.5mm 2mm; border: 1px solid #d0e3f7; text-align: left; white-space: nowrap;
+      background-color: #F4F6FA; color: #153449; font-weight: 700;
+      padding: 2.5mm 2mm; border: 1px solid #E4E9F0; text-align: left; white-space: nowrap;
     }
-    td { padding: 2mm; border: 1px solid #e2e8f0; color: #4a5568; }
-    tr:nth-child(even) { background-color: #f8fafc; }
-    .empty-row { text-align: center; color: #999; padding: 8mm; font-style: italic; }
+    td { padding: 2mm; border: 1px solid #E4E9F0; color: #344054; }
+    tr:nth-child(even) { background-color: #FAFBFD; }
+    .empty-row { text-align: center; color: #98A2B3; padding: 8mm; font-style: italic; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
     .font-bold { font-weight: bold; }
-    .text-green { color: #16a34a; }
-    .text-red { color: #dc2626; }
+    .text-green { color: #087F70; }
+    .text-red { color: #DC2626; }
     .totals-tr td {
-      background-color: #eaf3fd;
-      border-top: 2px solid #1670C2;
-      color: #1670C2;
+      background-color: #EFF6FF;
+      border-top: 2px solid #2563EB;
+      color: #1D4ED8;
       font-weight: 800;
     }
     .totals-label {
@@ -122,11 +125,11 @@ export function exportReportToPDF({
       text-transform: uppercase;
       letter-spacing: 0.5px;
       font-size: 9px;
-      color: #5a7fa0 !important;
+      color: #667085 !important;
     }
     .totals-box {
-      background-color: #f8fafc;
-      border: 1.5px solid #e2e8f0;
+      background-color: #F4F6FA;
+      border: 1.5px solid #E4E9F0;
       border-radius: 4mm;
       padding: 5mm;
       width: 60%;
@@ -134,14 +137,14 @@ export function exportReportToPDF({
       page-break-inside: avoid;
     }
     .totals-title {
-      font-size: 11px; font-weight: 800; color: #1670C2;
-      border-bottom: 1.5px solid #cbd5e1; padding-bottom: 1.5mm;
+      font-size: 11px; font-weight: 800; color: #153449;
+      border-bottom: 1.5px solid #E4E9F0; padding-bottom: 1.5mm;
       margin-bottom: 3mm; text-transform: uppercase;
     }
-    .totals-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 1.5mm; color: #4a5568; }
+    .totals-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 1.5mm; color: #344054; }
     .totals-row.grand-total {
-      font-size: 12px; font-weight: 900; color: #1670C2;
-      border-top: 1.5px dashed #cbd5e1; padding-top: 2mm; margin-top: 2mm;
+      font-size: 12px; font-weight: 900; color: #153449;
+      border-top: 1.5px dashed #D0D5DD; padding-top: 2mm; margin-top: 2mm;
     }
   </style>
 </head>
@@ -152,7 +155,7 @@ export function exportReportToPDF({
       <p>Reporte Oficial de Operaciones</p>
     </div>
     <div class="brand-logo">
-      <span class="logo-text">📈 Mi Ganancia</span>
+      <span class="logo-text">Mi Ganancia</span>
       <div class="logo-sub">Tu Aliado Comercial</div>
     </div>
   </div>

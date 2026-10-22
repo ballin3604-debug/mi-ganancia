@@ -25,6 +25,9 @@ import { useBranches } from '../context/BranchContext';
 import { getSellOptions, defaultSellOption, presShortLabel } from '../utils/presentations';
 import { AppIcon } from '../components/icons';
 import { BranchSelect } from '../components/BranchSelect';
+import MetricCard from '../components/ui/MetricCard';
+import EmptyState from '../components/ui/EmptyState';
+import SectionCard from '../components/ui/SectionCard';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -33,8 +36,8 @@ function formatBs(amount) {
 function ProductImage({ imageData, name, className }) {
   if (!imageData) {
     return (
-      <div className={`${className} flex items-center justify-center text-3xl bg-white/20`}>
-        📦
+      <div className={`${className} flex items-center justify-center bg-[var(--mg-bg-elevated)] text-[var(--mg-text-faint)]`}>
+        <AppIcon name="paquete" size={18} />
       </div>
     );
   }
@@ -104,7 +107,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
         type="button"
         onClick={() => handleApply(quantity - 1)}
         aria-label="Quitar uno"
-        className="w-8 h-8 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] text-[var(--mg-text-primary)] font-black text-base flex items-center justify-center active:scale-90 shrink-0"
+        className="w-8 h-8 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] text-[var(--mg-text-primary)] font-black text-base flex items-center justify-center active:scale-90 shrink-0 hover:border-[var(--mg-border-hover)]"
       >
         −
       </button>
@@ -117,14 +120,14 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
         onBlur={(e) => handleApply(e.target.value)}
         onKeyDown={handleKeyDown}
         aria-label="Cantidad"
-        className="w-12 text-center font-bold text-sm bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl py-1 px-1 focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="w-12 text-center font-bold text-sm bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl py-1.5 px-1 focus:outline-none focus:border-[var(--mg-accent)] focus:ring-2 focus:ring-[var(--mg-accent-bg)] text-[var(--mg-text-primary)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
           <button
             type="button"
             onClick={() => handleApply(quantity + 1)}
             disabled={quantity >= maxQty}
             aria-label="Agregar uno"
-        className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white font-black text-base flex items-center justify-center active:scale-90 disabled:opacity-40 shrink-0"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black text-white active:scale-90 disabled:opacity-40"
       >
         +
       </button>
@@ -135,7 +138,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
     <button
       type="button"
       onClick={() => onUpdate(0)}
-      className="text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors p-1.5 rounded-xl shrink-0"
+      className="text-[var(--mg-text-muted)] hover:text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] transition-colors p-1.5 rounded-xl shrink-0"
       title="Eliminar producto"
     >
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -156,22 +159,22 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm text-[var(--mg-text-primary)] font-semibold leading-snug line-clamp-2">{product.name}</p>
-            <p className="text-xs text-[var(--mg-text-faint)] mt-0.5">
-              {factor > 1 ? `📦 ${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
+            <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
+              {factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
             </p>
           </div>
           {trashBtn}
         </div>
-        <div className="flex items-center justify-between mt-2 pl-[52px]">
+        <div className="mt-2 flex items-center justify-between pl-[52px]">
           <div className="flex items-center gap-1.5">
             {stepper}
           </div>
-          <span className="text-[var(--mg-text-primary)] font-bold text-sm">
+          <span className="text-sm font-black tabular-nums text-[var(--mg-brand)]">
             {formatBs(unitPrice * quantity)}
           </span>
         </div>
         {errorMsg && (
-          <span className="text-red-500 text-[10px] font-bold mt-1 animate-pulse block pl-[52px]">
+          <span className="text-[var(--mg-danger)] text-[10px] font-bold mt-1 block pl-[52px]">
             {errorMsg}
           </span>
         )}
@@ -189,20 +192,20 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm text-[var(--mg-text-primary)] font-semibold truncate leading-tight">{product.name}</p>
-        <p className="text-xs text-[var(--mg-text-faint)] mt-0.5">
-          {factor > 1 ? `📦 ${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
+        <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
+          {factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
         </p>
       </div>
-      <div className="flex flex-col items-end shrink-0">
+      <div className="flex shrink-0 flex-col items-end">
         <div className="flex items-center gap-1.5">
           {stepper}
-          <span className="text-[var(--mg-text-primary)] font-bold text-sm w-20 text-right">
+          <span className="w-20 text-right text-sm font-black tabular-nums text-[var(--mg-brand)]">
             {formatBs(unitPrice * quantity)}
           </span>
           {trashBtn}
         </div>
         {errorMsg && (
-          <span className="text-red-500 text-[10px] font-bold mt-1 animate-pulse">
+          <span className="text-[var(--mg-danger)] text-[10px] font-bold mt-1">
             {errorMsg}
           </span>
         )}
@@ -212,7 +215,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
 }
 
 const CUSTOM_CLIENT_VALUE = '__custom__';
-const RECENT_CATEGORY = '🕐 Recientes';
+const RECENT_CATEGORY = 'Recientes';
 
 export default function Sales() {
   const { businessId, user, sellerName, role, hasPermission } = useAuth();
@@ -650,9 +653,9 @@ export default function Sales() {
   }, [scopedSalesReport, reportCashier, saleNumberById]);
 
   const METHOD_META = {
-    cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-green-50 text-green-700 border-green-200' },
-    qr: { label: 'QR', icon: 'qr', pill: 'bg-blue-50 text-blue-700 border-blue-200' },
-    mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-purple-50 text-purple-700 border-purple-200' },
+    cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]' },
+    qr: { label: 'QR', icon: 'qr', pill: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]' },
+    mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border-[var(--mg-brand-border)]' },
   };
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
@@ -702,15 +705,15 @@ export default function Sales() {
     },
     {
       key: 'vendedor', label: 'Vendedor', align: 'left', width: 'w-32',
-      render: (r) => r.sellerName || <span className="text-gray-300">—</span>,
+      render: (r) => r.sellerName || <span className="text-[var(--mg-text-faint)]">—</span>,
     },
     {
       key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32',
-      render: (r) => <span className="font-black text-[#1670C2] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
+      render: (r) => <span className="font-black text-[var(--mg-brand)] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
     },
     {
       key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28',
-      render: (r) => <span className="font-bold text-green-600 tabular-nums whitespace-nowrap">{formatBs(r.ganancia)}</span>,
+      render: (r) => <span className="font-bold text-[var(--mg-success-text)] tabular-nums whitespace-nowrap">{formatBs(r.ganancia)}</span>,
     },
   ];
 
@@ -746,25 +749,15 @@ export default function Sales() {
       ? 'No se encontraron ventas en el rango de fechas seleccionado.'
       : `Sin ventas de ${reportCashier} en este período.`;
     if (cashierTickets.length === 0) {
-      return (
-        <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-6 text-center shadow-sm">
-          <p className="text-4xl mb-2">🧾</p>
-          <p className="text-xs font-bold text-[var(--mg-text-muted)]">{emptyMessage}</p>
-        </div>
-      );
+      return <EmptyState icon="recibo" title="Sin tickets" description={emptyMessage} />;
     }
     const total = cashierTickets.reduce((sum, t) => sum + t.total, 0);
     return (
-      <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-between gap-2">
-          <p className="font-extrabold text-[var(--mg-text-secondary)] text-[11px] uppercase tracking-wider">
-            Tickets ({cashierTickets.length})
-          </p>
-          <p className="text-[11px] font-black text-[var(--mg-text-primary)] tabular-nums">
-            Total: {formatBs(total)}
-          </p>
-        </div>
-        <div className="divide-y divide-[var(--mg-separator)]">
+      <SectionCard
+        title={`Tickets (${cashierTickets.length})`}
+        action={<p className="text-xs font-black text-[var(--mg-text-primary)] tabular-nums">Total: {formatBs(total)}</p>}
+        bodyClassName="divide-y divide-[var(--mg-separator)]"
+      >
           {cashierTickets.map((t) => {
             const d = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
             const valid = d instanceof Date && !Number.isNaN(d.getTime());
@@ -780,15 +773,14 @@ export default function Sales() {
                     {fecha}{hora ? ` · ${hora}` : ''}{reportCashier === 'Todos' ? ` · ${t.seller}` : ''}
                   </p>
                 </div>
-                <span className="flex items-center gap-1.5 font-black text-emerald-600 text-sm sm:text-base tabular-nums shrink-0">
+                <span className="flex items-center gap-1.5 font-black text-[var(--mg-success-text)] text-sm sm:text-base tabular-nums shrink-0">
                   <AppIcon name="cash" size={20} />
                   {formatBs(t.total)}
                 </span>
               </div>
             );
           })}
-        </div>
-      </div>
+      </SectionCard>
     );
   }
 
@@ -1265,7 +1257,7 @@ export default function Sales() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-[var(--mg-accent-border)] border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--mg-brand-border)] border-t-transparent" />
       </div>
     );
   }
@@ -1274,27 +1266,35 @@ export default function Sales() {
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {/* Header del Cart */}
-        <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between shrink-0">
-          <div className="flex-1 text-center">
-            {isMobile && <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2" />}
-            <h3 className="text-lg font-bold text-[var(--mg-text-primary)]">Tu Carrito ({totalBaseUnits} und.)</h3>
-            {cartItems.length > 1 && (
-              <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">{cartItems.length} líneas</p>
-            )}
-            {branches.length > 1 && (
-              <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">
-                📍 {branches.find((b) => b.id === activeBranchId)?.name || 'Sede'}
-              </p>
+        <div className="shrink-0 border-b border-[var(--mg-separator)] p-4">
+          {isMobile && <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[var(--mg-border-hover)]" />}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                <AppIcon name="carrito" size={17} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-base font-black tracking-tight text-[var(--mg-brand)]">Tu carrito</h3>
+                <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                  {totalBaseUnits} {totalBaseUnits === 1 ? 'unidad' : 'unidades'} · {cartItems.length} {cartItems.length === 1 ? 'línea' : 'líneas'}
+                </p>
+                {branches.length > 1 && (
+                  <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                    {branches.find((b) => b.id === activeBranchId)?.name || 'Sede'}
+                  </p>
+                )}
+              </div>
+            </div>
+            {isMobile && (
+              <button
+                onClick={() => setShowCartModal(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]"
+                aria-label="Cerrar carrito"
+              >
+                <AppIcon name="cerrar" size={16} />
+              </button>
             )}
           </div>
-          {isMobile && (
-            <button
-              onClick={() => setShowCartModal(false)}
-              className="w-8 h-8 bg-[var(--mg-bg-elevated)] rounded-full flex items-center justify-center text-[var(--mg-text-secondary)] font-bold text-lg"
-            >
-              ×
-            </button>
-          )}
         </div>
 
         {/* Listado de Productos */}
@@ -1339,21 +1339,33 @@ export default function Sales() {
         <div className="border-t border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] p-4 space-y-4 shrink-0">
           {/* Método de pago */}
           <div>
-            <p className="text-xs text-[var(--mg-text-muted)] font-semibold mb-2">Método de Pago</p>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-3 py-2.5 text-sm font-bold text-[var(--mg-text-primary)] focus:outline-none focus:border-[var(--mg-accent-border)]"
-            >
-              <option value="cash">💵 Efectivo</option>
-              <option value="qr">📲 QR</option>
-              <option value="mixto">🔀 Mixto</option>
-            </select>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Método de pago</p>
+            <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-1">
+              {[
+                { id: 'cash', label: 'Efectivo', icon: 'cash' },
+                { id: 'qr', label: 'QR', icon: 'qr' },
+                { id: 'mixto', label: 'Mixto', icon: 'mixto' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setPaymentMethod(m.id)}
+                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-bold transition-all ${
+                    paymentMethod === m.id
+                      ? 'bg-[var(--mg-brand)] text-white shadow-sm'
+                      : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-surface)]'
+                  }`}
+                >
+                  <AppIcon name={m.icon} size={14} color={paymentMethod === m.id ? '#fff' : undefined} />
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Cliente */}
           <div>
-            <p className="text-xs text-[var(--mg-text-muted)] font-semibold mb-1">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">
               Cliente
             </p>
             {isCustomClient ? (
@@ -1363,13 +1375,13 @@ export default function Sales() {
                 onChange={(e) => setTypedClientName(e.target.value)}
                 placeholder="Nombre del cliente"
                 autoFocus
-                className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-medium"
+                className="mg-input py-2.5 text-sm font-medium"
               />
             ) : (
               <select
                 value={selectedCustomer?.id || ''}
                 onChange={(e) => handleClientSelect(e.target.value)}
-                className="w-full bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-medium"
+                className="mg-input py-2.5 text-sm font-medium"
               >
                 <option value="">Sin cliente</option>
                 {customers.map((c) => (
@@ -1382,7 +1394,7 @@ export default function Sales() {
 
           {/* Calculadora de cambio para Efectivo */}
           {paymentMethod === 'cash' && (
-            <div className="bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-2xl p-3.5 space-y-2">
+            <div className="space-y-2 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs text-[var(--mg-text-muted)] font-semibold">Paga con / Recibido</p>
@@ -1399,20 +1411,20 @@ export default function Sales() {
                     onChange={(e) => setCashReceived(clampNumberInput(e.target.value, { max: 999999 }))}
                     onKeyDown={blockInvalidNumberKeys}
                     placeholder="Ej: 100"
-                    className="w-full bg-[var(--mg-bg-elevated)] border-2 border-[var(--mg-border)] rounded-xl pl-9 pr-3 py-2 text-sm text-right focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-2 pl-9 pr-3 text-right text-sm font-bold text-[var(--mg-text-primary)] focus:border-[var(--mg-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--mg-accent-bg)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
               {cashReceived !== '' && (
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--mg-separator)] text-xs">
                   {Number(cashReceived) < total ? (
-                    <span className="text-red-500 font-bold flex items-center gap-1 animate-pulse">
-                      ⚠️ Monto insuficiente
+                    <span className="flex items-center gap-1 font-bold text-[var(--mg-danger)]">
+                      Monto insuficiente
                     </span>
                   ) : (
                     <>
                       <span className="text-[var(--mg-text-muted)] font-medium">Cambio a entregar:</span>
-                      <span className="text-sm font-black text-green-600">
+                      <span className="text-sm font-black text-[var(--mg-success-text)]">
                         {formatBs(Number(cashReceived) - total)}
                       </span>
                     </>
@@ -1424,7 +1436,7 @@ export default function Sales() {
 
           {/* Calculadora de cambio para Pago Mixto */}
           {paymentMethod === 'mixto' && (
-            <div className="bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-2xl p-3.5 space-y-2.5">
+            <div className="space-y-2.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs text-[var(--mg-text-muted)] font-semibold">Monto Efectivo</p>
@@ -1440,7 +1452,7 @@ export default function Sales() {
                     onChange={(e) => setMixedCash(clampNumberInput(e.target.value, { max: 999999 }))}
                     onKeyDown={blockInvalidNumberKeys}
                     placeholder="Ej: 50"
-                    className="w-full bg-[var(--mg-bg-elevated)] border-2 border-[var(--mg-border)] rounded-xl pl-9 pr-3 py-2 text-sm text-right focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-2 pl-9 pr-3 text-right text-sm font-bold text-[var(--mg-text-primary)] focus:border-[var(--mg-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--mg-accent-bg)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -1459,20 +1471,20 @@ export default function Sales() {
                     onChange={(e) => setMixedQr(clampNumberInput(e.target.value, { max: 999999 }))}
                     onKeyDown={blockInvalidNumberKeys}
                     placeholder="Ej: 50"
-                    className="w-full bg-[var(--mg-bg-elevated)] border-2 border-[var(--mg-border)] rounded-xl pl-9 pr-3 py-2 text-sm text-right focus:outline-none focus:border-[var(--mg-accent-border)] text-[var(--mg-text-primary)] font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-2 pl-9 pr-3 text-right text-sm font-bold text-[var(--mg-text-primary)] focus:border-[var(--mg-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--mg-accent-bg)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
               
               <div className="pt-2 border-t border-[var(--mg-separator)] text-xs">
                 {Number(mixedCash || 0) + Number(mixedQr || 0) < total ? (
-                  <span className="text-red-500 font-bold flex items-center gap-1 animate-pulse">
-                    ⚠️ Falta cubrir {formatBs(total - (Number(mixedCash || 0) + Number(mixedQr || 0)))}
+                  <span className="flex items-center gap-1 font-bold text-[var(--mg-danger)]">
+                    Falta cubrir {formatBs(total - (Number(mixedCash || 0) + Number(mixedQr || 0)))}
                   </span>
                 ) : (
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[var(--mg-text-muted)] font-medium">Cambio (en efectivo):</span>
-                    <span className="text-sm font-black text-green-600">
+                    <span className="text-sm font-black text-[var(--mg-success-text)]">
                       {formatBs((Number(mixedCash || 0) + Number(mixedQr || 0)) - total)}
                     </span>
                   </div>
@@ -1482,47 +1494,58 @@ export default function Sales() {
           )}
 
           {/* Acciones principales */}
-          <div className="flex items-center gap-3 pt-2">
-            <div className="flex-1">
-              <p className="text-[10px] text-[var(--mg-text-faint)] uppercase font-semibold">Total a Cobrar</p>
-              <p className="text-2xl font-black text-[var(--mg-accent)]">{formatBs(total)}</p>
+          <div className="pt-2">
+            <div className="rounded-2xl bg-[var(--mg-brand)] p-4 text-white shadow-[var(--mg-shadow-md)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Total a cobrar</p>
+                  <p className="mt-1 text-3xl font-black tracking-tight tabular-nums">{formatBs(total)}</p>
+                </div>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+                  <AppIcon name="caja" size={19} color="#fff" />
+                </span>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (confirm('¿Vaciar el carrito?')) {
+                      setCart({});
+                      setTypedClientName('');
+                      setSelectedCustomer(null);
+                      setIsCustomClient(false);
+                      setPaymentMethod('cash');
+                      setCashReceived('');
+                      setMixedCash('');
+                      setMixedQr('');
+                      setClientPhone('');
+                      setDueDate('');
+                      setShowCartModal(false);
+                      clearCartDraft(businessId, user.uid);
+                    }
+                  }}
+                  className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-white/15 active:scale-95"
+                >
+                  Vaciar
+                </button>
+                <button
+                  onClick={handleCheckoutClick}
+                  disabled={registering ||
+                    (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) ||
+                    (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total)
+                  }
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-[var(--mg-brand)] transition-all hover:bg-[var(--mg-bg-elevated)] active:scale-95 disabled:opacity-60"
+                >
+                  {registering ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
+                  ) : (
+                    <>
+                      <AppIcon name="check" size={16} color="var(--mg-brand)" />
+                      Cobrar
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                if (confirm('¿Vaciar el carrito?')) {
-                  setCart({});
-                  setTypedClientName('');
-                  setSelectedCustomer(null);
-                  setIsCustomClient(false);
-                  setPaymentMethod('cash');
-                  setCashReceived('');
-                  setMixedCash('');
-                  setMixedQr('');
-                  setClientPhone('');
-                  setDueDate('');
-                  setShowCartModal(false);
-                  clearCartDraft(businessId, user.uid);
-                }
-              }}
-              className="bg-gray-100 text-gray-500 font-bold p-3.5 rounded-2xl text-sm active:scale-95 shrink-0"
-            >
-              Vaciar
-            </button>
-            <button
-              onClick={handleCheckoutClick}
-              disabled={registering ||
-                (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) ||
-                (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total)
-              }
-              className="bg-[var(--mg-accent)] text-white font-bold py-3.5 px-6 rounded-2xl text-sm active:scale-95 transition-all disabled:opacity-60 shrink-0 shadow-lg flex items-center gap-2"
-              style={{ boxShadow: '0 8px 20px rgba(0, 122, 255, 0.3)' }}
-            >
-              {registering ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                'Cobrar'
-              )}
-            </button>
           </div>
         </div>
       </div>
@@ -1536,10 +1559,21 @@ export default function Sales() {
 
         <div className="p-4 space-y-3 flex-1 flex flex-col min-h-0">
           {activeTab === 'venta' && (
-            <div className="flex items-center justify-between shrink-0">
-              <h2 className="text-xl font-bold text-[var(--mg-text-primary)]">Nueva Venta</h2>
+            <div className="shrink-0 flex items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-white">
+                  <AppIcon name="carrito" size={19} color="#fff" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Punto de venta</p>
+                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)]">Nueva venta</h2>
+                  <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                    {activeBranch?.name ? `${activeBranch.name} · ` : ''}Busca, escanea o toca un producto
+                  </p>
+                </div>
+              </div>
               {totalBaseUnits > 0 && (
-                <span className="bg-[var(--mg-accent)] text-white text-xs font-black px-3 py-1.5 rounded-full lg:hidden">
+                <span className="shrink-0 rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-1.5 text-xs font-black text-[var(--mg-accent)] lg:hidden">
                   {totalBaseUnits} en carrito
                 </span>
               )}
@@ -1547,11 +1581,11 @@ export default function Sales() {
           )}
 
           {activeTab === 'venta' && sellingBlocked && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5 shrink-0">
-              <p className="text-sm font-black text-amber-800">
+            <div className="shrink-0 space-y-2.5 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-4">
+              <p className="text-sm font-black text-[var(--mg-gold-text)]">
                 Estás en {activeBranch?.name || 'un almacén'}: aquí no se vende
               </p>
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-[var(--mg-text-secondary)]">
                 Los almacenes custodian y distribuyen. Elige una sucursal para cobrar.
               </p>
               <div className="flex gap-2 flex-wrap">
@@ -1570,7 +1604,7 @@ export default function Sales() {
           {activeTab === 'reporte' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
               <ReportHeader
-                icon="🛒"
+                icon={<AppIcon name="carrito" size={21} />}
                 title="Reporte de Ventas"
                 subtitle="Historial detallado de tus ventas por producto."
                 startDate={reportStartDate}
@@ -1582,12 +1616,45 @@ export default function Sales() {
                 branchSelector={renderBranchPills()}
               />
 
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricCard
+                  label="Total vendido"
+                  value={formatBs(salesReportRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0))}
+                  hint={`${scopedSalesReport.length} ${scopedSalesReport.length === 1 ? 'ticket' : 'tickets'}`}
+                  icon="caja"
+                  tone="brand"
+                />
+                <MetricCard
+                  label="Unidades"
+                  value={salesReportRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0)}
+                  hint="Vendidas en el período"
+                  icon="paquete"
+                  tone="action"
+                />
+                <MetricCard
+                  label="Ticket promedio"
+                  value={formatBs(scopedSalesReport.length ? salesReportRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0) / scopedSalesReport.length : 0)}
+                  hint="Por venta"
+                  icon="recibo"
+                  tone="neutral"
+                />
+                {canSeeCosts ? (
+                  <MetricCard
+                    label="Ganancia"
+                    value={formatBs(salesReportRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0))}
+                    hint="Ventas menos costo"
+                    icon="ranking"
+                    tone="success"
+                  />
+                ) : null}
+              </div>
+
               {renderDetailTable(salesReportRows, 'No se encontraron ventas en el rango de fechas seleccionado.', 'Total del período')}
             </div>
           ) : activeTab === 'cajeros' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
               <ReportHeader
-                icon="👥"
+                icon={<AppIcon name="equipo" size={21} />}
                 title="Reporte por Cajero"
                 subtitle="Lo que vendió cada vendedor y en qué método de pago."
                 startDate={reportStartDate}
@@ -1599,13 +1666,44 @@ export default function Sales() {
                 branchSelector={renderBranchPills()}
               />
 
-              {/* ── Por cajero ── */}
-              <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-4 space-y-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h3 className="font-black text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5"><AppIcon name="equipo" size={15} /> Ventas por cajero</h3>
-                  <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold">Toca un cajero para ver su detalle</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricCard
+                  label="En caja"
+                  value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.enCaja, 0))}
+                  hint="Efectivo + QR + mixto"
+                  icon="caja"
+                  tone="brand"
+                />
+                <MetricCard
+                  label="Ventas"
+                  value={(reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.ventas, 0)}
+                  hint="Tickets del período"
+                  icon="recibo"
+                  tone="action"
+                />
+                <MetricCard
+                  label="Efectivo"
+                  value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.cash, 0))}
+                  hint="Cobrado en efectivo"
+                  icon="cash"
+                  tone="success"
+                />
+                {canSeeCosts ? (
+                  <MetricCard
+                    label="Ganancia"
+                    value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.ganancia, 0))}
+                    hint="Estimada del período"
+                    icon="ranking"
+                    tone="warning"
+                  />
+                ) : null}
+              </div>
 
+              <SectionCard
+                title="Ventas por cajero"
+                subtitle="Toca un cajero para ver su detalle"
+                bodyClassName="p-4 space-y-3"
+              >
                 {/* Filtro de cajeros */}
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                   {['Todos', ...sellersInRange].map((name) => (
@@ -1615,8 +1713,8 @@ export default function Sales() {
                       onClick={() => setReportCashier(name)}
                       className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                         reportCashier === name
-                          ? 'bg-[var(--mg-accent)] text-white shadow-sm'
-                          : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                          ? 'bg-[var(--mg-brand)] text-white shadow-sm'
+                          : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
                       }`}
                     >
                       {name === 'Todos' ? 'Todos' : name}
@@ -1625,17 +1723,20 @@ export default function Sales() {
                 </div>
 
                 {cashierStats.length === 0 ? (
-                  <p className="text-xs text-[var(--mg-text-muted)] text-center py-3 bg-[var(--mg-bg-elevated)] rounded-xl">
-                    Sin ventas en este período.
-                  </p>
+                  <EmptyState
+                    icon="equipo"
+                    title="Sin ventas en este período"
+                    description="Cambia el rango de fechas o registra una nueva venta."
+                    className="border-0 bg-[var(--mg-bg-elevated)] px-4 py-6 shadow-none"
+                  />
                 ) : reportCashier === 'Todos' ? (
                   /* Resumen comparativo: una fila por cajero */
                   <div className="overflow-x-auto rounded-2xl border border-[var(--mg-border)]">
-                    <table className="w-full text-sm min-w-[640px] border-collapse bg-white">
+                    <table className="w-full min-w-[640px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
                       <thead>
-                        <tr className="bg-[var(--mg-bg-elevated)]">
+                        <tr className="bg-[var(--mg-bg-section)]">
                           {['Cajero', 'Ventas', 'Efectivo', 'QR', 'Mixto', 'En caja', 'Ganancia'].map((h, i) => (
-                            <th key={h} className={`p-2.5 text-xs font-black text-[var(--mg-text-secondary)] uppercase tracking-wide whitespace-nowrap ${i >= 2 ? 'text-right' : 'text-left'}`}>
+                            <th key={h} className={`whitespace-nowrap p-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-secondary)] ${i >= 2 ? 'text-right' : 'text-left'}`}>
                               {h}
                             </th>
                           ))}
@@ -1646,21 +1747,21 @@ export default function Sales() {
                           <tr
                             key={st.name}
                             onClick={() => setReportCashier(st.name)}
-                            className="border-t border-[var(--mg-separator)] hover:bg-blue-50/40 cursor-pointer transition-colors"
+                            className="cursor-pointer border-t border-[var(--mg-separator)] transition-colors hover:bg-[var(--mg-accent-bg-soft)]"
                           >
-                            <td className="p-2.5 font-bold text-[var(--mg-text-primary)] whitespace-nowrap">
+                            <td className="whitespace-nowrap p-3 font-bold text-[var(--mg-text-primary)]">
                               {st.name}
                             </td>
-                            <td className="p-2.5 text-left">
-                              <span className="inline-block bg-[var(--mg-bg-elevated)] rounded-full px-2.5 py-0.5 text-xs font-black">
+                            <td className="p-3 text-left">
+                              <span className="inline-block rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-0.5 text-xs font-black">
                                 {st.ventas}
                               </span>
                             </td>
-                            <td className="p-2.5 text-right font-semibold text-green-700">{formatBs(st.cash)}</td>
-                            <td className="p-2.5 text-right font-semibold text-blue-700">{formatBs(st.qr)}</td>
-                            <td className="p-2.5 text-right font-semibold text-purple-700">{formatBs(st.mixto)}</td>
-                            <td className="p-2.5 text-right font-black text-[var(--mg-accent)]">{formatBs(st.enCaja)}</td>
-                            <td className="p-2.5 text-right font-bold text-green-600">{formatBs(st.ganancia)}</td>
+                            <td className="p-3 text-right font-semibold text-[var(--mg-success-text)]">{formatBs(st.cash)}</td>
+                            <td className="p-3 text-right font-semibold text-[var(--mg-accent)]">{formatBs(st.qr)}</td>
+                            <td className="p-3 text-right font-semibold text-[var(--mg-brand)]">{formatBs(st.mixto)}</td>
+                            <td className="p-3 text-right font-black text-[var(--mg-brand)]">{formatBs(st.enCaja)}</td>
+                            <td className="p-3 text-right font-bold text-[var(--mg-success-text)]">{formatBs(st.ganancia)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1674,26 +1775,26 @@ export default function Sales() {
                     return (
                       <div className="space-y-3">
                         <div className="grid grid-cols-3 gap-2.5">
-                          <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-center border border-[var(--mg-border)]">
+                          <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3 text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">En caja</p>
-                            <p className="text-lg font-black text-[var(--mg-accent)]">{formatBs(st.enCaja)}</p>
+                            <p className="text-lg font-black text-[var(--mg-brand)]">{formatBs(st.enCaja)}</p>
                           </div>
-                          <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-center border border-[var(--mg-border)]">
+                          <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Ventas</p>
                             <p className="text-lg font-black text-[var(--mg-text-primary)]">{st.ventas}</p>
                           </div>
-                          <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-center border border-[var(--mg-border)]">
+                          <div className="rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] p-3 text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Ganancia</p>
-                            <p className="text-lg font-black text-green-600">{formatBs(st.ganancia)}</p>
+                            <p className="text-lg font-black text-[var(--mg-success-text)]">{formatBs(st.ganancia)}</p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                           {[
-                            { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-green-700 bg-green-50 border-green-200' },
-                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-blue-700 bg-blue-50 border-blue-200' },
-                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-purple-700 bg-purple-50 border-purple-200' },
+                            { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] border-[var(--mg-success-border)]' },
+                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border-[var(--mg-accent-border)]' },
+                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)] border-[var(--mg-brand-border)]' },
                           ].map((m) => (
-                            <div key={m.label} className={`rounded-2xl p-2.5 text-center border ${m.cls}`}>
+                            <div key={m.label} className={`rounded-2xl border p-2.5 text-center ${m.cls}`}>
                               <p className="flex justify-center"><AppIcon name={m.icon} size={18} /></p>
                               <p className="text-[10px] font-extrabold uppercase tracking-wide opacity-80">{m.label}</p>
                               <p className="text-sm font-black">{formatBs(m.value)}</p>
@@ -1704,7 +1805,7 @@ export default function Sales() {
                     );
                   })()
                 )}
-              </div>
+              </SectionCard>
 
               {renderTicketList()}
             </div>
@@ -1720,37 +1821,40 @@ export default function Sales() {
             </div>
           ) : (
           <>
-          <div className="shrink-0 flex gap-2">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍  Buscar producto, marca o código..."
-              className="flex-1 min-w-0 border-2 border-[var(--mg-border)] rounded-2xl px-4 py-3 focus:outline-none focus:border-[var(--mg-accent-border)] text-base"
-            />
+          <div className="flex shrink-0 gap-2">
+            <div className="relative min-w-0 flex-1">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
+                <AppIcon name="search" size={18} />
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar producto, marca o código..."
+                className="mg-input min-h-[52px] pl-11 text-base"
+              />
+            </div>
             <button
               type="button"
               onClick={openScanner}
               title="Escanear código de barras"
               aria-label="Escanear código de barras"
-              className="w-[52px] h-[52px] shrink-0 rounded-2xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow-lg flex items-center justify-center active:scale-90 transition-all"
-              style={{ boxShadow: '0 8px 20px rgba(22,112,194,0.35)' }}
+              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
             >
-              <AppIcon name="scan" size={24} color="#fff" />
+              <AppIcon name="scan" size={23} color="#fff" />
             </button>
           </div>
 
-          {/* Filtro por Categorías */}
-          <div className="flex gap-2 overflow-x-auto pb-1.5 -mx-4 px-4 scrollbar-hide shrink-0">
+          <div className="flex shrink-0 gap-2 overflow-x-auto px-0 pb-1 scrollbar-none">
             {['Todas', RECENT_CATEGORY, ...categories].map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setFilterCategory(cat)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                   filterCategory === cat
-                    ? 'bg-[var(--mg-accent)] text-white shadow-sm'
-                    : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                    ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-white shadow-sm'
+                    : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
                 }`}
               >
                 {cat}
@@ -1773,11 +1877,11 @@ export default function Sales() {
                     : (typeof cart[product.id] === 'number' ? cart[product.id] : 0);
                   const packOpt = options.find((o) => o.presId === 'pack');
                   const priceLabel = hasPack && packOpt
-                    ? `${formatBs(product.price)} · 📦 ${formatBs(packOpt.price)}`
+                    ? `${formatBs(product.price)} · ${formatBs(packOpt.price)}`
                     : formatBs(product.price);
                   const actionArea = inCart > 0 ? (
                     <div
-                      className="flex items-center gap-1 bg-[var(--mg-accent)] rounded-full shadow-lg px-1 py-1"
+                      className="flex items-center gap-1 rounded-full bg-[var(--mg-brand)] px-1 py-1 shadow-md"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -1829,7 +1933,7 @@ export default function Sales() {
                               <button
                                 type="button"
                                 onClick={() => handleProductTap(product)}
-                                className="w-8 h-8 rounded-full bg-[var(--mg-accent)] text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-white shadow-sm active:scale-90"
                               >
                                 +
                               </button>
@@ -1842,17 +1946,15 @@ export default function Sales() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                <p className="text-5xl mb-3">📦</p>
-                <p className="font-semibold">
-                  {search
-                    ? 'No encontrado'
-                    : filterCategory === RECENT_CATEGORY
-                      ? 'Todavía no hay ventas recientes'
-                      : 'Sin productos disponibles'}
-                </p>
-                {!search && filterCategory !== RECENT_CATEGORY && <p className="text-sm mt-1">Ve a Inventario para agregar</p>}
-              </div>
+              <EmptyState
+                icon="paquete"
+                title={search
+                  ? 'No encontramos ese producto'
+                  : filterCategory === RECENT_CATEGORY
+                    ? 'Todavía no hay ventas recientes'
+                    : 'Sin productos disponibles'}
+                description={!search && filterCategory !== RECENT_CATEGORY ? 'Ve a Inventario para agregar tu primer producto.' : 'Prueba con otra búsqueda o cambia de categoría.'}
+              />
             )}
           </div>
           </>
@@ -1885,10 +1987,13 @@ export default function Sales() {
           {cartItems.length > 0 ? (
             renderCartContent(false)
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[var(--mg-text-faint)] p-6">
-              <AppIcon name="carrito" size={48} />
-              <p className="font-semibold text-sm mt-3">Tu carrito está vacío</p>
-              <p className="text-xs text-center mt-1">Haz clic en los productos para agregarlos al carrito</p>
+            <div className="flex flex-1 items-center justify-center p-6">
+              <EmptyState
+                icon="carrito"
+                title="Tu carrito está vacío"
+                description="Toca un producto para agregarlo. Puedes escanear su código o buscar por nombre."
+                className="w-full border-0 bg-transparent px-2 py-0"
+              />
             </div>
           )}
         </aside>
@@ -1898,12 +2003,11 @@ export default function Sales() {
       {activeTab === 'venta' && totalBaseUnits > 0 && !showCartModal && (
         <button
           onClick={() => setShowCartModal(true)}
-          className="lg:hidden fixed bottom-20 right-4 bg-[var(--mg-accent)] text-white font-bold py-3.5 px-5 rounded-full shadow-2xl flex items-center gap-3 transition-all z-40 active:scale-95 hover:bg-[var(--mg-accent-hover)]"
-          style={{ boxShadow: '0 8px 30px rgba(0, 122, 255, 0.45)' }}
+          className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-2xl bg-[var(--mg-brand)] px-5 py-3.5 font-bold text-white shadow-2xl transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 lg:hidden"
         >
           <div className="relative flex items-center">
             <AppIcon name="carrito" size={20} color="#fff" />
-            <span className="absolute -top-2.5 -right-2.5 bg-white text-[var(--mg-accent)] text-[10px] font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-md">
+            <span className="absolute -right-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--mg-brand)] shadow-md">
               {totalBaseUnits}
             </span>
           </div>
@@ -1941,15 +2045,15 @@ export default function Sales() {
           >
             {/* Check Icon animado */}
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border-2 border-green-200">
-                <svg className="w-9 h-9 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]">
+                <svg className="h-9 w-9 text-[var(--mg-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" className="mg-draw-check" />
                 </svg>
               </div>
             </div>
 
             <h3 className="text-lg font-black text-[var(--mg-text-primary)]">¡Cobro Exitoso!</h3>
-            <p className="text-3xl font-black text-green-600 my-2">{formatBs(showSuccessModal.total)}</p>
+            <p className="my-2 text-3xl font-black text-[var(--mg-success-text)]">{formatBs(showSuccessModal.total)}</p>
 
             {/* Datos Detallados */}
             <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-left text-xs space-y-1.5 border border-[var(--mg-border)] my-4 text-[var(--mg-text-secondary)]">
@@ -1964,8 +2068,8 @@ export default function Sales() {
               <div className="flex justify-between">
                 <span className="text-[var(--mg-text-muted)] font-medium">Método de Pago:</span>
                 <span className="font-bold text-[var(--mg-text-primary)]">
-                  {showSuccessModal.paymentMethod === 'qr' ? '📲 QR' :
-                   showSuccessModal.paymentMethod === 'cash' ? '💵 Efectivo' : '🔀 Mixto'}
+                  {showSuccessModal.paymentMethod === 'qr' ? 'QR' :
+                   showSuccessModal.paymentMethod === 'cash' ? 'Efectivo' : 'Mixto'}
                 </span>
               </div>
               {showSuccessModal.paymentMethod === 'cash' && showSuccessModal.montoRecibido !== null && showSuccessModal.montoRecibido !== undefined && (
@@ -1976,7 +2080,7 @@ export default function Sales() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--mg-text-muted)] font-medium">Cambio:</span>
-                    <span className="font-bold text-green-600">{formatBs(showSuccessModal.cambio)}</span>
+                    <span className="font-bold text-[var(--mg-success-text)]">{formatBs(showSuccessModal.cambio)}</span>
                   </div>
                 </>
               )}
@@ -1992,7 +2096,7 @@ export default function Sales() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--mg-text-muted)] font-medium">Cambio:</span>
-                    <span className="font-bold text-green-600">{formatBs(showSuccessModal.cambio)}</span>
+                    <span className="font-bold text-[var(--mg-success-text)]">{formatBs(showSuccessModal.cambio)}</span>
                   </div>
                 </>
               )}
@@ -2011,7 +2115,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={handlePrintSuccessSale}
-                className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
               >
                 <AppIcon name="recibo" size={14} /> Imprimir recibo
 
@@ -2019,7 +2123,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={closeSuccessModal}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition-all shadow-md"
+                className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-white shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
               >
                 Continuar
               </button>
@@ -2037,11 +2141,13 @@ export default function Sales() {
             className="bg-[var(--mg-bg-surface)] rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl relative cursor-default animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
+              type="button"
               onClick={() => setShowQrConfirmModal(false)}
-              className="absolute top-4 right-4 text-2xl text-[var(--mg-text-muted)] font-bold cursor-pointer hover:text-[var(--mg-text-primary)] transition-colors"
+              aria-label="Cerrar confirmación de pago"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
             >
-              ×
+              <AppIcon name="cerrar" size={15} />
             </button>
 
             <h3 className="text-lg font-black text-[var(--mg-text-primary)] mb-1">Confirmar Pago QR</h3>
@@ -2061,7 +2167,7 @@ export default function Sales() {
                 </div>
                 <div className="flex justify-between border-t border-[var(--mg-separator)] pt-1.5 mt-1.5">
                   <span className="text-[var(--mg-text-muted)] font-medium">Cambio (en efectivo):</span>
-                  <span className="font-black text-green-600">
+                  <span className="font-black text-[var(--mg-success-text)]">
                     {formatBs(Math.max(0, (Number(mixedCash || 0) + Number(mixedQr || 0)) - total))}
                   </span>
                 </div>
@@ -2076,8 +2182,8 @@ export default function Sales() {
               />
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3.5 rounded-2xl mb-5 leading-relaxed text-left flex items-start gap-2">
-              <span className="text-base shrink-0">⚠️</span>
+            <div className="mb-5 flex items-start gap-2 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-3.5 text-left text-xs font-semibold leading-relaxed text-[var(--mg-gold-text)]">
+              <span className="shrink-0"><AppIcon name="reloj" size={15} /></span>
               <span>Verifica que el cliente haya realizado el pago antes de confirmar.</span>
             </div>
 
@@ -2085,7 +2191,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={() => setShowQrConfirmModal(false)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold py-3.5 rounded-2xl text-xs active:scale-95 transition-all"
+                className="flex-1 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-3.5 text-xs font-bold text-[var(--mg-text-secondary)] transition-all hover:bg-[var(--mg-bg-section)] active:scale-95"
               >
                 Cancelar pago
               </button>
@@ -2093,7 +2199,7 @@ export default function Sales() {
                 type="button"
                 onClick={() => handleRegister(true)}
                 disabled={registering}
-                className="flex-1 bg-[var(--mg-accent)] hover:bg-[#0f5c9e] text-white font-bold py-3.5 rounded-2xl text-xs active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[var(--mg-brand)] py-3.5 text-xs font-bold text-white shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
               >
                 {registering ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -2133,17 +2239,23 @@ export default function Sales() {
             style={{ maxHeight: '92vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="font-black text-[var(--mg-text-primary)]">Búsqueda por escáner</h3>
-                <p className="text-[11px] text-[var(--mg-text-muted)]">Apunta al código de barras del producto</p>
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--mg-separator)] p-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                  <AppIcon name="scan" size={17} />
+                </span>
+                <div>
+                  <h3 className="font-black text-[var(--mg-text-primary)]">Búsqueda por escáner</h3>
+                  <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">Apunta al código de barras del producto</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowScanner(false)}
-                className="w-8 h-8 bg-[var(--mg-bg-elevated)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold text-lg shrink-0"
+                aria-label="Cerrar escáner"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]"
               >
-                ×
+                <AppIcon name="cerrar" size={15} />
               </button>
             </div>
 
@@ -2151,8 +2263,9 @@ export default function Sales() {
               <BarcodeScanner onScan={handleBarcodeScan} />
 
               {scanMsg && (
-                <div className={`rounded-xl px-3.5 py-2.5 text-xs font-bold ${scanMsg.ok ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-600'}`}>
-                  {scanMsg.ok ? '✅ ' : '⚠️ '}{scanMsg.text}
+                <div className={`flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold ${scanMsg.ok ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]' : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'}`}>
+                  <AppIcon name={scanMsg.ok ? 'check' : 'ayuda'} size={14} />
+                  <span>{scanMsg.text}</span>
                 </div>
               )}
 
@@ -2176,13 +2289,15 @@ export default function Sales() {
                           {p.imageData ? (
                             <img src={p.imageData} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" />
                           ) : (
-                            <div className="w-12 h-12 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-2xl shrink-0">📦</div>
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-bg-elevated)]">
+                              <AppIcon name="paquete" size={20} />
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-[var(--mg-text-primary)] truncate">{p.name}</p>
                             <p className="text-[11px] text-[var(--mg-text-muted)]">{formatBs(p.price)} c/u</p>
                           </div>
-                          <span className="text-xs font-black text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 shrink-0">
+                          <span className="shrink-0 rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1 text-xs font-black text-[var(--mg-gold-text)]">
                             x {qty}
                           </span>
                         </div>
@@ -2197,7 +2312,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={() => setShowScanner(false)}
-                className="flex-1 bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] font-bold py-3 rounded-2xl text-sm active:scale-95"
+                className="flex-1 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-3 text-sm font-bold text-[var(--mg-text-secondary)] transition-all hover:bg-[var(--mg-bg-section)] active:scale-95"
               >
                 Seguir buscando
               </button>
@@ -2205,7 +2320,7 @@ export default function Sales() {
                 type="button"
                 onClick={() => { setShowScanner(false); setShowCartModal(true); }}
                 disabled={totalBaseUnits === 0}
-                className="flex-1 bg-[var(--mg-accent)] text-white font-bold py-3 rounded-2xl text-sm active:scale-95 disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
               >
                 Ver carrito ({totalBaseUnits})
               </button>

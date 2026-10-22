@@ -16,6 +16,7 @@ export default function QuickDateRangeButtons({ startDate, endDate, onChange }) 
             key={key}
             type="button"
             onClick={() => onChange(range.start, range.end)}
+            aria-pressed={active}
             className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all text-center whitespace-nowrap ${
               active
                 ? 'bg-[var(--mg-accent)] text-white shadow-sm'

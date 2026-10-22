@@ -26,33 +26,43 @@ export function ExpenseDetailModal({ expense, isOpen, onClose, onEdit, onDelete 
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="bg-[var(--mg-bg-surface)] rounded-t-[28px] sm:rounded-[28px] w-full max-w-md border border-[var(--mg-border)] shadow-2xl overflow-hidden"
+          className="w-full max-w-md overflow-hidden rounded-t-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-2xl sm:rounded-3xl"
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expense-detail-title"
         >
-          <div className="px-5 py-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-              Detalle de Egreso
-            </span>
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-5 py-4">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)]">
+                <AppIcon name="gastos" size={17} />
+              </span>
+              <div className="min-w-0">
+                <h3 id="expense-detail-title" className="text-sm font-black text-[var(--mg-text-primary)]">Detalle de egreso</h3>
+                <p className="text-[11px] font-medium text-[var(--mg-text-muted)]">Información del movimiento</p>
+              </div>
+            </div>
             <button
               onClick={onClose}
               type="button"
-              className="w-8 h-8 bg-[var(--mg-bg-surface)] hover:bg-[var(--mg-bg-section)] border border-[var(--mg-border)] rounded-full flex items-center justify-center text-[var(--mg-text-muted)] font-bold transition-all active:scale-95"
+              aria-label="Cerrar detalle del egreso"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
             >
-              ×
+              <AppIcon name="cerrar" size={17} />
             </button>
           </div>
 
-          <div className="p-5 space-y-4">
-            <div className="text-center py-1">
-              <span className="text-[11px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
-                Monto Pagado
+          <div className="space-y-4 p-5">
+            <div className="py-1 text-center">
+              <span className="block text-[10px] font-black uppercase tracking-widest text-[var(--mg-text-muted)]">
+                Monto pagado
               </span>
-              <div className="text-3xl font-black tracking-tight text-[var(--mg-text-primary)] mt-0.5">
+              <div className="mt-1 text-3xl font-black tracking-tight text-[var(--mg-danger)]">
                 {formatBs(expense.amount)}
               </div>
-              <div className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] border border-[var(--mg-border)]">
-                  {expense.category} · {isFixed ? 'Gasto Fijo' : 'Gasto Diario'}
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                <span className="inline-flex items-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[11px] font-extrabold text-[var(--mg-text-secondary)]">
+                  {expense.category} · {isFixed ? 'Gasto fijo' : 'Gasto diario'}
                 </span>
               </div>
             </div>
@@ -96,7 +106,7 @@ export function ExpenseDetailModal({ expense, isOpen, onClose, onEdit, onDelete 
             <button
               type="button"
               onClick={() => onDelete(expense)}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-extrabold text-[var(--mg-danger)] bg-[var(--mg-danger-bg)] hover:brightness-95 border border-red-200 transition-all active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 py-2.5 text-xs font-extrabold text-[var(--mg-danger)] transition-all hover:brightness-95 active:scale-95"
             >
               <AppIcon name="eliminar" size={14} />
               <span>Eliminar</span>

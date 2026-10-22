@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { AppIcon } from './icons';
 
 const SCAN_REGION_ID = 'mg-barcode-region';
 
@@ -128,14 +129,15 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
         <div id={SCAN_REGION_ID} className="w-full min-h-[220px] [&_video]:!rounded-2xl" />
         {starting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
-            <span className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
             <p className="text-xs font-semibold">Abriendo cámara…</p>
             <p className="text-[11px] text-white/60">Apunta al código de barras</p>
           </div>
         )}
         {!starting && flash && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg mg-fade-in">
-            ✓ {flash.slice(0, 20)}
+          <div className="mg-fade-in absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[var(--mg-success)] px-3 py-1.5 text-xs font-black text-white shadow-lg">
+            <AppIcon name="check" size={13} color="#fff" />
+            {flash.slice(0, 20)}
           </div>
         )}
         {/* Marco guía */}
@@ -147,8 +149,9 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
       </div>
 
       {error && (
-        <p className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          ⚠️ {error}
+        <p className="flex items-start gap-2 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3 py-2 text-xs font-semibold text-[var(--mg-gold-text)]">
+          <AppIcon name="ayuda" size={14} />
+          <span>{error}</span>
         </p>
       )}
 
@@ -157,14 +160,14 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
           type="text"
           value={manual}
           onChange={(e) => setManual(e.target.value)}
-          placeholder="⌨️ Escribe el código (ej: 7771234567890)"
+          placeholder="Escribe el código (ej: 7771234567890)"
           inputMode="numeric"
-          className="flex-1 border-2 border-[var(--mg-border)] rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-[var(--mg-accent-border)]"
+          className="mg-input min-w-0 flex-1 py-2.5 font-mono text-sm"
         />
         <button
           type="submit"
           disabled={!manual.trim()}
-          className="bg-[var(--mg-accent)] text-white font-bold px-4 rounded-xl text-sm active:scale-95 disabled:opacity-40 shrink-0"
+          className="shrink-0 rounded-xl bg-[var(--mg-brand)] px-4 text-sm font-bold text-white transition-colors hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-40"
         >
           Buscar
         </button>

@@ -8,48 +8,53 @@ export default function ReportHeader({
   branchSelector = null,
 }) {
   return (
-    <div className="bg-[var(--mg-bg-surface)] rounded-2xl border border-[var(--mg-border)] p-3 sm:p-5 shadow-sm mb-4 w-full min-w-0 overflow-hidden">
-      {/* Título + selector de sede al centro */}
-      <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3 min-w-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {icon && <span className="text-2xl sm:text-3xl shrink-0">{icon}</span>}
+    <div className="mb-4 w-full min-w-0 overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {icon ? (
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-2xl text-[var(--mg-brand)] sm:h-12 sm:w-12">
+              {icon}
+            </span>
+          ) : null}
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-2xl font-black text-[#1670C2] tracking-tight leading-tight truncate">{title}</h1>
-            {subtitle && (
-              <p className="text-[var(--mg-text-secondary)] text-[11px] sm:text-sm font-medium mt-0.5 leading-snug line-clamp-2">{subtitle}</p>
-            )}
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Reportes</p>
+            <h1 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)] sm:text-2xl">{title}</h1>
+            {subtitle ? (
+              <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-[var(--mg-text-secondary)] sm:text-sm">{subtitle}</p>
+            ) : null}
           </div>
         </div>
-        {branchSelector}
+        {branchSelector ? (
+          <div className="min-w-0 sm:ml-auto sm:shrink-0">
+            {branchSelector}
+          </div>
+        ) : null}
       </div>
 
-      {/* Controles: minimalista en móvil, expandido en PC */}
-      <div className="flex flex-col gap-2 mt-3 lg:flex-row lg:items-stretch">
-        <div className="flex-1 min-w-0 bg-[var(--mg-bg-elevated)] p-2 rounded-2xl border border-[var(--mg-border)]">
-          {/* Día / Semana / Mes: segmentado a todo el ancho en móvil */}
+      <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-stretch">
+        <div className="min-w-0 flex-1 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-2">
           <QuickDateRangeButtons
             startDate={startDate}
             endDate={endDate}
             onChange={(s, e) => { onStartDateChange(s); onEndDateChange(e); }}
           />
-          {/* Fechas personalizadas compactas */}
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <div className="flex flex-col gap-1 min-w-0">
-              <label className="text-[9px] font-extrabold uppercase tracking-widest text-[#1670C2] pl-1">Desde</label>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="pl-1 text-[9px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">Desde</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartDateChange(e.target.value)}
-                className="w-full min-w-0 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl px-2 py-1.5 text-xs font-semibold text-[var(--mg-text-primary)] focus:outline-none focus:border-[#1670C2] focus:ring-2 focus:ring-[#1670C2]/20 transition-all cursor-pointer tabular-nums"
+                className="w-full min-w-0 cursor-pointer rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-xs font-semibold tabular-nums text-[var(--mg-text-primary)] transition-all focus:border-[var(--mg-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--mg-accent-bg)]"
               />
             </div>
-            <div className="flex flex-col gap-1 min-w-0">
-              <label className="text-[9px] font-extrabold uppercase tracking-widest text-[#1670C2] pl-1">Hasta</label>
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="pl-1 text-[9px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)]">Hasta</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndDateChange(e.target.value)}
-                className="w-full min-w-0 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl px-2 py-1.5 text-xs font-semibold text-[var(--mg-text-primary)] focus:outline-none focus:border-[#1670C2] focus:ring-2 focus:ring-[#1670C2]/20 transition-all cursor-pointer tabular-nums"
+                className="w-full min-w-0 cursor-pointer rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-xs font-semibold tabular-nums text-[var(--mg-text-primary)] transition-all focus:border-[var(--mg-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--mg-accent-bg)]"
               />
             </div>
           </div>
@@ -61,7 +66,7 @@ export default function ReportHeader({
             onClick={onExport}
             disabled={exportDisabled}
             title={exportDisabled ? 'No hay datos en el periodo seleccionado' : undefined}
-            className="flex items-center justify-center gap-1.5 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover,#0f5c9e)] text-white font-bold px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm active:scale-95 transition-all shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 w-full lg:w-auto lg:self-center"
+            className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-accent)] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-accent-hover)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 sm:text-sm lg:w-auto lg:self-center"
           >
             <AppIcon name="pdf" size={14} color="#fff" /> {exportLabel}
           </button>

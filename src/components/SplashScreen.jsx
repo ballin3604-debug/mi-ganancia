@@ -13,7 +13,7 @@ export default function SplashScreen({ onDone }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 bg-white ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 bg-[var(--mg-bg-surface)] ${
         phase === 'exit' ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
       }`}
     >
@@ -25,8 +25,8 @@ export default function SplashScreen({ onDone }) {
           <div
             className="w-28 h-28 rounded-[28px] flex items-center justify-center shadow-2xl"
             style={{
-              background: imgError ? 'linear-gradient(135deg, #007aff 0%, #0051d5 100%)' : 'transparent',
-              boxShadow: '0 20px 50px rgba(0, 122, 255, 0.35)',
+              background: imgError ? 'linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-accent) 100%)' : 'transparent',
+              boxShadow: '0 20px 50px var(--mg-brand-border)',
             }}
           >
             {!imgError ? (
@@ -48,8 +48,8 @@ export default function SplashScreen({ onDone }) {
         <div className={`text-center transition-all duration-700 delay-200 ${
           phase === 'enter' ? 'opacity-0 translate-y-3' : 'opacity-100 translate-y-0'
         }`}>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Mi Ganancia</h1>
-          <p className="text-gray-500 text-sm mt-1.5 tracking-tight">
+          <h1 className="text-3xl font-bold text-[var(--mg-text-primary)] tracking-tight">Mi Ganancia</h1>
+          <p className="text-[var(--mg-text-secondary)] text-sm mt-1.5 tracking-tight">
             Tu negocio, simple
           </p>
         </div>
@@ -63,7 +63,7 @@ export default function SplashScreen({ onDone }) {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-[var(--mg-text-faint)] animate-bounce"
               style={{ animationDelay: `${i * 150}ms` }}
             />
           ))}

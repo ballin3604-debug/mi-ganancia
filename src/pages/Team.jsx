@@ -17,6 +17,7 @@ import {
   updateMemberBranches,
 } from '../services/cashier';
 import { TeamSection } from '../components/settings/TeamSection';
+import PageHeader from '../components/ui/PageHeader';
 
 export default function Team() {
   const { businessId, user, updateOwnRole } = useAuth();
@@ -205,17 +206,12 @@ export default function Team() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 pb-28">
-      <div>
-        <p className="text-[11px] font-bold text-[var(--mg-text-muted)]">
-          <span className="text-[var(--mg-text-primary)]">Equipo</span>
-        </p>
-        <h1 className="text-2xl font-black text-[var(--mg-text-primary)] tracking-tight mt-0.5">
-          Equipo y accesos
-        </h1>
-        <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">
-          Cajeros, accesos, invitaciones y permisos
-        </p>
-      </div>
+      <PageHeader
+        icon="equipo"
+        eyebrow="Administración"
+        title="Equipo y accesos"
+        subtitle="Cajeros, accesos, invitaciones y permisos del negocio."
+      />
       <TeamSection
         members={members}
         membersLoading={membersLoading}

@@ -40,9 +40,9 @@ function Toggle({ on, onChange }) {
       role="switch"
       aria-checked={on}
       onClick={(e) => { e.stopPropagation(); onChange(!on); }}
-      className={`w-11 h-6 rounded-full p-0.5 transition-colors shrink-0 ${on ? 'bg-[var(--mg-success)]' : 'bg-black/15'}`}
+      className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors ${on ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-border-hover)]'}`}
     >
-      <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
+      <span className={`block h-5 w-5 rounded-full bg-[var(--mg-bg-surface)] shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
   );
 }
@@ -410,7 +410,7 @@ export default function Settings() {
               {backupLoading ? 'Preparando…' : 'Exportar todos los datos (.JSON)'}
             </button>
             {backupMsg && (
-              <p className={`text-[11px] font-bold leading-snug rounded-lg px-2.5 py-2 border ${backupMsg.startsWith('✓') ? 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-green-200' : 'bg-[var(--mg-warning-bg)] text-amber-700 border-amber-200'}`}>
+              <p className={`text-[11px] font-bold leading-snug rounded-lg px-2.5 py-2 border ${backupMsg.startsWith('✓') ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]' : 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
                 {backupMsg}
               </p>
             )}
@@ -436,8 +436,8 @@ export default function Settings() {
       <h1 className="text-[22px] font-extrabold tracking-tight text-[var(--mg-text-primary)] leading-none">Ajustes</h1>
       <p className="text-xs text-[var(--mg-text-muted)] mt-1 font-medium truncate">
         {business?.name || 'Mi negocio'} · {role === 'cashier' ? 'Cajero' : 'Dueño'}
-        {hasChanges && <span className="text-amber-600 font-bold"> · {changedFields.length} sin guardar</span>}
-        {saved && <span className="text-emerald-600 font-bold"> · Guardado ✓</span>}
+        {hasChanges && <span className="font-bold text-[var(--mg-gold-text)]"> · {changedFields.length} sin guardar</span>}
+        {saved && <span className="font-bold text-[var(--mg-success-text)]"> · Guardado ✓</span>}
       </p>
 
       {/* Buscador */}
@@ -464,18 +464,18 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Mi negocio</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="nombre" icon="tienda" tint="bg-blue-50 text-[#1670C2]" title="Nombre" value={business?.name || 'Sin nombre'} />
-            <Row id="rubro" icon="etiqueta" tint="bg-amber-50 text-amber-600" title="Rubro" value={`${currentCat.emoji} ${currentCat.name}`} />
+            <Row id="nombre" icon="tienda" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Nombre" value={business?.name || 'Sin nombre'} />
+            <Row id="rubro" icon="etiqueta" tint="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]" title="Rubro" value={`${currentCat.emoji} ${currentCat.name}`} />
             <Row
-              id="logo" icon="galeria" tint="bg-violet-50 text-violet-600" title="Logo" value={logoData ? 'Agregado · sale en el recibo' : 'Sin logo'}
+              id="logo" icon="galeria" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" title="Logo" value={logoData ? 'Agregado · sale en el recibo' : 'Sin logo'}
               right={logoData
                 ? <img src={logoData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
             />
-            <Row id="slogan" icon="texto" tint="bg-slate-100 text-slate-500" title="Slogan" value={slogan || 'Añadir frase del recibo…'} />
-            <Row id="telefono" icon="llamar" tint="bg-emerald-50 text-emerald-600" title="Teléfono / WhatsApp" value={phone || 'Añadir número…'} />
+            <Row id="slogan" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Slogan" value={slogan || 'Añadir frase del recibo…'} />
+            <Row id="telefono" icon="llamar" tint="bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]" title="Teléfono / WhatsApp" value={phone || 'Añadir número…'} />
             <Row
-              id="qr" icon="qr" tint="bg-violet-50 text-[#8b5cf6]" title="QR de cobro" value={qrData ? 'Agregado' : 'Sin QR · Tigo, BCP, BNB…'}
+              id="qr" icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" title="QR de cobro" value={qrData ? 'Agregado' : 'Sin QR · Tigo, BCP, BNB…'}
               right={qrData
                 ? <img src={qrData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
@@ -489,11 +489,11 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Facturación y dirección</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="legal" icon="carnet" tint="bg-blue-50 text-[#1670C2]" title="Razón social" value={legalName || 'Sin registrar'} />
-            <Row id="nit" icon="recibo" tint="bg-blue-50 text-[#1670C2]" title="NIT" value={nit || 'Sin registrar'} />
-            <Row id="ciudad" icon="sucursales" tint="bg-slate-100 text-slate-500" title="Ciudad" value={city || 'Sin registrar'} />
-            <Row id="direccion" icon="sucursales" tint="bg-slate-100 text-slate-500" title="Dirección" value={address || 'Sin registrar'} />
-            <Row id="pie" icon="texto" tint="bg-slate-100 text-slate-500" title="Mensaje final del ticket" value={footerMessage || '¡Gracias por su compra!'} />
+            <Row id="legal" icon="carnet" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Razón social" value={legalName || 'Sin registrar'} />
+            <Row id="nit" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="NIT" value={nit || 'Sin registrar'} />
+            <Row id="ciudad" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Ciudad" value={city || 'Sin registrar'} />
+            <Row id="direccion" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Dirección" value={address || 'Sin registrar'} />
+            <Row id="pie" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Mensaje final del ticket" value={footerMessage || '¡Gracias por su compra!'} />
           </div>
         </>
       )}
@@ -503,11 +503,11 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Ticket</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="formato" icon="recibo" tint="bg-blue-50 text-[#1670C2]" title="Formato del recibo" value={receiptFormat === 'sheet' ? 'Hoja A4' : 'Térmico 80mm'} />
+            <Row id="formato" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Formato del recibo" value={receiptFormat === 'sheet' ? 'Hoja A4' : 'Térmico 80mm'} />
             {visible('verqr') && (
               <div>
                 <div className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2">
-                  <IconBox icon="qr" tint="bg-violet-50 text-[#8b5cf6]" />
+                  <IconBox icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13px] font-semibold leading-tight">QR al final del ticket</span>
                     <span className="block text-xs text-[var(--mg-text-muted)] font-medium">{qrData ? 'Se imprime si está activado' : 'Primero subí un QR'}</span>
@@ -519,7 +519,7 @@ export default function Settings() {
             {visible('vista') && (
               <div>
                 <button type="button" onClick={() => setShowPreview(true)} className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)]">
-                  <IconBox icon="detalle" tint="bg-slate-100 text-slate-500" />
+                  <IconBox icon="detalle" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13px] font-semibold leading-tight">Vista previa</span>
                     <span className="block text-xs text-[var(--mg-text-muted)] font-medium">Ver ejemplo e imprimir prueba</span>
@@ -538,11 +538,11 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Datos</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="respaldo" icon="respaldo" tint="bg-amber-50 text-amber-600" title="Respaldo" value="Exportar .JSON" />
+            <Row id="respaldo" icon="respaldo" tint="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]" title="Respaldo" value="Exportar .JSON" />
             {admin && visible('admin') && (
               <div>
                 <button type="button" onClick={() => navigate('/admin')} className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)]">
-                  <IconBox icon="plan" tint="bg-indigo-50 text-indigo-600" />
+                  <IconBox icon="plan" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13px] font-semibold leading-tight">Panel de administración</span>
                     <span className="block text-xs text-[var(--mg-text-muted)] font-medium">Planes, pagos y control</span>

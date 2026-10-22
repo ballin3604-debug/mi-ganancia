@@ -1,3 +1,5 @@
+import { tailwindColors } from './src/design/tokens.js';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -6,6 +8,7 @@ export default {
   ],
   theme: {
     extend: {
+      colors: tailwindColors,
       // Escalas intermedias (v4 las genera solo; en v3 hay que declararlas)
       scale: {
         98: '0.98',
