@@ -43,8 +43,8 @@ export function InventoryHeader({
   return (
     <div className="space-y-4">
       {/* Top Header Bar: Title & Primary Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="shrink-0">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
               Catálogo de Inventario
@@ -60,7 +60,7 @@ export function InventoryHeader({
 
         {/* Selector de sede: solo cambia la vista del stock (no es filtro) */}
         {branches.length > 1 && onBranchChange && (
-          <div className="sm:flex-1 sm:px-4">
+          <div className="min-w-0 lg:flex-1 lg:px-4">
             <BranchSelect
               branches={branches}
               value={invBranch}
@@ -91,7 +91,7 @@ export function InventoryHeader({
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={onOpenAddProduct}
-            className="bg-gradient-to-r from-[var(--mg-accent)] to-blue-600 hover:brightness-110 text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all hidden md:flex items-center gap-2 min-h-[40px] border border-blue-400/20"
+            className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all hidden md:flex items-center gap-2 min-h-[40px] border border-[var(--mg-accent-border)]"
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center leading-none">
               <AppIcon name="agregar" size={14} color="#fff" />
@@ -155,7 +155,7 @@ export function InventoryHeader({
               >
                 <FunnelIcon />
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--mg-danger)] text-white text-[10px] font-black flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
@@ -173,14 +173,14 @@ export function InventoryHeader({
               onClick={onLowStockFilterToggle}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
                 filterLowStock
-                  ? 'bg-red-50 text-red-700 border-red-300 shadow-2xs'
+                  ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)] shadow-2xs'
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
               <AppIcon name="reloj" size={12} />
               <span>Por reponer</span>
               {lowStockCount > 0 && (
-                <span className="bg-red-200/80 text-red-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
+                <span className="bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
                   {lowStockCount}
                 </span>
               )}
@@ -190,14 +190,14 @@ export function InventoryHeader({
               onClick={() => onExpiryFilterChange(filterExpiry === 'porVencer' ? 'todos' : 'porVencer')}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
                 filterExpiry === 'porVencer'
-                  ? 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning)] border-amber-300 shadow-2xs'
+                  ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] border-[var(--mg-gold-border)] shadow-2xs'
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
               <AppIcon name="reloj" size={12} />
               <span>Por vencer</span>
               {expiryCounts.porVencer > 0 && (
-                <span className="bg-amber-200/80 text-amber-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
+                <span className="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
                   {expiryCounts.porVencer}
                 </span>
               )}
@@ -208,14 +208,14 @@ export function InventoryHeader({
               onClick={() => onExpiryFilterChange(filterExpiry === 'vencidos' ? 'todos' : 'vencidos')}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
                 filterExpiry === 'vencidos'
-                  ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-red-300 shadow-2xs'
+                  ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)] shadow-2xs'
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
               <AppIcon name="cerrar" size={12} />
               <span>Vencidos</span>
               {expiryCounts.vencidos > 0 && (
-                <span className="bg-red-200/80 text-red-900 text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
+                <span className="bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] text-[9px] px-1.5 py-0.5 rounded-full font-black ml-0.5">
                   {expiryCounts.vencidos}
                 </span>
               )}

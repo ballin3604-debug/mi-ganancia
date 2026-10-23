@@ -261,18 +261,18 @@ function buildSheetHtml(ctx) {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --azul: #1670C2;
-      --azul-hondo: #0c3457;
-      --azul-suave: #eef5fc;
-      --oro: #b8801f;
-      --oro-suave: #fdf4e3;
-      --verde: #15803d;
-      --verde-suave: #ecfdf3;
-      --rojo: #b91c1c;
-      --rojo-suave: #fef2f2;
-      --texto: #0f172a;
-      --tenue: #475569;
-      --linea: #cbd5e1;
+      --azul: #2563EB;
+      --azul-hondo: #153449;
+      --azul-suave: #EFF4FF;
+      --oro: #D97706;
+      --oro-suave: #FEF6E7;
+      --verde: #087F70;
+      --verde-suave: #E8F6F3;
+      --rojo: #DC2626;
+      --rojo-suave: #FEF2F2;
+      --texto: #111827;
+      --tenue: #667085;
+      --linea: #D3DCE6;
     }
 
     body {
@@ -346,7 +346,7 @@ function buildSheetHtml(ctx) {
 
     /* ── LA SUMA DE ── */
     .suma {
-      margin-top: 4px; background: var(--oro-suave); border: 2px solid #f0d9a8;
+      margin-top: 4px; background: var(--oro-suave); border: 2px solid #FBD08C;
       border-radius: 14px; padding: 10px 15px; display: flex; align-items: baseline; gap: 10px;
     }
     .suma .rotulo { font-size: 11.5px; font-weight: 800; color: var(--oro); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
@@ -378,7 +378,7 @@ function buildSheetHtml(ctx) {
     }
     .caja .rot { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--tenue); }
     .caja .val { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .caja-verde { border-color: #bbf7d0; background: var(--verde-suave); }
+    .caja-verde { border-color: #96D3C8; background: var(--verde-suave); }
     .caja-verde .rot, .caja-verde .val { color: var(--verde); }
     .caja-roja { border-color: #fecaca; background: var(--rojo-suave); }
     .caja-roja .rot, .caja-roja .val { color: var(--rojo); }
@@ -396,7 +396,7 @@ function buildSheetHtml(ctx) {
       background: #f1f5f9; border: 1px solid var(--linea); border-radius: 999px; padding: 4px 12px;
     }
     .chip strong { color: var(--texto); font-weight: 800; }
-    .chip-azul { background: var(--azul-suave); border-color: #bfdbfe; color: var(--azul-hondo); }
+    .chip-azul { background: var(--azul-suave); border-color: #BFD3FE; color: var(--azul-hondo); }
 
     /* ── FIRMAS ── */
     .firmas { display: flex; gap: 56px; margin-top: 38px; }
@@ -413,10 +413,9 @@ function buildSheetHtml(ctx) {
     .contacto {
       display: inline-flex; align-items: center; gap: 6px;
       font-size: 12px; font-weight: 700; color: var(--azul-hondo);
-      background: var(--azul-suave); border: 1px solid #bfdbfe;
+      background: var(--azul-suave); border: 1px solid #BFD3FE;
       border-radius: 999px; padding: 5px 13px;
     }
-    .contacto .ico { color: var(--oro); font-weight: 800; }
     .gracias { font-size: 15px; font-weight: 800; color: var(--oro); font-style: italic; white-space: nowrap; }
     .sello { text-align: center; font-size: 10.5px; color: var(--tenue); margin-top: 12px; font-weight: 600; }
 
@@ -538,8 +537,8 @@ function buildSheetHtml(ctx) {
     <!-- PIE -->
     <div class="pie">
       <div class="contactos">
-        ${ubicacion ? `<span class="contacto"><span class="ico">📍</span>${ubicacion}</span>` : ''}
-        ${telefono ? `<span class="contacto"><span class="ico">💬</span>${telefono}</span>` : ''}
+        ${ubicacion ? `<span class="contacto"><strong>Dirección:</strong> ${ubicacion}</span>` : ''}
+        ${telefono ? `<span class="contacto"><strong>Tel:</strong> ${telefono}</span>` : ''}
       </div>
       <span class="gracias">${escapeHtml(footer2)}</span>
     </div>
@@ -586,8 +585,8 @@ export function printReceipt({
     ? saleId.replace(/-/g, '').slice(-8).toUpperCase()
     : String(d.getTime()).slice(-6);
 
-  const payLabels = { qr: '📲 QR / Transferencia', mixto: '🔀 Mixto', cash: '💵 Efectivo' };
-  const payLabel = payLabels[paymentMethod] || '💵 Efectivo';
+  const payLabels = { qr: 'QR / Transferencia', mixto: 'Mixto', cash: 'Efectivo' };
+  const payLabel = payLabels[paymentMethod] || 'Efectivo';
 
   const cleanExtraRows = Array.isArray(extraCostRows) ? extraCostRows.filter((r) => Number(r.amount) > 0) : [];
   const extraTotal = cleanExtraRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);

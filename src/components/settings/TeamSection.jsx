@@ -350,13 +350,13 @@ export function TeamSection({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[640px]">
+            <table className="w-full table-fixed text-left text-xs sm:table-auto sm:min-w-[640px]">
               <thead>
                 <tr className="text-[var(--mg-text-muted)] uppercase text-[10px] border-b border-[var(--mg-separator)]">
-                  <th className="px-4 py-2.5">Colaborador</th>
-                  <th className="px-3 py-2.5">Rol</th>
-                  <th className="px-3 py-2.5">Estado</th>
-                  <th className="px-3 py-2.5 text-right">Acciones</th>
+                  <th className="px-3 py-2.5 sm:px-4">Colaborador</th>
+                  <th className="hidden px-3 py-2.5 sm:table-cell">Rol</th>
+                  <th className="hidden px-3 py-2.5 sm:table-cell">Estado</th>
+                  <th className="w-[132px] px-1 py-2.5 text-right sm:w-auto sm:px-3">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--mg-separator)]">
@@ -450,7 +450,7 @@ export function TeamSection({
 function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole, onStatus, onRemove }) {
   return (
     <tr className={isSuspended ? 'opacity-70' : ''}>
-      <td className="px-4 py-3">
+      <td className="overflow-hidden px-3 py-3 sm:px-4">
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-xs font-black text-white">
             {m.displayName?.charAt(0)?.toUpperCase() || 'U'}
@@ -468,28 +468,36 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
             <span className="block text-[11px] text-[var(--mg-text-muted)] truncate">
               {m.email || 'Sin correo registrado'}{Array.isArray(m.branchIds) && m.branchIds.length > 0 ? ` · ${m.branchIds.length} ${m.branchIds.length === 1 ? 'sede' : 'sedes'}` : ''}
             </span>
+            <span className="mt-1 flex items-center gap-1.5 sm:hidden">
+              <RoleBadge role={m.role} />
+              {isSuspended && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--mg-gold-text)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-gold)]" /> Suspendido
+                </span>
+              )}
+            </span>
           </span>
         </div>
       </td>
-      <td className="px-3 py-3 whitespace-nowrap"><RoleBadge role={m.role} /></td>
-      <td className="px-3 py-3 whitespace-nowrap">
+      <td className="hidden px-3 py-3 whitespace-nowrap sm:table-cell"><RoleBadge role={m.role} /></td>
+      <td className="hidden px-3 py-3 whitespace-nowrap sm:table-cell">
         {isSuspended ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--mg-gold-text)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-gold)]" /> Suspendido</span>
         ) : (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--mg-success-text)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-success)]" /> Activo</span>
         )}
       </td>
-      <td className="px-3 py-3 text-right whitespace-nowrap">
-        <span className="inline-flex items-center gap-1">
+      <td className="px-1 py-3 text-right whitespace-nowrap sm:px-3">
+        <span className="inline-flex items-center gap-0.5 sm:gap-1">
           {!isCurrentUser && (
-            <button type="button" onClick={onRole} disabled={busy} title="Cambiar rol" aria-label={`Cambiar rol de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)] disabled:opacity-50">
+            <button type="button" onClick={onRole} disabled={busy} title="Cambiar rol" aria-label={`Cambiar rol de ${m.displayName}`} className="rounded-lg p-1 text-[var(--mg-text-muted)] transition-colors sm:p-1.5 hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)] disabled:opacity-50">
               <AppIcon name="traspaso" size={14} />
             </button>
           )}
-          <button type="button" onClick={onPerms} title="Ver permisos" aria-label={`Ver permisos de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
+          <button type="button" onClick={onPerms} title="Ver permisos" aria-label={`Ver permisos de ${m.displayName}`} className="rounded-lg p-1 text-[var(--mg-text-muted)] transition-colors sm:p-1.5 hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
             <AppIcon name="permisos" size={14} />
           </button>
-          <button type="button" onClick={onEdit} title="Editar nombre" aria-label={`Editar nombre de ${m.displayName}`} className="rounded-lg p-1.5 text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
+          <button type="button" onClick={onEdit} title="Editar nombre" aria-label={`Editar nombre de ${m.displayName}`} className="rounded-lg p-1 text-[var(--mg-text-muted)] transition-colors sm:p-1.5 hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]">
             <AppIcon name="editar" size={14} />
           </button>
           {!isCurrentUser && (
@@ -498,13 +506,13 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
                 type="button" onClick={onStatus} disabled={busy}
                 title={isSuspended ? 'Reactivar' : 'Suspender'}
                 aria-label={`${isSuspended ? 'Reactivar' : 'Suspender'} a ${m.displayName}`}
-                className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${isSuspended ? 'text-[var(--mg-success-text)] hover:bg-[var(--mg-success-bg)]' : 'text-[var(--mg-gold-text)] hover:bg-[var(--mg-gold-bg)]'}`}
+                className={`rounded-lg p-1 transition-colors disabled:opacity-50 sm:p-1.5 ${isSuspended ? 'text-[var(--mg-success-text)] hover:bg-[var(--mg-success-bg)]' : 'text-[var(--mg-gold-text)] hover:bg-[var(--mg-gold-bg)]'}`}
               >
                 <AppIcon name={isSuspended ? 'reactivar' : 'suspender'} size={14} />
               </button>
               <button
                 type="button" onClick={onRemove} disabled={busy} title="Eliminar"
-                className="p-1.5 rounded-lg text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] disabled:opacity-50"
+                className="rounded-lg p-1 text-[var(--mg-danger)] hover:bg-[var(--mg-danger-bg)] disabled:opacity-50 sm:p-1.5"
               >
                 <AppIcon name="eliminar" size={14} />
               </button>

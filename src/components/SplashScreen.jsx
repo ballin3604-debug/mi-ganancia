@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppIcon } from './icons';
 
 export default function SplashScreen({ onDone }) {
   const [imgError, setImgError] = useState(false);
@@ -13,10 +14,18 @@ export default function SplashScreen({ onDone }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-500 bg-[var(--mg-bg-surface)] ${
-        phase === 'exit' ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
+      role="status"
+      aria-live="polite"
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--mg-bg-base)] transition-all duration-500 ${
+        phase === 'exit' ? 'scale-105 opacity-0' : 'scale-100 opacity-100'
       }`}
     >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(560px 300px at 50% 42%, var(--mg-accent-bg), transparent 72%)' }}
+      />
+      <span className="sr-only">Cargando Mi Ganancia</span>
       <div className="flex flex-col items-center gap-6 z-10">
         {/* Logo iOS-style: cuadrado redondeado con icono */}
         <div className={`transition-all duration-700 ${
@@ -37,9 +46,7 @@ export default function SplashScreen({ onDone }) {
                 className="w-full h-full object-contain rounded-[28px]"
               />
             ) : (
-              <svg className="w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+              <AppIcon name="recibo" size={48} color="#fff" strokeWidth={2} />
             )}
           </div>
         </div>
@@ -63,7 +70,7 @@ export default function SplashScreen({ onDone }) {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="w-1.5 h-1.5 rounded-full bg-[var(--mg-text-faint)] animate-bounce"
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--mg-accent)]"
               style={{ animationDelay: `${i * 150}ms` }}
             />
           ))}

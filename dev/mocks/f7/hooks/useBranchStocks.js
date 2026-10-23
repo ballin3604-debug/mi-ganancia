@@ -1,3 +1,5 @@
+import { STOCK_ROWS } from '../services/branchStock.js';
+
 export function useBranchStocks() {
-  return { stocks: [], loading: false, stockMap: {}, hasRows: false, refresh: async () => {} };
+  return STOCK_ROWS;
 }

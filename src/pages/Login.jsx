@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { signInWithPassword, signUp, signInWithGoogle } from '../services/auth';
 import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services/supabaseClient';
+import { AppIcon } from '../components/icons';
 
 function traducirError(message = '') {
   const msg = message.toLowerCase();
@@ -117,7 +118,7 @@ export default function Login() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(600px 300px at 50% -80px, rgba(22,112,194,0.12), transparent 70%), radial-gradient(400px 260px at 90% 110%, rgba(217,154,43,0.08), transparent 70%)',
+            'radial-gradient(600px 300px at 50% -80px, var(--mg-accent-bg), transparent 70%), radial-gradient(400px 260px at 90% 110%, var(--mg-gold-bg), transparent 70%)',
         }}
       />
 
@@ -156,9 +157,9 @@ export default function Login() {
         {/* Tarjeta */}
         <div className="bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-[20px] p-6 sm:p-7" style={{ boxShadow: 'var(--mg-shadow-lg)' }}>
           {!isSupabaseConfigured && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 flex gap-2 items-start mb-4">
-              <span className="text-sm leading-none mt-0.5">⛔</span>
-              <p className="text-xs font-semibold text-red-700 leading-relaxed">
+            <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2.5">
+              <AppIcon name="alerta" size={16} color="var(--mg-danger)" className="mt-0.5" />
+              <p className="text-xs font-semibold leading-relaxed text-[var(--mg-danger)]">
                 {supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para poder entrar.'}
               </p>
             </div>
@@ -174,6 +175,7 @@ export default function Login() {
                   key={t.id}
                   type="button"
                   onClick={() => cambiarModo(t.id)}
+                  aria-pressed={mode === t.id}
                   className={`py-2 rounded-lg text-sm font-bold transition-all ${
                     mode === t.id
                       ? 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] shadow-sm border border-[var(--mg-border)]'
@@ -255,16 +257,11 @@ export default function Login() {
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--mg-text-muted)] bg-transparent border-0"
                   >
-                    {showPassword ? (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
+                    <AppIcon
+                      name={showPassword ? 'ocultar' : 'ver'}
+                      size={18}
+                      color="var(--mg-text-muted)"
+                    />
                   </button>
                 </div>
                 {isRegister && (
@@ -276,16 +273,16 @@ export default function Login() {
             )}
 
             {error && (
-              <div className="bg-[var(--mg-danger-bg)] border border-red-200 rounded-xl px-3.5 py-2.5 flex gap-2 items-start">
-                <span className="text-sm leading-none mt-0.5">⚠️</span>
-                <p className="text-xs font-semibold text-[var(--mg-danger)] leading-relaxed">{error}</p>
+              <div role="alert" className="flex items-start gap-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2.5">
+                <AppIcon name="alerta" size={16} color="var(--mg-danger)" className="mt-0.5" />
+                <p className="text-xs font-semibold leading-relaxed text-[var(--mg-danger)]">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="bg-[var(--mg-success-bg)] border border-green-200 rounded-xl px-3.5 py-2.5 flex gap-2 items-start">
-                <span className="text-sm leading-none mt-0.5">✅</span>
-                <p className="text-xs font-semibold text-[var(--mg-success-text)] leading-relaxed">{success}</p>
+              <div role="status" className="flex items-start gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3.5 py-2.5">
+                <AppIcon name="ok" size={16} color="var(--mg-success)" className="mt-0.5" />
+                <p className="text-xs font-semibold leading-relaxed text-[var(--mg-success-text)]">{success}</p>
               </div>
             )}
 
@@ -304,9 +301,10 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => cambiarModo('login')}
-                className="w-full text-center text-sm font-semibold text-[var(--mg-accent)] bg-transparent border-0 pt-1"
+                className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-0 bg-transparent pt-1 text-sm font-semibold text-[var(--mg-accent)]"
               >
-                ← Volver a iniciar sesión
+                <AppIcon name="volver" size={16} color="var(--mg-accent)" />
+                Volver a iniciar sesión
               </button>
             )}
           </form>
@@ -328,7 +326,7 @@ export default function Login() {
                 className="mg-btn-tertiary w-full flex items-center justify-center gap-2.5 !py-3"
               >
                 {socialLoading ? (
-                  <span className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mg-border-hover)] border-t-[var(--mg-text-secondary)]" />
                 ) : (
                   <>
                     <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -345,8 +343,9 @@ export default function Login() {
           )}
         </div>
 
-        <p className="text-center text-[11px] text-[var(--mg-text-muted)] mt-4 flex items-center justify-center gap-1.5">
-          <span>🔒</span> Tus datos están protegidos y solo tú puedes verlos.
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-[var(--mg-text-muted)]">
+          <AppIcon name="seguro" size={13} color="var(--mg-text-muted)" />
+          Tus datos están protegidos y solo tú puedes verlos.
         </p>
       </div>
     </div>

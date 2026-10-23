@@ -56,13 +56,18 @@ export default function ReceiptView() {
   if (!sale) {
     return (
       <div className="p-4 max-w-2xl mx-auto">
-        <div className="bg-[var(--mg-bg-surface)] rounded-[20px] border border-[var(--mg-border)] p-8 text-center">
-          <p className="text-4xl mb-2">🧾</p>
+        <div className="rounded-[20px] border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-8 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)]">
+            <AppIcon name="recibo" size={26} />
+          </div>
           <p className="text-sm font-black text-[var(--mg-text-primary)]">Recibo no encontrado</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs font-medium leading-relaxed text-[var(--mg-text-muted)]">
+            El recibo pudo eliminarse o el enlace ya no está disponible.
+          </p>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="mt-4 px-5 py-2.5 rounded-2xl bg-[var(--mg-accent)] text-white text-xs font-extrabold"
+            className="mt-4 min-h-[44px] rounded-2xl bg-[var(--mg-accent)] px-5 py-2.5 text-xs font-extrabold text-white"
           >
             Volver
           </button>
@@ -121,50 +126,53 @@ export default function ReceiptView() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl px-3.5 py-2.5 active:scale-95 min-h-[44px]"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3.5 py-2.5 text-xs font-extrabold text-[var(--mg-text-secondary)] active:scale-95"
         >
-          ← Volver
+          <AppIcon name="volver" size={14} color="var(--mg-text-secondary)" /> Volver
         </button>
         <button
           type="button"
           onClick={handlePrint}
-          className="flex items-center gap-1.5 text-xs font-extrabold text-white bg-[#1670C2] rounded-2xl px-4 py-2.5 active:scale-95 min-h-[44px] shadow-sm"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-2xl bg-[var(--mg-accent)] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm active:scale-95"
         >
           <AppIcon name="recibo" size={14} color="#fff" /> Imprimir
         </button>
       </div>
 
       {/* Ticket térmico 80mm: pantalla completa en celular */}
-      <div className="bg-white border-y sm:border sm:rounded-lg border-[var(--mg-border)] px-5 py-5 shadow-xs text-slate-900 font-mono text-[13px] leading-snug">
+      <div className="border-y border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-5 py-5 font-mono text-[13px] leading-snug text-[var(--mg-text-primary)] shadow-xs sm:rounded-lg sm:border">
         <div className="flex items-start justify-between gap-2">
           {logo ? (
             <img src={logo} alt="Logo" className="w-16 h-16 rounded-lg object-contain shrink-0" />
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black text-2xl shrink-0 font-sans">
+            <div className="w-16 h-16 rounded-lg bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-2xl shrink-0 font-sans">
               {(bizName || 'M').charAt(0).toUpperCase()}
             </div>
           )}
-          <p className="font-black text-[15px] tracking-tight text-right pt-1">RECIBO{ticketLabel}</p>
+          <p className="pt-1 text-right text-[15px] font-black tracking-tight">RECIBO {ticketLabel}</p>
         </div>
 
         <div className="mt-2">
           <p className="font-black text-[13px]">{bizName}</p>
-          {legalName ? <p className="text-slate-500">{legalName}</p> : null}
-          {bizNit ? <p className="text-slate-500">NIT: {bizNit}</p> : null}
-          {address ? <p className="text-slate-500">{address}</p> : null}
+          {legalName ? <p className="text-[var(--mg-text-muted)]">{legalName}</p> : null}
+          {bizNit ? <p className="text-[var(--mg-text-muted)]">NIT: {bizNit}</p> : null}
+          {address ? <p className="text-[var(--mg-text-muted)]">{address}</p> : null}
           {(phone || slogan) && (
-            <p className="text-slate-500">{[phone ? `Tel: ${phone}` : '', slogan].filter(Boolean).join(' · ')}</p>
+            <p className="text-[var(--mg-text-muted)]">{[phone ? `Tel: ${phone}` : '', slogan].filter(Boolean).join(' · ')}</p>
           )}
         </div>
 
-        <div className="border-t border-dashed border-slate-400 my-2.5" />
+        <div className="border-t border-dashed border-[var(--mg-border-hover)] my-2.5" />
 
-        <p className="font-bold">{items.length} {items.length === 1 ? 'ítem' : 'ítems'} (Ctd.: {totalQty})</p>
+        <div className="flex items-center justify-between gap-2 font-bold">
+          <span>{items.length} {items.length === 1 ? 'ítem' : 'ítems'}</span>
+          <span className="text-[var(--mg-text-secondary)]">Ctd.: {totalQty}</span>
+        </div>
 
-        <div className="border-t border-dashed border-slate-400 my-2.5" />
+        <div className="border-t border-dashed border-[var(--mg-border-hover)] my-2.5" />
 
         {items.length === 0 ? (
-          <p className="text-center text-slate-400 py-3">Sin detalle registrado</p>
+          <p className="text-center text-[var(--mg-text-faint)] py-3">Sin detalle registrado</p>
         ) : (
           <div className="space-y-2">
             {items.map((item) => (
@@ -180,16 +188,16 @@ export default function ReceiptView() {
         )}
 
         <div className="mt-2 space-y-0.5 text-right">
-          <p className="text-slate-600">Subtotal: <span className="tabular-nums">{formatBs(total)}</span></p>
+          <p className="text-[var(--mg-text-secondary)]">Subtotal: <span className="tabular-nums">{formatBs(total)}</span></p>
           <p className="font-black text-[15px]">Total: <span className="tabular-nums">{formatBs(total)}</span></p>
-          <p className="text-slate-600">{getPaymentMethodShort(sale.paymentMethod)}: <span className="tabular-nums">{formatBs(total)}</span></p>
+          <p className="text-[var(--mg-text-secondary)]">{getPaymentMethodShort(sale.paymentMethod)}: <span className="tabular-nums">{formatBs(total)}</span></p>
           {sale.paymentMethod === 'mixto' && (
-            <p className="text-[11px] text-slate-500 tabular-nums">
+            <p className="text-[11px] text-[var(--mg-text-muted)] tabular-nums">
               Efectivo: {formatBs(sale.montoEfectivo)} · QR: {formatBs(sale.montoQR)}
             </p>
           )}
           {sale.paymentMethod === 'cash' && sale.montoRecibido !== undefined && sale.montoRecibido !== null && (
-            <p className="text-[11px] text-slate-500 tabular-nums">
+            <p className="text-[11px] text-[var(--mg-text-muted)] tabular-nums">
               Recibido: {formatBs(sale.montoRecibido)} · Cambio: {formatBs(sale.cambio)}
             </p>
           )}
@@ -197,17 +205,17 @@ export default function ReceiptView() {
 
         {showQr && (
           <div className="text-center mt-3">
-            <img src={settings.qrData} alt="QR" className="w-28 h-28 object-contain mx-auto border border-slate-300 rounded-lg p-1" />
-            <p className="text-[10px] font-bold tracking-widest text-slate-500 mt-1">ESCANEA PARA PAGAR</p>
+            <img src={settings.qrData} alt="QR" className="w-28 h-28 object-contain mx-auto border border-[var(--mg-border)] rounded-lg p-1" />
+            <p className="text-[10px] font-bold tracking-widest text-[var(--mg-text-muted)] mt-1">ESCANEA PARA PAGAR</p>
           </div>
         )}
 
-        <div className="border-t border-dashed border-slate-400 my-2.5" />
+        <div className="border-t border-dashed border-[var(--mg-border-hover)] my-2.5" />
 
         <div className="text-center">
           <p className="font-bold text-[13px]">{footerMsg}</p>
-          <p className="text-slate-500 mt-1 capitalize">{fullDate}</p>
-          {sale.sellerName ? <p className="text-slate-500">Atendido por: {sale.sellerName}</p> : null}
+          <p className="mt-1 text-[var(--mg-text-muted)]">{fullDate}</p>
+          {sale.sellerName ? <p className="text-[var(--mg-text-muted)]">Atendido por: {sale.sellerName}</p> : null}
         </div>
       </div>
     </div>

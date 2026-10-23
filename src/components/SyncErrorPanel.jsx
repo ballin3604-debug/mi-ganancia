@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../services/localDb';
 import { retryOperation, discardOperation } from '../services/syncEngine';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { AppIcon } from './icons';
 
 export function SyncErrorPanel({ businessId, isOpen, onClose }) {
   const [operations, setOperations] = useState([]);
@@ -23,6 +24,15 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
       loadOperations();
     }
   }, [isOpen, pendingCount, errorCount]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -65,40 +75,39 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl overflow-hidden bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-2xl rounded-2xl animate-in fade-in zoom-in duration-200">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[var(--mg-border)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(11,30,41,0.55)] p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sync-panel-title"
+        className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] animate-in fade-in zoom-in duration-200"
+        style={{ boxShadow: 'var(--mg-shadow-lg)' }}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--mg-border)] p-5 sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] rounded-xl">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)]">
+              <AppIcon name="sincronizar" size={22} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--mg-text-primary)]">Cola de Sincronización</h2>
-              <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">Operaciones pendientes y con error en este dispositivo.</p>
+              <h2 id="sync-panel-title" className="text-lg font-black tracking-tight text-[var(--mg-text-primary)] sm:text-xl">Cola de Sincronización</h2>
+              <p className="mt-0.5 text-xs font-medium text-[var(--mg-text-muted)]">Operaciones pendientes y con error en este dispositivo.</p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] rounded-lg transition-colors cursor-pointer"
+            aria-label="Cerrar cola de sincronización"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--mg-text-muted)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <AppIcon name="cerrar" size={20} color="var(--mg-text-muted)" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
+        <div className="max-h-[60vh] space-y-4 overflow-y-auto p-5 sm:p-6">
           {operations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="p-4 bg-[var(--mg-success-bg)] text-[var(--mg-success)] rounded-full mb-3">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]">
+                <AppIcon name="ok" size={28} color="var(--mg-success)" />
               </div>
               <p className="text-[var(--mg-text-primary)] font-medium">¡Todo al día!</p>
               <p className="text-xs text-[var(--mg-text-muted)] mt-1">No hay operaciones pendientes ni errores en la cola de salida.</p>
@@ -128,16 +137,16 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
 
                       {/* Status Tag */}
                       {isErrorStatus ? (
-                        <span className="px-2 py-0.5 text-[11px] font-bold bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] rounded-md border border-[var(--mg-danger-border)]">
-                          ⚠️ Error Definitivo ({op.retry_count || 0}/5 reintentos)
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--mg-danger)]">
+                          <AppIcon name="alerta" size={12} color="var(--mg-danger)" /> Error definitivo ({op.retry_count || 0}/5 reintentos)
                         </span>
                       ) : hasRetryError ? (
-                        <span className="px-2 py-0.5 text-[11px] font-bold bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] rounded-md border border-[var(--mg-gold-border)]">
-                          ⏳ Reintentando ({op.retry_count || 0}/5 reintentos)
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--mg-gold-text)]">
+                          <AppIcon name="reloj" size={12} color="var(--mg-gold-text)" /> Reintentando ({op.retry_count || 0}/5 reintentos)
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 text-[11px] font-bold bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] rounded-md border border-[var(--mg-accent-border)]">
-                          ⏳ Pendiente de envío
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--mg-accent)]">
+                          <AppIcon name="reloj" size={12} color="var(--mg-accent)" /> Pendiente de envío
                         </span>
                       )}
 
@@ -170,14 +179,14 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
                     <button
                       disabled={loading}
                       onClick={() => handleRetry(op.id)}
-                      className="flex-1 md:flex-none px-3.5 py-2 text-xs font-bold text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] hover:bg-[var(--mg-success-border)] border border-[var(--mg-success-border)] rounded-lg hover:shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                      className="min-h-[44px] flex-1 cursor-pointer rounded-lg border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3.5 py-2 text-xs font-bold text-[var(--mg-success-text)] transition-all hover:bg-[var(--mg-success-border)] hover:shadow-sm disabled:opacity-50 md:flex-none"
                     >
                       Reintentar ahora
                     </button>
                     <button
                       disabled={loading}
                       onClick={() => handleDiscard(op.id)}
-                      className="flex-1 md:flex-none px-3.5 py-2 text-xs font-bold text-[var(--mg-danger)] bg-[var(--mg-danger-bg)] hover:bg-[var(--mg-danger-border)] border border-[var(--mg-danger-border)] rounded-lg hover:shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                      className="min-h-[44px] flex-1 cursor-pointer rounded-lg border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2 text-xs font-bold text-[var(--mg-danger)] transition-all hover:bg-[var(--mg-danger-border)] hover:shadow-sm disabled:opacity-50 md:flex-none"
                     >
                       Descartar
                     </button>
@@ -189,10 +198,11 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 bg-[var(--mg-bg-elevated)] border-t border-[var(--mg-border)]">
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-5 sm:p-6">
           <button
+            type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-semibold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-xl hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)] transition-colors cursor-pointer"
+            className="min-h-[44px] cursor-pointer rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-5 py-2.5 text-sm font-semibold text-[var(--mg-text-secondary)] transition-colors hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]"
           >
             Cerrar
           </button>

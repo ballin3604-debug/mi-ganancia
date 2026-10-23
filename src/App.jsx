@@ -18,6 +18,7 @@ import PendingApproval from './pages/PendingApproval';
 import Branches from './pages/Branches';
 import Team from './pages/Team';
 import LoadingSpinner from './components/LoadingSpinner';
+import { AppIcon } from './components/icons';
 import SplashScreen from './components/SplashScreen';
 import Onboarding from './components/Onboarding';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -70,11 +71,11 @@ function UpdateBanner() {
   return (
     <div className="fixed top-0 inset-x-0 z-50 flex justify-center px-4 pt-2">
       <div className="bg-[var(--mg-accent)] text-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg max-w-md w-full">
-        <span className="text-xl shrink-0">🔄</span>
+        <AppIcon name="sincronizar" size={20} color="#fff" className="shrink-0" />
         <p className="flex-1 text-sm font-semibold">Nueva versión disponible</p>
         <button
           onClick={handleUpdate}
-          className="bg-white text-[var(--mg-accent)] font-bold text-xs px-3 py-1.5 rounded-lg active:scale-95"
+          className="min-h-[36px] rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[var(--mg-accent)] active:scale-95"
         >
           Actualizar
         </button>
@@ -89,21 +90,21 @@ export default function App() {
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[var(--mg-bg-base)]">
-        <div className="w-full max-w-[480px] bg-[var(--mg-bg-surface)] border border-red-200 rounded-[20px] p-6 sm:p-8 text-center" style={{ boxShadow: 'var(--mg-shadow-lg)' }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-red-50 border border-red-200">
-            <span className="text-2xl">⛔</span>
+        <div className="w-full max-w-[480px] rounded-[20px] border border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] p-6 text-center sm:p-8" style={{ boxShadow: 'var(--mg-shadow-lg)' }}>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]">
+            <AppIcon name="alerta" size={26} color="var(--mg-danger)" />
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-[var(--mg-text-primary)]">
             Falta configuración
           </h1>
-          <p className="text-sm font-semibold text-red-700 mt-2 leading-relaxed">
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-[var(--mg-danger)]">
             {supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para continuar.'}
           </p>
-          <p className="text-xs text-[var(--mg-text-muted)] mt-3 leading-relaxed">
-            Copia <code className="font-mono bg-gray-100 px-1 rounded">.env.example</code> como{' '}
-            <code className="font-mono bg-gray-100 px-1 rounded">.env</code>, completa{' '}
-            <code className="font-mono bg-gray-100 px-1 rounded">VITE_SUPABASE_URL</code> y{' '}
-            <code className="font-mono bg-gray-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> con los
+          <p className="mt-3 text-xs leading-relaxed text-[var(--mg-text-muted)]">
+            Copia <code className="rounded border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1 font-mono text-[var(--mg-text-secondary)]">.env.example</code> como{' '}
+            <code className="rounded border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1 font-mono text-[var(--mg-text-secondary)]">.env</code>, completa{' '}
+            <code className="rounded border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1 font-mono text-[var(--mg-text-secondary)]">VITE_SUPABASE_URL</code> y{' '}
+            <code className="rounded border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1 font-mono text-[var(--mg-text-secondary)]">VITE_SUPABASE_ANON_KEY</code> con los
             valores de Supabase (Project Settings → API) y reinicia la app.
           </p>
         </div>

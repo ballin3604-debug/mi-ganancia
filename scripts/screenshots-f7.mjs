@@ -131,7 +131,7 @@ async function main() {
       await checkOverflow(page, `${viewport.name} settings`);
       await shot(page, path.join(OUT, `${viewport.name}-settings.png`));
 
-      await openView(page, 'inventory', 'h1');
+      await openView(page, 'inventory', 'text=Catálogo de Inventario');
       await checkOverflow(page, `${viewport.name} inventory`);
       await shot(page, path.join(OUT, `${viewport.name}-inventory.png`));
 

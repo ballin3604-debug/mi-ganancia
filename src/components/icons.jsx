@@ -54,6 +54,12 @@ import {
   Ban,
   UserCheck,
   ShieldCheck,
+  AlertTriangle,
+  ArrowLeft,
+  EyeOff,
+  Lock,
+  RefreshCw,
+  WifiOff,
 } from 'lucide-react';
 import { palette } from '../design/tokens.js';
 
@@ -118,6 +124,13 @@ const ICONS = {
   permisos: { Component: ShieldCheck, color: BRAND_COLORS.primary },
   mas: { Component: Plus, color: BRAND_COLORS.primary },
   ok: { Component: CheckCircle2, color: BRAND_COLORS.success },
+  alerta: { Component: AlertTriangle, color: BRAND_COLORS.warning },
+  volver: { Component: ArrowLeft, color: BRAND_COLORS.primary },
+  ver: { Component: Eye, color: BRAND_COLORS.primary },
+  ocultar: { Component: EyeOff, color: BRAND_COLORS.primary },
+  seguro: { Component: Lock, color: BRAND_COLORS.primary },
+  sincronizar: { Component: RefreshCw, color: BRAND_COLORS.primary },
+  sinConexion: { Component: WifiOff, color: BRAND_COLORS.warning },
 };
 
 export function AppIcon({ name, size = 18, color, strokeWidth = 2, className = '' }) {

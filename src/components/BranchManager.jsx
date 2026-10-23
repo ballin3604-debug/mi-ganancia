@@ -510,7 +510,7 @@ function BranchManagerInner() {
                         )}
                         <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5">
                           {b.type === 'almacen' ? 'Almacén / Bodega' : 'Sucursal Comercial'}
-                          {b.isMain ? ' · ⭐ Casa Matriz' : ''}
+                          {b.isMain ? ' · Casa Matriz' : ''}
                           {b.address ? ` · ${b.address}` : ''}
                         </p>
                       </div>
