@@ -1,5 +1,7 @@
+export const DEFAULT_CATEGORIES = ['Bebidas', 'Abarrotes', 'Lácteos', 'Limpieza', 'Otros'];
+
 export async function getCategories() {
-  return ['Bebidas', 'Abarrotes', 'Lácteos'];
+  return DEFAULT_CATEGORIES;
 }
 
 export function subscribeToCategories(businessId, callback) {
