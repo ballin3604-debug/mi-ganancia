@@ -22,8 +22,8 @@ plugins {
 
 def twaManifest = [
     applicationId: 'app.web.tuganancia.twa',
-    hostName: 'tuganancia.web.app', // The domain being opened in the TWA.
-    launchUrl: 'https://tuganancia.web.app/', // The start path for the TWA. Must be relative to the domain.
+    hostName: 'tugananciaa.web.app', // The domain being opened in the TWA.
+    launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
     name: 'Mi Ganancia', // The application name.
     launcherName: 'Mi Ganancia', // The name shown on the Android Launcher.
     themeColor: '#153449', // The color used for the status bar.
@@ -76,12 +76,12 @@ android {
             // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
             // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
             // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://tuganancia.web.app/manifest.json'
+            resValue "string", "webManifestUrl", 'https://tugananciaa.web.app/manifest.json'
         
 
         
             // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://tuganancia.web.app/'
+            resValue "string", "fullScopeUrl", 'https://tugananciaa.web.app/'
         
 
         

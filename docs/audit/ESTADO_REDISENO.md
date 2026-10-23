@@ -108,25 +108,58 @@ Actualizado: 2026-10-23
 - Se actualizaron los iconos legacy y adaptativos de Android, el icono de notificación monocromático, las imágenes de splash y `store_icon.png` con la marca actual.
 - Se ajustaron los colores de estado, navegación y splash del TWA a la paleta de marca y se sincronizó el manifest empaquetado en `source/app/src/main/res/raw/`.
 - Se verificó el manifest en runtime: los cuatro iconos responden 200 con `image/png`, el service worker queda activado y el precache contiene los 15 recursos de producción, sin harnesses.
-- F9/F10 no modificaron `applicationId`, firma, keystore, host ni configuración de publicación; los cambios paralelos posteriores se detallan en la auditoría de coherencia.
+- F9/F10 no modificaron `applicationId`, firma, keystore ni host; el host se actualizó después en F10.1.
 - La compilación Android local no se ejecutó: el equipo solo tiene JRE 8 y JDK 16, el SDK instalado es Android 30/build-tools 30 y el proyecto requiere JDK 17, compileSdk 36 y Gradle 8.11.1.
-- `assetlinks.json` de la raíz, `public/.well-known/assetlinks.json` y `dist/.well-known/assetlinks.json` contienen el mismo package y fingerprint; la producción todavía devuelve placeholders porque el cambio local no se desplegó.
-- El TWA apunta a `tuganancia.web.app`, mientras `firebase.json` y `.firebaserc` declaran `tugananciaa`; ambos dominios responden, pero debe confirmarse cuál es el canónico antes de publicar.
+- `assetlinks.json` de la raíz, `public/.well-known/assetlinks.json` y `dist/.well-known/assetlinks.json` contienen el mismo package y fingerprint; el archivo local está preparado, pero la huella no está verificada contra la firma de publicación.
+- El dominio oficial es `tugananciaa.web.app`; `firebase.json` y `.firebaserc` ya apuntan al sitio/proyecto `tugananciaa`. La TWA quedó actualizada a ese host en F10.1, pendiente de compilación Android.
 
 ## Auditoría de coherencia (2026-10-23)
 
-**Estado:** auditoría completada; sin commit, push, deploy ni cambios propios de asociación de dominio.
+**Estado:** auditoría completada; sin commit, push ni deploy ejecutados por esta sesión.
 
-- El worktree sigue sucio con los cambios de F9/F10 y cambios paralelos no atribuidos a ellos; no se revirtió ni se sobrescribió ningún archivo.
+- En el momento de la auditoría, el worktree contenía los cambios de F9/F10 y cambios paralelos no atribuidos a ellos; no se revirtió ni se sobrescribió ningún archivo. Posteriormente, una sesión externa los consolidó en `9588b35`.
 - Los cambios paralelos (`App.jsx`, `SplashScreen.jsx`, `BrandMark.jsx`, `index.html`, `index.css` y `scripts/screenshots-f8.mjs`) aparecieron después del cierre de F10 y corresponden probablemente a una sesión o editor paralelo de rediseño del splash. No fueron modificados por esta auditoría; algunos archivos siguieron recibiendo cambios de esa sesión durante la revisión.
 - Impacto de esos cambios: el splash ahora es una capa de marca sobre la app, el arranque monta la pantalla subyacente mientras espera auth, se añadió `BrandMark` vectorial y estilos/animation, y el harness F8 apunta a `.mg-splash`. El build y el smoke test local pasan; no hay validación funcional autenticada de los nuevos estados de arranque.
-- Aparecieron scripts temporales no rastreados con prefijo `scripts/tmp-splash-*`; son utilidades de prueba y no forman parte del producto.
-- `public/.well-known/assetlinks.json` pasó de placeholders a valores reales durante la revisión por una acción externa a esta auditoría. No se modificó ni se desplegó desde aquí; raíz, `public` y `dist` ya coinciden semánticamente.
-- `firebase.json` declara el sitio `tugananciaa`; `.firebaserc` usa el proyecto `tugananciaa`; la TWA usa `tuganancia.web.app` y el package `app.web.tuganancia.twa`.
-- La producción de `tuganancia.web.app` sigue con manifest antiguo (`#ffffff`/`#007aff`) y `assetlinks` placeholder; la de `tugananciaa.web.app` responde con tema `#153449`, fondo `#ffffff` y `assetlinks` placeholder. Ninguna coincide todavía con el build local de F10.
+- Aparecieron scripts temporales no rastreados con prefijo `scripts/tmp-splash-*`; eran utilidades de prueba y ya no están en el worktree.
+- `public/.well-known/assetlinks.json` pasó de placeholders a valores reales durante la revisión por una acción externa a esta auditoría. Raíz, `public` y `dist` coinciden semánticamente.
+- `firebase.json` declara el sitio `tugananciaa`; `.firebaserc` usa el proyecto `tugananciaa`; la TWA usaba `tuganancia.web.app` antes de F10.1 y el package es `app.web.tuganancia.twa`.
+- La producción de `tuganancia.web.app` sigue con manifest antiguo (`#ffffff`/`#007aff`) y `assetlinks` placeholder. `tugananciaa.web.app` ya sirve el manifest `#F4F6FA`/`#153449` y `assetlinks` real; ese despliegue fue externo a esta sesión.
 - El package coincide en `applicationId`, namespace, `AndroidManifest.xml` y `assetlinks` local. El único fingerprint SHA-256 local (32 bytes, formato válido) coincide en raíz, `public`, `dist` y el artefacto Android generado; no se verificó contra el keystore ni Play Console porque no se accedió a ellos.
 - Build de auditoría: 2495 módulos, 94.21 kB CSS, 1,682.88 kB JS, 15 recursos PWA; `tokens.generated.css` coincide (47 variables). Solo quedan warnings de `caniuse-lite` desactualizado, chunk >500 kB y conversión LF/CRLF.
-- No se modificaron consultas, auth, RLS, sincronización, datos ni firma. No se hizo commit, push, deploy ni publicación.
+- No se modificaron consultas, auth, RLS, sincronización, datos ni firma. Esta sesión no hizo commit, push, deploy ni publicación.
+
+## F10.1: Preparación local de la asociación TWA
+
+**Estado:** HOST LOCAL PREPARADO — COMPILACIÓN ANDROID PENDIENTE — ASOCIACIÓN NO VERIFICADA.
+
+- Dominio oficial confirmado: `https://tugananciaa.web.app/`. `firebase.json` declara el sitio `tugananciaa`, `.firebaserc` usa el proyecto `tugananciaa` y la URL oficial responde 200.
+- Se actualizó el host TWA en `source/app/build.gradle`: `hostName`, `webManifestUrl` y `fullScopeUrl` usan `tugananciaa.web.app`; `launchUrl` se corrigió a `/` en F10.2.
+- Se actualizó el manifest Android empaquetado (`source/app/src/main/res/raw/web_app_manifest.json`) para que `start_url` y `scope` apunten al dominio oficial.
+- Se actualizó `source/app/src/main/res/values/strings.xml` (`assetStatements`) al sitio oficial.
+- No se modificaron `applicationId`, namespace, versión, firma, certificados ni keystore. No se accedió al keystore.
+- `firebase.json` no requirió cambios: ya publica el sitio oficial `tugananciaa`. `public/manifest.json` conserva `start_url`/`scope` relativos (`/`), que resuelven correctamente al servirse desde el dominio oficial.
+- `public/.well-known/assetlinks.json` ya contenía el package `app.web.tuganancia.twa` y un fingerprint estructuralmente válido; se conservó sin sustituir valores. Raíz, `public` y `dist` coinciden semánticamente y sus JSON son válidos.
+- El fingerprint existente **no está verificado contra el certificado de firma de publicación**, por lo que la asociación no se declara verificada.
+- Durante F10.1, una sesión externa creó el commit `9588b35`, lo subió a `origin/main` y desplegó en `tugananciaa.web.app`; esas acciones no fueron ejecutadas por esta sesión. El sitio oficial ya sirve el manifest `#F4F6FA`/`#153449` y el `assetlinks` real, coincidente con el package/fingerprint local.
+- El sitio antiguo `tuganancia.web.app` sigue con manifest y `assetlinks` placeholders; ya no es el host configurado en la TWA fuente, pero una APK instalada previamente podría seguir apuntando allí hasta recompilar/reinstalar.
+- Validaciones locales: build web OK (2495 módulos, 94.21 kB CSS, 1,682.85 kB JS, 15 recursos PWA), tokens OK (47 variables), `git diff --check` solo con avisos LF/CRLF, y `/manifest.json` y `/.well-known/assetlinks.json` responden 200 en preview.
+- Pendiente para verificar la TWA: compilar Android con JDK 17, SDK 36 y Gradle 8.11.1; confirmar el fingerprint contra la firma de publicación/Play Console; instalar la APK resultante y comprobar la asociación en el dispositivo.
+
+## F10.2: Diagnóstico del entorno para validación Android
+
+**Estado:** BLOQUEADO POR HERRAMIENTAS — SIN COMPILACIÓN — SIN FIRMA NI PUBLICACIÓN.
+
+- Git: `HEAD` y `origin/main` en `9588b35`; solo hay cuatro archivos modificados sin commit (`docs/audit/ESTADO_REDISENO.md`, `source/app/build.gradle`, `source/app/src/main/res/raw/web_app_manifest.json` y `source/app/src/main/res/values/strings.xml`), sin archivos no rastreados. No se revirtió el commit externo ni se tocaron cambios paralelos.
+- Host confirmado: `tugananciaa.web.app` en el host TWA, manifest empaquetado y `assetStatements`. `applicationId`, namespace, `versionCode 1` y `versionName 1.0.0.0` permanecen intactos; el diff de esta sesión solo contiene configuración de host/`launchUrl` y documentación.
+- Se detectó y corrigió un error preexistente en `launchUrl`: era una URL absoluta, pero el template concatena `https://` + `hostName` + `launchUrl`. El artefacto anterior generaba `https://tuganancia.web.apphttps://tuganancia.web.app/`; con `launchUrl: '/'` la URL resultante es `https://tugananciaa.web.app/`. No se modificaron identificadores ni firma.
+- Entorno Java: `java` en PATH es JRE 8u301, `JAVA_HOME` no está definido, hay un JDK 16 en `C:\Users\len\.jdks\openjdk-16.0.1`, Android Studio usa JRE 8u242 y el JBR de IntelliJ es 11.0.10. No se localizó un JDK 17; AGP 8.9.1 requiere JDK 17.
+- SDK Android: solo `platforms/android-30` y `build-tools/30.0.3`; `platform-tools` incluye `adb`, pero no hay plataforma 36, build-tools para 36 ni `cmdline-tools`. Existe el `sdkmanager` legado en `tools/bin`. No hay `local.properties`; `ANDROID_HOME` está vacío y `source/local.properties` no está ignorado por Git.
+- Gradle: el wrapper solicita 8.11.1, pero la caché local solo contiene 6.5; no hay comando global `gradle`. No se descargó ni instaló nada.
+- Huella: el certificado público del AAB firmado local y del APK release local coincide con la huella de `assetlinks.json` (`6B:99:...:C1:17`). Esa comprobación se hizo con `keytool`/`apksigner` sobre los certificados públicos, sin abrir el keystore. Los artefactos existentes son del 14-abr-2026, anteriores al cambio de host, por lo que no se reutilizan para validar F10.1.
+- La huella del artefacto local no confirma por sí sola la clave registrada en Play Console; si Play App Signing está activo, el certificado de publicación puede ser distinto del certificado de carga local. Esa comprobación requiere acceso a la consola o al certificado de publicación y queda pendiente.
+- No se intentó compilar porque faltan JDK 17, plataforma 36, build-tools compatible y Gradle 8.11.1. Instalar o descargar esas herramientas requiere autorización.
+- Para habilitar una compilación de diagnóstico sin firma: instalar JDK 17 y definir `JAVA_HOME`, instalar SDK Platform 36 y build-tools compatibles con el `sdkmanager` existente, permitir la descarga de Gradle 8.11.1, definir `ANDROID_HOME` en la sesión (evitando crear un `local.properties` no ignorado), y ejecutar `gradlew.bat :app:clean :app:assembleRelease` (salida unsigned). La validación instalable de la TWA requiere además firmar con la clave de publicación, fuera del alcance de esta tarea.
+- No se abrió ni modificó `source/signingKey.keystore`; no se modificó la firma, los identificadores ni producción. No se ejecutó commit, push ni deploy.
 
 ## Evidencia
 
@@ -142,11 +175,13 @@ Actualizado: 2026-10-23
 - `docs/audit/f8/`: login y error, onboarding, splash, carga, recibo en pantalla, vista previa del recibo en hoja y sincronización en desktop, tablet y mobile con harness.
 - `public/`: manifest, iconos PWA y apple-touch actualizados.
 - `source/app/src/main/res/`: iconos Android, notificación, splash y manifest empaquetado actualizados.
+- F10.1/F10.2: `source/app/build.gradle`, `source/app/src/main/res/raw/web_app_manifest.json` y `source/app/src/main/res/values/strings.xml` actualizados al dominio oficial; `launchUrl` corregido a `/`; `public/.well-known/assetlinks.json` conservado.
 
 ## Próximos pasos
 
 - Validar los flujos con una sesión autorizada y datos reales, incluida la impresión física de ambos formatos de recibo.
 - Compilar Android en un entorno con JDK 17, SDK 36 y Gradle 8.11.1.
-- Resolver `assetlinks.json` y confirmar el dominio canónico del TWA con autorización específica.
+- Verificar el fingerprint SHA-256 contra el certificado de firma de publicación o Play Console.
+- Instalar la APK resultante y comprobar la asociación TWA contra `https://tugananciaa.web.app/`.
 
 La validación funcional con datos reales se completará cuando exista una sesión autorizada. Hasta entonces se distingue explícitamente de la validación visual y de build.
