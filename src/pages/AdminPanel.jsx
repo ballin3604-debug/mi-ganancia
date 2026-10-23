@@ -31,7 +31,7 @@ function formatDate(ts) {
 
 function Badge({ status }) {
   const map = {
-    pending:   'bg-amber-100 text-amber-700',
+    pending:   'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
     approved:  'bg-[var(--mg-info-bg)] text-[var(--mg-accent)]',
     rejected:  'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]',
     active:    'bg-[var(--mg-info-bg)] text-[var(--mg-accent)]',
@@ -51,9 +51,9 @@ function Badge({ status }) {
 function ConfirmModal({ message, onConfirm, onCancel, placeholder }) {
   const [note, setNote] = useState('');
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
-        <p className="font-bold text-[var(--mg-text-primary)] text-base">{message}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true" aria-label="Confirmar acción">
+      <div className="w-full max-w-sm space-y-4 rounded-3xl bg-[var(--mg-bg-surface)] p-6 shadow-[var(--mg-shadow-lg)]">
+        <p className="text-base font-bold text-[var(--mg-text-primary)]">{message}</p>
         <input
           type="text"
           value={note}
@@ -79,8 +79,8 @@ function ConfirmModal({ message, onConfirm, onCancel, placeholder }) {
 function ProductThumb({ imageData, name }) {
   if (!imageData) {
     return (
-      <div className="w-12 h-12 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-xl shrink-0">
-        📦
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-bg-elevated)]">
+        <AppIcon name="paquete" size={20} />
       </div>
     );
   }
@@ -100,13 +100,13 @@ function ItemDetailSheet({ product, initial, onSave, onRemove, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 sm:items-center" role="dialog" aria-modal="true" aria-label={`Editar ${product.name}`} onClick={onClose}>
       <div
-        className="bg-[var(--mg-bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-sm shadow-2xl"
+        className="bg-[var(--mg-bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-sm shadow-[var(--mg-shadow-lg)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 space-y-4">
-          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto sm:hidden" />
+          <div className="w-10 h-1 bg-[var(--mg-border-hover)] rounded-full mx-auto sm:hidden" />
           <div className="flex items-center gap-3">
             <ProductThumb imageData={product.imageData} name={product.name} />
             <div className="min-w-0 flex-1">
@@ -235,9 +235,9 @@ function ImportCatalogModal({ business, masterProducts, onClose, onImported }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label="Importar catálogo" onClick={onClose}>
       <div
-        className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col"
+        className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-3xl shadow-[var(--mg-shadow-lg)] flex flex-col"
         style={{ maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -254,7 +254,7 @@ function ImportCatalogModal({ business, masterProducts, onClose, onImported }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="🔍  Buscar producto o marca..."
+            placeholder="Buscar producto o marca..."
             className="w-full border-2 border-[var(--mg-border)] rounded-2xl px-4 py-2.5 focus:outline-none focus:border-[var(--mg-accent-border)] text-sm"
           />
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -272,7 +272,7 @@ function ImportCatalogModal({ business, masterProducts, onClose, onImported }) {
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {filtered.length === 0 ? (
             <div className="text-center py-12 text-[var(--mg-text-faint)]">
-              <p className="text-4xl mb-3">📦</p>
+              <AppIcon name="paquete" size={36} className="mx-auto mb-3" />
               <p className="font-semibold">{masterProducts.length === 0 ? 'El catálogo maestro está vacío' : 'No encontrado'}</p>
             </div>
           ) : (
@@ -285,7 +285,7 @@ function ImportCatalogModal({ business, masterProducts, onClose, onImported }) {
                     product={product}
                     priceLabel={`Bs ${Number(product.suggestedPrice || 0).toFixed(2)}`}
                     metaLabel={isSelected ? (
-                      <p className="text-[11px] font-bold text-green-600 mt-1">Stock: {selected[product.id].stock}</p>
+                      <p className="mt-1 text-[11px] font-bold text-[var(--mg-success-text)]">Stock: {selected[product.id].stock}</p>
                     ) : null}
                     selected={isSelected}
                     onSelect={() => setEditingProduct(product)}
@@ -294,11 +294,11 @@ function ImportCatalogModal({ business, masterProducts, onClose, onImported }) {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setEditingProduct(product); }}
                         className={`w-8 h-8 rounded-full text-white shadow-lg flex items-center justify-center active:scale-90 font-black text-base leading-none ${
-                          isSelected ? 'bg-green-500' : 'bg-[var(--mg-accent)]'
+                          isSelected ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-accent)]'
                         }`}
                         title={isSelected ? 'Editar datos' : 'Agregar'}
                       >
-                        {isSelected ? '✓' : '+'}
+                        {isSelected ? <AppIcon name="check" size={16} color="#fff" /> : '+'}
                       </button>
                     }
                   />
@@ -518,18 +518,18 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-[var(--mg-bg-elevated)]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white px-4 py-4 sticky top-0 z-30">
+      <div className="bg-[var(--mg-brand)] text-white px-4 py-4 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black">Panel Admin</h1>
-            <p className="text-indigo-200 text-xs">Mi Ganancia — Control SaaS</p>
+            <p className="text-white/80 text-xs">Mi Ganancia — Control SaaS</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/')}
-              className="text-indigo-200 text-sm font-semibold">
+              className="text-white/80 text-sm font-semibold">
               ← Mi app
             </button>
-            <button onClick={signOut} className="text-indigo-200 text-sm font-semibold">
+            <button onClick={signOut} className="text-white/80 text-sm font-semibold">
               Salir
             </button>
           </div>
@@ -540,15 +540,15 @@ export default function AdminPanel() {
 
         {/* Stats rápidas */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 text-center">
-            <p className="text-2xl font-black text-amber-600">{pending.length}</p>
-            <p className="text-xs text-amber-500 font-semibold">Pendientes</p>
+          <div className="border-2 border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] rounded-2xl p-3 text-center">
+            <p className="text-2xl font-black text-[var(--mg-gold-text)]">{pending.length}</p>
+            <p className="text-xs font-semibold text-[var(--mg-gold-text)]">Pendientes</p>
           </div>
-          <div className="bg-[#1670C2] border-2 border-[#0f5c9e] rounded-2xl p-3 text-center shadow-sm">
+          <div className="border-2 border-[var(--mg-accent-hover)] bg-[var(--mg-accent)] rounded-2xl p-3 text-center shadow-sm">
             <p className="text-2xl font-black text-white">
               {activeCount}
             </p>
-            <p className="text-xs text-blue-100 font-semibold">Activos{suspendedCount > 0 ? ` · ${suspendedCount} susp.` : ''}</p>
+            <p className="text-xs font-semibold text-white/80">Activos{suspendedCount > 0 ? ` · ${suspendedCount} susp.` : ''}</p>
           </div>
           <div className="bg-[var(--mg-bg-surface)] border-2 border-[var(--mg-border)] rounded-2xl p-3 text-center">
             <p className="text-2xl font-black text-[var(--mg-text-primary)]">{businesses.length}</p>
@@ -578,7 +578,7 @@ export default function AdminPanel() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-[var(--mg-accent)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
@@ -587,11 +587,11 @@ export default function AdminPanel() {
               <div className="space-y-3">
                 {pending.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                    <p className="text-4xl mb-3">✅</p>
+                    <AppIcon name="ok" size={36} className="mx-auto mb-3" />
                     <p className="font-semibold">Sin solicitudes pendientes</p>
                   </div>
                 ) : pending.map((req) => (
-                  <div key={req.id} className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border-2 border-amber-200 shadow-sm">
+                  <div key={req.id} className="bg-[var(--mg-bg-surface)] rounded-2xl p-4 border-2 border-[var(--mg-gold-border)] shadow-sm">
                     <div className="flex items-start gap-3 mb-3">
                       <img src={req.photoURL || ''} alt=""
                         onError={(e) => { e.target.style.display='none'; }}
@@ -604,9 +604,9 @@ export default function AdminPanel() {
                       <Badge status={req.status} />
                     </div>
 
-                    <div className="bg-indigo-50 rounded-xl px-3 py-2 mb-3">
-                      <p className="text-xs text-indigo-400 font-semibold uppercase tracking-wide">Negocio solicitado</p>
-                      <p className="font-bold text-indigo-700 text-base">{req.businessName}</p>
+                    <div className="mb-3 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--mg-accent)]">Negocio solicitado</p>
+                      <p className="text-base font-bold text-[var(--mg-accent)]">{req.businessName}</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -615,14 +615,14 @@ export default function AdminPanel() {
                         onClick={() => setConfirm({ type: 'reject', data: req })}
                         className="flex-1 bg-[var(--mg-danger-bg)] border-2 border-[var(--mg-danger)] text-[var(--mg-danger)] font-bold py-2.5 rounded-xl text-sm active:scale-95 disabled:opacity-50"
                       >
-                        ✕ Rechazar
+                        Rechazar
                       </button>
                       <button
                         disabled={processing === req.id}
                         onClick={() => setConfirm({ type: 'approve', data: req })}
                         className="flex-2 bg-[var(--mg-accent)] text-white font-bold py-2.5 px-5 rounded-xl text-sm active:scale-95 disabled:opacity-50 flex-[2]"
                       >
-                        {processing === req.id ? '...' : '✓ Aprobar acceso'}
+                        {processing === req.id ? '...' : 'Aprobar acceso'}
                       </button>
                     </div>
                   </div>
@@ -639,7 +639,7 @@ export default function AdminPanel() {
                     type="text"
                     value={bizSearch}
                     onChange={(e) => setBizSearch(e.target.value)}
-                    placeholder="🔍 Buscar por nombre, correo o ID..."
+                    placeholder="Buscar por nombre, correo o ID..."
                     className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--mg-accent-border)]"
                   />
                   <div className="flex gap-2">
@@ -666,12 +666,12 @@ export default function AdminPanel() {
 
                 {businesses.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                    <p className="text-4xl mb-3">🏪</p>
+                    <AppIcon name="sucursales" size={36} className="mx-auto mb-3" />
                     <p className="font-semibold">Sin negocios aún</p>
                   </div>
                 ) : filteredBusinesses.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                    <p className="text-4xl mb-3">🔍</p>
+                    <AppIcon name="search" size={36} className="mx-auto mb-3" />
                     <p className="font-semibold">Sin resultados</p>
                     <p className="text-xs mt-1">Prueba con otro nombre o limpia el filtro.</p>
                   </div>
@@ -684,7 +684,7 @@ export default function AdminPanel() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-[var(--mg-text-primary)] text-base truncate">{biz.name}</p>
                         <p className="text-[13px] text-[var(--mg-text-secondary)] truncate mt-0.5">
-                          {biz.ownerEmail ? `✉️ ${biz.ownerEmail}` : '✉️ sin correo'}
+                          {biz.ownerEmail || 'Sin correo'}
                           {biz.ownerName ? ` · ${biz.ownerName}` : ''}
                         </p>
                         <p className="text-[var(--mg-text-faint)] text-xs mt-0.5 font-mono">ID: {biz.id.slice(0, 13)}...</p>
@@ -726,7 +726,7 @@ export default function AdminPanel() {
                         onClick={() => handleReactivate(biz)}
                         className="w-full bg-[var(--mg-accent)] text-white font-bold py-2.5 rounded-xl text-sm active:scale-95 disabled:opacity-50"
                       >
-                        {processing === biz.id ? '...' : '✓ Reactivar negocio'}
+                        {processing === biz.id ? '...' : 'Reactivar negocio'}
                       </button>
                     ) : (
                       <button
@@ -734,7 +734,7 @@ export default function AdminPanel() {
                         onClick={() => setConfirm({ type: 'suspend', data: biz })}
                         className="w-full bg-[var(--mg-danger-bg)] border-2 border-[var(--mg-danger)] text-[var(--mg-danger)] font-bold py-2.5 rounded-xl text-sm active:scale-95 disabled:opacity-50"
                       >
-                        {processing === biz.id ? '...' : '🔒 Suspender acceso'}
+                        {processing === biz.id ? '...' : 'Suspender acceso'}
                       </button>
                     )}
                     <button
@@ -742,7 +742,7 @@ export default function AdminPanel() {
                       onClick={() => setImportBusiness(biz)}
                       className="w-full mt-2 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-sm active:scale-95"
                     >
-                      📦 Importar catálogo
+                      Importar catálogo
                     </button>
                     <button
                       type="button"
@@ -765,7 +765,7 @@ export default function AdminPanel() {
                       <img src={catalogForm.imageData} alt="Preview"
                         className="w-16 h-16 rounded-xl object-cover border-2 border-[var(--mg-accent-border)] shrink-0" />
                     ) : (
-                      <div className="w-16 h-16 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 border-2 border-dashed border-gray-300">
+                      <div className="w-16 h-16 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 border-2 border-dashed border-[var(--mg-border-hover)]">
                         <AppIcon name="camara" size={24} />
                       </div>
                     )}
@@ -826,7 +826,7 @@ export default function AdminPanel() {
                 <div className="space-y-2">
                   {masterProducts.length === 0 ? (
                     <div className="text-center py-8 text-[var(--mg-text-faint)]">
-                      <p className="text-4xl mb-3">🗂️</p>
+                      <AppIcon name="carpeta" size={36} className="mx-auto mb-3" />
                       <p className="font-semibold">Catálogo maestro vacío</p>
                     </div>
                   ) : masterProducts.map((product) => (
@@ -835,7 +835,7 @@ export default function AdminPanel() {
                         <img src={product.imageData} alt={product.name}
                           className="w-11 h-11 rounded-xl object-cover shrink-0 border border-[var(--mg-border)]" />
                       ) : (
-                        <div className="w-11 h-11 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center text-xl shrink-0">📦</div>
+                        <div className="w-11 h-11 rounded-xl bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0"><AppIcon name="paquete" size={20} /></div>
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-[var(--mg-text-primary)] text-sm truncate">{product.name}</p>
@@ -843,7 +843,7 @@ export default function AdminPanel() {
                       </div>
                       <p className="text-sm font-black text-[var(--mg-accent)] shrink-0">Bs {Number(product.suggestedPrice || 0).toFixed(2)}</p>
                       <button onClick={() => handleDeleteCatalogProduct(product)}
-                        className="w-8 h-8 hover:bg-red-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0">
+                        className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--mg-text-muted)] hover:bg-[var(--mg-danger-bg)] hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0">
                         <AppIcon name="eliminar" size={15} />
                       </button>
                     </div>
@@ -860,7 +860,7 @@ export default function AdminPanel() {
               <div className="space-y-2">
                 {reviewed.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
-                    <p className="text-4xl mb-3">📋</p>
+                    <AppIcon name="historial" size={36} className="mx-auto mb-3" />
                     <p className="font-semibold">Sin historial aún</p>
                   </div>
                 ) : reviewed.map((req) => (
@@ -874,7 +874,7 @@ export default function AdminPanel() {
                     </div>
                     <div className="text-right shrink-0">
                       <Badge status={req.status} />
-                      <p className="text-gray-300 text-xs mt-1">{formatDate(req.reviewedAt)}</p>
+                      <p className="mt-1 text-xs text-[var(--mg-text-faint)]">{formatDate(req.reviewedAt)}</p>
                     </div>
                   </div>
                 ))}
@@ -886,7 +886,7 @@ export default function AdminPanel() {
         {/* Refresh */}
         <button onClick={fetchAll}
           className="w-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] font-semibold py-3 rounded-2xl text-sm active:scale-95">
-          🔄 Actualizar
+          Actualizar
         </button>
       </div>
 
@@ -918,8 +918,8 @@ export default function AdminPanel() {
 
       {/* Eliminar negocio — confirmación escribiendo el nombre */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
-          <div className="bg-[var(--mg-bg-surface)] rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true" aria-label="Eliminar negocio">
+          <div className="w-full max-w-sm space-y-4 rounded-3xl bg-[var(--mg-bg-surface)] p-6 shadow-[var(--mg-shadow-lg)]">
             <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] flex items-center justify-center">
               <AppIcon name="eliminar" size={24} />
             </div>

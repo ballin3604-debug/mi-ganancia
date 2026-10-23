@@ -3,10 +3,10 @@ const CACHE_NAME = 'mi-ganancia-v6';
 const STATIC_ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  // Do NOT skipWaiting automatically. We wait for user instruction.
 });
 
 self.addEventListener('activate', (event) => {

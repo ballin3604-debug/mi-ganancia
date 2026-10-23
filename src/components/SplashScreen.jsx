@@ -31,7 +31,7 @@ export default function SplashScreen({ onDone }) {
           >
             {!imgError ? (
               <img
-                src="/logo-icon.png"
+                src="/logo-icon.png?v=2"
                 alt="Logo Mi Ganancia"
                 onError={() => setImgError(true)}
                 className="w-full h-full object-contain rounded-[28px]"

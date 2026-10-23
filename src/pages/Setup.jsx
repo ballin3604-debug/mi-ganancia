@@ -13,7 +13,7 @@ function ModeSelector({ onSelect }) {
       <div className="w-full max-w-sm mg-fade-in">
         <div className="text-center mb-8">
           <img
-            src="/logo-icon.png"
+            src="/logo-icon.png?v=2"
             alt="Mi Ganancia"
             className="w-20 h-20 rounded-[22px] object-contain mx-auto mb-4 bg-white p-1 shadow-lg"
             style={{ boxShadow: '0 16px 40px rgba(22,112,194,0.25)' }}

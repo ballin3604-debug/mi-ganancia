@@ -70,14 +70,14 @@ function getNearestExpiry(replenishments, productId) {
 }
 
 const CATEGORY_COLORS = [
-  'bg-blue-50 text-blue-700 border-blue-200',
-  'bg-amber-50 text-amber-700 border-amber-200',
-  'bg-purple-50 text-purple-700 border-purple-200',
-  'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'bg-cyan-50 text-cyan-700 border-cyan-200',
-  'bg-rose-50 text-rose-700 border-rose-200',
-  'bg-teal-50 text-teal-700 border-teal-200',
-  'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]',
+  'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
+  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]',
+  'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]',
+  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]',
+  'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
+  'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]',
+  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]',
 ];
 
 function getCatColor(categories, catName) {
@@ -936,7 +936,7 @@ export default function Inventory() {
               <div className="p-4 overflow-y-auto">
                 <BarcodeScanner onScan={handleScan} />
                 {scanMsg && (
-                  <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-amber-700">
+                  <div className="mt-3 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--mg-gold-text)]">
                     ⚠️ {scanMsg}
                   </div>
                 )}
@@ -1029,7 +1029,7 @@ export default function Inventory() {
                         <button
                           type="button"
                           onClick={() => setField('imageData', '')}
-                          className="w-full bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] font-bold py-1.5 rounded-xl text-[11px] border border-red-200 active:scale-95 transition-all"
+                          className="w-full rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] py-1.5 text-[11px] font-bold text-[var(--mg-danger)] transition-all active:scale-95"
                         >
                           Quitar foto
                         </button>
@@ -1214,7 +1214,7 @@ export default function Inventory() {
                         type="checkbox"
                         checked={!!form.sellPack}
                         onChange={(e) => setField('sellPack', e.target.checked)}
-                        className="w-5 h-5 accent-[#1670C2]"
+                        className="h-5 w-5 accent-[var(--mg-accent)]"
                       />
                       <span className="text-xs font-extrabold text-[var(--mg-text-primary)]">
                         📦 También se vende por paquete

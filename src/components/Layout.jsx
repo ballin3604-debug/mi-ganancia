@@ -249,7 +249,7 @@ export default function Layout() {
         <div className="px-3 py-4 border-b border-[var(--mg-separator)] overflow-hidden">
           <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'justify-center'}`}>
             <img
-              src="/logo-icon.png"
+              src="/logo-icon.png?v=2"
               alt="Logo Mi Ganancia"
               className="w-10 h-10 rounded-xl object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
             />
@@ -429,7 +429,7 @@ export default function Layout() {
                 </svg>
               </button>
               <img
-                src="/logo-icon.png"
+                src="/logo-icon.png?v=2"
                 alt="Logo Mi Ganancia"
                 className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
               />
@@ -556,7 +556,7 @@ export default function Layout() {
               {/* Marca */}
               <div className="flex items-center gap-2.5 px-4 pt-4 pb-3.5 border-b border-[var(--mg-separator)]">
                 <img
-                  src="/logo-icon.png"
+                  src="/logo-icon.png?v=2"
                   alt="Logo Mi Ganancia"
                   className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
                 />

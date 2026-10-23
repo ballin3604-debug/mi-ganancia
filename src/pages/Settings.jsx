@@ -573,9 +573,9 @@ export default function Settings() {
             className="fixed bottom-20 lg:bottom-6 left-4 right-4 max-w-xl mx-auto z-40"
           >
             <div className="bg-[var(--mg-bg-surface)]/95 backdrop-blur border border-[var(--mg-border)] rounded-2xl pl-4 pr-2 py-2 shadow-lg flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${saved ? 'bg-[var(--mg-success)]' : 'bg-amber-500 animate-pulse'}`} />
+              <span className={`w-2 h-2 rounded-full shrink-0 ${saved ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-gold)] animate-pulse'}`} />
               <p className="flex-1 min-w-0 text-xs font-bold truncate">
-                {saved ? <span className="text-emerald-600">Guardado ✓</span> : <span>{changedFields.length} sin guardar</span>}
+                {saved ? <span className="text-[var(--mg-success-text)]">Guardado ✓</span> : <span>{changedFields.length} sin guardar</span>}
               </p>
               {!saved && (
                 <button type="button" onClick={handleDiscard} disabled={saving} className="text-xs font-bold text-[var(--mg-text-muted)] px-2 py-2 disabled:opacity-50">
@@ -595,7 +595,7 @@ export default function Settings() {
       {/* ── Modal rubro (lista) ── */}
       <AnimatePresence>
         {showRubroModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 mg-backdrop-in" onClick={() => setShowRubroModal(false)}>
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 mg-backdrop-in sm:items-center" role="dialog" aria-modal="true" aria-label="Rubro comercial" onClick={() => setShowRubroModal(false)}>
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -632,7 +632,7 @@ export default function Settings() {
       {/* ── Vista previa (sheet) ── */}
       <AnimatePresence>
         {showPreview && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 mg-backdrop-in" onClick={() => setShowPreview(false)}>
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 mg-backdrop-in sm:items-center" role="dialog" aria-modal="true" aria-label="Vista previa del ticket" onClick={() => setShowPreview(false)}>
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
