@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
 import { EXPENSE_PAYMENT_LABELS } from '../../services/expenses';

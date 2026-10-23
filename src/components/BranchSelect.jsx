@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Selector de sede compartido: pill centrado, discreto y consistente en toda la app.
 // No es un filtro: solo cambia la vista de los datos (stock, resumen, reportes).
 export function BranchSelect({

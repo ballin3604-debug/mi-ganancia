@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function UnsavedChangesBar({ hasChanges, changesCount, onSave, onDiscard, saving, saved }) {

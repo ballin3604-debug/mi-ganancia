@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
 import { TransferModal } from './TransferModal';

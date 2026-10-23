@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BUSINESS_CATEGORIES, getCategoryById } from '../../config/businessCategories';
 import { AppIcon } from '../icons';

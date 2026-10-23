@@ -50,15 +50,6 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* ── Clases utilitarias estilo iOS ── */
 @layer components {
-  /* Card Fintech — superficie blanca, redondeada, con sombra sutil */
-  .mg-surface {
-    @apply bg-[var(--mg-bg-surface)] rounded-[20px] shadow-sm;
-  }
-
-  .mg-surface-bordered {
-    @apply bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-[20px];
-  }
-
   /* Lista agrupada estilo Fintech */
   .mg-list {
     @apply bg-[var(--mg-bg-surface)] rounded-[20px] overflow-hidden divide-y divide-[var(--mg-separator)];
@@ -99,11 +90,6 @@ input[type="number"]::-webkit-outer-spin-button {
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* Badge iOS */
-  .mg-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold;
-  }
-
   /* Sección con encabezado iOS Settings-style */
   .mg-section-title {
     @apply text-xs uppercase tracking-wider text-[var(--mg-text-muted)] font-semibold px-4 mb-2 mt-6;
@@ -141,15 +127,6 @@ input[type="number"]::-webkit-outer-spin-button {
   .mg-stagger > *:nth-child(7) { animation-delay: 0.26s; }
   .mg-stagger > *:nth-child(8) { animation-delay: 0.30s; }
   .mg-stagger > *:nth-child(n+9) { animation-delay: 0.34s; }
-
-  /* Tarjeta con leve elevación al pasar el cursor */
-  .mg-hover-lift {
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-  }
-  .mg-hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--mg-shadow-lg);
-  }
 
   /* Carrusel horizontal sin barra de desplazamiento visible */
   .scrollbar-none {
@@ -198,12 +175,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Transiciones suaves y consistentes en todo lo interactivo */
-button, a, [role="button"], select, .mg-tappable {
+button, a, [role="button"], select {
   transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
               background-color 0.2s ease, color 0.2s ease,
               border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
-button:not(:disabled):active, [role="button"]:active, .mg-tappable:active {
+button:not(:disabled):active, [role="button"]:active {
   transform: scale(0.97);
 }
 
@@ -239,4 +216,167 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:foc
 
 @media (display-mode: standalone) {
   body { padding-top: env(safe-area-inset-top); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Splash de arranque
+   ───────────────────────────────────────────────────────────────────────── */
+
+.mg-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background:
+    radial-gradient(58% 46% at 50% 43%, #ffffff 0%, rgba(255, 255, 255, 0) 72%),
+    var(--mg-bg-base);
+  opacity: 1;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: mgSplashIn 0.3s ease-out;
+}
+
+.mg-splash.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mg-splash__content {
+  position: relative;
+  display: flex;
+  width: min(88vw, 380px);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.mg-splash__mark {
+  display: block;
+  width: clamp(136px, 36vw, 176px);
+  height: auto;
+  animation: mgSplashMarkIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mg-splash__wordmark {
+  margin: clamp(14px, 3vw, 20px) 0 0;
+  color: #122B43;
+  font-family: var(--font-system);
+  font-size: clamp(31px, 8.4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  animation: mgSplashRise 0.62s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mg-splash__status {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 13px;
+  color: var(--mg-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.002em;
+}
+
+.mg-splash__status-line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: mgSplashStatus 5.1s ease-in-out infinite;
+}
+
+.mg-splash__progress {
+  position: relative;
+  width: min(192px, 58vw);
+  height: 3px;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(12, 62, 50, 0.1);
+  animation: mgSplashRise 0.62s 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mg-splash__progress-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0C7F65 0%, #0F9675 72%, #1AB28B 100%);
+  transform: scaleX(0.06);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.mg-brand-mark.is-animated .mg-brand-mark__arrow {
+  animation: mgSplashArrowLift 0.9s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mg-brand-mark__spark {
+  fill: none;
+  stroke: #45D3AE;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: mgSplashSpark 1.05s 0.5s ease-out both;
+}
+
+@keyframes mgSplashIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mgSplashMarkIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mgSplashRise {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mgSplashStatus {
+  0% { opacity: 0; transform: translateY(4px); }
+  3.33% { opacity: 1; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(0); }
+  33.33% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes mgSplashArrowLift {
+  0% { opacity: 0; transform: translateY(14px); }
+  55% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mgSplashSpark {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  10% { opacity: 0.9; }
+  62% { stroke-dashoffset: 0; opacity: 0.9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-splash__status-line {
+    animation: none !important;
+    opacity: 1;
+  }
+  .mg-splash__status-line:not(:first-child) {
+    display: none;
+  }
+  .mg-brand-mark__spark {
+    display: none;
+  }
 }

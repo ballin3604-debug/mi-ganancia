@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function DashboardSkeleton() {
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-7 max-w-7xl mx-auto" aria-label="Cargando panel de control" aria-busy="true">

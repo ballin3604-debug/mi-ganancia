@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirmar', danger = false, loading = false }) {

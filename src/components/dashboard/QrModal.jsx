@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { AppIcon } from '../icons';
 
 export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {

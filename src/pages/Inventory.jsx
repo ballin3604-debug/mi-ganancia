@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -30,7 +30,6 @@ import { StockLabel } from '../components/ProductCatalogCard';
 import { ProductDetailModal } from '../components/inventory/ProductDetailModal';
 import { ProductGridSkeleton } from '../components/inventory/ProductGridSkeleton';
 import { InventoryHeader } from '../components/inventory/InventoryHeader';
-import { TransferModal } from '../components/inventory/TransferModal';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { AppIcon } from '../components/icons';
 import PhotoCamera from '../components/PhotoCamera';

@@ -1,79 +1,109 @@
-import { useEffect, useState } from 'react';
-import { AppIcon } from './icons';
+import { useEffect, useRef, useState } from 'react';
+import BrandMark from './BrandMark';
 
-export default function SplashScreen({ onDone }) {
-  const [imgError, setImgError] = useState(false);
-  const [phase, setPhase] = useState('enter');
+const MIN_VISIBLE_MS = 1350;
+const READY_HOLD_MS = 200;
+const EXIT_MS = 360;
+const MAX_WAIT_MS = 6500;
+
+const STATUS_TEXTS = [
+  'Cargando tus datos…',
+  'Preparando tus reportes…',
+  'Tu negocio al día…',
+];
+
+export default function SplashScreen({ ready = false, onDone = () => {} }) {
+  const [finish, setFinish] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const fillRef = useRef(null);
+  const startRef = useRef(0);
+  const progressStoppedRef = useRef(false);
+  const onDoneRef = useRef(onDone);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('show'), 100);
-    const t2 = setTimeout(() => setPhase('exit'), 2200);
-    const t3 = setTimeout(() => onDone(), 2700);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    onDoneRef.current = onDone;
   }, [onDone]);
+
+  useEffect(() => {
+    startRef.current = performance.now();
+    const maxTimer = window.setTimeout(() => setFinish(true), MAX_WAIT_MS);
+    return () => window.clearTimeout(maxTimer);
+  }, []);
+
+  useEffect(() => {
+    if (ready) setFinish(true);
+  }, [ready]);
+
+  useEffect(() => {
+    const fill = fillRef.current;
+    if (!fill) return;
+
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      fill.style.transform = 'scaleX(1)';
+      return;
+    }
+
+    let raf;
+    const started = performance.now();
+    const step = (now) => {
+      if (progressStoppedRef.current) return;
+      const t = Math.min(1, (now - started) / 2800);
+      const eased = 1 - Math.pow(1 - t, 3);
+      fill.style.transform = `scaleX(${0.06 + 0.86 * eased})`;
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    if (!finish) return;
+    progressStoppedRef.current = true;
+
+    const fill = fillRef.current;
+    if (fill) {
+      fill.style.transition = 'transform 320ms cubic-bezier(0.16, 1, 0.3, 1)';
+      fill.style.transform = 'scaleX(1)';
+    }
+
+    const elapsed = performance.now() - startRef.current;
+    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed) + READY_HOLD_MS;
+    const exitTimer = window.setTimeout(() => setLeaving(true), wait);
+    return () => window.clearTimeout(exitTimer);
+  }, [finish]);
+
+  useEffect(() => {
+    if (!leaving) return;
+    const doneTimer = window.setTimeout(() => onDoneRef.current?.(), EXIT_MS);
+    return () => window.clearTimeout(doneTimer);
+  }, [leaving]);
 
   return (
     <div
+      className={`mg-splash${leaving ? ' is-leaving' : ''}`}
       role="status"
       aria-live="polite"
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--mg-bg-base)] transition-all duration-500 ${
-        phase === 'exit' ? 'scale-105 opacity-0' : 'scale-100 opacity-100'
-      }`}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(560px 300px at 50% 42%, var(--mg-accent-bg), transparent 72%)' }}
-      />
       <span className="sr-only">Cargando Mi Ganancia</span>
-      <div className="flex flex-col items-center gap-6 z-10">
-        {/* Logo iOS-style: cuadrado redondeado con icono */}
-        <div className={`transition-all duration-700 ${
-          phase === 'enter' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-        }`}>
-          <div
-            className="w-28 h-28 rounded-[28px] flex items-center justify-center shadow-2xl"
-            style={{
-              background: imgError ? 'linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-accent) 100%)' : 'transparent',
-              boxShadow: '0 20px 50px var(--mg-brand-border)',
-            }}
-          >
-            {!imgError ? (
-              <img
-                src="/logo-icon.png?v=2"
-                alt="Logo Mi Ganancia"
-                onError={() => setImgError(true)}
-                className="w-full h-full object-contain rounded-[28px]"
-              />
-            ) : (
-              <AppIcon name="recibo" size={48} color="#fff" strokeWidth={2} />
-            )}
-          </div>
-        </div>
 
-        {/* Texto */}
-        <div className={`text-center transition-all duration-700 delay-200 ${
-          phase === 'enter' ? 'opacity-0 translate-y-3' : 'opacity-100 translate-y-0'
-        }`}>
-          <h1 className="text-3xl font-bold text-[var(--mg-text-primary)] tracking-tight">Mi Ganancia</h1>
-          <p className="text-[var(--mg-text-secondary)] text-sm mt-1.5 tracking-tight">
-            Tu negocio, simple
-          </p>
-        </div>
-      </div>
+      <div className="mg-splash__content" aria-hidden="true">
+        <BrandMark className="mg-splash__mark" animated />
+        <p className="mg-splash__wordmark">Mi Ganancia</p>
 
-      {/* Loading discreto abajo */}
-      <div className={`absolute bottom-12 transition-all duration-700 delay-500 ${
-        phase === 'enter' ? 'opacity-0' : 'opacity-100'
-      }`}>
-        <div className="flex gap-1.5 items-center">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--mg-accent)]"
-              style={{ animationDelay: `${i * 150}ms` }}
-            />
+        <div className="mg-splash__status">
+          {STATUS_TEXTS.map((text, index) => (
+            <span
+              key={text}
+              className="mg-splash__status-line"
+              style={{ animationDelay: `${index * 1.7}s` }}
+            >
+              {text}
+            </span>
           ))}
+        </div>
+
+        <div className="mg-splash__progress">
+          <div ref={fillRef} className="mg-splash__progress-fill" />
         </div>
       </div>
     </div>

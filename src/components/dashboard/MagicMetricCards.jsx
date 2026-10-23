@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { formatBs, formatBsShort } from '../../utils/currency';
 import { AppIcon } from '../icons';

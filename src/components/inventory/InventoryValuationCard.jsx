@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatBs } from '../../utils/currency';
 import { AppIcon } from '../icons';
 

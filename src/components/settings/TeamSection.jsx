@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AppIcon } from '../icons';
 import { useBranches } from '../../context/BranchContext';
-import { MAX_MEMBERS, MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS, updateMemberPermissions, updateMemberName } from '../../services/cashier';
+import { MAX_MEMBERS, MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS } from '../../services/cashier';
 import { ConfirmModal } from './ConfirmModal';
 
 function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {

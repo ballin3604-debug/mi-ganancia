@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getSaleItems } from '../../services/sales';
 import { formatBs } from '../../utils/currency';
 import { printReceipt } from '../Receipt';

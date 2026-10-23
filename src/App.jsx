@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { isSupabaseConfigured, supabaseConfigError } from './services/supabaseClient';
@@ -123,10 +123,10 @@ export default function App() {
   // Tutorial: después del setup inicial, una sola vez
   const [showTutorial, setShowTutorial] = useState(false);
 
-  function handleSplashDone() {
+  const handleSplashDone = useCallback(() => {
     splashShown.done = true;
     setShowSplash(false);
-  }
+  }, []);
 
   // Detectar primer login del usuario para mostrar Welcome
   useEffect(() => {
@@ -157,35 +157,65 @@ export default function App() {
 
   // ── ORQUESTACIÓN DE PANTALLAS ──────────────────────────────────────────
 
-  // 1. Splash (siempre primero, una sola vez por sesión)
-  if (showSplash) return <SplashScreen onDone={handleSplashDone} />;
+  function renderCurrentScreen() {
+    // 1. Onboarding (primera vez en la vida del navegador)
+    if (showOnboarding && !user) {
+      return <Onboarding onFinish={() => setShowOnboarding(false)} />;
+    }
 
-  // 2. Onboarding (primera vez en la vida del navegador)
-  if (showOnboarding && !user) {
-    return <Onboarding onFinish={() => setShowOnboarding(false)} />;
-  }
+    // 2. Loading auth
+    if (loading) return <LoadingSpinner />;
 
-  // 3. Loading auth
-  if (loading) return <LoadingSpinner />;
+    // 3. No logueado → Login
+    if (!user) return <Login />;
 
-  // 4. No logueado → Login
-  if (!user) return <Login />;
+    // 4. Welcome (después del primer login, antes del setup)
+    if (showWelcome) {
+      return <WelcomeScreen userName={user.displayName} onContinue={handleWelcomeContinue} />;
+    }
 
-  // 5. Welcome (después del primer login, antes del setup)
-  if (showWelcome) {
-    return <WelcomeScreen userName={user.displayName} onContinue={handleWelcomeContinue} />;
-  }
+    // 5. Setup de admin sin negocio
+    if (admin && needsSetup) return <Setup isAdmin />;
 
-  // 6. Setup de admin sin negocio
-  if (admin && needsSetup) return <Setup isAdmin />;
+    // 6. Admin con negocio
+    if (admin && businessId) {
+      return (
+        <>
+          <UpdateBanner />
+          <Routes>
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="ventas" element={<Sales />} />
+              <Route path="compras" element={<Compras />} />
+              <Route path="inventario" element={<Inventory />} />
+              <Route path="egresos" element={<Expenses />} />
+              <Route path="reportes" element={<MatrixReport />} />
+              <Route path="configuracion" element={<Settings />} />
+              <Route path="sucursales" element={<Branches />} />
+              <Route path="equipo" element={<Team />} />
+              <Route path="recibo/:saleId" element={<ReceiptView />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+          {showTutorial && <Tutorial onFinish={handleTutorialFinish} />}
+        </>
+      );
+    }
 
-  // 7. Admin con negocio
-  if (admin && businessId) {
+    // 7. Setup usuario regular
+    if (needsSetup) return <Setup />;
+
+    // 8. Estados intermedios
+    if (userStatus === 'pending' || userStatus === 'rejected' || userStatus === 'suspended') {
+      return <PendingApproval status={userStatus} />;
+    }
+
+    // 9. Usuario activo regular
     return (
       <>
         <UpdateBanner />
         <Routes>
-          <Route path="/admin" element={<AdminPanel />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="ventas" element={<Sales />} />
@@ -205,34 +235,16 @@ export default function App() {
     );
   }
 
-  // 8. Setup usuario regular
-  if (needsSetup) return <Setup />;
-
-  // 9. Estados intermedios
-  if (userStatus === 'pending' || userStatus === 'rejected' || userStatus === 'suspended') {
-    return <PendingApproval status={userStatus} />;
-  }
-
-  // 10. Usuario activo regular
   return (
     <>
-      <UpdateBanner />
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="ventas" element={<Sales />} />
-          <Route path="compras" element={<Compras />} />
-          <Route path="inventario" element={<Inventory />} />
-          <Route path="egresos" element={<Expenses />} />
-          <Route path="reportes" element={<MatrixReport />} />
-          <Route path="configuracion" element={<Settings />} />
-          <Route path="sucursales" element={<Branches />} />
-          <Route path="equipo" element={<Team />} />
-          <Route path="recibo/:saleId" element={<ReceiptView />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-      {showTutorial && <Tutorial onFinish={handleTutorialFinish} />}
+      <div
+        style={{ display: 'contents' }}
+        aria-hidden={showSplash ? 'true' : undefined}
+        inert={showSplash ? '' : undefined}
+      >
+        {renderCurrentScreen()}
+      </div>
+      {showSplash && <SplashScreen ready={!loading} onDone={handleSplashDone} />}
     </>
   );
 }

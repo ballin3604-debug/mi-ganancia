@@ -120,7 +120,7 @@ async function main() {
       await checkOverflow(page, `${viewport.name} loading`);
       await shot(page, path.join(OUT, `${viewport.name}-loading.png`), false);
 
-      await openView(page, 'splash', 'text=Tu negocio, simple');
+      await openView(page, 'splash', '.mg-splash');
       await page.waitForTimeout(700);
       await shot(page, path.join(OUT, `${viewport.name}-splash.png`), false);
 

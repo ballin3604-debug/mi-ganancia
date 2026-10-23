@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXPENSE_CATEGORIES, addExpense, updateExpense, EXPENSE_PAYMENT_LABELS } from '../../services/expenses';
 import { clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';

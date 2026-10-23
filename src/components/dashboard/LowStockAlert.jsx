@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function LowStockAlert({ lowStock, onLowStockClick }) {
   if (!lowStock || lowStock.length === 0) return null;
 

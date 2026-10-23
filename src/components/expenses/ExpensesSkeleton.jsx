@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function ExpensesSkeleton() {
   return (
     <div className="space-y-4 mg-fade-in">
