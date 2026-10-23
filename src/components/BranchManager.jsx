@@ -352,13 +352,7 @@ function BranchManagerInner() {
           >
             <AppIcon name="historial" size={14} /> Historial{transfers.length > 0 ? ` (${transfers.length})` : ''}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[var(--mg-accent)] px-4 py-2 text-xs font-black text-white transition-all hover:bg-[var(--mg-accent-hover)]"
-          >
-            <AppIcon name="mas" size={14} color="#fff" /> Añadir sede
-          </button>
+
         </div>
       </div>
 

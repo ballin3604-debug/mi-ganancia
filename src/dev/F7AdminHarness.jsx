@@ -5,6 +5,8 @@ import Expenses from '../pages/Expenses';
 import Team from '../pages/Team';
 import Branches from '../pages/Branches';
 import Settings from '../pages/Settings';
+import Inventory from '../pages/Inventory';
+import AdminPanel from '../pages/AdminPanel';
 import PaymentModal from '../components/PaymentModal';
 
 function View() {
@@ -14,6 +16,8 @@ function View() {
   if (view === 'team') return <Team />;
   if (view === 'branches') return <Branches />;
   if (view === 'settings') return <Settings />;
+  if (view === 'inventory') return <Inventory />;
+  if (view === 'admin') return <AdminPanel />;
   if (view === 'upgrade') {
     return (
       <div className="min-h-screen bg-[var(--mg-bg-base)] p-4">
