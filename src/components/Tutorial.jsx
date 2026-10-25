@@ -1,127 +1,253 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AppIcon } from './icons';
 
-// Tutorial: se muestra una sola vez tras crear el negocio.
-// Recorrido centrado con el mapa real de la app, en lenguaje de tienda.
-// Cada paso tiene una acción concreta ("Haz hoy") para que el usuario
-// no solo lea, sino que sepa qué tocar primero.
 const STEPS = [
   {
-    color: '#1670C2',
-    emoji: '🏠',
-    title: 'Tu Inicio: el resumen del día',
-    description:
-      'Aquí ves cuánto vendiste hoy en efectivo y QR, tu hora pico y qué se está acabando. Es lo primero que miras al abrir.',
-    accion: 'Haz hoy: abre Inicio y revisa tu total.',
+    icon: 'tienda',
+    color: 'var(--mg-brand)',
+    background: 'var(--mg-brand-bg)',
+    title: 'Consulta el resumen del día',
+    description: 'En Inicio consulta el total vendido hoy.',
   },
   {
-    color: '#d99a2b',
-    emoji: '🛒',
-    title: 'Vender: busca, suma y cobra',
-    description:
-      'Busca el producto, súmalo con + y cobra. En efectivo te calcula el cambio y con QR muestras tu código.',
-    accion: 'Haz hoy: registra tu primera venta.',
+    icon: 'carrito',
+    color: 'var(--mg-accent)',
+    background: 'var(--mg-accent-bg)',
+    title: 'Registra una venta',
+    description: 'Cobra en efectivo o QR; el cambio se calcula automáticamente.',
   },
   {
-    color: '#34c759',
-    emoji: '🛍️',
-    title: 'Compras: que el stock suba solo',
-    description:
-      'Cuando te llega mercadería, anota cantidad y lo que pagaste. El stock sube solo y tu ganancia sale real.',
-    accion: 'Haz hoy: registra una compra de tu proveedor.',
+    icon: 'paquete',
+    color: 'var(--mg-gold-text)',
+    background: 'var(--mg-gold-bg)',
+    title: 'Actualiza tu inventario',
+    description: 'Registra lo que recibes y el stock se actualiza solo.',
   },
   {
-    color: '#0c3457',
-    emoji: '💸',
-    title: 'Egresos: anota lo que sale',
-    description:
-      'Alquiler, luz, pasaje, bolsas. Si no los anotas, tu ganancia es mentira. Marca si es gasto diario o fijo del mes.',
-    accion: 'Haz hoy: anota 1 gasto, aunque sea pequeño.',
+    icon: 'gastos',
+    color: 'var(--mg-danger)',
+    background: 'var(--mg-danger-bg)',
+    title: 'Registra tus gastos',
+    description: 'Anota cada gasto para saber cuánto dinero te queda.',
   },
   {
-    color: '#1670C2',
-    emoji: '📈',
-    title: 'Ganancia real: lo más importante',
-    description:
-      'En Reportes → Ganancias verás: vendido menos costo menos gastos = lo que te quedó limpio. Vender mucho no sirve si ganas poco.',
-    accion: 'Haz hoy: mira tu ganancia de la semana.',
+    icon: 'reportes',
+    color: 'var(--mg-success)',
+    background: 'var(--mg-success-bg)',
+    title: 'Conoce tu ganancia real',
+    description: 'Resta costos y gastos de tus ventas para ver tu ganancia.',
   },
   {
-    color: '#34c759',
-    emoji: '✅',
-    title: '¡Todo listo!',
-    description:
-      'Tus datos se guardan solos, funcionan sin internet y se sincronizan. Si te pierdes, toca el botón "?" en cualquier pantalla.',
-    accion: 'El "?" te explica cada pantalla con ejemplos.',
+    icon: 'sinConexion',
+    color: 'var(--mg-brand)',
+    background: 'var(--mg-brand-bg)',
+    title: 'Trabaja sin internet',
+    description: 'Sigue vendiendo sin señal; tus datos se sincronizan al volver.',
+  },
+  {
+    icon: 'ayuda',
+    color: 'var(--mg-accent)',
+    background: 'var(--mg-accent-bg)',
+    title: 'Encuentra ayuda cuando la necesites',
+    description: 'Toca ? en cualquier pantalla para ver explicaciones y ejemplos.',
   },
 ];
 
+const slideVariants = {
+  enter: (direction) => ({ x: direction > 0 ? 32 : -32, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction) => ({ x: direction > 0 ? -32 : 32, opacity: 0 }),
+};
+
+function trapTab(event, container) {
+  if (event.key !== 'Tab' || !container) return;
+
+  const buttons = [...container.querySelectorAll('button:not(:disabled)')];
+  if (!buttons.length) return;
+
+  const first = buttons[0];
+  const last = buttons[buttons.length - 1];
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === container)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === container)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export default function Tutorial({ onFinish }) {
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const rootRef = useRef(null);
+  const wheelLocked = useRef(false);
+  const wheelTimer = useRef(null);
+  const reduceMotion = useReducedMotion();
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
+  useEffect(() => {
+    rootRef.current?.focus();
+    return () => window.clearTimeout(wheelTimer.current);
+  }, []);
+
+  function moveTo(nextStep) {
+    if (nextStep < 0 || nextStep >= STEPS.length || nextStep === step) return;
+    setDirection(nextStep > step ? 1 : -1);
+    setStep(nextStep);
+  }
+
   function finish() {
-    try { localStorage.setItem('mg_tutorial_done', '1'); } catch { /* ignore */ }
-    onFinish();
+    try { localStorage.setItem('mg_tutorial_done', '1'); } catch {}
+    onFinish?.();
   }
 
   function next() {
     if (isLast) finish();
-    else setStep(step + 1);
+    else moveTo(step + 1);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      finish();
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      if (!isLast) moveTo(step + 1);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if (step > 0) moveTo(step - 1);
+    }
+    trapTab(event, rootRef.current);
+  }
+
+  function handleDragEnd(_, info) {
+    const distance = info.offset.x;
+    const isHorizontal = Math.abs(distance) > Math.abs(info.offset.y) * 1.15;
+    if (!isHorizontal || (Math.abs(distance) < 48 && Math.abs(info.velocity.x) < 500)) return;
+    if (distance < 0 && !isLast) moveTo(step + 1);
+    if (distance > 0 && step > 0) moveTo(step - 1);
+  }
+
+  function handleWheel(event) {
+    if (Math.abs(event.deltaX) < 24 || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+    event.preventDefault();
+    if (wheelLocked.current) return;
+
+    wheelLocked.current = true;
+    window.clearTimeout(wheelTimer.current);
+    wheelTimer.current = window.setTimeout(() => {
+      wheelLocked.current = false;
+    }, 500);
+    if (event.deltaX > 0 && !isLast) moveTo(step + 1);
+    if (event.deltaX < 0 && step > 0) moveTo(step - 1);
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 mg-backdrop-in">
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl shadow-2xl w-full max-w-sm p-6 mg-modal-in">
-        <div className="flex items-center justify-between mb-5">
-          <span className="text-xs font-bold text-[var(--mg-accent)] uppercase tracking-wider">
+    <div
+      ref={rootRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`tutorial-step-title-${step}`}
+      aria-describedby={`tutorial-step-description-${step}`}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      onWheel={handleWheel}
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/45 px-4 outline-none"
+      style={{ paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+    >
+      <div className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-y-auto rounded-[28px] bg-[var(--mg-bg-surface)] p-5 shadow-[var(--mg-shadow-lg)] sm:p-7">
+        <header className="flex shrink-0 items-center justify-between">
+          <span aria-live="polite" aria-atomic="true" className="text-xs font-bold uppercase tracking-wider text-[var(--mg-text-muted)]">
             Paso {step + 1} de {STEPS.length}
           </span>
           {!isLast && (
             <button
+              type="button"
               onClick={finish}
-              className="text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)] text-sm font-semibold"
+              className="min-h-11 rounded-xl px-3 text-sm font-medium text-[var(--mg-text-secondary)] hover:text-[var(--mg-text-primary)]"
             >
-              Saltar
+              Omitir
             </button>
           )}
-        </div>
+        </header>
 
-        <div key={step} className="text-center mg-fade-in">
+        <main className="flex min-h-[260px] flex-1 items-center justify-center py-5">
+          <div className="grid w-full">
+            <AnimatePresence initial={false} custom={direction}>
+              <motion.article
+                key={step}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: reduceMotion ? 0.01 : 0.26, ease: [0.22, 1, 0.36, 1] }}
+                drag="x"
+                dragDirectionLock
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                dragMomentum={false}
+                onDragEnd={handleDragEnd}
+                className="col-start-1 row-start-1 w-full cursor-grab text-center active:cursor-grabbing"
+                style={{ touchAction: 'pan-y' }}
+                role="group"
+                aria-roledescription="pantalla"
+                aria-label={`Pantalla ${step + 1} de ${STEPS.length}`}
+              >
+                <div
+                  className="mx-auto mb-5 flex h-[76px] w-[76px] items-center justify-center rounded-[24px]"
+                  style={{ background: current.background }}
+                  aria-hidden="true"
+                >
+                  <AppIcon name={current.icon} size={36} color={current.color} strokeWidth={1.8} />
+                </div>
+
+                <h2 id={`tutorial-step-title-${step}`} className="text-[23px] font-extrabold leading-tight tracking-tight text-[var(--mg-text-primary)] sm:text-[26px]">
+                  {current.title}
+                </h2>
+                <p id={`tutorial-step-description-${step}`} className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[var(--mg-text-secondary)]">
+                  {current.description}
+                </p>
+              </motion.article>
+            </AnimatePresence>
+          </div>
+        </main>
+
+        <footer className="shrink-0">
           <div
-            className="w-24 h-24 rounded-[28px] flex items-center justify-center mx-auto mb-5 text-5xl"
-            style={{
-              background: `linear-gradient(135deg, ${current.color} 0%, ${current.color}cc 100%)`,
-              boxShadow: `0 16px 36px ${current.color}55`,
-            }}
+            className="mb-4 flex items-center justify-center gap-1.5"
+            role="group"
+            aria-label={`Progreso: paso ${step + 1} de ${STEPS.length}`}
           >
-            {current.emoji}
+            {STEPS.map((_, index) => (
+              <span
+                key={index}
+                aria-hidden="true"
+                className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                  index === step ? 'w-7 bg-[var(--mg-accent)]' : 'w-1.5 bg-[var(--mg-border-hover)]'
+                }`}
+              />
+            ))}
           </div>
 
-          <h3 className="text-xl font-black text-[var(--mg-text-primary)] mb-2">{current.title}</h3>
-          <p className="text-[var(--mg-text-secondary)] text-[14.5px] leading-relaxed">{current.description}</p>
-
-          {current.accion && (
-            <p className="mt-3 inline-block text-[12.5px] font-bold text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-full px-3.5 py-1.5">
-              👉 {current.accion}
-            </p>
-          )}
-        </div>
-
-        <div className="flex justify-center gap-1.5 my-6">
-          {STEPS.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === step ? 'w-6 bg-[var(--mg-accent)]' : i < step ? 'w-1.5 bg-[var(--mg-accent-border)]' : 'w-1.5 bg-gray-200'
-              }`}
-            />
-          ))}
-        </div>
-
-        <button onClick={next} className="mg-btn-primary w-full">
-          {isLast ? '¡Empezar a usar la app!' : 'Continuar'}
-        </button>
+          <div className="flex items-center gap-2">
+            {step > 0 ? (
+              <button
+                type="button"
+                onClick={() => moveTo(step - 1)}
+                aria-label="Pantalla anterior"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]"
+              >
+                <AppIcon name="volver" size={20} color="currentColor" />
+              </button>
+            ) : null}
+            <button type="button" onClick={next} className="mg-btn-primary min-h-12 flex-1 text-base">
+              {isLast ? 'Comenzar' : 'Siguiente'}
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   );

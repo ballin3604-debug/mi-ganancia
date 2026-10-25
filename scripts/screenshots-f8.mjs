@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const PORT = 5204;
 const BASE = `http://127.0.0.1:${PORT}`;
-const OUT = path.join('docs', 'audit', 'f8');
+const OUT = process.env.F8_OUT || path.join('docs', 'audit', 'f8');
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
@@ -111,10 +111,28 @@ async function main() {
       await openView(page, 'onboarding', 'text=Vende en segundos');
       await checkOverflow(page, `${viewport.name} onboarding`);
       await shot(page, path.join(OUT, `${viewport.name}-onboarding-1.png`), false);
-      await page.getByRole('button', { name: 'Continuar' }).click();
-      await page.waitForSelector('text=Adiós cuaderno de stock', { timeout: 10000 });
+      await page.getByRole('button', { name: 'Siguiente' }).click();
+      await page.waitForSelector('text=Controla tu inventario', { timeout: 10000 });
+      await page.waitForTimeout(350);
+      await page.keyboard.press('ArrowLeft');
+      await page.getByRole('heading', { name: 'Vende en segundos' }).waitFor({ timeout: 10000 });
+      await page.waitForTimeout(350);
+      const slide = page.locator('[aria-roledescription="pantalla"]').last();
+      const bounds = await slide.boundingBox();
+      await page.mouse.move(bounds.x + bounds.width * 0.75, bounds.y + bounds.height * 0.5);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height * 0.5, { steps: 8 });
+      await page.mouse.up();
+      await page.getByRole('heading', { name: 'Controla tu inventario' }).waitFor({ timeout: 10000 });
       await page.waitForTimeout(350);
       await shot(page, path.join(OUT, `${viewport.name}-onboarding-2.png`), false);
+      const currentSlide = page.locator('[aria-roledescription="pantalla"]').last();
+      const currentBounds = await currentSlide.boundingBox();
+      await page.mouse.move(currentBounds.x + currentBounds.width * 0.25, currentBounds.y + currentBounds.height * 0.5);
+      await page.mouse.down();
+      await page.mouse.move(currentBounds.x + currentBounds.width * 0.75, currentBounds.y + currentBounds.height * 0.5, { steps: 8 });
+      await page.mouse.up();
+      await page.getByRole('heading', { name: 'Vende en segundos' }).waitFor({ timeout: 10000 });
 
       await openView(page, 'loading', 'text=Cargando');
       await checkOverflow(page, `${viewport.name} loading`);
@@ -136,7 +154,7 @@ async function main() {
         if (!popup) throw new Error('No se abrio la vista previa del recibo en hoja');
         await popup.waitForTimeout(120);
         await popup.screenshot({ path: path.join(OUT, 'desktop-receipt-sheet.png'), fullPage: true });
-        console.log(`OK   -> ${path.join('docs', 'audit', 'f8', 'desktop-receipt-sheet.png')}`);
+        console.log(`OK   -> ${path.join(OUT, 'desktop-receipt-sheet.png')}`);
         await page.evaluate(() => localStorage.removeItem('mg_receipt_format'));
       }
 
