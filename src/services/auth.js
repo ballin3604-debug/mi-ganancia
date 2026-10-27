@@ -126,9 +126,49 @@ export async function getUserData(userId) {
 export async function createUserAndBusiness(user, businessName, businessCategory = DEFAULT_CATEGORY_ID) {
   const category = getCategoryById(businessCategory);
   const userName = user.user_metadata?.displayName || user.email || '';
+  const cleanName = businessName.trim();
+  const client = assertSupabase();
 
-  const { data: businessId, error } = await assertSupabase().rpc('crear_negocio', {
-    p_business_name: businessName,
+  // Reutiliza el negocio existente si el perfil ya lo tiene o si quedó creado
+  // de un intento anterior sin vincular. Sin esto, cada reintento del setup
+  // creaba otra fila en businesses con el mismo nombre y dueño.
+  try {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('business_id')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile?.business_id) return profile.business_id;
+
+    const { data: existing } = await client
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .eq('name', cleanName)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) {
+      const { error: linkErr } = await client
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          business_id: existing.id,
+          role: 'owner',
+          status: 'active',
+          name: userName,
+        }, { onConflict: 'id' });
+      if (linkErr) {
+        console.error('createUserAndBusiness: no se pudo vincular el perfil al negocio existente:', linkErr);
+      }
+      return existing.id;
+    }
+  } catch (checkErr) {
+    console.warn('createUserAndBusiness: no se pudo verificar un negocio existente:', checkErr);
+  }
+
+  const { data: businessId, error } = await client.rpc('crear_negocio', {
+    p_business_name: cleanName,
     p_business_nit: '',
     p_user_name: userName,
     p_business_category: businessCategory,

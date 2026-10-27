@@ -1,5 +1,6 @@
 import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { createJoinCode } from './cashier';
+import { generateUUID } from './localDb';
 import { getCategoryById, DEFAULT_CATEGORY_ID } from '../config/businessCategories';
 // Fuente única del UID admin (lee VITE_ADMIN_UID). Re-exportado aquí
 // por compatibilidad con imports existentes.
@@ -41,46 +42,58 @@ function mapRequest(req) {
 }
 
 export async function submitRequest(user, businessName, businessCategory = DEFAULT_CATEGORY_ID) {
-  const { data: req, error: reqErr } = await supabase
-    .from('subscription_requests')
-    .insert({
-      user_id: user.uid || user.id,
-      email: user.email,
-      display_name: user.displayName || user.email,
-      photo_url: user.photoURL || '',
-      business_name: businessName.trim(),
-      business_category: businessCategory,
-      status: 'pending',
-    })
-    .select()
-    .maybeSingle();
+  const userId = user.uid || user.id;
+  const cleanName = businessName.trim();
+  const client = assertSupabase();
 
-  if (reqErr) {
-    // INSERT ok pero SELECT denegado por RLS: reenviar crearía un duplicado.
-    if (reqErr.code === 'PGRST116' || /0 filas|0 rows|permission|policy|rls|recurs/i.test(reqErr.message || '')) {
-      console.error('submitRequest: INSERT ok pero SELECT denegado por RLS:', reqErr);
-      throw new Error('Solicitud creada, pero no se pudo leer por permisos. Recargá en lugar de reenviarla para no duplicarla.');
-    }
-    console.error('submitRequest:', reqErr);
-    throw reqErr;
-  }
-  if (!req) {
-    console.error('submitRequest: INSERT ok pero SELECT devolvió 0 filas (RLS).');
-    throw new Error('Solicitud creada. Recargá para verla (no la reenvíes).');
+  // Una solicitud ya enviada no se duplica al reintentar por un error de red
+  // o de lectura. Antes, cada reintento insertaba otra fila y luego el admin
+  // podía aprobar la misma solicitud varias veces.
+  try {
+    const { data: existing } = await client
+      .from('subscription_requests')
+      .select('id,status')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'approved'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) return existing.id;
+  } catch (checkErr) {
+    console.warn('submitRequest: no se pudo verificar una solicitud existente:', checkErr);
   }
 
-  const { error: profErr } = await assertSupabase()
+  const { error: profErr } = await client
     .from('profiles')
-    .insert({
-      id: user.uid || user.id,
+    .upsert({
+      id: userId,
       name: user.displayName || user.email,
       status: 'pending',
       role: 'owner',
-    });
+    }, { onConflict: 'id' });
 
   if (profErr) throw profErr;
 
-  return req.id;
+  const requestId = generateUUID();
+  const { error: reqErr } = await client
+    .from('subscription_requests')
+    .insert({
+      id: requestId,
+      user_id: userId,
+      email: user.email,
+      display_name: user.displayName || user.email,
+      photo_url: user.photoURL || '',
+      business_name: cleanName,
+      business_category: businessCategory,
+      status: 'pending',
+    });
+
+  if (reqErr) {
+    console.error('submitRequest:', reqErr);
+    throw reqErr;
+  }
+
+  return requestId;
 }
 
 export async function getAllRequests() {
@@ -91,6 +104,31 @@ export async function getAllRequests() {
 
   if (error) throw error;
   return data.map(mapRequest);
+}
+
+// Negocios repetidos: mismo dueño/correo y mismo nombre. Se conserva el que
+// está en uso por el perfil del dueño (o el más antiguo) y se devuelven los
+// ids de los demás para marcarlos en el panel.
+export function findDuplicateBusinessIds(businesses) {
+  const duplicateIds = new Set();
+  const groups = new Map();
+
+  (businesses || []).forEach((b) => {
+    const ownerKey = b.owner_id || b.ownerId || (b.ownerEmail || '').toLowerCase();
+    const key = `${ownerKey}|${(b.name || '').trim().toLowerCase()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(b);
+  });
+
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+    const keeper = group.find((b) => b.isOwnerBusiness) || group[group.length - 1];
+    group.forEach((b) => {
+      if (b.id !== keeper.id) duplicateIds.add(b.id);
+    });
+  });
+
+  return duplicateIds;
 }
 
 export async function getAllBusinesses() {
@@ -163,6 +201,8 @@ export async function getAllBusinesses() {
         ...b,
         ownerEmail: prof.email || req.email || '',
         ownerName: prof.name || req.display_name || '',
+        isOwnerBusiness: prof.business_id === b.id,
+        profileBusinessId: prof.business_id || '',
       };
     });
   } catch (enrichErr) {
@@ -172,44 +212,72 @@ export async function getAllBusinesses() {
 }
 
 export async function approveRequest(request, adminNote = '') {
-  const { data: biz, error: bizErr } = await supabase
-    .from('businesses')
-    .insert({
-      name: request.businessName || request.business_name,
-      owner_id: request.userId || request.user_id,
-      status: 'active',
-    })
-    .select()
-    .maybeSingle();
+  const userId = request.userId || request.user_id;
+  const requestedName = request.businessName || request.business_name;
+  const client = assertSupabase();
+  let businessId = request.business_id || request.businessId || null;
 
-  if (bizErr) {
-    // INSERT ok pero SELECT denegado por RLS: reintentarlo duplicaría el negocio.
-    if (bizErr.code === 'PGRST116' || /0 filas|0 rows|permission|policy|rls|recurs/i.test(bizErr.message || '')) {
-      console.error('approveRequest: INSERT ok pero SELECT denegado por RLS:', bizErr);
-      throw new Error('Negocio creado, pero no se pudo leer por permisos. Recargá la lista en lugar de aprobar de nuevo para no duplicarlo.');
+  // Idempotencia: si la solicitud ya tiene negocio, o el dueño ya está
+  // vinculado a uno, o existe uno con el mismo nombre, se reutiliza. Antes,
+  // un fallo después del INSERT dejaba la solicitud pendiente y el siguiente
+  // clic creaba otro negocio idéntico.
+  if (!businessId) {
+    try {
+      const { data: profile } = await client
+        .from('profiles')
+        .select('business_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.business_id) businessId = profile.business_id;
+    } catch (checkErr) {
+      console.warn('approveRequest: no se pudo verificar el perfil:', checkErr);
     }
-    console.error('approveRequest:', bizErr);
-    throw bizErr;
   }
-  if (!biz) {
-    console.error('approveRequest: INSERT ok pero SELECT devolvió 0 filas (RLS).');
-    throw new Error('Negocio creado. Recargá para verlo (no lo apruebes de nuevo).');
+  if (!businessId) {
+    try {
+      const { data: existing } = await client
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', userId)
+        .eq('name', requestedName)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) businessId = existing.id;
+    } catch (checkErr) {
+      console.warn('approveRequest: no se pudo verificar un negocio existente:', checkErr);
+    }
+  }
+  if (!businessId) {
+    businessId = generateUUID();
+    const { error: bizErr } = await client
+      .from('businesses')
+      .insert({
+        id: businessId,
+        name: requestedName,
+        owner_id: userId,
+        status: 'active',
+      });
+
+    if (bizErr) {
+      console.error('approveRequest:', bizErr);
+      throw bizErr;
+    }
   }
 
-  const businessId = biz.id;
-
-  const { error: profErr } = await assertSupabase()
+  const { error: profErr } = await client
     .from('profiles')
-    .update({
+    .upsert({
+      id: userId,
+      name: request.displayName || request.display_name || request.email || '',
       business_id: businessId,
       status: 'active',
       role: 'owner',
-    })
-    .eq('id', request.userId || request.user_id);
+    }, { onConflict: 'id' });
 
   if (profErr) throw profErr;
 
-  const { error: reqErr } = await assertSupabase()
+  const { error: reqErr } = await client
     .from('subscription_requests')
     .update({
       status: 'approved',

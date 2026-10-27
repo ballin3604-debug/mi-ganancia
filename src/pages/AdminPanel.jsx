@@ -4,7 +4,7 @@ import {
   getAllRequests, getAllBusinesses,
   approveRequest, rejectRequest,
   suspendBusiness, reactivateBusiness, deleteBusiness,
-  getBusinessPlans, setBusinessPlan,
+  getBusinessPlans, setBusinessPlan, findDuplicateBusinessIds,
 } from '../services/admin';
 import { signOut } from '../services/auth';
 import {
@@ -428,11 +428,18 @@ export default function AdminPanel() {
   }
 
   async function handleApprove(req, note) {
+    if (processing) return;
     setProcessing(req.id);
     try {
       await approveRequest(req, note);
       await fetchAll();
-    } finally { setProcessing(''); setConfirm(null); }
+      setConfirm(null);
+    } catch (err) {
+      console.error(err);
+      alert(`No se pudo aprobar la solicitud.\n\n${err?.message || err}`);
+    } finally {
+      setProcessing('');
+    }
   }
 
   async function handleReject(req, note) {
@@ -501,6 +508,11 @@ export default function AdminPanel() {
 
   const activeCount = businesses.filter((b) => (b.status || 'active') === 'active').length;
   const suspendedCount = businesses.filter((b) => b.status === 'suspended').length;
+
+  // Negocios repetidos: mismo dueño/correo y mismo nombre. Se conserva el que
+  // está en uso por el perfil del dueño (o el más antiguo) y se marcan los
+  // demás para que el admin sepa cuáles puede eliminar sin romper la cuenta.
+  const duplicateIds = findDuplicateBusinessIds(businesses);
 
   const filteredBusinesses = businesses
     .filter((b) => bizStatusFilter === 'all' || (b.status || 'active') === bizStatusFilter)
@@ -664,6 +676,24 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
+                {duplicateIds.size > 0 && (
+                  <div
+                    className="rounded-2xl border-2 p-3"
+                    style={{
+                      background: 'var(--mg-warning-bg)',
+                      borderColor: 'var(--mg-warning-border)',
+                      color: 'var(--mg-warning-text)',
+                    }}
+                  >
+                    <p className="text-sm font-black">
+                      {duplicateIds.size === 1 ? 'Hay 1 negocio duplicado' : `Hay ${duplicateIds.size} negocios duplicados`}
+                    </p>
+                    <p className="text-xs mt-1">
+                      Son registros reales con el mismo dueño y nombre. Conservá el marcado “En uso” y eliminá los marcados “Duplicado” con el botón rojo.
+                    </p>
+                  </div>
+                )}
+
                 {businesses.length === 0 ? (
                   <div className="text-center py-12 text-[var(--mg-text-faint)]">
                     <AppIcon name="sucursales" size={36} className="mx-auto mb-3" />
@@ -690,7 +720,21 @@ export default function AdminPanel() {
                         <p className="text-[var(--mg-text-faint)] text-xs mt-0.5 font-mono">ID: {biz.id.slice(0, 13)}...</p>
                         <p className="text-[var(--mg-text-faint)] text-xs">Creado: {formatDate(biz.createdAt)}</p>
                       </div>
-                      <Badge status={biz.status || 'active'} />
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {biz.isOwnerBusiness && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide"
+                            style={{ background: 'var(--mg-success-bg)', color: 'var(--mg-success-text)' }}>
+                            En uso
+                          </span>
+                        )}
+                        {duplicateIds.has(biz.id) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide"
+                            style={{ background: 'var(--mg-warning-bg)', color: 'var(--mg-warning-text)' }}>
+                            Duplicado
+                          </span>
+                        )}
+                        <Badge status={biz.status || 'active'} />
+                      </div>
                     </div>
 
                     {/* Plan del negocio: 3 botones */}
