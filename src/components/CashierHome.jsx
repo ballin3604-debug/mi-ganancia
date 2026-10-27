@@ -219,7 +219,8 @@ export function CashierHome({
       <button
         type="button"
         onClick={() => onNavigate('/ventas')}
-        className="w-full bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white rounded-3xl p-5 sm:p-6 flex items-center gap-4 shadow-[var(--mg-shadow-md)] active:scale-[0.99] transition-all text-left group"
+        className="w-full text-white rounded-3xl p-5 sm:p-6 flex items-center gap-4 text-left group active:scale-[0.99] transition-all"
+        style={{ background: 'linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-brand-hover) 100%)', boxShadow: 'var(--mg-shadow-md)' }}
       >
         <span className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
           <AppIcon name="carrito" size={24} color="#fff" />
@@ -228,8 +229,8 @@ export function CashierHome({
           <span className="block text-lg font-black">Nueva venta</span>
           <span className="block text-xs text-white/80 font-medium mt-0.5">Toca, cobra y listo</span>
         </span>
-        <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-white/20 transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <span className="w-8 h-8 rounded-full bg-[var(--mg-gold)] flex items-center justify-center shrink-0 transition-transform group-hover:translate-x-0.5">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </span>
@@ -261,7 +262,7 @@ export function CashierHome({
           </div>
         ) : (
           <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-6 text-center border border-[var(--mg-border)]">
-            <AppIcon name="carrito" size={36} />
+            <AppIcon name="carrito" size={36} color="var(--mg-brand)" />
             <p className="text-sm font-bold text-[var(--mg-text-primary)] mt-2">Sin ventas todavía</p>
             <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">Tu primera venta del día aparece aquí.</p>
           </div>
@@ -272,7 +273,7 @@ export function CashierHome({
       {sales.length > 0 && (
         <section>
           <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-secondary)] mb-3 flex items-center gap-2">
-            <span className="w-1 h-3.5 rounded-full bg-[var(--mg-accent)]" />
+            <span className="w-1 h-3.5 rounded-full bg-[var(--mg-gold)]" />
             Mis recibos ({sales.length})
           </h2>
           <ul className="space-y-2">
