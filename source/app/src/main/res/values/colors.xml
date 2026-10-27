@@ -14,6 +14,6 @@
      limitations under the License.
 -->
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
-    <color name="shortcut_background">#F4F6FA</color>
+    <color name="ic_launcher_background">#0B2D20</color>
+    <color name="shortcut_background">#0B2D20</color>
 </resources>
