@@ -1,9 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { findDuplicateBusinessIds } from './admin';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { findDuplicateBusinessIds, submitRequest } from './admin';
+
+const mockSupabase = vi.hoisted(() => ({ from: vi.fn() }));
 
 vi.mock('./supabaseClient', () => ({
   supabase: {},
-  assertSupabase: () => ({}),
+  assertSupabase: () => mockSupabase,
   isSupabaseConfigured: true,
   supabaseConfigError: '',
 }));
@@ -11,6 +13,19 @@ vi.mock('./supabaseClient', () => ({
 vi.mock('./cashier', () => ({
   createJoinCode: vi.fn(),
 }));
+
+function makeRequestLookup(data) {
+  const query = {};
+  ['select', 'eq', 'order', 'limit'].forEach((method) => {
+    query[method] = vi.fn(() => query);
+  });
+  query.maybeSingle = vi.fn().mockResolvedValue({ data, error: null });
+  return query;
+}
+
+beforeEach(() => {
+  mockSupabase.from.mockReset();
+});
 
 function biz(id, overrides = {}) {
   return {
@@ -21,6 +36,46 @@ function biz(id, overrides = {}) {
     ...overrides,
   };
 }
+
+describe('submitRequest', () => {
+  it('crea una nueva solicitud cuando solo existe una solicitud aprobada anterior', async () => {
+    const lookup = makeRequestLookup(null);
+    const profileTable = { upsert: vi.fn().mockResolvedValue({ error: null }) };
+    const requestTable = { insert: vi.fn().mockResolvedValue({ error: null }) };
+    let requestQueries = 0;
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'profiles') return profileTable;
+      requestQueries += 1;
+      return requestQueries === 1 ? lookup : requestTable;
+    });
+
+    const requestId = await submitRequest(
+      { id: 'owner-1', email: 'dueno@example.com', displayName: 'Dueño' },
+      'Mi negocio nuevo',
+    );
+
+    expect(requestId).toBeTruthy();
+    expect(lookup.eq).toHaveBeenCalledWith('status', 'pending');
+    expect(profileTable.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ business_id: null, status: 'pending' }),
+      { onConflict: 'id' },
+    );
+    expect(requestTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ business_name: 'Mi negocio nuevo', status: 'pending' }),
+    );
+  });
+
+  it('reutiliza la solicitud pendiente del mismo negocio al reintentar', async () => {
+    const lookup = makeRequestLookup({ id: 'request-pending', status: 'pending' });
+    mockSupabase.from.mockReturnValue(lookup);
+
+    await expect(submitRequest(
+      { id: 'owner-1', email: 'dueno@example.com' },
+      'Mi negocio',
+    )).resolves.toBe('request-pending');
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('findDuplicateBusinessIds', () => {
   it('marca los repetidos del mismo dueño y nombre y conserva el que está en uso', () => {

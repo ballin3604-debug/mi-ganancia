@@ -54,7 +54,7 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
       .from('subscription_requests')
       .select('id,status')
       .eq('user_id', userId)
-      .in('status', ['pending', 'approved'])
+      .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -68,6 +68,7 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
     .upsert({
       id: userId,
       name: user.displayName || user.email,
+      business_id: null,
       status: 'pending',
       role: 'owner',
     }, { onConflict: 'id' });
