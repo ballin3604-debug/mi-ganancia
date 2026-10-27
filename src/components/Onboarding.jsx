@@ -4,7 +4,7 @@ import { useSwipeCarousel } from '../hooks/useSwipeCarousel';
 import OnboardingSlide from './OnboardingSlide';
 import OnboardingDots from './OnboardingDots';
 
-export const ONBOARDING_COMPLETION_KEY = 'mg_onboarding_done_v2';
+export const ONBOARDING_COMPLETION_KEY = 'mg_onboarding_done_v3';
 
 const SLIDES = [
   {

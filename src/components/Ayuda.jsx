@@ -126,16 +126,6 @@ export default function Ayuda() {
             </div>
 
             <div className="p-4 border-t border-[var(--mg-separator)]">
-              <button
-                type="button"
-                onClick={() => {
-                  setAbierto(false);
-                  window.dispatchEvent(new Event('mg:show-onboarding'));
-                }}
-                className="mg-btn-secondary mb-2 w-full"
-              >
-                Ver bienvenida de Mi Ganancia
-              </button>
               <button onClick={() => setAbierto(false)} className="mg-btn-primary w-full">
                 ¡Entendido!
               </button>

@@ -128,11 +128,13 @@ export default function App() {
     setShowSplash(false);
   }, []);
 
+  // Si ya hay usuario autenticado, asegurar que el onboarding quede marcado y no se muestre
   useEffect(() => {
-    const showWelcome = () => setShowOnboarding(true);
-    window.addEventListener('mg:show-onboarding', showWelcome);
-    return () => window.removeEventListener('mg:show-onboarding', showWelcome);
-  }, []);
+    if (user && !lsGet(ONBOARDING_COMPLETION_KEY)) {
+      lsSet(ONBOARDING_COMPLETION_KEY, '1');
+      setShowOnboarding(false);
+    }
+  }, [user]);
 
   // Detectar primer login del usuario para mostrar Welcome
   useEffect(() => {
@@ -164,7 +166,8 @@ export default function App() {
   // ── ORQUESTACIÓN DE PANTALLAS ──────────────────────────────────────────
 
   function renderCurrentScreen() {
-    if (showOnboarding) {
+    // 1. Onboarding (primera vez que se abre la app, sin login todavía)
+    if (showOnboarding && !user) {
       return <Onboarding onFinish={() => setShowOnboarding(false)} />;
     }
 
@@ -249,7 +252,7 @@ export default function App() {
       >
         {renderCurrentScreen()}
       </div>
-      {showSplash && <SplashScreen ready={!loading} onDone={handleSplashDone} />}
+      {showSplash && <SplashScreen ready={!loading || showOnboarding} onDone={handleSplashDone} />}
     </>
   );
 }
