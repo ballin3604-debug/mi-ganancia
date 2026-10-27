@@ -92,6 +92,15 @@ export default function Onboarding({ onFinish }) {
     return () => window.clearTimeout(wheelTimer.current);
   }, []);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const previousOverscrollBehavior = html.style.overscrollBehaviorY;
+    html.style.overscrollBehaviorY = 'none';
+    return () => {
+      html.style.overscrollBehaviorY = previousOverscrollBehavior;
+    };
+  }, []);
+
   function finish() {
     try { localStorage.setItem(ONBOARDING_COMPLETION_KEY, '1'); } catch {}
     onFinish?.();
@@ -154,10 +163,11 @@ export default function Onboarding({ onFinish }) {
       aria-describedby={`welcome-slide-description-${current}`}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col overflow-y-auto bg-[var(--mg-bg-base)] outline-none"
+      className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col overflow-y-auto overscroll-y-none bg-[var(--mg-bg-base)] outline-none"
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+        overscrollBehaviorY: 'none',
         backgroundImage: 'radial-gradient(ellipse at 100% 0%, rgba(15, 150, 117, 0.12), transparent 42%), radial-gradient(ellipse at 0% 100%, rgba(11, 58, 43, 0.07), transparent 38%)',
       }}
     >
@@ -180,11 +190,11 @@ export default function Onboarding({ onFinish }) {
         )}
       </header>
 
-      <main className="flex min-h-[280px] flex-1 items-center justify-center px-6 py-7">
-        <div ref={viewportRef} className="w-full max-w-md overflow-hidden">
+      <main className="flex min-h-[280px] flex-1 items-stretch justify-center overflow-hidden px-3 py-1 sm:px-6 sm:py-3">
+        <div ref={viewportRef} className="flex w-full max-w-md flex-1 overflow-hidden">
           <motion.div
             {...trackProps}
-            className="flex cursor-grab items-center active:cursor-grabbing"
+            className="flex h-full min-h-[280px] w-full cursor-grab items-stretch active:cursor-grabbing"
             role="region"
             aria-roledescription="carrusel"
             aria-label="Bienvenida"
@@ -195,7 +205,7 @@ export default function Onboarding({ onFinish }) {
               return (
                 <article
                   key={item.title}
-                  className="w-full shrink-0 text-center"
+                  className="flex h-full min-h-[280px] w-full shrink-0 flex-col items-center justify-center px-4 py-6 text-center"
                   aria-hidden={!active}
                   data-active={active ? 'true' : 'false'}
                   role="group"
@@ -228,7 +238,7 @@ export default function Onboarding({ onFinish }) {
                     {item.description}
                   </p>
                   <p className="mt-5 text-xs font-semibold tracking-wide text-[#0C4A38]/70">
-                    {index < SLIDES.length - 1 ? 'Deslizá para descubrir' : 'Todo lo esencial para hacer crecer tu negocio'}
+                    {index < SLIDES.length - 1 ? 'Deslizá en cualquier parte para descubrir' : 'Todo lo esencial para hacer crecer tu negocio'}
                   </p>
                 </article>
               );
