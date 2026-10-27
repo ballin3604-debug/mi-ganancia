@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { db, generateUUID } from './localDb';
 import { registerSale, getSaleById, getSaleItems } from './sales';
-import { getPendingOperations, triggerSync, retryOperation, initializeSyncEngine } from './syncEngine';
+import { getPendingOperations, triggerSync, retryOperation, initializeSyncEngine, waitForSyncIdle } from './syncEngine';
 
 vi.mock('../config/environment', () => ({
   SUPABASE_URL: 'http://localhost:54321',
@@ -180,7 +180,8 @@ describe('offline → online integration', () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, status: 200 })));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await waitForSyncIdle();
     vi.unstubAllEnvs();
   });
 
@@ -204,7 +205,7 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
 
     const sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('local');
@@ -244,7 +245,7 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
     await triggerSync(businessId);
 
     const sale = await getSaleById(businessId, saleId);
@@ -276,7 +277,7 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
 
     let pending = await getPendingOperations(businessId, 'pending');
     expect(pending.length).toBe(1);
@@ -292,7 +293,6 @@ describe('offline → online integration', () => {
       // Reconnect: server now succeeds.
       mockClient.__setRpcBehavior({ type: 'success' });
       await triggerSync(businessId);
-      await flushPromises();
 
       const sale = await getSaleById(businessId, saleId);
       expect(sale.sync_status).toBe('confirmed');
@@ -324,11 +324,10 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
 
     // First sync: server creates sale but response is lost.
     await triggerSync(businessId);
-    await flushPromises();
 
     let sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('local');
@@ -336,13 +335,11 @@ describe('offline → online integration', () => {
     // Retry (bypass backoff via the legitimate retry action).
     let pending = await getPendingOperations(businessId, 'pending');
     expect(pending.length).toBe(1);
-    await retryOperation(pending[0].id, businessId);
-    await flushPromises();
 
     // Server now responds OK and the existing sale is detected.
     mockClient.__setRpcBehavior({ type: 'success' });
-    await triggerSync(businessId);
-    await flushPromises();
+    await retryOperation(pending[0].id, businessId);
+    await waitForSyncIdle();
 
     sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('confirmed');
@@ -383,7 +380,7 @@ describe('offline → online integration', () => {
       }],
       '', '', 'cash', '', {},
     );
-    await flushPromises();
+    await waitForSyncIdle();
 
     let pending = await getPendingOperations(businessId, 'pending');
     expect(pending).toHaveLength(1);
@@ -392,7 +389,7 @@ describe('offline → online integration', () => {
 
     mockClient.__setRpcBehavior({ type: 'success' });
     await retryOperation(pending[0].id, businessId);
-    await flushPromises();
+    await waitForSyncIdle();
 
     pending = await getPendingOperations(businessId, 'pending');
     const sale = await getSaleById(businessId, saleId);
@@ -429,7 +426,7 @@ describe('offline → online integration', () => {
       factor: 6,
       presLabel: 'Paquete x6',
     }]);
-    await flushPromises();
+    await waitForSyncIdle();
 
     const [pending] = await getPendingOperations(businessId, 'pending');
     expect(pending.payload.client_generated_id).toBe(saleId);
@@ -459,14 +456,13 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
 
     let sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('local');
 
     // Reconnect but server still errors.
     await triggerSync(businessId);
-    await flushPromises();
 
     sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('local');
@@ -475,7 +471,7 @@ describe('offline → online integration', () => {
     mockClient.__setRpcBehavior({ type: 'success' });
     const pending = await getPendingOperations(businessId, 'pending');
     await retryOperation(pending[0].id, businessId);
-    await flushPromises();
+    await waitForSyncIdle();
 
     sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('confirmed');
@@ -501,9 +497,8 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
     await triggerSync(businessId);
-    await flushPromises();
 
     const sale = await getSaleById(businessId, saleId);
     expect(sale.sync_status).toBe('local');
@@ -512,6 +507,43 @@ describe('offline → online integration', () => {
     expect(pending.length).toBe(1);
     expect(pending[0].status).toBe('error');
     expect(pending[0].retry_count).toBe(1);
+  });
+
+  it('reintenta una vez las ventas que quedaron en error por stock negativo', async () => {
+    const mockClient = await getMockClient();
+    mockClient.__setRpcBehavior({ type: 'success' });
+
+    const businessId = generateUUID();
+    const saleId = generateUUID();
+    const op = {
+      id: generateUUID(),
+      operation_type: 'REGISTER_SALE',
+      payload: {
+        business_id: businessId,
+        client_generated_id: saleId,
+        client_name: 'Stock desfasado',
+        client_nit: '0',
+        payment_method: 'cash',
+        total: 10,
+        item_count: 1,
+        p_items: [],
+        p_factors: [],
+        extraFields: {},
+      },
+      business_id: businessId,
+      status: 'error',
+      created_at: new Date().toISOString(),
+      retry_count: 5,
+      last_attempt_at: new Date().toISOString(),
+      error_details: 'El stock no puede ser negativo.',
+    };
+    await db.pending_operations.add(op);
+
+    await triggerSync(businessId);
+
+    const registrarCalls = mockClient.__rpcCalls.filter((c) => c.name === 'registrar_venta');
+    expect(registrarCalls.length).toBe(1);
+    expect(await getPendingOperations(businessId)).toHaveLength(0);
   });
 
   it('recovers the pending queue after closing and reopening the local database', async () => {
@@ -534,7 +566,7 @@ describe('offline → online integration', () => {
       {}
     );
 
-    await flushPromises();
+    await waitForSyncIdle();
 
     // Simulate app restart: close and reopen IndexedDB.
     db.close();
@@ -550,7 +582,7 @@ describe('offline → online integration', () => {
     // After restart, sync succeeds.
     mockClient.__setRpcBehavior({ type: 'success' });
     await retryOperation(pending[0].id, businessId);
-    await flushPromises();
+    await waitForSyncIdle();
 
     const confirmedSale = await getSaleById(businessId, saleId);
     expect(confirmedSale.sync_status).toBe('confirmed');
@@ -586,7 +618,6 @@ describe('offline → online integration', () => {
 
     // Fire two syncs concurrently.
     await Promise.all([triggerSync(businessId), triggerSync(businessId)]);
-    await flushPromises();
 
     const registrarCalls = mockClient.__rpcCalls.filter((c) => c.name === 'registrar_venta');
     expect(registrarCalls.length).toBe(1);
@@ -630,7 +661,6 @@ describe('offline → online integration', () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
     try {
       await triggerSync(businessId);
-      await flushPromises();
 
       const registrarCalls = mockClient.__rpcCalls.filter((c) => c.name === 'registrar_venta');
       expect(registrarCalls.length).toBe(0);
@@ -676,6 +706,7 @@ describe('offline → online integration', () => {
       // Simulate the browser recovering connectivity.
       window.dispatchEvent(new Event('online'));
       await flushPromises();
+      await waitForSyncIdle();
 
       const registrarCalls = mockClient.__rpcCalls.filter((c) => c.name === 'registrar_venta');
       expect(registrarCalls.length).toBe(1);

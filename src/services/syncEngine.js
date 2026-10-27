@@ -19,7 +19,8 @@ function getDeviceId() {
 let online = navigator.onLine;
 let pendingCount = 0;
 let errorCount = 0;
-let isSyncing = false;
+let syncPromise = null;
+let syncRequested = false;
 const listeners = new Set();
 
 // ── Cadencia del sync (antes: pull COMPLETO de todo cada 15 s, que quemaba
@@ -271,28 +272,42 @@ export function isRetryableError(err) {
   return !isPermanentError(err);
 }
 
+function isLegacyNegativeStockError(op) {
+  if (op.status !== 'error' || op.auto_recovered) return false;
+  if (op.operation_type !== 'REGISTER_SALE' && op.operation_type !== 'REGISTER_PRESENTATION_SALE') return false;
+  return /stock no puede ser negativo|dejar[ií]a stock negativo/i.test(op.error_details || '');
+}
+
 export async function getPendingOperations(businessId, status = null) {
   const allOps = await db.pending_operations.orderBy('created_at').toArray();
   const scoped = businessId ? allOps.filter((op) => belongsToBusiness(op, businessId)) : allOps;
   return status === null ? scoped : scoped.filter((op) => op.status === status);
 }
 
-export async function triggerSync(businessId) {
-  if (isSyncing) return;
-  isSyncing = true;
-
+async function runSyncOnce(businessId) {
   try {
     const isOnline = await checkOnlineStatus();
-    if (!isOnline) {
-      isSyncing = false;
-      return;
-    }
+    if (!isOnline) return;
 
     const allOps = await db.pending_operations.orderBy('created_at').toArray();
     const ops = allOps.filter((op) => belongsToBusiness(op, businessId));
 
     for (const op of ops) {
-      if (op.status === 'error') continue; // Skip permanently failed operations
+      if (op.status === 'error') {
+        if (!isLegacyNegativeStockError(op)) continue; // Skip permanently failed operations
+        // Este error lo producía el trigger viejo de stock. La migración ya
+        // permite sincronizar la venta, así que se reintenta una sola vez.
+        await db.pending_operations.update(op.id, {
+          status: 'pending',
+          retry_count: 0,
+          last_attempt_at: null,
+          error_details: null,
+          auto_recovered: true,
+        });
+        op.status = 'pending';
+        op.retry_count = 0;
+        op.last_attempt_at = null;
+      }
 
       // Simple exponential backoff check
       if (op.retry_count > 0 && op.last_attempt_at) {
@@ -340,8 +355,35 @@ export async function triggerSync(businessId) {
     await syncCacheFromServer(businessId);
   } catch (err) {
     console.error('Error during synchronization run:', err);
+  }
+}
+
+async function runSyncLoop(businessId) {
+  try {
+    do {
+      syncRequested = false;
+      await runSyncOnce(businessId);
+      // Si otro evento (online, reintento manual, venta nueva) pidió sync
+      // mientras este pase corría, se hace otro pase en vez de perderlo.
+    } while (syncRequested);
   } finally {
-    isSyncing = false;
+    syncPromise = null;
+  }
+}
+
+export function triggerSync(businessId) {
+  if (syncPromise) {
+    syncRequested = true;
+    return syncPromise;
+  }
+  syncPromise = runSyncLoop(businessId);
+  return syncPromise;
+}
+
+// Espera a que terminen el pase actual y los que hayan quedado encolados.
+export async function waitForSyncIdle() {
+  while (syncPromise) {
+    await syncPromise;
   }
 }
 
@@ -1249,35 +1291,39 @@ export async function syncCacheFromServer(businessId) {
 
     // ── BRANCHES: tabla chica; se cachea completa para que BranchContext y
     // las ventas por sede funcionen sin internet desde el arranque. ──
-    try {
-      const rows = await fetchAll((from, to) => assertSupabase()
-        .from('branches')
-        .select('*')
-        .eq('business_id', businessId)
-        .order('is_main', { ascending: false })
-        .order('name', { ascending: true })
-        .order('id', { ascending: true })
-        .range(from, to));
-      await safeSyncTable(db.branches, rows, () => false, belongsToBiz);
-    } catch (err) {
-      console.warn('syncEngine: no se pudo sincronizar branches:', err);
+    if (db.branches) {
+      try {
+        const rows = await fetchAll((from, to) => assertSupabase()
+          .from('branches')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('is_main', { ascending: false })
+          .order('name', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to));
+        await safeSyncTable(db.branches, rows, () => false, belongsToBiz);
+      } catch (err) {
+        console.warn('syncEngine: no se pudo sincronizar branches:', err);
+      }
     }
 
     // El nombre del negocio sale en recibos y en la barra lateral; se cachea
     // junto con las sedes para no mostrar "Mi negocio" cuando no hay red.
-    try {
-      const { data: bizRow, error: bizErr } = await assertSupabase()
-        .from('businesses')
-        .select('*')
-        .eq('id', businessId)
-        .maybeSingle();
-      if (bizErr) {
-        console.warn('syncEngine: no se pudo sincronizar businesses:', bizErr);
-      } else if (bizRow) {
-        await db.businesses.put(bizRow);
+    if (db.businesses) {
+      try {
+        const { data: bizRow, error: bizErr } = await assertSupabase()
+          .from('businesses')
+          .select('*')
+          .eq('id', businessId)
+          .maybeSingle();
+        if (bizErr) {
+          console.warn('syncEngine: no se pudo sincronizar businesses:', bizErr);
+        } else if (bizRow) {
+          await db.businesses.put(bizRow);
+        }
+      } catch (err) {
+        console.warn('syncEngine: no se pudo sincronizar businesses:', err);
       }
-    } catch (err) {
-      console.warn('syncEngine: no se pudo sincronizar businesses:', err);
     }
 
     // ── PRODUCTS: incremental por updated_at. El catálogo ya NO se baja
