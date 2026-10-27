@@ -112,12 +112,12 @@ async function main() {
       await checkOverflow(page, `${viewport.name} onboarding`);
       await shot(page, path.join(OUT, `${viewport.name}-onboarding-1.png`), false);
       await page.getByRole('button', { name: 'Siguiente' }).click();
-      await page.waitForSelector('text=Controla tu inventario', { timeout: 10000 });
+      await page.getByRole('heading', { name: 'Controla tu inventario' }).waitFor({ timeout: 10000 });
       await page.waitForTimeout(350);
       await page.keyboard.press('ArrowLeft');
       await page.getByRole('heading', { name: 'Vende en segundos' }).waitFor({ timeout: 10000 });
       await page.waitForTimeout(350);
-      const slide = page.locator('[aria-roledescription="pantalla"]').last();
+      const slide = page.locator('[data-active="true"]');
       const bounds = await slide.boundingBox();
       await page.mouse.move(bounds.x + bounds.width * 0.75, bounds.y + bounds.height * 0.5);
       await page.mouse.down();
@@ -126,7 +126,7 @@ async function main() {
       await page.getByRole('heading', { name: 'Controla tu inventario' }).waitFor({ timeout: 10000 });
       await page.waitForTimeout(350);
       await shot(page, path.join(OUT, `${viewport.name}-onboarding-2.png`), false);
-      const currentSlide = page.locator('[aria-roledescription="pantalla"]').last();
+      const currentSlide = page.locator('[data-active="true"]');
       const currentBounds = await currentSlide.boundingBox();
       await page.mouse.move(currentBounds.x + currentBounds.width * 0.25, currentBounds.y + currentBounds.height * 0.5);
       await page.mouse.down();

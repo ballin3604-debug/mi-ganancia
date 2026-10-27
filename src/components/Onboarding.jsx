@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { AppIcon } from './icons';
+import { useSwipeCarousel } from '../hooks/useSwipeCarousel';
 
 const SLIDES = [
   {
@@ -52,12 +53,6 @@ const TONES = {
   },
 };
 
-const slideVariants = {
-  enter: (direction) => ({ x: direction > 0 ? 36 : -36, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction) => ({ x: direction > 0 ? -36 : 36, opacity: 0 }),
-};
-
 function trapTab(event, container) {
   if (event.key !== 'Tab' || !container) return;
 
@@ -77,25 +72,21 @@ function trapTab(event, container) {
 
 export default function Onboarding({ onFinish }) {
   const [current, setCurrent] = useState(0);
-  const [direction, setDirection] = useState(1);
   const rootRef = useRef(null);
   const wheelLocked = useRef(false);
   const wheelTimer = useRef(null);
-  const reduceMotion = useReducedMotion();
+  const wheelHandlerRef = useRef(null);
   const isLast = current === SLIDES.length - 1;
-  const slide = SLIDES[current];
-  const tone = TONES[slide.tone];
+  const { viewportRef, goTo, trackProps } = useSwipeCarousel({
+    index: current,
+    count: SLIDES.length,
+    onChange: setCurrent,
+  });
 
   useEffect(() => {
     rootRef.current?.focus();
     return () => window.clearTimeout(wheelTimer.current);
   }, []);
-
-  function moveTo(nextIndex) {
-    if (nextIndex < 0 || nextIndex >= SLIDES.length || nextIndex === current) return;
-    setDirection(nextIndex > current ? 1 : -1);
-    setCurrent(nextIndex);
-  }
 
   function finish() {
     try { localStorage.setItem('mg_onboarding_done', '1'); } catch {}
@@ -104,7 +95,7 @@ export default function Onboarding({ onFinish }) {
 
   function next() {
     if (isLast) finish();
-    else moveTo(current + 1);
+    else goTo(current + 1);
   }
 
   function skip() {
@@ -117,20 +108,12 @@ export default function Onboarding({ onFinish }) {
       skip();
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
-      if (!isLast) moveTo(current + 1);
+      if (!isLast) goTo(current + 1);
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      if (current > 0) moveTo(current - 1);
+      if (current > 0) goTo(current - 1);
     }
     trapTab(event, rootRef.current);
-  }
-
-  function handleDragEnd(_, info) {
-    const distance = info.offset.x;
-    const isHorizontal = Math.abs(distance) > Math.abs(info.offset.y) * 1.15;
-    if (!isHorizontal || (Math.abs(distance) < 48 && Math.abs(info.velocity.x) < 500)) return;
-    if (distance < 0 && !isLast) moveTo(current + 1);
-    if (distance > 0 && current > 0) moveTo(current - 1);
   }
 
   function handleWheel(event) {
@@ -143,9 +126,20 @@ export default function Onboarding({ onFinish }) {
     wheelTimer.current = window.setTimeout(() => {
       wheelLocked.current = false;
     }, 500);
-    if (event.deltaX > 0 && !isLast) moveTo(current + 1);
-    if (event.deltaX < 0 && current > 0) moveTo(current - 1);
+    if (event.deltaX > 0 && !isLast) goTo(current + 1);
+    if (event.deltaX < 0 && current > 0) goTo(current - 1);
   }
+
+  wheelHandlerRef.current = handleWheel;
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+
+    const listener = (event) => wheelHandlerRef.current?.(event);
+    root.addEventListener('wheel', listener, { passive: false });
+    return () => root.removeEventListener('wheel', listener);
+  }, []);
 
   return (
     <div
@@ -156,7 +150,6 @@ export default function Onboarding({ onFinish }) {
       aria-describedby={`welcome-slide-description-${current}`}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
       className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col overflow-y-auto bg-[var(--mg-bg-base)] outline-none"
       style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
     >
@@ -182,49 +175,49 @@ export default function Onboarding({ onFinish }) {
       </header>
 
       <main className="flex min-h-[280px] flex-1 items-center justify-center px-6 py-7">
-        <div className="grid w-full max-w-md">
-          <AnimatePresence initial={false} custom={direction}>
-            <motion.article
-              key={current}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: reduceMotion ? 0.01 : 0.26, ease: [0.22, 1, 0.36, 1] }}
-              drag="x"
-              dragDirectionLock
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              dragMomentum={false}
-              onDragEnd={handleDragEnd}
-              className="col-start-1 row-start-1 w-full cursor-grab text-center active:cursor-grabbing"
-              style={{ touchAction: 'pan-y' }}
-              role="group"
-              aria-roledescription="pantalla"
-              aria-label={`Pantalla ${current + 1} de ${SLIDES.length}`}
-            >
-              <div
-                className="mx-auto mb-6 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] border"
-                style={{ background: tone.background, borderColor: tone.border }}
-                aria-hidden="true"
-              >
-                <AppIcon name={slide.icon} size={40} color={tone.color} strokeWidth={1.8} />
-              </div>
+        <div ref={viewportRef} className="w-full max-w-md overflow-hidden">
+          <motion.div
+            {...trackProps}
+            className="flex cursor-grab items-center active:cursor-grabbing"
+            role="region"
+            aria-roledescription="carrusel"
+            aria-label="Bienvenida"
+          >
+            {SLIDES.map((item, index) => {
+              const slideTone = TONES[item.tone];
+              return (
+                <article
+                  key={item.title}
+                  className="w-full shrink-0 text-center"
+                  aria-hidden={index !== current}
+                  data-active={index === current ? 'true' : 'false'}
+                  role="group"
+                  aria-roledescription="pantalla"
+                  aria-label={`Pantalla ${index + 1} de ${SLIDES.length}`}
+                >
+                  <div
+                    className="mx-auto mb-6 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] border"
+                    style={{ background: slideTone.background, borderColor: slideTone.border }}
+                    aria-hidden="true"
+                  >
+                    <AppIcon name={item.icon} size={40} color={slideTone.color} strokeWidth={1.8} />
+                  </div>
 
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                Paso {current + 1} de {SLIDES.length}
-              </p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                    Paso {index + 1} de {SLIDES.length}
+                  </p>
 
-              <h1 id={`welcome-slide-title-${current}`} className="mt-3 text-[27px] font-extrabold leading-tight tracking-tight text-[var(--mg-text-primary)] sm:text-[34px]">
-                {slide.title}
-              </h1>
+                  <h1 id={`welcome-slide-title-${index}`} className="mt-3 text-[27px] font-extrabold leading-tight tracking-tight text-[var(--mg-text-primary)] sm:text-[34px]">
+                    {item.title}
+                  </h1>
 
-              <p id={`welcome-slide-description-${current}`} className="mx-auto mt-3 max-w-sm text-[15px] font-medium leading-relaxed text-[var(--mg-text-secondary)] sm:text-base">
-                {slide.description}
-              </p>
-            </motion.article>
-          </AnimatePresence>
+                  <p id={`welcome-slide-description-${index}`} className="mx-auto mt-3 max-w-sm text-[15px] font-medium leading-relaxed text-[var(--mg-text-secondary)] sm:text-base">
+                    {item.description}
+                  </p>
+                </article>
+              );
+            })}
+          </motion.div>
         </div>
       </main>
 
@@ -249,7 +242,7 @@ export default function Onboarding({ onFinish }) {
             {current > 0 ? (
               <button
                 type="button"
-                onClick={() => moveTo(current - 1)}
+                onClick={() => goTo(current - 1)}
                 aria-label="Pantalla anterior"
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]"
               >
