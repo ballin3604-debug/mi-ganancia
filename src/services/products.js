@@ -1,5 +1,6 @@
 import { db, generateUUID } from './localDb';
 import { buildOutboxOp, refreshOutboxState } from './syncEngine';
+import { validatePresentationDefinitions } from '../utils/presentations';
 
 function mapProduct(p) {
   if (!p) return p;
@@ -14,6 +15,7 @@ function mapProduct(p) {
     supplierPrice: p.supplier_price,
     imageData: p.image_url,
     packageSize: p.package_size,
+    presentations: Array.isArray(p.presentations) ? p.presentations : [],
     createdAt: p.created_at ? { toDate: () => new Date(p.created_at) } : null,
     updatedAt: p.updated_at ? { toDate: () => new Date(p.updated_at) } : null,
   };
@@ -112,6 +114,12 @@ export function subscribeToReplenishments(businessId, callback) {
 export async function addProduct(businessId, data) {
   const id = generateUUID();
   const now = new Date().toISOString();
+  const presentations = data.presentations === undefined
+    ? []
+    : validatePresentationDefinitions(data.presentations, {
+      baseName: data.unitLabel || 'Unidad',
+      basePrice: data.price,
+    });
 
   const localObj = {
     id,
@@ -135,6 +143,7 @@ export async function addProduct(businessId, data) {
     created_at: now,
     updated_at: now,
   };
+  if (data.presentations !== undefined) localObj.presentations = presentations;
 
   const outboxOp = buildOutboxOp('ADD_PRODUCT', localObj, businessId);
   await db.transaction('rw', db.products, db.pending_operations, async () => {
@@ -147,11 +156,7 @@ export async function addProduct(businessId, data) {
   return mapProduct(localObj);
 }
 
-export async function updateProduct(productId, data) {
-  const now = new Date().toISOString();
-  const existing = await db.products.get(productId);
-  if (!existing) throw new Error('Product not found in local cache');
-
+export function buildProductUpdateData(existing, data, now) {
   // Si el caller indica con qué stock abrió el formulario / calculó el ajuste
   // (expectedStock), aplicamos la diferencia sobre el valor ACTUAL en vez de
   // sobreescribirlo directo — así una venta o compra concurrente en otra
@@ -171,6 +176,13 @@ export async function updateProduct(productId, data) {
     image_url: data.imageData || '',
     updated_at: now,
   };
+
+  if (data.presentations !== undefined) {
+    updateData.presentations = validatePresentationDefinitions(data.presentations, {
+      baseName: data.unitLabel || existing.unit_label || 'Unidad',
+      basePrice: data.price,
+    });
+  }
 
   if (data.supplierPrice !== undefined) {
     updateData.supplier_price = data.supplierPrice !== '' ? Number(data.supplierPrice) : null;
@@ -196,6 +208,15 @@ export async function updateProduct(productId, data) {
   if (data.packageSize !== undefined) {
     updateData.package_size = data.packageSize !== '' ? Number(data.packageSize) : null;
   }
+
+  return updateData;
+}
+
+export async function updateProduct(productId, data) {
+  const now = new Date().toISOString();
+  const existing = await db.products.get(productId);
+  if (!existing) throw new Error('Product not found in local cache');
+  const updateData = buildProductUpdateData(existing, data, now);
 
   const outboxOp = buildOutboxOp('UPDATE_PRODUCT', { id: productId, ...updateData }, existing.business_id);
   await db.transaction('rw', db.products, db.pending_operations, async () => {

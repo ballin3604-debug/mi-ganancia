@@ -132,6 +132,65 @@ db.version(9).stores({
   sync_state: 'business_id'
 });
 
+// Version 10 schema: enriches pending_operations with audit metadata
+// (created_by, branch_id, device_id, origin, server_confirmed_at) and
+// adds an index on status so the UI can quickly query pending/error/confirmed
+// operations without scanning the whole table.
+db.version(10).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id, created_by, branch_id, device_id, [status+business_id]',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id',
+  branch_stock: 'id, business_id, branch_id, product_id',
+  transfers: 'id, business_id, product_id, created_at',
+  sync_state: 'business_id'
+}).upgrade(async (tx) => {
+  // Backfill missing metadata for older pending_operations rows.
+  await tx.table('pending_operations').toCollection().modify((op) => {
+    if (op.status === undefined || op.status === null) op.status = 'pending';
+    if (op.created_by === undefined) op.created_by = null;
+    if (op.branch_id === undefined) op.branch_id = null;
+    if (op.device_id === undefined) op.device_id = null;
+    if (op.origin === undefined) op.origin = 'offline';
+    if (op.server_confirmed_at === undefined) op.server_confirmed_at = null;
+  });
+});
+
+// Version 11 schema: adds sync_status to sales so the UI can distinguish
+// sales that are still local-only from those confirmed by the server.
+db.version(11).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id, sync_status',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id, created_by, branch_id, device_id, [status+business_id]',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id',
+  branch_stock: 'id, business_id, branch_id, product_id',
+  transfers: 'id, business_id, product_id, created_at',
+  sync_state: 'business_id'
+}).upgrade(async (tx) => {
+  // Existing sales created before this schema are assumed confirmed because
+  // they were written by an older app version that deleted the outbox op
+  // immediately after the server call. New sales will start as 'local'.
+  await tx.table('sales').toCollection().modify((sale) => {
+    if (sale.sync_status === undefined) sale.sync_status = 'confirmed';
+  });
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

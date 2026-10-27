@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services
 import { getUserData } from '../services/auth';
 import { isAdmin } from '../services/admin';
 import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
-import { initializeSyncEngine, syncCacheFromServer } from '../services/syncEngine';
+import { initializeSyncEngine, syncCacheFromServer, triggerSync } from '../services/syncEngine';
 
 const AuthContext = createContext(null);
 
@@ -220,10 +220,24 @@ export function AuthProvider({ children }) {
     // Sync initial cache from server
     syncCacheFromServer(businessId);
 
+    // Background Sync can wake the service worker and ask the app to sync.
+    const handleBackgroundSync = () => {
+      if (!cancelled) {
+        syncCacheFromServer(businessId);
+        triggerSync(businessId);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tuganancia-trigger-sync', handleBackgroundSync);
+    }
+
     return () => {
       cancelled = true;
       if (typeof cleanup === 'function') {
         cleanup();
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('tuganancia-trigger-sync', handleBackgroundSync);
       }
     };
   }, [businessId]);

@@ -1,21 +1,35 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  IS_STAGING,
+  IS_SUPABASE_ENV_VALID,
+  ENVIRONMENT_ERROR,
+} from '../config/environment';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = SUPABASE_URL;
+const supabaseAnonKey = SUPABASE_ANON_KEY;
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+// El cliente solo se crea si el entorno es válido. En staging esto exige que
+// VITE_SUPABASE_PROJECT_REF coincida con el ref de VITE_SUPABASE_URL. Si algo
+// no coincide, supabase queda en null y no se hace ninguna petición.
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl && supabaseAnonKey && IS_SUPABASE_ENV_VALID
+);
 
-export const supabaseConfigError = !supabaseUrl
-  ? 'Falta VITE_SUPABASE_URL. Crea un archivo .env con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).'
-  : !supabaseAnonKey
-    ? 'Falta VITE_SUPABASE_ANON_KEY. Crea un archivo .env con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).'
-    : '';
+export const supabaseConfigError = !IS_SUPABASE_ENV_VALID
+  ? ENVIRONMENT_ERROR
+  : !supabaseUrl
+    ? 'Falta VITE_SUPABASE_URL. Crea un archivo .env con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).'
+    : !supabaseAnonKey
+      ? 'Falta VITE_SUPABASE_ANON_KEY. Crea un archivo .env con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver .env.example).'
+      : '';
 
 if (!isSupabaseConfigured) {
+  const scope = IS_STAGING ? '[staging]' : '[supabase]';
   console.error(
-    `Falta VITE_SUPABASE_URL${!supabaseAnonKey ? ' y VITE_SUPABASE_ANON_KEY' : ''}. ` +
-    'La app no puede conectar a Supabase. Crea un .env (ver .env.example) y reinicia. ' +
-    'Supabase queda deshabilitado (supabase = null) para evitar pantalla blanca.'
+    `${scope} ${supabaseConfigError || 'Configuración de Supabase incompleta.'} ` +
+    'No se creó el cliente y no se harán peticiones.'
   );
 }
 

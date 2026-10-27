@@ -10,6 +10,7 @@ import { useBranches } from '../context/BranchContext';
 import { printReceipt } from './Receipt';
 import { savePurchaseDraft, clearPurchaseDraft } from '../services/purchaseDraft';
 import { AppIcon } from './icons';
+import { calculatePurchaseBaseQuantity } from '../utils/presentations';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -48,6 +49,11 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
   const [helpTopic, setHelpTopic] = useState(null); // 'unit' | 'pack' | null
   const [packageSize, setPackageSize] = useState(product.packageSize ? String(product.packageSize) : '');
   const [packageCount, setPackageCount] = useState('');
+  const [purchasePresentationId, setPurchasePresentationId] = useState(() => (
+    (product.presentations || []).find((presentation) => Number(presentation.factor) > 1)?.id
+    || (product.presentations || []).find((presentation) => presentation.isBase)?.id
+    || ''
+  ));
   const [expiryDate, setExpiryDate] = useState('');
   const [extraCosts, setExtraCosts] = useState([]);
   const [concepts, setConcepts] = useState([]);
@@ -69,13 +75,25 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
     // algo recurrente es solo poner cuántas cajas y a cuánto.
     const learnedMode = lastPurchase?.purchaseUnitType === 'package' ? 'package' : 'unit';
     const learnedBoxSize = lastPurchase?.packageSize || product.packageSize || '';
+    const configuredPurchaseOptions = (product.presentations || []).filter((presentation) => Number(presentation.factor) > 1);
 
     setSalePrice(draft ? (draft.salePrice ?? '') : String(product.price || ''));
     setSupplierPrice(draft ? (draft.supplierPrice ?? '') : String(product.supplierPrice || ''));
     setQuantity(draft ? (draft.quantity ?? '') : '');
-    setPurchaseUnitType(draft?.purchaseUnitType || learnedMode);
+    setPurchaseUnitType(configuredPurchaseOptions.length === 0
+      ? 'unit'
+      : (draft?.purchaseUnitType || learnedMode));
     setPackageSize(draft ? (draft.packageSize ?? '') : (learnedBoxSize ? String(learnedBoxSize) : ''));
     setPackageCount(draft ? (draft.packageCount ?? '') : '');
+    const preferredPresentation = configuredPurchaseOptions.find((presentation) => (
+      presentation.id === draft?.purchasePresentationId
+    ));
+    setPurchasePresentationId(
+      preferredPresentation?.id
+      || configuredPurchaseOptions[0]?.id
+      || (product.presentations || []).find((presentation) => presentation.isBase)?.id
+      || ''
+    );
     setExpiryDate(draft?.expiryDate || '');
     setExtraCosts(draft && Array.isArray(draft.extraCosts)
       ? draft.extraCosts.map((r) => ({ id: ++rowIdRef.current, concept: r.concept, amount: r.amount, isCustom: true }))
@@ -134,9 +152,16 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
   const salePriceVal = Number(salePrice || 0);
   const costInputVal = Number(supplierPrice || 0);
-  const packageSizeVal = Number(packageSize || 0);
+  const configuredPurchaseOptions = (product.presentations || []).filter((presentation) => Number(presentation.factor) > 1);
+  const configuredPurchasePresentation = configuredPurchaseOptions.find((presentation) => presentation.id === purchasePresentationId);
+  const configuredPurchaseMode = Array.isArray(product.presentations) && product.presentations.length > 0;
+  const packageSizeVal = configuredPurchaseMode
+    ? Number(configuredPurchasePresentation?.factor || 0)
+    : Number(packageSize || 0);
   const packageCountVal = Number(packageCount || 0);
-  const qtyVal = purchaseUnitType === 'package' ? packageCountVal * packageSizeVal : Number(quantity || 0);
+  const qtyVal = purchaseUnitType === 'package'
+    ? (packageCountVal > 0 && packageSizeVal > 0 ? calculatePurchaseBaseQuantity(packageCountVal, packageSizeVal) : 0)
+    : Number(quantity || 0);
   const supplierPriceVal = purchaseUnitType === 'package'
     ? (packageSizeVal > 0 ? costInputVal / packageSizeVal : 0)
     : costInputVal;
@@ -173,7 +198,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
   const draftPayloadRef = useRef(null);
   draftPayloadRef.current = qtyVal > 0 ? {
     productId: product.id,
-    salePrice, supplierPrice, quantity, purchaseUnitType, packageSize, packageCount,
+    salePrice, supplierPrice, quantity, purchaseUnitType, packageSize, packageCount, purchasePresentationId,
     expiryDate, supplier, isCustomSupplier,
     extraCosts: extraCosts.map((r) => ({ concept: r.concept, amount: r.amount })),
   } : null;
@@ -188,7 +213,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [businessId, user?.uid, salePrice, supplierPrice, quantity, purchaseUnitType, packageSize, packageCount, expiryDate, supplier, isCustomSupplier, extraCosts]);
+  }, [businessId, user?.uid, salePrice, supplierPrice, quantity, purchaseUnitType, packageSize, packageCount, purchasePresentationId, expiryDate, supplier, isCustomSupplier, extraCosts]);
 
   useEffect(() => {
     if (!businessId || !user?.uid) return;
@@ -237,6 +262,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
         businessId,
         product,
         branchId: purchaseBranchId || activeBranchId,
+        mainBranchId: branches.find((branch) => branch.isMain)?.id || null,
         qty: qtyVal,
         fields: {
           name: product.name,
@@ -248,9 +274,16 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
           imageData: product.imageData || '',
           supplierPrice: costoUnitarioReal,
           unit: product.unit || 'Unidad',
+          presentations: Array.isArray(product.presentations) && product.presentations.length > 0
+            ? product.presentations.map((presentation) => (
+              presentation.isBase ? { ...presentation, price: salePriceVal } : presentation
+            ))
+            : undefined,
           // Persistimos el tamaño de caja para que la próxima compra ya lo
           // traiga prellenado. En modo unidad no se pisa el valor existente.
-          packageSize: purchaseUnitType === 'package' ? packageSizeVal : (product.packageSize || null),
+          packageSize: !configuredPurchaseMode && purchaseUnitType === 'package'
+            ? packageSizeVal
+            : (product.packageSize || null),
         },
       });
 
@@ -494,7 +527,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     </div>
                   </div>
                 </button>
-                {/* Tarjeta B — Por paquete / caja */}
+                {(!configuredPurchaseMode || configuredPurchaseOptions.length > 0) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -513,7 +546,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-sm text-[var(--mg-text-primary)] flex items-center justify-between gap-2">
-                        Por paquete / caja
+                        {configuredPurchaseMode ? 'Por presentación' : 'Por paquete / caja'}
                         <span
                           role="button"
                           tabIndex={0}
@@ -525,25 +558,38 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                           <AppIcon name="ayuda" size={14} />
                         </span>
                       </p>
-                      <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré cajas, pacas o fardos que traen varias unidades adentro</p>
-                      <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 10 cajas de 12 botellas, cada caja a Bs 84</p>
+                      <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">
+                        {configuredPurchaseMode
+                          ? 'Compré un empaque configurado para este producto.'
+                          : 'Compré cajas, pacas o fardos que traen varias unidades adentro'}
+                      </p>
+                      <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">
+                        {configuredPurchaseMode
+                          ? 'La conversión usa el factor configurado en Inventario.'
+                          : 'Ej: 10 cajas de 12 botellas, cada caja a Bs 84'}
+                      </p>
                       {helpTopic === 'pack' && (
                         <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand)]">
-                          Elegí esto si pagás por caja cerrada. Abajo poné cuántas cajas compraste, cuántas unidades trae cada una y el costo POR CAJA: la app saca sola el costo por unidad.
+                          {configuredPurchaseMode
+                            ? 'Elegí esta opción y seleccioná el empaque recibido. El costo ingresado es por cada empaque.'
+                            : 'Elegí esto si pagás por caja cerrada. Abajo poné cuántas cajas compraste, cuántas unidades trae cada una y el costo POR CAJA: la app saca sola el costo por unidad.'}
                         </p>
                       )}
                     </div>
                   </div>
                 </button>
+                )}
               </div>
             </div>
 
             {/* Cantidad(es) */}
             {purchaseUnitType === 'package' ? (
               <div>
-                <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">¿Cuántos paquetes compraste? *</label>
+                    <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">
+                      {configuredPurchaseMode ? '¿Cuántas presentaciones compraste? *' : '¿Cuántos paquetes compraste? *'}
+                    </label>
                     <input
                       type="number" step="1" min="1" max="9999"
                       value={packageCount}
@@ -555,16 +601,39 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">¿Cuántas unidades trae cada paquete? *</label>
-                    <input
-                      type="number" step="1" min="1" max="9999"
-                      value={packageSize}
-                      onChange={(e) => setPackageSize(clampNumberInput(e.target.value, { min: 1, max: 9999 }))}
-                      onKeyDown={blockInvalidNumberKeys}
-                      placeholder="Ej: 12"
-                      className="mg-input py-2 text-sm font-bold"
-                      required
-                    />
+                    {configuredPurchaseMode ? (
+                      <>
+                        <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">Presentación recibida *</label>
+                        <select
+                          value={purchasePresentationId}
+                          onChange={(e) => {
+                            setPurchasePresentationId(e.target.value);
+                            setSupplierPrice('');
+                          }}
+                          className="mg-input py-2 text-sm font-bold"
+                          required
+                        >
+                          {configuredPurchaseOptions.map((presentation) => (
+                            <option key={presentation.id} value={presentation.id}>
+                              {presentation.name} (x{presentation.factor})
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <>
+                        <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">¿Cuántas unidades trae cada paquete? *</label>
+                        <input
+                          type="number" step="1" min="1" max="9999"
+                          value={packageSize}
+                          onChange={(e) => setPackageSize(clampNumberInput(e.target.value, { min: 1, max: 9999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="Ej: 12"
+                          className="mg-input py-2 text-sm font-bold"
+                          required
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
                 {packageCountVal > 0 && packageSizeVal > 0 && (
@@ -590,7 +659,9 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <div>
               <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">
                 {purchaseUnitType === 'package' ? (
-                  <>¿Cuánto te costó <strong className="text-[var(--mg-text-primary)]">CADA</strong> paquete{packageSizeVal > 0 ? ` de ${packageSizeVal}` : ''} {shortName}? *</>
+                  configuredPurchaseMode
+                    ? <>¿Cuánto te costó <strong className="text-[var(--mg-text-primary)]">CADA</strong> {configuredPurchasePresentation?.name || 'presentación'}? *</>
+                    : <>¿Cuánto te costó <strong className="text-[var(--mg-text-primary)]">CADA</strong> paquete{packageSizeVal > 0 ? ` de ${packageSizeVal}` : ''} {shortName}? *</>
                 ) : (
                   <>¿Cuánto te costó <strong className="text-[var(--mg-text-primary)]">CADA</strong> {shortName}? *</>
                 )}
@@ -604,7 +675,9 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 className="mg-input py-2 text-sm font-bold"
               />
               {purchaseUnitType === 'package' && (
-                <p className="text-[11px] text-[var(--mg-text-faint)] mt-1">El precio de una sola caja, no el total de todas.</p>
+                <p className="text-[11px] text-[var(--mg-text-faint)] mt-1">
+                  {configuredPurchaseMode ? 'El costo de una presentación, no el total de todas.' : 'El precio de una sola caja, no el total de todas.'}
+                </p>
               )}
             </div>
 
@@ -741,7 +814,9 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3.5 text-sm leading-relaxed text-[var(--mg-text-secondary)]">
               <p>
                 {purchaseUnitType === 'package' ? (
-                  <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(packageCountVal)}</strong> paquetes × <strong className="text-[var(--mg-text-primary)]">{numOr(packageSizeVal)}</strong> unidades = <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades de {shortName}. </>
+                  configuredPurchaseMode
+                    ? <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(packageCountVal)}</strong> {configuredPurchasePresentation?.name || 'presentaciones'} × <strong className="text-[var(--mg-text-primary)]">{numOr(packageSizeVal)}</strong> unidades = <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades base de {shortName}. </>
+                    : <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(packageCountVal)}</strong> paquetes × <strong className="text-[var(--mg-text-primary)]">{numOr(packageSizeVal)}</strong> unidades = <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades de {shortName}. </>
                 ) : (
                   <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades de {shortName}. </>
                 )}

@@ -2,6 +2,7 @@
   "hosting": {
     "site": "tugananciaa",
     "public": "dist",
+    "predeploy": ["node scripts/assert-build-artifact.mjs --mode production --env-check --require-env"],
     "ignore": [
       "firebase.json",
       "**/node_modules/**"

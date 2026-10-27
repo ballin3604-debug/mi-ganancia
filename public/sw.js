@@ -26,6 +26,26 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// ── Background Sync (mejora opcional) ─────────────────────────────────
+// Cuando el navegador/TWA recupera conexión y hay operaciones pendientes,
+// este evento despierta al SW y le pide a los clientes abiertos que
+// sincronicen. Si no hay clientes, el SW no puede ejecutar lógica de la app
+// por sí solo; el sync se reintentará al abrir la app (fallback seguro).
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'tuganancia-sync') {
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        if (clients && clients.length > 0) {
+          clients.forEach((client) => client.postMessage({ type: 'TRIGGER_SYNC' }));
+        }
+      }).catch(() => {
+        // Fallo silencioso: el fallback de sincronización al abrir la app
+        // se encargará de procesar la cola.
+      })
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 

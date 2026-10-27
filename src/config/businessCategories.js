@@ -358,3 +358,12 @@ export function getCategoryById(id) {
 export function getTheme(businessCategory) {
   return getCategoryById(businessCategory).theme;
 }
+
+// ── Configuración de sector por rubro (preparación Fase A) ───────────────
+import { getSectorConfig } from './sectorConfig';
+
+export { getSectorConfig };
+
+export function getCategorySectorConfig(categoryId, overrides) {
+  return getSectorConfig(categoryId, overrides);
+}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { formatBs } from '../utils/currency';
 import { CashBillIcon } from './CashBillIcon';
+import { SyncStatusBadge } from './SyncStatusBadge';
 import EmptyState from './ui/EmptyState';
 
 // Auditoría de ventas: lista completa de tickets agrupada por cajero,
@@ -79,9 +80,12 @@ export function AuditSalesList({ sales, businessName = '', onSelectSale }) {
                     className="group flex min-h-[68px] cursor-pointer items-center justify-between rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-4 py-3.5 shadow-[var(--mg-shadow-sm)] transition-all hover:border-[var(--mg-border-hover)] hover:shadow-md active:scale-[0.99] sm:px-5 sm:py-4"
                   >
                     <div className="min-w-0 text-left">
-                      <p className="text-sm sm:text-[15px] font-black text-[var(--mg-text-primary)] tracking-tight truncate">
-                        TICKET {sale.number}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm sm:text-[15px] font-black text-[var(--mg-text-primary)] tracking-tight truncate">
+                          TICKET {sale.number}
+                        </p>
+                        <SyncStatusBadge status={sale.sync_status} />
+                      </div>
                       <p className="mt-1 truncate font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--mg-text-muted)] sm:text-xs">
                         {sale.dateLabel}
                       </p>

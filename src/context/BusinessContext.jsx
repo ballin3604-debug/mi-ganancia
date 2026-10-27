@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
-import { getBusinessSettings } from '../services/businessSettings';
+import { getBusinessSettings, getBusinessSectorConfig } from '../services/businessSettings';
 import { DEFAULT_CATEGORY_ID } from '../config/businessCategories';
 
 const BusinessContext = createContext(null);
@@ -119,8 +119,10 @@ export function BusinessProvider({ children }) {
     }
   }
 
+  const sectorConfig = getBusinessSectorConfig(settings);
+
   return (
-    <BusinessContext.Provider value={{ business, settings, refreshSettings, refreshBusiness }}>
+    <BusinessContext.Provider value={{ business, settings, sectorConfig, refreshSettings, refreshBusiness }}>
       {children}
     </BusinessContext.Provider>
   );

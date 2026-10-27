@@ -160,7 +160,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
           <div className="flex-1 min-w-0">
             <p className="text-sm text-[var(--mg-text-primary)] font-semibold leading-snug line-clamp-2">{product.name}</p>
             <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-              {factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
+              {line.presentationId || factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} {factor > 1 ? 'por presentación' : 'c/u'}
             </p>
           </div>
           {trashBtn}
@@ -193,7 +193,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
       <div className="flex-1 min-w-0">
         <p className="text-sm text-[var(--mg-text-primary)] font-semibold truncate leading-tight">{product.name}</p>
         <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-          {factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} c/u
+          {line.presentationId || factor > 1 ? `${line.presLabel} · ` : ''}{formatBs(unitPrice)} {factor > 1 ? 'por presentación' : 'c/u'}
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end">
@@ -331,12 +331,12 @@ export default function Sales() {
         const hasB = bRows.length > 0;
         const restoredCart = {};
         const usedBase = {};
-        const pushLine = (key, prod, presId, variant, qty, unitPrice, factor, presLabel) => {
+        const pushLine = (key, prod, presId, variant, qty, unitPrice, factor, presLabel, presentationId = null) => {
           const already = usedBase[prod.id] || 0;
           const q = Math.max(0, Math.min(qty, Math.floor(((hasB && activeBranchId ? Number(bMap.get(`${activeBranchId}:${prod.id}`) ?? 0) : prod.stock) - already) / factor)));
           if (q <= 0) return;
           usedBase[prod.id] = already + q * factor;
-          restoredCart[key] = { productId: prod.id, presId, variant, qty: q, unitPrice, factor, presLabel };
+          restoredCart[key] = { productId: prod.id, presId, variant, qty: q, unitPrice, factor, presLabel, presentationId };
         };
         Object.entries(draft.cart || {}).forEach(([key, line]) => {
           if (typeof line === 'number') {
@@ -344,19 +344,21 @@ export default function Sales() {
             if (!prod || prod.stock <= 0) return;
             const opt = defaultSellOption(prod);
             if (!opt) return;
-            pushLine(opt.key, prod, opt.presId, opt.variant, line, opt.price, opt.factor, presShortLabel(prod, opt.presId, opt.variant));
+            pushLine(opt.key, prod, opt.presId, opt.variant, line, opt.price, opt.factor, presShortLabel(prod, opt.presId, opt.variant, opt.presentationId), opt.presentationId);
             return;
           }
           if (!line || typeof line.qty !== 'number') return;
           const prod = prods.find((p) => p.id === line.productId);
           if (!prod || prod.stock <= 0) return;
-          const factor = Number(line.factor || 1);
           // Precio vigente del inventario (no el guardado en el borrador):
           // si el precio cambió mientras el borrador esperaba, el carrito nace actualizado.
           const freshOpts = getSellOptions(prod);
-          const freshMatch = freshOpts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico')) || freshOpts[0];
-          const freshPrice = freshMatch ? freshMatch.price : prod.price;
-          pushLine(key, prod, line.presId || 'unit', line.variant || 'unico', line.qty, freshPrice, factor, line.presLabel || presShortLabel(prod, line.presId, line.variant));
+          const freshMatch = line.presentationId
+            ? freshOpts.find((o) => o.presentationId === line.presentationId)
+            : freshOpts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico'));
+          const selected = freshMatch || freshOpts[0];
+          if (!selected) return;
+          pushLine(selected.key, prod, selected.presId, selected.variant, line.qty, selected.price, selected.factor, presShortLabel(prod, selected.presId, selected.variant, selected.presentationId), selected.presentationId);
         });
 
         setCart(restoredCart);
@@ -425,10 +427,22 @@ export default function Sales() {
           const prod = prods.find((p) => p.id === line.productId);
           if (!prod) return;
           const opts = getSellOptions(prod);
-          const match = opts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico')) || opts[0];
+          const match = line.presentationId
+            ? opts.find((o) => o.presentationId === line.presentationId)
+            : opts.find((o) => o.presId === (line.presId || 'unit') && o.variant === (line.variant || 'unico'));
           if (!match) return;
-          if (Number(line.unitPrice) !== Number(match.price)) {
-            next[key] = { ...line, unitPrice: match.price };
+          if (Number(line.unitPrice) !== Number(match.price)
+            || Number(line.factor) !== Number(match.factor)
+            || line.presentationId !== match.presentationId) {
+            next[key] = {
+              ...line,
+              presId: match.presId,
+              variant: match.variant,
+              presentationId: match.presentationId,
+              unitPrice: match.price,
+              factor: match.factor,
+              presLabel: presShortLabel(prod, match.presId, match.variant, match.presentationId),
+            };
             changed = true;
           }
         });
@@ -633,6 +647,7 @@ export default function Sales() {
         seller: s.seller_name || 'Sin nombre',
         dateLabel: `${day} ${month} ${year} · ${time}`.trim(),
         total: Number(s.total || 0),
+        sync_status: s.sync_status || 'confirmed',
       };
     });
   }, [salesList, saleNumberById, isOwner, user?.uid]);
@@ -905,9 +920,9 @@ export default function Sales() {
         if (!opt) return null;
         return {
           key: opt.key, product,
-          presId: opt.presId, variant: opt.variant,
+          presId: opt.presId, variant: opt.variant, presentationId: opt.presentationId,
           quantity: line, unitPrice: opt.price, factor: opt.factor,
-          presLabel: presShortLabel(product, opt.presId, opt.variant),
+          presLabel: presShortLabel(product, opt.presId, opt.variant, opt.presentationId),
         };
       }
       if (!line || typeof line.qty !== 'number') return null;
@@ -917,10 +932,11 @@ export default function Sales() {
       return {
         key, product,
         presId: line.presId || 'unit', variant: line.variant || 'unico',
+        presentationId: line.presentationId || null,
         quantity: line.qty,
         unitPrice: Number(line.unitPrice ?? product.price),
         factor,
-        presLabel: line.presLabel || presShortLabel(product, line.presId, line.variant),
+        presLabel: line.presLabel || presShortLabel(product, line.presId, line.variant, line.presentationId),
       };
     })
     .filter((item) => item.product);
@@ -960,10 +976,11 @@ export default function Sales() {
               productId: product.id,
               presId: unitOpt.presId,
               variant: unitOpt.variant,
+              presentationId: unitOpt.presentationId,
               qty: q,
               unitPrice: unitOpt.price,
               factor: unitOpt.factor,
-              presLabel: presShortLabel(product, unitOpt.presId, unitOpt.variant),
+              presLabel: presShortLabel(product, unitOpt.presId, unitOpt.variant, unitOpt.presentationId),
             };
           }
         }
@@ -986,10 +1003,11 @@ export default function Sales() {
           productId: product.id,
           presId: opt.presId,
           variant: opt.variant,
+          presentationId: opt.presentationId,
           qty: current + 1,
           unitPrice: opt.price,
           factor: opt.factor,
-          presLabel: presShortLabel(product, opt.presId, opt.variant),
+          presLabel: presShortLabel(product, opt.presId, opt.variant, opt.presentationId),
         },
       };
     });
@@ -1044,10 +1062,11 @@ export default function Sales() {
             productId,
             presId: opt.presId,
             variant: opt.variant,
+            presentationId: opt.presentationId,
             qty: q,
             unitPrice: opt.price,
             factor: opt.factor,
-            presLabel: presShortLabel(product, opt.presId, opt.variant),
+            presLabel: presShortLabel(product, opt.presId, opt.variant, opt.presentationId),
           };
         }
       }
@@ -2221,6 +2240,7 @@ export default function Sales() {
               .filter(([, l]) => l && typeof l === 'object' && l.productId === pickerProduct.id)
               .map(([k, l]) => [k, l.qty])
           )}
+          cartBaseUsed={productUsedBase(pickerProduct.id)}
           onPick={(opt) => addToCart(pickerProduct, opt)}
           onClose={() => setPickerProduct(null)}
           onGoCart={() => { setPickerProduct(null); setShowCartModal(true); }}

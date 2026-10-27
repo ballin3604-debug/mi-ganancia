@@ -6,7 +6,57 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { BusinessProvider } from './context/BusinessContext.jsx';
 import { BranchProvider } from './context/BranchContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { ENVIRONMENT_ERROR, IS_STAGING } from './config/environment.js';
 import './index.css';
+
+function applyEnvironmentIdentity() {
+  if (!IS_STAGING || typeof document === 'undefined') return;
+
+  document.title = '[STAGING] Mi Ganancia';
+  document.documentElement.dataset.environment = 'staging';
+
+  if (!document.body || document.getElementById('mg-staging-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'mg-staging-banner';
+  banner.setAttribute('role', 'status');
+  banner.setAttribute('aria-live', 'polite');
+  banner.style.cssText = [
+    'position: fixed',
+    'top: 0',
+    'left: 50%',
+    'transform: translateX(-50%)',
+    'z-index: 10000',
+    'max-width: calc(100vw - 24px)',
+    'padding: 6px 14px',
+    'border-radius: 0 0 10px 10px',
+    `background: ${ENVIRONMENT_ERROR ? '#b91c1c' : '#b45309'}`,
+    'color: #fff',
+    'font: 700 11px/1.4 system-ui, -apple-system, sans-serif',
+    'letter-spacing: 0.08em',
+    'text-transform: uppercase',
+    'white-space: nowrap',
+    'pointer-events: none',
+    'user-select: none',
+    'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25)',
+  ].join(';');
+
+  const label = document.createElement('strong');
+  label.textContent = 'STAGING';
+  banner.appendChild(label);
+  banner.appendChild(document.createTextNode(
+    ENVIRONMENT_ERROR ? ' · CONFIGURACIÓN INVÁLIDA' : ' · NO PRODUCCIÓN'
+  ));
+
+  if (ENVIRONMENT_ERROR) {
+    banner.title = ENVIRONMENT_ERROR;
+    console.error(`[staging] ${ENVIRONMENT_ERROR}`);
+  }
+
+  document.body.appendChild(banner);
+}
+
+applyEnvironmentIdentity();
 
 function showUpdateBanner(worker) {
   if (document.getElementById('pwa-update-banner')) return;
@@ -109,6 +159,17 @@ if ('serviceWorker' in navigator) {
       if (!refreshing) {
         refreshing = true;
         window.location.reload();
+      }
+    });
+
+    // Background Sync bridge: when the SW receives a sync event, it posts a
+    // message to all clients. We translate that into a window event so the
+    // active React session can trigger a sync run.
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'TRIGGER_SYNC') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('tuganancia-trigger-sync'));
+        }
       }
     });
   });

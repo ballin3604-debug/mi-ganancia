@@ -3,6 +3,7 @@ import { buildOutboxOp, refreshOutboxState } from './syncEngine';
 import { forceProductRefresh } from './products';
 import { notifyIncomeChanges } from './expenses';
 import { notifyBranchStock } from './branchStock';
+import { calculateBaseQuantity, validateSellSelection } from '../utils/presentations';
 
 function mapSale(s) {
   if (!s) return s;
@@ -27,6 +28,7 @@ function mapSaleItem(item) {
     productName: item.product_name,
     productBrand: item.product_brand,
     presentation: item.presentation || '',
+    presentationId: item.presentation_id || item.presentationId || null,
     presentationFactor: Number(item.presentation_factor || 1),
     variant: item.variant || '',
   };
@@ -70,6 +72,16 @@ export async function registerSale(
   sellerName = '',
   extraFields = {}
 ) {
+  if (!businessId || !Array.isArray(cartItems) || cartItems.length === 0) {
+    throw new Error('La venta necesita un negocio y al menos un producto.');
+  }
+  cartItems.forEach((item) => {
+    if (!item?.product?.id || item.product.business_id !== businessId) {
+      throw new Error('El producto no pertenece al negocio de esta venta.');
+    }
+    validateSellSelection(item.product, item);
+  });
+
   const saleId = generateUUID();
   const now = new Date().toISOString();
   // Sede operativa (Fase 1 sucursales): viaja en extraFields para no cambiar
@@ -96,6 +108,7 @@ export async function registerSale(
     client_generated_id: saleId,
     monto_efectivo: extraFields.montoEfectivo !== undefined ? Number(extraFields.montoEfectivo) : null,
     monto_qr: extraFields.montoQR !== undefined ? Number(extraFields.montoQR) : null,
+    sync_status: 'local',
   };
 
   const p_items = cartItems.map((item) => {
@@ -113,7 +126,11 @@ export async function registerSale(
       category: item.product.category || 'Otros',
       quantity: Number(item.quantity),
       price: Number(item.unitPrice ?? item.product.price),
-      supplier_price: supplierPrice
+      supplier_price: supplierPrice,
+      presentation_id: item.presentationId || null,
+      presentation: item.presLabel || '',
+      presentation_factor: Number(item.factor),
+      variant: item.variant || '',
     };
   });
 
@@ -124,6 +141,7 @@ export async function registerSale(
     factor: Number(item.factor || 1),
     price: Number(item.unitPrice ?? item.product.price),
     presentation: item.presLabel || '',
+    presentation_id: item.presentationId || null,
     variant: item.variant || '',
   }));
 
@@ -141,7 +159,14 @@ export async function registerSale(
     seller_name: sellerName || '',
     created_by: userId,
   };
-  const outboxOp = buildOutboxOp('REGISTER_SALE', outboxPayload, businessId);
+  const operationType = cartItems.some((item) => !!item.presentationId)
+    ? 'REGISTER_PRESENTATION_SALE'
+    : 'REGISTER_SALE';
+  const outboxOp = buildOutboxOp(operationType, outboxPayload, businessId, {
+    userId,
+    branchId,
+    origin: 'offline',
+  });
 
   // Sale + items + stock decrements + outbox entry all commit atomically:
   // either the whole sale is saved together with its sync entry, or none of
@@ -150,11 +175,11 @@ export async function registerSale(
   // outbox entry, and a retry after an enqueue failure created a duplicate
   // sale with stock decremented twice for the same physical transaction.
   const saleBranchId = extraFields.branchId || null;
-  const hasBranchRows = saleBranchId
-    ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
-    : false;
 
   await db.transaction('rw', db.sales, db.sale_items, db.products, db.branch_stock, db.pending_operations, async () => {
+    const hasBranchRows = saleBranchId
+      ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
+      : false;
     await db.sales.put(localSale);
 
     for (const item of cartItems) {
@@ -182,34 +207,41 @@ export async function registerSale(
         subtotal: unitPrice * qty,
         supplier_price: supplierPrice,
         presentation: item.presLabel || '',
+        presentation_id: item.presentationId || null,
         presentation_factor: factor,
         variant: item.variant || '',
       };
       await db.sale_items.put(localItem);
 
       const prod = await db.products.get(item.product.id);
-      if (prod) {
-        // El stock vive en unidades base: 1 paquete descuenta N
-        const baseQty = qty * factor;
-        const updatedStock = Math.max(0, prod.stock - baseQty);
-        await db.products.update(item.product.id, {
-          stock: updatedStock,
-          updated_at: now
-        });
-        // Fase 2: descontar también de la sede (si hay filas por sede)
-        if (saleBranchId && hasBranchRows) {
-          const rowId = `${saleBranchId}:${item.product.id}`;
-          const row = await db.branch_stock.get(rowId);
-          const cur = row ? Number(row.stock || 0) : 0;
-          await db.branch_stock.put({
-            id: rowId,
-            business_id: businessId,
-            branch_id: saleBranchId,
-            product_id: item.product.id,
-            stock: Math.max(0, cur - baseQty),
-            updated_at: now,
-          });
+      if (!prod || prod.business_id !== businessId) {
+        throw new Error('El producto ya no está disponible en este negocio.');
+      }
+      validateSellSelection(prod, item);
+      const baseQty = calculateBaseQuantity(qty, factor);
+      const currentStock = Number(prod.stock || 0);
+      if (currentStock < baseQty) {
+        throw new Error(`Stock insuficiente de ${prod.name}: quedan ${currentStock} unidades base.`);
+      }
+      await db.products.update(item.product.id, {
+        stock: currentStock - baseQty,
+        updated_at: now
+      });
+      if (saleBranchId && hasBranchRows) {
+        const rowId = `${saleBranchId}:${item.product.id}`;
+        const row = await db.branch_stock.get(rowId);
+        if (!row || row.business_id !== businessId || row.branch_id !== saleBranchId) {
+          throw new Error('No hay stock registrado para el producto en esta sucursal.');
         }
+        const branchQty = Number(row.stock || 0);
+        if (branchQty < baseQty) {
+          throw new Error(`Stock insuficiente en la sucursal: quedan ${branchQty} unidades base.`);
+        }
+        await db.branch_stock.put({
+          ...row,
+          stock: branchQty - baseQty,
+          updated_at: now,
+        });
       }
     }
 

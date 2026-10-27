@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'rea
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useBusiness } from '../context/BusinessContext';
 import {
   getProducts,
   addProduct,
@@ -36,6 +37,7 @@ import PhotoCamera from '../components/PhotoCamera';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap, setBranchStock } from '../services/branchStock';
+import { ensureBasePresentation, getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
 
 const EMPTY_FORM = {
   name: '',
@@ -55,6 +57,7 @@ const EMPTY_FORM = {
   supplierPrice: '',
   unit: 'Unidad',
   packageSize: '',
+  presentations: [],
 };
 
 const EXPIRY_WARNING_DAYS = 30;
@@ -110,6 +113,7 @@ function clearProductDraft() {
 
 export default function Inventory() {
   const { businessId, hasPermission } = useAuth();
+  const { sectorConfig } = useBusiness();
   const { pickImage } = useImageUpload();
   const location = useLocation();
   const navigate = useNavigate();
@@ -173,6 +177,11 @@ export default function Inventory() {
   const [expiryReplenishmentId, setExpiryReplenishmentId] = useState(null);
   const [saving, setSaving] = useState(false);
   const editingRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (!showForm || !sectorConfig?.features?.configurablePresentations) return;
+    setForm((current) => ensureBasePresentation(current, sectorConfig.defaultUnit));
+  }, [showForm, sectorConfig?.features?.configurablePresentations, sectorConfig?.defaultUnit]);
 
   // Category Manager modal state
   const [showCatManager, setShowCatManager] = useState(() => searchParams.get('action') === 'categorias');
@@ -287,6 +296,38 @@ export default function Inventory() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function addPresentation() {
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `presentation-${Date.now()}-${form.presentations.length}`;
+    setForm((current) => ({
+      ...current,
+      presentations: [...(current.presentations || []), {
+        id,
+        name: '',
+        factor: '',
+        price: '',
+        isBase: false,
+      }],
+    }));
+  }
+
+  function updatePresentation(id, patch) {
+    setForm((current) => ({
+      ...current,
+      presentations: (current.presentations || []).map((presentation) => (
+        presentation.id === id ? { ...presentation, ...patch } : presentation
+      )),
+    }));
+  }
+
+  function removePresentation(id) {
+    setForm((current) => ({
+      ...current,
+      presentations: (current.presentations || []).filter((presentation) => presentation.id !== id),
+    }));
+  }
+
   async function handleImagePick(e) {
     const file = e.target.files?.[0];
     // Limpiar el input de inmediato: si la página se recarga al volver de la
@@ -304,7 +345,18 @@ export default function Inventory() {
 
   function openAdd(prefill = {}) {
     setEditingProduct(null);
-    setForm({ ...EMPTY_FORM, ...prefill });
+    const nextForm = { ...EMPTY_FORM, ...prefill };
+    if (sectorConfig?.features?.configurablePresentations) {
+      nextForm.unitLabel = nextForm.unitLabel || sectorConfig.defaultUnit || 'Unidad';
+      nextForm.presentations = [{
+        id: 'base-unit',
+        name: nextForm.unitLabel || 'Unidad',
+        factor: 1,
+        price: nextForm.price || '',
+        isBase: true,
+      }];
+    }
+    setForm(nextForm);
     setExpiryDate('');
     setExpiryReplenishmentId(null);
     setShowForm(true);
@@ -338,7 +390,7 @@ export default function Inventory() {
     setForm({
       name: product.name,
       barcode: product.barcode || '',
-      unitLabel: product.unitLabel || '',
+      unitLabel: product.unitLabel || (sectorConfig?.features?.configurablePresentations ? sectorConfig.defaultUnit : '') || '',
       sellPack: !!hasPack,
       packLabel: product.packLabel || '',
       packPrice: product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined ? String(product.packPrice) : '',
@@ -353,6 +405,15 @@ export default function Inventory() {
       supplierPrice: product.supplierPrice ? String(product.supplierPrice) : '',
       unit: product.unit || 'Unidad',
       packageSize: product.packageSize ? String(product.packageSize) : '',
+      presentations: Array.isArray(product.presentations) && product.presentations.length > 0
+        ? product.presentations.map((presentation) => ({ ...presentation }))
+        : getSellOptions(product).map((option, index) => ({
+          id: option.presentationId || (option.presId === 'unit' ? 'base-unit' : `legacy-${option.variant || index}`),
+          name: option.label + (option.variant === 'frio' ? ' fría' : option.variant === 'caliente' ? ' caliente' : ''),
+          factor: option.factor,
+          price: option.price,
+          isBase: option.presId === 'unit',
+        })),
     });
 
     const nearest = getNearestExpiry(replenishments, product.id);
@@ -380,14 +441,37 @@ export default function Inventory() {
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.name.trim() || !form.price || form.stock === '') return;    if (form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
+    if (!form.name.trim() || !form.price || form.stock === '') return;
+    if (!sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
     }
-    // Si no se vende por paquete, limpiar esos campos para no dejar restos
-    const data = form.sellPack
-      ? { ...form }
-      : { ...form, packLabel: '', packPrice: '', packPriceHot: '', packageSize: '' };
+    let data;
+    if (sectorConfig?.features?.configurablePresentations) {
+      try {
+        const presentations = validatePresentationDefinitions(form.presentations, {
+          baseName: form.unitLabel || 'Unidad',
+          basePrice: form.price,
+        });
+        data = {
+          ...form,
+          unitLabel: presentations.find((presentation) => presentation.isBase)?.name || 'Unidad',
+          presentations,
+          packLabel: '',
+          packPrice: '',
+          packPriceHot: '',
+          packageSize: '',
+        };
+      } catch (err) {
+        alert(err.message || 'Revisa las presentaciones del producto.');
+        return;
+      }
+    } else {
+      data = form.sellPack
+        ? { ...form }
+        : { ...form, packLabel: '', packPrice: '', packPriceHot: '', packageSize: '' };
+      delete data.presentations;
+    }
     delete data.sellPack;
     const formStockVal = data.stock;
     delete data.stock;
@@ -395,7 +479,7 @@ export default function Inventory() {
     try {
       if (editingProduct) {
         const globalCur = Number(products.find((p) => p.id === editingProduct.id)?.stock || 0);
-        if (hasBranchRows && targetBranchId) {
+        if (targetBranchId) {
           // El stock vive en la sede: global nuevo = global actual + (nuevo − anterior de sede).
           // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
           // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
@@ -408,7 +492,7 @@ export default function Inventory() {
         } else {
           await updateProduct(editingProduct.id, { ...data, stock: Number(formStockVal), expectedStock: globalCur });
         }
-      } else if (hasBranchRows && targetBranchId) {
+      } else if (targetBranchId) {
         const created = await addProduct(businessId, { ...data, stock: 0 });
         await setBranchStock(businessId, { ...created, stock: 0 }, targetBranchId, Number(formStockVal));
       } else {
@@ -1205,7 +1289,97 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                {/* Venta por paquete (chipa/caja): unidad Y paquete */}
+                {sectorConfig?.features?.configurablePresentations ? (
+                  <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
+                    <div>
+                      <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>
+                      <p className="mt-1 text-[11px] text-[var(--mg-text-muted)]">
+                        El inventario se cuenta en la unidad base. El precio base se define arriba; cada empaque convierte a unidades base.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3">
+                      <div>
+                        <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Unidad base *</label>
+                        <input
+                          type="text"
+                          value={form.unitLabel}
+                          onChange={(e) => setField('unitLabel', e.target.value)}
+                          placeholder="Ej: Botella"
+                          maxLength={30}
+                          className="mg-input text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Factor</label>
+                        <div className="mg-input flex items-center text-xs font-black">1 unidad base</div>
+                      </div>
+                      <p className="col-span-2 text-[11px] font-semibold text-[var(--mg-brand)]">
+                        Precio base: Bs {Number(form.price || 0).toFixed(2)} · el precio se edita en el campo Precio de venta.
+                      </p>
+                    </div>
+
+                    {(form.presentations || []).filter((presentation) => !presentation.isBase).map((presentation) => (
+                      <div key={presentation.id} className="grid grid-cols-1 items-end gap-2 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 sm:grid-cols-[1fr_0.7fr_1fr_auto]">
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold text-[var(--mg-text-muted)]">Nombre *</label>
+                          <input
+                            value={presentation.name}
+                            onChange={(e) => updatePresentation(presentation.id, { name: e.target.value })}
+                            placeholder="Six-pack"
+                            list="presentation-name-options"
+                            maxLength={40}
+                            className="mg-input text-xs font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold text-[var(--mg-text-muted)]">Factor *</label>
+                          <input
+                            type="number"
+                            value={presentation.factor}
+                            onChange={(e) => updatePresentation(presentation.id, { factor: clampNumberInput(e.target.value, { min: 0, max: 999999 }) })}
+                            onKeyDown={blockInvalidNumberKeys}
+                            min="0"
+                            step="any"
+                            placeholder="6"
+                            className="mg-input text-xs font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold text-[var(--mg-text-muted)]">Precio *</label>
+                          <input
+                            type="number"
+                            value={presentation.price}
+                            onChange={(e) => updatePresentation(presentation.id, { price: clampNumberInput(e.target.value, { min: 0, max: 999999 }) })}
+                            onKeyDown={blockInvalidNumberKeys}
+                            min="0"
+                            step="0.01"
+                            placeholder="72.00"
+                            className="mg-input text-xs font-black"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePresentation(presentation.id)}
+                          aria-label={`Quitar presentación ${presentation.name || ''}`}
+                          className="mb-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--mg-danger-bg)] font-black text-[var(--mg-danger)]"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={addPresentation}
+                      className="w-full rounded-xl border border-dashed border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-3 py-2.5 text-xs font-extrabold text-[var(--mg-brand)]"
+                    >
+                      + Agregar presentación
+                    </button>
+                    <datalist id="presentation-name-options">
+                      {sectorConfig.unitLabels.map((label) => <option key={label} value={label} />)}
+                    </datalist>
+                  </div>
+                ) : (
                 <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -1323,6 +1497,7 @@ export default function Inventory() {
                     </>
                   )}
                 </div>
+                )}
 
                 {/* Expiry Date */}
                 {expiryReplenishmentId && (

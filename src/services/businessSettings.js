@@ -1,6 +1,7 @@
 import { db } from './localDb';
 import { enqueueOperation } from './syncEngine';
 import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
+import { getSectorConfig } from '../config/sectorConfig';
 
 export async function getBusinessSettings(businessId) {
   // Read local first
@@ -85,4 +86,15 @@ export async function renameBusiness(businessId, name) {
   const { error } = await assertSupabase().from('businesses').update({ name: clean }).eq('id', businessId);
   if (error) throw error;
   return clean;
+}
+
+/**
+ * Resuelve la configuración de sector para el negocio actual.
+ * Fase A: usa únicamente business_category para elegir defaults.
+ * En el futuro podrá mezclar overrides guardados en business_settings.
+ */
+export function getBusinessSectorConfig(settings) {
+  const category = settings?.businessCategory || settings?.business_category;
+  const overrides = settings?.sector_config || settings?.sectorConfig || {};
+  return getSectorConfig(category, overrides);
 }

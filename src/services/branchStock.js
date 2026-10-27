@@ -1,6 +1,6 @@
 import { db, generateUUID } from './localDb';
 import { buildOutboxOp, refreshOutboxState } from './syncEngine';
-import { updateProduct, notifyProductChanges } from './products';
+import { buildProductUpdateData, notifyProductChanges } from './products';
 
 // ─────────────────────────────────────────────────────────────
 // Fase 2: stock por sede. branch_stock (sede × producto) es la fuente;
@@ -184,39 +184,82 @@ export async function getTransfers(businessId, productId = null, limit = 20) {
 }
 
 // Aplica una COMPRA: suma a la sede elegida y al total, con los demás
-// campos de la ficha. Si aún no hay filas por sede (legado), solo total.
+// campos de la ficha. Si aún no hay filas por sede, inicializa la principal
+// con el stock global previo antes de agregar la compra.
 // fields = todo lo que updateProduct necesita MENOS stock.
-export async function applyPurchaseStock({ businessId, product, branchId, qty, fields }) {
+export async function applyPurchaseStock({ businessId, product, branchId, mainBranchId = null, qty, fields }) {
   const amount = Number(qty || 0);
-  const globalCur = Number((await db.products.get(product.id))?.stock || 0);
-  await updateProduct(product.id, {
-    ...fields,
-    stock: globalCur + amount,
-    expectedStock: globalCur,
+  if (!businessId || !product?.id || !Number.isFinite(amount) || amount <= 0) {
+    throw new Error('La compra debe sumar una cantidad válida de unidades base.');
+  }
+
+  const now = new Date().toISOString();
+  await db.transaction('rw', db.products, db.branch_stock, db.pending_operations, async () => {
+    const existing = await db.products.get(product.id);
+    if (!existing || existing.business_id !== businessId) {
+      throw new Error('El producto no pertenece a este negocio.');
+    }
+    const globalCur = Number(existing.stock || 0);
+    const productUpdate = buildProductUpdateData(existing, {
+      ...fields,
+      stock: globalCur + amount,
+      expectedStock: globalCur,
+    }, now);
+    await db.products.update(product.id, productUpdate);
+    await db.pending_operations.add(buildOutboxOp('UPDATE_PRODUCT', {
+      id: product.id,
+      ...productUpdate,
+    }, businessId));
+
+    if (branchId) {
+      const productRows = await db.branch_stock.where('business_id').equals(businessId)
+        .and((row) => row.product_id === product.id).toArray();
+      const currentRow = productRows.find((row) => row.branch_id === branchId);
+
+      let newBranchStock;
+      if (currentRow) {
+        newBranchStock = Number(currentRow.stock || 0) + amount;
+      } else if (productRows.length > 0) {
+        newBranchStock = amount;
+      } else if (mainBranchId && mainBranchId !== branchId) {
+        const mainId = branchStockId(mainBranchId, product.id);
+        await db.branch_stock.put({
+          id: mainId,
+          business_id: businessId,
+          branch_id: mainBranchId,
+          product_id: product.id,
+          stock: globalCur,
+          updated_at: now,
+        });
+        await db.pending_operations.add(buildOutboxOp('SET_BRANCH_STOCK', {
+          branch_id: mainBranchId,
+          product_id: product.id,
+          stock: globalCur,
+        }, businessId));
+        newBranchStock = amount;
+      } else {
+        newBranchStock = globalCur + amount;
+      }
+
+      await db.branch_stock.put({
+        id: branchStockId(branchId, product.id),
+        business_id: businessId,
+        branch_id: branchId,
+        product_id: product.id,
+        stock: newBranchStock,
+        updated_at: now,
+      });
+      await db.pending_operations.add(buildOutboxOp('SET_BRANCH_STOCK', {
+        branch_id: branchId,
+        product_id: product.id,
+        stock: newBranchStock,
+      }, businessId));
+    }
   });
 
-  const hasRows = (await db.branch_stock.where('business_id').equals(businessId).count()) > 0;
-  if (hasRows && branchId) {
-    const row = await db.branch_stock.get(branchStockId(branchId, product.id));
-    const newBranch = (row ? Number(row.stock || 0) : 0) + amount;
-    const now = new Date().toISOString();
-    await db.branch_stock.put({
-      id: branchStockId(branchId, product.id),
-      business_id: businessId,
-      branch_id: branchId,
-      product_id: product.id,
-      stock: newBranch,
-      updated_at: now,
-    });
-    await db.pending_operations.add(buildOutboxOp('SET_BRANCH_STOCK', {
-      branch_id: branchId,
-      product_id: product.id,
-      stock: newBranch,
-    }, businessId));
-    notifyBranchStock(businessId);
-    notifyProductChanges(businessId);
-    try {
-      await refreshOutboxState(businessId);
-    } catch { /* offline */ }
-  }
+  notifyBranchStock(businessId);
+  notifyProductChanges(businessId);
+  try {
+    await refreshOutboxState(businessId);
+  } catch { /* offline */ }
 }

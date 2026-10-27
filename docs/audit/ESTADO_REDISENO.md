@@ -1,6 +1,6 @@
 # Estado del rediseño visual
 
-Actualizado: 2026-10-23
+Actualizado: 2026-10-26
 
 ## Resumen
 
@@ -14,8 +14,8 @@ Actualizado: 2026-10-23
 | F6 | Reportes | Completada | Completada con harness | **Pendiente de datos** |
 | F7 | Inventario y administración | Completada | Completada con harness | **Pendiente de datos** |
 | F8 | Pantallas transversales | Completada | Completada con harness | **Pendiente de datos** |
-| F9 | Limpieza técnica | Completada | No aplica | Build y referencias validados |
-| F10 | PWA, Android TWA y marca | Completada en web y recursos | Revisión de recursos y runtime PWA | **Compilación Android bloqueada** |
+| F9 | Limpieza técnica | **COMPLETADO** | No aplica | Build y referencias validados históricamente; no reejecutados en el cierre documental |
+| F10 | PWA, Android TWA y marca | Web/PWA completada; TWA **BLOQUEADA** | Revisión de recursos y runtime PWA histórica | **Compilación Android bloqueada** |
 
 ## F4: Inicio
 
@@ -90,28 +90,30 @@ Actualizado: 2026-10-23
 
 ## F9: Limpieza técnica
 
-**Estado:** COMPLETADA.
+**Estado:** COMPLETADO (la validación de build consignada abajo es histórica; no se reejecutó el 2026-10-26).
 
-- Se retiró la dependencia `qrcode`, sin referencias en `src`, `scripts`, `dev`, configuración ni build; también se retiraron sus 29 paquetes transitivos del lockfile.
-- Se eliminaron imports sin uso en componentes y páginas activas, incluidos `React` innecesario con el runtime automático, hooks no utilizados y `TransferModal` en Inventario.
-- Se eliminaron utilidades CSS sin referencias (`mg-surface`, `mg-surface-bordered`, `mg-badge`, `mg-hover-lift`, `mg-tappable`) sin tocar estilos en uso.
-- Se conservaron los harnesses y scripts de auditoría, los componentes de funciones no montadas y los recursos de marca; no se eliminaron `SaleDetailModal`, `LowStockAlert`, `BranchSelect` ni archivos de Android.
-- Se detectaron imports no usados en `src/services/**`; se dejaron intactos para no modificar archivos de negocio.
-- El build final de F9 pasó con 2493 módulos, 92.39 kB CSS y 1,681.58 kB JS; las 47 variables de tokens coinciden y `dist` no contiene harnesses ni mocks de desarrollo.
+- Se retiró la dependencia directa `qrcode` de `package.json` y sus 29 paquetes transitivos de `package-lock.json`. `html5-qrcode` se conserva porque `src/components/BarcodeScanner.jsx` lo importa para el escáner.
+- Archivos de dependencia/estilos: `package.json`, `package-lock.json` y `src/index.css`; también se registraron limpiezas de imports en `src/pages/Inventory.jsx` y componentes activos, incluidos `src/components/BranchSelect.jsx`, `SyncErrorPanel.jsx` y módulos de `dashboard/`, `expenses/`, `inventory/` y `settings/`. El mismo conjunto de cambios agrupó trabajo visual F8/F10, por lo que no se atribuye cada cambio de UI exclusivamente a F9.
+- El registro de archivos de componentes incluye `dashboard/{DashboardCharts,DashboardSkeleton,LowStockAlert,MagicMetricCards,QrModal,SaleDetailModal}.jsx`, `expenses/{AddExpenseModal,ExpenseDetailModal,ExpensesSkeleton}.jsx`, `inventory/{InventoryHeader,InventoryValuationCard,ProductCard,ProductDetailModal,ProductGridSkeleton}.jsx` y `settings/{BusinessHeaderCard,ConfirmModal,TeamSection,UnsavedChangesBar}.jsx`.
+- Se eliminaron imports sin uso, incluido `React` innecesario con el runtime automático, hooks no utilizados y el import de `TransferModal` en Inventario. También se retiraron las utilidades CSS sin referencias `mg-surface`, `mg-surface-bordered`, `mg-badge`, `mg-hover-lift` y `mg-tappable`; no se quitaron estilos en uso.
+- Se conservaron harnesses y scripts de auditoría, recursos de marca y componentes legacy, entre ellos `SaleDetailModal`, `LowStockAlert` y `BranchSelect`. Imports no usados en `src/services/**` se dejaron intactos para no ampliar el cleanup a archivos de negocio.
+- Validación histórica registrada para F9: build con 2493 módulos, 92.39 kB CSS y 1,681.58 kB JS; 47 variables de tokens coincidentes; `dist` sin harnesses ni mocks de desarrollo. Esos resultados no se repitieron en este cierre.
+- Advertencias históricas de build: `caniuse-lite` desactualizado y chunk JS mayor de 500 kB. En las verificaciones documentales actuales Git también emite avisos de conversión LF/CRLF; no se reportaron errores de whitespace.
 
 ## F10: PWA, Android TWA y recursos de marca
 
-**Estado:** IMPLEMENTACIÓN WEB COMPLETADA — COMPILACIÓN ANDROID BLOQUEADA.
+**Estado:** WEB/PWA COMPLETADA — ANDROID TWA **BLOQUEADA** POR FALTA DE HERRAMIENTAS DE COMPILACIÓN.
 
-- Se actualizó `public/manifest.json` con `scope`, idioma, fondo `#F4F6FA`, tema `#153449` e iconos `maskable` separados de 192 y 512 px.
-- Se regeneraron `apple-touch-icon.png` y los nuevos iconos maskable a partir del logo oficial, con margen seguro y sin transparencias incorrectas.
-- Se actualizaron los iconos legacy y adaptativos de Android, el icono de notificación monocromático, las imágenes de splash y `store_icon.png` con la marca actual.
-- Se ajustaron los colores de estado, navegación y splash del TWA a la paleta de marca y se sincronizó el manifest empaquetado en `source/app/src/main/res/raw/`.
-- Se verificó el manifest en runtime: los cuatro iconos responden 200 con `image/png`, el service worker queda activado y el precache contiene los 15 recursos de producción, sin harnesses.
-- F9/F10 no modificaron `applicationId`, firma, keystore ni host; el host se actualizó después en F10.1.
-- La compilación Android local no se ejecutó: el equipo solo tiene JRE 8 y JDK 16, el SDK instalado es Android 30/build-tools 30 y el proyecto requiere JDK 17, compileSdk 36 y Gradle 8.11.1.
-- `assetlinks.json` de la raíz, `public/.well-known/assetlinks.json` y `dist/.well-known/assetlinks.json` contienen el mismo package y fingerprint; el archivo local está preparado, pero la huella no está verificada contra la firma de publicación.
-- El dominio oficial es `tugananciaa.web.app`; `firebase.json` y `.firebaserc` ya apuntan al sitio/proyecto `tugananciaa`. La TWA quedó actualizada a ese host en F10.1, pendiente de compilación Android.
+- Identidad visual documentada: petróleo `#153449`, azul de acción `#2563EB`, esmeralda `#087F70`, fondo `#F4F6FA` y tipografía Inter. Los tokens están en `src/design/tokens.js`/`src/styles/tokens.generated.css`; `src/index.css` importa Inter y conserva fallbacks del sistema.
+- `public/manifest.json` especifica idioma y scope `/`, colores de fondo/tema de marca e iconos normales `icon-192.png`/`icon-512.png` separados de `icon-maskable-192.png`/`icon-maskable-512.png`. También se actualizaron `apple-touch-icon.png` y los recursos de launcher, maskable, notificación, splash y tienda de Android.
+- Recursos Android/TWA del trabajo registrado: `source/app/build.gradle`, `source/app/src/main/res/raw/web_app_manifest.json`, `source/app/src/main/res/values/colors.xml`, iconos `mipmap-*`, recursos `drawable-*` y `source/store_icon.png`. Se ajustaron colores de estado, navegación y splash. `applicationId`, namespace y firma no se cambiaron.
+- Recurso histórico conservado: `public/icon.svg` existe, pero no se encontraron referencias en `index.html`, `src/` ni las configuraciones de manifest/service worker inspeccionadas. No se eliminó.
+- Validaciones PWA históricas (F10.1, no reejecutadas en este cierre): build web registrado con 2495 módulos, 94.21 kB CSS, 1,682.85 kB JS y 15 recursos PWA; 47 tokens coincidentes; `/manifest.json` y `/.well-known/assetlinks.json` respondieron 200 en preview. No se ejecutó una comprobación de runtime en esta tarea.
+- Advertencias históricas del build: `caniuse-lite` desactualizado y chunk mayor de 500 kB. La validación de tokens y las pruebas de manifest/runtime descritas arriba son resultados históricos, no resultados de esta actualización documental.
+- La compilación Android no se ejecutó. El último diagnóstico (F10.2) registró JRE 8/JDK 16, SDK Android 30/build-tools 30 y ausencia de JDK 17, SDK Platform 36/build-tools compatibles y Gradle 8.11.1 disponible; no afirmar que Android compila correctamente.
+- `assetlinks.json`: los registros históricos describen copias locales estructuralmente coincidentes, pero la asociación no está verificada contra el certificado de publicación/Play Console. También registran placeholders en el host antiguo `tuganancia.web.app`. En este cierre no se abrieron los archivos `assetlinks.json`, no se consultó ningún host y no se revalidó su contenido remoto.
+- Discrepancia de dominio: la configuración TWA actual de `source/app/build.gradle` usa `tugananciaa.web.app`; los registros anteriores indican que el sitio Firebase oficial es `tugananciaa`, mientras el host antiguo `tuganancia.web.app` conservaba manifest/assetlinks con placeholders. No se cambió la configuración ni se verificó el estado remoto; una APK instalada previamente podría seguir usando el host antiguo.
+- La validación funcional autenticada con datos reales y las pruebas físicas de impresión de recibos térmicos y en hoja continúan pendientes.
 
 ## Auditoría de coherencia (2026-10-23)
 
@@ -160,6 +162,13 @@ Actualizado: 2026-10-23
 - No se intentó compilar porque faltan JDK 17, plataforma 36, build-tools compatible y Gradle 8.11.1. Instalar o descargar esas herramientas requiere autorización.
 - Para habilitar una compilación de diagnóstico sin firma: instalar JDK 17 y definir `JAVA_HOME`, instalar SDK Platform 36 y build-tools compatibles con el `sdkmanager` existente, permitir la descarga de Gradle 8.11.1, definir `ANDROID_HOME` en la sesión (evitando crear un `local.properties` no ignorado), y ejecutar `gradlew.bat :app:clean :app:assembleRelease` (salida unsigned). La validación instalable de la TWA requiere además firmar con la clave de publicación, fuera del alcance de esta tarea.
 - No se abrió ni modificó `source/signingKey.keystore`; no se modificó la firma, los identificadores ni producción. No se ejecutó commit, push ni deploy.
+
+## Cierre documental F9/F10 (2026-10-26)
+
+- El diff inicial de este documento estaba vacío. Esta actualización solo cambia `docs/audit/ESTADO_REDISENO.md`; los builds, resultados PWA y diagnósticos Android anteriores se conservan como evidencia histórica y no se reejecutaron.
+- El inventario de cuatro archivos modificados descrito en F10.2 corresponde al snapshot de esa auditoría, no al worktree actual. El `git status --short` inicial de este cierre mostró cambios previos modificados y sin seguimiento en varias áreas, incluidos B1–B4, auth/ventas/sincronización y Android; `source/app/src/main/AndroidManifest.xml` figura modificado ahora, mientras `source/app/build.gradle` no. El diff actual del manifest cambia dos nombres de metadata del separador de navegación de `androix` a `androidx`; es TWA-related, pero no se atribuye a una fase sin evidencia de origen. `src/design/tokens.js` y `src/styles/tokens.generated.css` agregan tokens de estado warning y también se dejan sin atribución. No se sobrescribió ninguno de esos cambios.
+- En esta tarea no se ejecutaron builds, pruebas, validaciones PWA/Android, comandos remotos ni verificaciones autenticadas. `git diff --check` terminó sin errores de whitespace y con avisos LF/CRLF; `git status --short` conserva los cambios previos y añade únicamente este documento.
+- No se leyeron archivos `.env`, `assetlinks.json`, certificados ni archivos de firma. El estado de placeholders/fingerprints y de los dominios remotos se basa solo en registros históricos; no se revalidó desde servicios.
 
 ## Evidencia
 

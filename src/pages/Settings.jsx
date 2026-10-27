@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { saveBusinessSettings, renameBusiness } from '../services/businessSettings';
+import { saveBusinessSettings, renameBusiness, getBusinessSectorConfig } from '../services/businessSettings';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { exportFullBackup } from '../services/backup';
 import { DEFAULT_CATEGORY_ID, BUSINESS_CATEGORIES, getCategoryById } from '../config/businessCategories';
@@ -143,6 +143,7 @@ export default function Settings() {
   }, [hasChanges]);
 
   const currentCat = getCategoryById(businessCategory);
+  const sectorConfig = getBusinessSectorConfig(settings);
 
   function toggle(id) {
     setOpenId((prev) => (prev === id ? null : id));
@@ -307,12 +308,21 @@ export default function Settings() {
         );
       case 'rubro':
         return (
-          <div className="px-3 pb-3 pt-2 border-t border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)]/40">
+          <div className="px-3 pb-3 pt-2 border-t border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)]/40 space-y-2">
             <button type="button" onClick={() => setShowRubroModal(true)} className="w-full flex items-center gap-2 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.99]">
               <span className="text-base">{currentCat.emoji}</span>
               <span className="flex-1 text-left truncate">{currentCat.name}</span>
               <span className="text-xs font-bold text-[var(--mg-accent)]">Cambiar</span>
             </button>
+            <div className="text-[11px] leading-snug text-[var(--mg-text-muted)]">
+              <p className="font-semibold text-[var(--mg-text-secondary)]">Configuración base preparada para este rubro:</p>
+              <p>Unidades disponibles: {sectorConfig.unitLabels.join(', ')}</p>
+              <p>Unidad por defecto: {sectorConfig.defaultUnit}</p>
+              {sectorConfig.optionalFields.length > 0 && (
+                <p>Campos opcionales futuros: volumen, graduación alcohólica y procedencia.</p>
+              )}
+              <p className="mt-1 text-[var(--mg-text-faint)]">Las funciones específicas del rubro se habilitarán en próximas fases.</p>
+            </div>
           </div>
         );
       case 'logo':

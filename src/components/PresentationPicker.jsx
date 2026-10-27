@@ -3,7 +3,7 @@ import { AppIcon } from './icons';
 
 // Hoja para elegir cómo se vende: unidad suelta o paquete (frío/caliente).
 // Se queda abierta para sumar varias veces seguidas sin salir.
-export default function PresentationPicker({ product, cartCounts = {}, onPick, onClose, onGoCart, cartTotalItems = 0 }) {
+export default function PresentationPicker({ product, cartCounts = {}, cartBaseUsed = 0, onPick, onClose, onGoCart, cartTotalItems = 0 }) {
   if (!product) return null;
   const options = getSellOptions(product);
 
@@ -41,7 +41,7 @@ export default function PresentationPicker({ product, cartCounts = {}, onPick, o
         <div className="p-4 space-y-2.5">
           {options.map((opt) => {
             const count = cartCounts[opt.key] || 0;
-            const maxed = Math.floor((product.stock || 0) / opt.factor) <= count;
+            const maxed = Number(product.stock || 0) - cartBaseUsed < opt.factor;
             return (
               <button
                 key={opt.key}
@@ -55,16 +55,18 @@ export default function PresentationPicker({ product, cartCounts = {}, onPick, o
                 }`}
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${count > 0 ? 'border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-brand)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
-                  <AppIcon name={opt.presId === 'pack' ? 'paquete' : 'etiqueta'} size={19} />
+                  <AppIcon name={opt.factor > 1 ? 'paquete' : 'etiqueta'} size={19} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-black text-[var(--mg-text-primary)]">
-                    {opt.presId === 'pack'
+                    {opt.presentationId
+                      ? `1 ${opt.label}${opt.factor > 1 ? ` (x${opt.factor})` : ''}`
+                      : opt.presId === 'pack'
                       ? `1 ${(product.packLabel || 'Paquete').trim() || 'Paquete'}${opt.variant === 'caliente' ? ' caliente' : opt.variant === 'frio' ? ' frío' : ''} (x${opt.factor})`
                       : `1 ${(product.unitLabel || 'Unidad').trim() || 'Unidad'}`}
                   </span>
                   <span className="block text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                    {formatMoney(opt.price)}{opt.presId === 'unit' ? ' c/u' : ' el paquete'}
+                    {formatMoney(opt.price)}{opt.factor === 1 ? ' c/u' : ' por presentación'}
                   </span>
                 </span>
                 {count > 0 ? (

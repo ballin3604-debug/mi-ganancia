@@ -9,6 +9,7 @@ import { formatBs } from '../utils/currency';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useBranches } from '../context/BranchContext';
 import { AppIcon } from './icons';
+import { SyncStatusBadge } from './SyncStatusBadge';
 
 function prettyName(raw) {
   const name = (raw || '').trim();
@@ -31,6 +32,7 @@ function ReceiptRow({ sale, items, expanded, onToggle, onSelectSale, onReimprint
         <span className="flex-1 min-w-0 truncate text-sm font-bold text-[var(--mg-text-primary)]">
           {sale.clientName || 'Cliente Ocasional'}
         </span>
+        <SyncStatusBadge status={sale.sync_status} className="hidden sm:inline-flex" />
         <span className="text-sm font-black text-[var(--mg-brand-text)] tabular-nums shrink-0">{formatBs(sale.total)}</span>
         <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full border transition-all shrink-0 ${expanded ? 'bg-[var(--mg-accent)] text-white border-[var(--mg-accent)] rotate-180' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)]'}`}>
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

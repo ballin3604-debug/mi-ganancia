@@ -67,6 +67,14 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.development
+.env.production
+
+# Entornos locales de staging/test: nunca versionar credenciales.
+# .env.example sigue versionado porque no coincide con estos patrones.
+.env*.local
+.env.staging*
+.env.test*
 
 # Firebase Admin SDK private key — NUNCA subir esto, es acceso total
 serviceAccountKey.json

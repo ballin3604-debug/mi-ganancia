@@ -1,5 +1,20 @@
-import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
+import { assertSupabase, isSupabaseConfigured } from './supabaseClient';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/environment';
 import { db, generateUUID } from './localDb';
+
+function getDeviceId() {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    let deviceId = localStorage.getItem('mg-device-id');
+    if (!deviceId) {
+      deviceId = generateUUID();
+      localStorage.setItem('mg-device-id', deviceId);
+    }
+    return deviceId;
+  } catch {
+    return null;
+  }
+}
 
 let online = navigator.onLine;
 let pendingCount = 0;
@@ -22,9 +37,12 @@ const PAGE_SIZE = 1000;
 
 export async function checkOnlineStatus() {
   if (!navigator.onLine) return false;
+  // Si el guard de entorno falló (por ejemplo, ref de staging distinto), no
+  // se lee la URL ni se hace el ping: evita cualquier fuga hacia producción.
+  if (!isSupabaseConfigured) return false;
   try {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const url = SUPABASE_URL;
+    const anonKey = SUPABASE_ANON_KEY;
     if (!url || !anonKey) return false;
 
     // Fast ping using HEAD method on a lightweight table (fully CORS enabled)
@@ -49,6 +67,20 @@ export async function checkOnlineStatus() {
 // UN negocio con datos de otro negocio conocido.
 function belongsToBusiness(op, businessId) {
   return !op.business_id || op.business_id === businessId;
+}
+
+export function attachSaleItemBusinessIds(sales, saleItems) {
+  const businessBySaleId = new Map(sales.map((sale) => [sale.id, sale.business_id]));
+  return saleItems.map((item) => {
+    const saleBusinessId = businessBySaleId.get(item.sale_id);
+    if (!saleBusinessId) {
+      throw new Error('Una línea de venta sincronizada no tiene una venta padre con negocio.');
+    }
+    if (item.business_id && item.business_id !== saleBusinessId) {
+      throw new Error('El negocio de una línea no coincide con el negocio de su venta.');
+    }
+    return { ...item, business_id: saleBusinessId };
+  });
 }
 
 async function updatePendingCount(businessId) {
@@ -127,7 +159,7 @@ export async function initializeSyncEngine(businessId) {
 // múltiples escrituras relacionadas (p.ej. registrar una venta: venta + items
 // + stock) pueda incluirlo en su propia transacción Dexie y así o se guarda
 // todo junto, o no se guarda nada. Ver refreshOutboxState/enqueueOperation.
-export function buildOutboxOp(operationType, payload, businessId) {
+export function buildOutboxOp(operationType, payload, businessId, { userId = null, branchId = null, origin = 'offline' } = {}) {
   return {
     id: generateUUID(),
     operation_type: operationType,
@@ -137,6 +169,11 @@ export function buildOutboxOp(operationType, payload, businessId) {
     created_at: new Date().toISOString(),
     retry_count: 0,
     last_attempt_at: null,
+    created_by: userId,
+    branch_id: branchId,
+    device_id: getDeviceId(),
+    origin,
+    server_confirmed_at: null,
   };
 }
 
@@ -148,10 +185,89 @@ export async function refreshOutboxState(businessId) {
   triggerSync(businessId);
 }
 
-export async function enqueueOperation(operationType, payload, businessId) {
-  const op = buildOutboxOp(operationType, payload, businessId);
+export async function enqueueOperation(operationType, payload, businessId, meta = {}) {
+  const op = buildOutboxOp(operationType, payload, businessId, meta);
   await db.pending_operations.add(op);
+  requestBackgroundSync();
   await refreshOutboxState(businessId);
+}
+
+// Solicita Background Sync cuando el navegador lo soporte. Es un mejorador
+// opcional: si no está disponible, el fallback de sincronización al abrir /
+// recuperar conexión / volver a primer plano sigue funcionando.
+function requestBackgroundSync() {
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+  try {
+    navigator.serviceWorker.ready.then((registration) => {
+      if (registration.sync) {
+        registration.sync.register('tuganancia-sync').catch(() => {
+          // Permission denied or unsupported: ignore, fallback will handle it.
+        });
+      }
+    });
+  } catch {
+    // Ignore in environments without service worker support.
+  }
+}
+
+function getErrorText(err) {
+  if (typeof err === 'string') return err.toLowerCase();
+  if (!err || typeof err !== 'object') return '';
+  return [
+    err.name, err.code, err.message, err.details, err.hint,
+    err.cause?.name, err.cause?.code, err.cause?.message, err.cause?.details,
+    err.error?.name, err.error?.code, err.error?.message, err.error?.details,
+  ].filter((value) => value !== undefined && value !== null && value !== '').join(' ').toLowerCase();
+}
+
+function getErrorCodes(err) {
+  if (!err || typeof err !== 'object') return [];
+  return [
+    err.code, err.status, err.statusCode,
+    err.cause?.code, err.cause?.status, err.cause?.statusCode,
+    err.error?.code, err.error?.status, err.error?.statusCode,
+  ].filter((value) => value !== undefined && value !== null && value !== '')
+    .map((value) => String(value).toUpperCase());
+}
+
+export function isNetworkError(err) {
+  const codes = getErrorCodes(err);
+  const networkCodes = [
+    '0', '408', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN',
+    'ETIMEDOUT', 'ERR_NETWORK', 'ERR_INTERNET_DISCONNECTED',
+    'ERR_CONNECTION_RESET', 'ERR_CONNECTION_REFUSED', 'ERR_NAME_NOT_RESOLVED',
+    'NETWORK_ERROR',
+  ];
+  if (codes.some((code) => networkCodes.includes(code))) return true;
+  return /failed to fetch|fetch failed|network\s*error|networkerror|network request failed|timeout|timed out|socket hang up|load failed|offline|sin conexi[oó]n|no connection|no internet|\bcors\b|cross[- ]origin/.test(getErrorText(err));
+}
+
+export function isAuthError(err) {
+  const codes = getErrorCodes(err);
+  if (codes.includes('PGRST301') || codes.includes('401')) return true;
+  return /jwt expired|jwt expirado|expired jwt|invalid jwt|jwt inv[aá]lido|invalid session|sesi[oó]n inv[aá]lida|session expired|sesi[oó]n expirada|auth session missing|invalid refresh token|refresh token not found|unauthorized|no autorizado/.test(getErrorText(err));
+}
+
+export function isPermanentError(err) {
+  if (isNetworkError(err) || isAuthError(err)) return false;
+  const permanentCodes = [
+    '23505', '23502', '23503', '23514', 'P0001', '22P02',
+    '42883', 'PGRST202', '42P01', '42501',
+  ];
+  const codes = getErrorCodes(err);
+  if (codes.includes('PGRST204')) return false;
+  if (codes.some((code) => permanentCodes.includes(code))) return true;
+  return /duplicate key value violates unique constraint|violates (?:not-null|foreign key|check) constraint|constraint violation|violates row-level security policy|permission denied|invalid input syntax|invalid text representation|datos inv[aá]lidos|could not find the function|function[\s\S]*does not exist|relation[\s\S]*does not exist|table[\s\S]*does not exist|no existe la funci[oó]n|no existe la tabla/.test(getErrorText(err));
+}
+
+export function isRetryableError(err) {
+  return !isPermanentError(err);
+}
+
+export async function getPendingOperations(businessId, status = null) {
+  const allOps = await db.pending_operations.orderBy('created_at').toArray();
+  const scoped = businessId ? allOps.filter((op) => belongsToBusiness(op, businessId)) : allOps;
+  return status === null ? scoped : scoped.filter((op) => op.status === status);
 }
 
 export async function triggerSync(businessId) {
@@ -181,32 +297,30 @@ export async function triggerSync(businessId) {
       }
 
       try {
+        await db.pending_operations.update(op.id, { status: 'syncing' });
         await processOperation(op, businessId);
+        await db.pending_operations.update(op.id, {
+          status: 'confirmed',
+          server_confirmed_at: new Date().toISOString(),
+        });
+        await updatePendingCount(businessId);
+        await new Promise((resolve) => setTimeout(resolve, 50));
         await db.pending_operations.delete(op.id);
       } catch (err) {
         const errorMessage = err?.message || err?.details || err?.hint || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Error de sincronización.';
         console.error(`[SyncEngine Error] Operation ${op.id} (${op.operation_type}) - Attempt ${(op.retry_count || 0) + 1}:`, errorMessage, err);
         
-        const nextRetry = (op.retry_count || 0) + 1;
+        const currentRetry = op.retry_count || 0;
+        const nextRetry = currentRetry + 1;
         const nowStr = new Date().toISOString();
+        const shouldRetry = !isPermanentError(err) && currentRetry < 5;
 
-        if (nextRetry >= 5) {
-          // Permanent failure
-          await db.pending_operations.update(op.id, {
-            status: 'error',
-            retry_count: nextRetry,
-            last_attempt_at: nowStr,
-            error_details: errorMessage
-          });
-        } else {
-          // Incremental retry queue
-          await db.pending_operations.update(op.id, {
-            status: 'pending',
-            retry_count: nextRetry,
-            last_attempt_at: nowStr,
-            error_details: errorMessage
-          });
-        }
+        await db.pending_operations.update(op.id, {
+          status: shouldRetry ? 'pending' : 'error',
+          retry_count: nextRetry,
+          last_attempt_at: nowStr,
+          error_details: errorMessage
+        });
       }
       await updatePendingCount(businessId);
     }
@@ -251,7 +365,7 @@ let serverCaps = null;
 async function getServerCaps() {
   if (serverCaps) return serverCaps;
   serverCaps = {
-    productPres: true, productBarcode: true, itemPres: true, salesBranch: true,
+    productPres: true, productBarcode: true, productPresentations: true, itemPres: true, salesBranch: true,
     branchTables: true,
     businessSettings: null, // null = aún no probado; objeto {col: true/false}
     expenseExtra: null,
@@ -270,6 +384,12 @@ async function getServerCaps() {
     if (error) serverCaps.productBarcode = false;
   } catch {
     serverCaps.productBarcode = false;
+  }
+  try {
+    const { error } = await assertSupabase().from('products').select('presentations').limit(0);
+    if (error) serverCaps.productPresentations = false;
+  } catch {
+    serverCaps.productPresentations = false;
   }
   try {
     const { error } = await assertSupabase().from('sale_items').select('presentation').limit(0);
@@ -313,7 +433,7 @@ async function getServerCaps() {
   } catch {
     serverCaps.expenseExtra = null;
   }
-  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
+  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.productPresentations || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
     console.warn('syncEngine: columnas/tablas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
   }
   return serverCaps;
@@ -338,10 +458,11 @@ const NEW_PRES_KEYS = ['unit_label', 'pack_label', 'pack_price', 'pack_price_hot
 async function stripUnknownProductKeys(obj) {
   const caps = await getServerCaps();
   if (!obj || typeof obj !== 'object') return obj;
-  if (caps.productPres && caps.productBarcode) return obj;
+  if (caps.productPres && caps.productBarcode && caps.productPresentations) return obj;
   const copy = { ...obj };
   if (!caps.productPres) NEW_PRES_KEYS.forEach((k) => { delete copy[k]; });
   if (!caps.productBarcode) delete copy.barcode;
+  if (!caps.productPresentations) delete copy.presentations;
   return copy;
 }
 
@@ -410,6 +531,10 @@ async function processOperation(op, businessId) {
 
   switch (operation_type) {
     case 'ADD_PRODUCT': {
+      const caps = await getServerCaps();
+      if (payload.presentations !== undefined && !caps.productPresentations) {
+        throw new Error('El servidor aún no tiene la migración de presentaciones configurables.');
+      }
       const body = await stripUnknownProductKeys(payload);
       const { error } = await assertSupabase().from('products').insert(body);
       if (error) throw error;
@@ -417,6 +542,10 @@ async function processOperation(op, businessId) {
     }
     case 'UPDATE_PRODUCT': {
       const { id, ...updateData } = payload;
+      const caps = await getServerCaps();
+      if (updateData.presentations !== undefined && !caps.productPresentations) {
+        throw new Error('El servidor aún no tiene la migración de presentaciones configurables.');
+      }
       const body = await stripUnknownProductKeys(updateData);
       const { error } = await assertSupabase().from('products').update(body).eq('id', id);
       if (error) throw error;
@@ -486,6 +615,48 @@ async function processOperation(op, businessId) {
         }
         throw err;
       }
+    }
+    case 'REGISTER_PRESENTATION_SALE': {
+      const { error } = await assertSupabase().rpc('registrar_venta_presentaciones', {
+        p_client_generated_id: payload.client_generated_id,
+        p_business_id: payload.business_id,
+        p_client_name: payload.client_name,
+        p_client_nit: payload.client_nit,
+        p_payment_method: payload.payment_method,
+        p_total: Number(payload.total),
+        p_item_count: Number(payload.item_count || 0),
+        p_seller_name: payload.seller_name || '',
+        p_created_by: payload.created_by || null,
+        p_items: payload.p_items,
+        p_branch_id: payload.extraFields?.branchId || null,
+      });
+      if (error) {
+        if (isMissingFunctionError(error)) {
+          throw Object.assign(
+            new Error('La venta configurable queda pendiente hasta que el servidor tenga la migración de presentaciones.'),
+            { code: 'PRESENTATION_RPC_MISSING' },
+          );
+        }
+        throw error;
+      }
+      if (payload.extraFields && (payload.extraFields.montoEfectivo !== undefined || payload.extraFields.montoQR !== undefined)) {
+        const updateData = {};
+        if (payload.extraFields.montoEfectivo !== undefined) updateData.monto_efectivo = Number(payload.extraFields.montoEfectivo);
+        if (payload.extraFields.montoQR !== undefined) updateData.monto_qr = Number(payload.extraFields.montoQR);
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await assertSupabase()
+            .from('sales')
+            .update(updateData)
+            .eq('id', payload.client_generated_id);
+          if (updateError && !isMissingColumnError(updateError)) throw updateError;
+        }
+      }
+      try {
+        await db.sales.update(payload.client_generated_id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar venta configurable como confirmada:', confirmErr);
+      }
+      break;
     }
     case 'REGISTER_SALE': {
       // 1. Idempotencia: un error de lectura (red/RLS/sesión) NO es "no existe".
@@ -750,6 +921,15 @@ async function processOperation(op, businessId) {
           }
         }
       }
+
+      // 5. Marcar la venta local como confirmada por el servidor. Esto es
+      // best-effort: si la venta no existe localmente (p.ej. se borró la caché),
+      // no debe fallar el sync.
+      try {
+        await db.sales.update(payload.client_generated_id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar venta como confirmada:', confirmErr);
+      }
       break;
     }
     case 'ADD_EXPENSE': {
@@ -993,6 +1173,7 @@ export async function syncCacheFromServer(businessId) {
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;
         case 'REGISTER_SALE':
+        case 'REGISTER_PRESENTATION_SALE':
           if (op.payload.client_generated_id) pendingIds.add(op.payload.client_generated_id);
           if (Array.isArray(op.payload.p_items)) {
             op.payload.p_items.forEach(item => {
@@ -1052,10 +1233,11 @@ export async function syncCacheFromServer(businessId) {
     // no tocar la caché de otro negocio en un dispositivo compartido.
     const belongsToBiz = (item) => item.business_id === businessId;
 
-    const caps = await getServerCaps();
     const state = (await db.sync_state.get(businessId)) || { business_id: businessId };
     const fullDue = !state.full_at
       || (Date.now() - new Date(state.full_at).getTime()) >= FULL_SYNC_INTERVAL_MS;
+    if (fullDue) serverCaps = null;
+    const caps = await getServerCaps();
     const stampPatch = {};
 
     // ── PRODUCTS: incremental por updated_at. El catálogo ya NO se baja
@@ -1067,7 +1249,15 @@ export async function syncCacheFromServer(businessId) {
         if (wm) q = q.gt('updated_at', wm);
         return q.order('updated_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
       });
-      await upsertRows(db.products, rows, (item) => pendingIds.has(item.id));
+      const rowsForCache = caps.productPresentations
+        ? rows
+        : await Promise.all(rows.map(async (row) => {
+          const local = await db.products.get(row.id);
+          return local && Array.isArray(local.presentations) && local.presentations.length > 0
+            ? { ...row, presentations: local.presentations }
+            : row;
+        }));
+      await upsertRows(db.products, rowsForCache, (item) => pendingIds.has(item.id));
       const m = maxStamp(rows, 'updated_at');
       if (m) stampPatch.products = m;
     } catch (err) {
@@ -1139,8 +1329,9 @@ export async function syncCacheFromServer(businessId) {
         const items = await fetchAll((from, to) => assertSupabase()
           .from('sale_items').select('*').in('sale_id', saleIds)
           .order('id', { ascending: true }).range(from, to));
+        const scopedItems = attachSaleItemBusinessIds(sales, items);
         const todaySaleIdSet = new Set(saleIds);
-        await safeSyncTable(db.sale_items, items, (item) => pendingIds.has(item.sale_id), (item) => todaySaleIdSet.has(item.sale_id));
+        await safeSyncTable(db.sale_items, scopedItems, (item) => pendingIds.has(item.sale_id), (item) => todaySaleIdSet.has(item.sale_id));
       }
     } catch (err) {
       console.warn('syncEngine: no se pudo sincronizar sales:', err);
