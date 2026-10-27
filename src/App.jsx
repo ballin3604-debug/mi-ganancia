@@ -116,11 +116,11 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(!splashShown.done);
 
   // ── Estado de los nuevos flujos ────────────────────────────────────────
-  // Onboarding: primera vez que se abre la app (sin login todavía)
-  const [showOnboarding, setShowOnboarding] = useState(() => !lsGet(ONBOARDING_COMPLETION_KEY));
-  // Welcome: solo se muestra una vez después de loguearse por primera vez
-  const [showWelcome, setShowWelcome] = useState(false);
-  // Tutorial: después del setup inicial, una sola vez
+  // Onboarding previo (para visitantes en primera apertura de dispositivo antes de login)
+  const [showPreloginOnboarding, setShowPreloginOnboarding] = useState(() => !lsGet(ONBOARDING_COMPLETION_KEY));
+  // Onboarding para nuevo usuario autenticado (control de vista local)
+  const [showUserOnboarding, setShowUserOnboarding] = useState(true);
+  // Tutorial: después del setup inicial, una sola vez por usuario
   const [showTutorial, setShowTutorial] = useState(false);
 
   const handleSplashDone = useCallback(() => {
@@ -128,37 +128,33 @@ export default function App() {
     setShowSplash(false);
   }, []);
 
-  // Si ya hay usuario autenticado, asegurar que el onboarding quede marcado y no se muestre
-  useEffect(() => {
-    if (user && !lsGet(ONBOARDING_COMPLETION_KEY)) {
-      lsSet(ONBOARDING_COMPLETION_KEY, '1');
-      setShowOnboarding(false);
-    }
-  }, [user]);
-
-  // Detectar primer login del usuario para mostrar Welcome
-  useEffect(() => {
-    if (user && needsSetup && !lsGet('mg_welcome_done')) {
-      setShowWelcome(true);
-    }
-  }, [user, needsSetup]);
-
   // Detectar setup recién completado para mostrar Tutorial
   useEffect(() => {
-    if (user && !needsSetup && businessId && !lsGet('mg_tutorial_done')) {
-      // Solo lo mostramos si ya pasó por el welcome (es decir, primera vez completa)
-      if (lsGet('mg_welcome_done')) {
+    if (user && !needsSetup && businessId) {
+      const tutorialKey = `mg_tutorial_${user.uid}`;
+      if (!lsGet(tutorialKey) && !lsGet('mg_tutorial_done')) {
         setShowTutorial(true);
       }
     }
   }, [user, needsSetup, businessId]);
 
-  function handleWelcomeContinue() {
-    lsSet('mg_welcome_done', '1');
-    setShowWelcome(false);
+  function handlePreloginOnboardingFinish() {
+    lsSet(ONBOARDING_COMPLETION_KEY, '1');
+    setShowPreloginOnboarding(false);
+  }
+
+  function handleUserOnboardingFinish() {
+    if (user) {
+      lsSet(`mg_onboarding_${user.uid}`, '1');
+    }
+    lsSet(ONBOARDING_COMPLETION_KEY, '1');
+    setShowUserOnboarding(false);
   }
 
   function handleTutorialFinish() {
+    if (user) {
+      lsSet(`mg_tutorial_${user.uid}`, '1');
+    }
     lsSet('mg_tutorial_done', '1');
     setShowTutorial(false);
   }
@@ -166,20 +162,23 @@ export default function App() {
   // ── ORQUESTACIÓN DE PANTALLAS ──────────────────────────────────────────
 
   function renderCurrentScreen() {
-    // 1. Onboarding (primera vez que se abre la app, sin login todavía)
-    if (showOnboarding && !user) {
-      return <Onboarding onFinish={() => setShowOnboarding(false)} />;
-    }
-
-    // 2. Loading auth
+    // 1. Loading auth mientras se verifica sesión
     if (loading) return <LoadingSpinner />;
+
+    // 2. Visitante no logueado por primera vez en este navegador -> Onboarding previo
+    if (!user && showPreloginOnboarding) {
+      return <Onboarding onFinish={handlePreloginOnboardingFinish} />;
+    }
 
     // 3. No logueado → Login
     if (!user) return <Login />;
 
-    // 4. Welcome (después del primer login, antes del setup)
-    if (showWelcome) {
-      return <WelcomeScreen userName={user.displayName} onContinue={handleWelcomeContinue} />;
+    // 4. Nuevo correo / cuenta nueva (needsSetup) -> Onboarding garantizado para este usuario
+    const isNewUser = Boolean(user && needsSetup);
+    const userHasSeenOnboarding = Boolean(user && lsGet(`mg_onboarding_${user.uid}`));
+
+    if (isNewUser && !userHasSeenOnboarding && showUserOnboarding) {
+      return <Onboarding onFinish={handleUserOnboardingFinish} />;
     }
 
     // 5. Setup de admin sin negocio
@@ -252,7 +251,7 @@ export default function App() {
       >
         {renderCurrentScreen()}
       </div>
-      {showSplash && <SplashScreen ready={!loading || showOnboarding} onDone={handleSplashDone} />}
+      {showSplash && <SplashScreen ready={!loading || showPreloginOnboarding} onDone={handleSplashDone} />}
     </>
   );
 }
