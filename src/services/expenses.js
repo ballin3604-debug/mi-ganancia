@@ -184,7 +184,7 @@ export function subscribeToThisMonthIncome(businessId, callback) {
   };
 }
 
-async function getAllExpenses(businessId) {
+export async function getAllExpenses(businessId) {
   const list = await db.expenses.where('business_id').equals(businessId).toArray();
   return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(mapExpense);
 }

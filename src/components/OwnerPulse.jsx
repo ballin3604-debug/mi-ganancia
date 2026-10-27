@@ -5,10 +5,11 @@
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react';
 import { getSales, getSaleItemsAll } from '../services/sales';
-import { getRecentExpenses } from '../services/expenses';
+import { getAllExpenses } from '../services/expenses';
 import { useBranches } from '../context/BranchContext';
 import { formatBs } from '../utils/currency';
 import { AppIcon } from './icons';
+import { buildMonthlyPerformance } from './ownerPulseMetrics';
 
 function timeAgo(date) {
   const mins = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
@@ -17,10 +18,6 @@ function timeAgo(date) {
   const h = Math.floor(mins / 60);
   if (h < 24) return `hace ${h} h`;
   return `hace ${Math.floor(h / 24)} d`;
-}
-
-function monthKey(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], branchId = 'all', mainBranchId = null, branchName = '', onNavigate, onReimprint, printingSaleId }) {
@@ -38,7 +35,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         const [s, it, ex] = await Promise.all([
           getSales(businessId).catch(() => []),
           getSaleItemsAll(businessId).catch(() => []),
-          getRecentExpenses(businessId, 200).catch(() => []),
+          getAllExpenses(businessId).catch(() => []),
         ]);
         if (!alive) return;
         setSales(Array.isArray(s) ? s : []);
@@ -51,43 +48,10 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
     return () => { alive = false; };
   }, [businessId]);
 
-  const monthly = useMemo(() => {
-    const now = new Date();
-    const buckets = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      buckets.push({ key: monthKey(d), label: d.toLocaleDateString('es-BO', { month: 'short' }).replace('.', ''), income: 0, cogs: 0, exp: 0 });
-    }
-    const byKey = Object.fromEntries(buckets.map((b) => [b.key, b]));
-    const inBranch = (bid) => branchId === 'all' || (bid || mainBranchId) === branchId;
-    const saleInfo = {};
-    sales.forEach((s) => {
-      if (!s.createdAt) return;
-      const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-      saleInfo[s.id] = { date: d, branch: s.branchId || s.branch_id || null };
-      const b = byKey[monthKey(d)];
-      if (b && s.paymentMethod !== 'fiado' && inBranch(s.branchId || s.branch_id)) {
-        b.income += Number(s.total || 0);
-      }
-    });
-    items.forEach((it) => {
-      const info = saleInfo[it.saleId];
-      if (!info) return;
-      const b = byKey[monthKey(info.date)];
-      if (!b || !inBranch(info.branch)) return;
-      const cost = it.supplier_price ?? it.supplierPrice ?? null;
-      if (cost === null || cost === undefined) return;
-      const factor = Number(it.presentation_factor ?? it.presentationFactor ?? 1);
-      b.cogs += Number(cost) * Number(it.quantity || 0) * factor;
-    });
-    expenses.forEach((e) => {
-      if (!e.createdAt) return;
-      const d = e.createdAt?.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
-      const b = byKey[monthKey(d)];
-      if (b && inBranch(e.branch_id)) b.exp += Number(e.amount || 0);
-    });
-    return buckets.map((b) => ({ ...b, net: b.income - b.cogs - b.exp }));
-  }, [sales, items, expenses, branchId, mainBranchId]);
+  const monthly = useMemo(
+    () => buildMonthlyPerformance(sales, items, expenses, branchId, mainBranchId),
+    [sales, items, expenses, branchId, mainBranchId],
+  );
 
   const maxBar = Math.max(...monthly.map((m) => Math.max(m.income, m.cogs, m.net, 0)), 1);
   const avgMargin = (() => {
@@ -148,7 +112,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
               <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
                 <AppIcon name="reportes" size={16} />
               </span>
-              Rendimiento del Negocio (6 meses)
+              Rendimiento del Negocio ({monthly.length} {monthly.length === 1 ? 'mes' : 'meses'})
             </h3>
             <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--mg-text-muted)]">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-success)]" /> Ingresos</span>
@@ -160,17 +124,28 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
             Ingresos vs costo de mercadería y utilidad neta por mes.
             {branchId !== 'all' && branchName ? ` · ${branchName}` : ''}
           </p>
-          <div className="flex items-end justify-between gap-2 h-44">
-            {monthly.map((m) => (
-              <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                <div className="flex items-end gap-1 h-32 w-full justify-center">
-                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${Math.max((m.income / maxBar) * 100, 2)}%` }} title={`Ingresos ${formatBs(m.income)}`} />
-                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${Math.max((m.cogs / maxBar) * 100, 2)}%` }} title={`Costos ${formatBs(m.cogs)}`} />
-                  <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${Math.max((Math.max(m.net, 0) / maxBar) * 100, 2)}%` }} title={`Utilidad ${formatBs(m.net)}`} />
-                </div>
-                <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
+          <div className="overflow-x-auto pb-1">
+            {monthly.length > 0 ? (
+              <div
+                className="flex items-end justify-between gap-2 h-44"
+                style={{ minWidth: monthly.length > 6 ? `${monthly.length * 56}px` : undefined }}
+              >
+                {monthly.map((m) => (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+                    <div className="flex items-end gap-1 h-32 w-full justify-center">
+                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${m.income > 0 ? Math.max((m.income / maxBar) * 100, 2) : 0}%` }} title={`Ingresos ${formatBs(m.income)}`} />
+                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${m.cogs > 0 ? Math.max((m.cogs / maxBar) * 100, 2) : 0}%` }} title={`Costos ${formatBs(m.cogs)}`} />
+                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${m.net > 0 ? Math.max((m.net / maxBar) * 100, 2) : 0}%` }} title={`Utilidad ${formatBs(m.net)}`} />
+                    </div>
+                    <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="h-44 flex items-center justify-center text-xs font-medium text-[var(--mg-text-muted)]">
+                Aún no hay ventas registradas.
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs flex-wrap">
             <span className="text-[var(--mg-text-muted)] font-medium">
