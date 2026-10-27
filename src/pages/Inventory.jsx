@@ -987,16 +987,15 @@ export default function Inventory() {
       <AnimatePresence>
         {scannerMode && (
           <div
-            className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs mg-backdrop-in"
-            onClick={() => { setScannerMode(null); setScanMsg(''); }}
+            className="fixed inset-0 z-[70] flex flex-col bg-black mg-backdrop-in"
+            style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
             <motion.div
               initial={{ opacity: 0, y: 40, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 40, scale: 0.95 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[var(--mg-bg-surface)] w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border border-[var(--mg-border)] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black"
             >
               <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
                 <div>
@@ -1016,22 +1015,18 @@ export default function Inventory() {
                   ✕
                 </button>
               </div>
-              <div className="p-4 overflow-y-auto">
-                <BarcodeScanner onScan={handleScan} />
-                {scanMsg && (
-                  <div className="mt-3 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--mg-gold-text)]">
-                    ⚠️ {scanMsg}
-                  </div>
-                )}
-                {scanMsg && scannerMode === 'search' && (
-                  <button
-                    type="button"
-                    onClick={() => { setScannerMode(null); setScanMsg(''); openAdd(); }}
-                    className="mt-3 w-full bg-[var(--mg-accent)] text-white font-bold py-3 rounded-2xl text-sm active:scale-95"
-                  >
-                    + Crear producto con este código
-                  </button>
-                )}
+              <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4">
+                <BarcodeScanner fullScreen onScan={handleScan} message={scanMsg}>
+                  {scanMsg && scannerMode === 'search' && (
+                    <button
+                      type="button"
+                      onClick={() => { setScannerMode(null); setScanMsg(''); openAdd(); }}
+                      className="w-full shrink-0 rounded-2xl bg-[var(--mg-accent)] py-3 text-sm font-bold text-white active:scale-95"
+                    >
+                      + Crear producto con este código
+                    </button>
+                  )}
+                </BarcodeScanner>
               </div>
             </motion.div>
           </div>

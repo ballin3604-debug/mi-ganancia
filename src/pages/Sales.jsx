@@ -2251,14 +2251,10 @@ export default function Sales() {
       {/* MODAL ESCÁNER DE CÓDIGOS */}
       {showScanner && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-end sm:items-center justify-center sm:p-4"
-          onClick={() => setShowScanner(false)}
+          className="fixed inset-0 z-[90] flex flex-col bg-black"
+          style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <div
-            className="bg-[var(--mg-bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden mg-slide-up flex flex-col"
-            style={{ maxHeight: '92vh' }}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--mg-separator)] p-4">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
@@ -2279,56 +2275,48 @@ export default function Sales() {
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-4">
-              <BarcodeScanner onScan={handleBarcodeScan} />
-
-              {scanMsg && (
-                <div className={`flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold ${scanMsg.ok ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]' : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'}`}>
-                  <AppIcon name={scanMsg.ok ? 'check' : 'ayuda'} size={14} />
-                  <span>{scanMsg.text}</span>
-                </div>
-              )}
-
-              {/* Últimos escaneados */}
-              <div>
-                <p className="text-sm font-black text-[var(--mg-text-primary)] mb-2">Últimos escaneados</p>
-                {recentScans.length === 0 ? (
-                  <p className="text-xs text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] rounded-xl px-3 py-3 text-center">
-                    Aún no escaneaste nada. Los productos que agregues saldrán aquí.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {recentScans.map(({ id }) => {
-                      const p = productsWithStock.find((x) => x.id === id);
-                      if (!p) return null;
-                      const qty = cartItems
-                        .filter((i) => i.product.id === id)
-                        .reduce((sum, i) => sum + i.quantity * i.factor, 0);
-                      return (
-                        <div key={`${id}`} className="flex items-center gap-3 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl p-2.5">
-                          {p.imageData ? (
-                            <img src={p.imageData} alt={p.name} className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                          ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-bg-elevated)]">
-                              <AppIcon name="paquete" size={20} />
+            <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4">
+              <BarcodeScanner fullScreen onScan={handleBarcodeScan} message={scanMsg}>
+                <div className="max-h-[18vh] shrink-0 overflow-y-auto rounded-xl bg-[var(--mg-bg-surface)] p-3">
+                  <p className="mb-2 text-sm font-black text-[var(--mg-text-primary)]">Últimos escaneados</p>
+                  {recentScans.length === 0 ? (
+                    <p className="rounded-xl bg-[var(--mg-bg-elevated)] px-3 py-3 text-center text-xs text-[var(--mg-text-muted)]">
+                      Aún no escaneaste nada. Los productos que agregues saldrán aquí.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentScans.map(({ id }) => {
+                        const p = productsWithStock.find((x) => x.id === id);
+                        if (!p) return null;
+                        const qty = cartItems
+                          .filter((i) => i.product.id === id)
+                          .reduce((sum, i) => sum + i.quantity * i.factor, 0);
+                        return (
+                          <div key={`${id}`} className="flex items-center gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-2.5">
+                            {p.imageData ? (
+                              <img src={p.imageData} alt={p.name} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-bg-elevated)]">
+                                <AppIcon name="paquete" size={20} />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{p.name}</p>
+                              <p className="text-[11px] text-[var(--mg-text-muted)]">{formatBs(p.price)} c/u</p>
                             </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[var(--mg-text-primary)] truncate">{p.name}</p>
-                            <p className="text-[11px] text-[var(--mg-text-muted)]">{formatBs(p.price)} c/u</p>
+                            <span className="shrink-0 rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1 text-xs font-black text-[var(--mg-gold-text)]">
+                              x {qty}
+                            </span>
                           </div>
-                          <span className="shrink-0 rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1 text-xs font-black text-[var(--mg-gold-text)]">
-                            x {qty}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </BarcodeScanner>
             </div>
 
-            <div className="p-4 border-t border-[var(--mg-separator)] flex gap-2 shrink-0">
+            <div className="flex shrink-0 gap-2 border-t border-[var(--mg-separator)] p-4">
               <button
                 type="button"
                 onClick={() => setShowScanner(false)}

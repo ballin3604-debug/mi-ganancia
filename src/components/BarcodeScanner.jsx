@@ -8,7 +8,7 @@ const SCAN_REGION_ID = 'mg-barcode-region';
 // (EAN-13, UPC, Code128, QR...). El padre recibe cada código vía onScan
 // y decide qué hacer (sumar al carrito, buscar en inventario, etc.).
 // Incluye entrada manual por si la cámara falla o no hay luz.
-export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
+export default function BarcodeScanner({ onScan, autoResumeMs = 1800, fullScreen = false, message = null, children = null }) {
   const scannerRef = useRef(null);
   const lastCodeRef = useRef({ code: '', at: 0 });
   const onScanRef = useRef(onScan);
@@ -54,7 +54,16 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
 
         await scanner.start(
           cameraConfig,
-          { fps: 10, qrbox: { width: 250, height: 140 }, aspectRatio: 1.4 },
+          {
+            fps: 10,
+            qrbox: fullScreen
+              ? (width, height) => ({
+                  width: Math.min(Math.round(width * 0.82), 420),
+                  height: Math.min(Math.round(height * 0.28), 220),
+                })
+              : { width: 250, height: 140 },
+            ...(!fullScreen ? { aspectRatio: 1.4 } : {}),
+          },
           (decodedText) => {
             const code = String(decodedText || '').trim();
             if (!code) return;
@@ -110,7 +119,7 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
         })();
       }
     };
-  }, [autoResumeMs]);
+  }, [autoResumeMs, fullScreen]);
 
   function handleManual(e) {
     e?.preventDefault();
@@ -123,10 +132,16 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
     setTimeout(() => setFlash(''), 1500);
   }
 
+  const messageText = typeof message === 'string' ? message : message?.text;
+  const messageIsSuccess = typeof message === 'object' && message?.ok;
+
   return (
-    <div className="space-y-3">
-      <div className="relative rounded-2xl overflow-hidden bg-black border border-[var(--mg-border)]">
-        <div id={SCAN_REGION_ID} className="w-full min-h-[220px] [&_video]:!rounded-2xl" />
+    <div className={fullScreen ? 'flex flex-1 min-h-0 flex-col gap-3' : 'space-y-3'}>
+      <div className={`relative overflow-hidden bg-black ${fullScreen ? 'flex-1 min-h-[220px]' : 'rounded-2xl border border-[var(--mg-border)]'}`}>
+        <div
+          id={SCAN_REGION_ID}
+          className={fullScreen ? 'mg-barcode-fullscreen' : 'w-full min-h-[220px] [&_video]:!rounded-2xl'}
+        />
         {starting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
             <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
@@ -143,7 +158,9 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
         {/* Marco guía */}
         {!starting && !error && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="w-[70%] h-[45%] border-2 border-dashed border-white/50 rounded-xl" />
+            <div className={fullScreen ? 'relative w-[82%] max-w-[420px] h-[28%] max-h-[220px] rounded-xl border-2 border-white/70' : 'w-[70%] h-[45%] border-2 border-dashed border-white/50 rounded-xl'}>
+              {fullScreen && <span className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-rose-500/90 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />}
+            </div>
           </div>
         )}
       </div>
@@ -155,7 +172,16 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800 }) {
         </p>
       )}
 
-      <form onSubmit={handleManual} className="flex gap-2">
+      {messageText && (
+        <div className={`flex shrink-0 items-start gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${messageIsSuccess ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]' : 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
+          <AppIcon name={messageIsSuccess ? 'check' : 'ayuda'} size={14} />
+          <span>{messageText}</span>
+        </div>
+      )}
+
+      {children}
+
+      <form onSubmit={handleManual} className="flex shrink-0 gap-2">
         <input
           type="text"
           value={manual}
