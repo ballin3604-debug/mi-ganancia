@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
+import BrandMark from './BrandMark';
 import { AppIcon } from './icons';
 import { useSwipeCarousel } from '../hooks/useSwipeCarousel';
+
+export const ONBOARDING_COMPLETION_KEY = 'mg_onboarding_done_v2';
 
 const SLIDES = [
   {
@@ -32,9 +35,9 @@ const SLIDES = [
 
 const TONES = {
   accent: {
-    background: 'var(--mg-accent-bg)',
-    border: 'var(--mg-accent-border)',
-    color: 'var(--mg-accent)',
+    background: 'rgba(15, 150, 117, 0.10)',
+    border: 'rgba(15, 150, 117, 0.28)',
+    color: '#0C4A38',
   },
   gold: {
     background: 'var(--mg-gold-bg)',
@@ -76,6 +79,7 @@ export default function Onboarding({ onFinish }) {
   const wheelLocked = useRef(false);
   const wheelTimer = useRef(null);
   const wheelHandlerRef = useRef(null);
+  const reduceMotion = useReducedMotion();
   const isLast = current === SLIDES.length - 1;
   const { viewportRef, goTo, trackProps } = useSwipeCarousel({
     index: current,
@@ -89,7 +93,7 @@ export default function Onboarding({ onFinish }) {
   }, []);
 
   function finish() {
-    try { localStorage.setItem('mg_onboarding_done', '1'); } catch {}
+    try { localStorage.setItem(ONBOARDING_COMPLETION_KEY, '1'); } catch {}
     onFinish?.();
   }
 
@@ -151,17 +155,19 @@ export default function Onboarding({ onFinish }) {
       tabIndex={-1}
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col overflow-y-auto bg-[var(--mg-bg-base)] outline-none"
-      style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+      style={{
+        paddingTop: 'max(1rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+        backgroundImage: 'radial-gradient(ellipse at 100% 0%, rgba(15, 150, 117, 0.12), transparent 42%), radial-gradient(ellipse at 0% 100%, rgba(11, 58, 43, 0.07), transparent 38%)',
+      }}
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         Paso {current + 1} de {SLIDES.length}
       </span>
       <header className="relative flex shrink-0 items-center justify-between px-5 sm:px-8">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-sm font-black text-white">
-            M
-          </span>
-          <span className="text-sm font-black tracking-tight text-[var(--mg-text-primary)]">Mi Ganancia</span>
+        <div className="flex items-center gap-2.5" aria-label="Mi Ganancia">
+          <BrandMark className="h-7 w-12 shrink-0" />
+          <span className="text-sm font-black tracking-tight text-[#0B3A2B]">Mi Ganancia</span>
         </div>
         {!isLast && (
           <button
@@ -185,26 +191,33 @@ export default function Onboarding({ onFinish }) {
           >
             {SLIDES.map((item, index) => {
               const slideTone = TONES[item.tone];
+              const active = index === current;
               return (
                 <article
                   key={item.title}
                   className="w-full shrink-0 text-center"
-                  aria-hidden={index !== current}
-                  data-active={index === current ? 'true' : 'false'}
+                  aria-hidden={!active}
+                  data-active={active ? 'true' : 'false'}
                   role="group"
                   aria-roledescription="pantalla"
                   aria-label={`Pantalla ${index + 1} de ${SLIDES.length}`}
                 >
-                  <div
-                    className="mx-auto mb-6 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] border"
-                    style={{ background: slideTone.background, borderColor: slideTone.border }}
+                  <motion.div
+                    key={`${item.title}-${active}`}
+                    initial={active && !reduceMotion ? { opacity: 0, scale: 0.82, y: 12, rotate: -4 } : false}
+                    animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+                    transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 22, delay: 0.04 }}
+                    className="relative mx-auto mb-6 flex h-[100px] w-[100px] items-center justify-center rounded-[30px] border bg-white shadow-[0_18px_38px_rgba(11,58,43,0.12)]"
+                    style={{ background: `linear-gradient(145deg, #FFFFFF 8%, ${slideTone.background} 100%)`, borderColor: slideTone.border }}
                     aria-hidden="true"
                   >
-                    <AppIcon name={item.icon} size={40} color={slideTone.color} strokeWidth={1.8} />
-                  </div>
+                    <span className="absolute inset-[6px] rounded-[24px] border border-white/70" />
+                    <AppIcon name={item.icon} size={42} color={slideTone.color} strokeWidth={1.8} />
+                    <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-[#0F9675] shadow-sm" />
+                  </motion.div>
 
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                    Paso {index + 1} de {SLIDES.length}
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0C4A38]">
+                    Tu negocio, simple <span className="px-1 text-[#0F9675]">·</span> {String(index + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}
                   </p>
 
                   <h1 id={`welcome-slide-title-${index}`} className="mt-3 text-[27px] font-extrabold leading-tight tracking-tight text-[var(--mg-text-primary)] sm:text-[34px]">
@@ -213,6 +226,9 @@ export default function Onboarding({ onFinish }) {
 
                   <p id={`welcome-slide-description-${index}`} className="mx-auto mt-3 max-w-sm text-[15px] font-medium leading-relaxed text-[var(--mg-text-secondary)] sm:text-base">
                     {item.description}
+                  </p>
+                  <p className="mt-5 text-xs font-semibold tracking-wide text-[#0C4A38]/70">
+                    {index < SLIDES.length - 1 ? 'Deslizá para descubrir' : 'Todo lo esencial para hacer crecer tu negocio'}
                   </p>
                 </article>
               );
@@ -232,9 +248,8 @@ export default function Onboarding({ onFinish }) {
               <span
                 key={index}
                 aria-hidden="true"
-                className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
-                  index === current ? 'w-7 bg-[var(--mg-brand)]' : 'w-1.5 bg-[var(--mg-border-hover)]'
-                }`}
+                className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${index === current ? 'w-8' : 'w-1.5 bg-[var(--mg-border-hover)]'}`}
+                style={index === current ? { background: 'linear-gradient(90deg, #0B3A2B, #0F9675)' } : undefined}
               />
             ))}
           </div>
@@ -249,7 +264,12 @@ export default function Onboarding({ onFinish }) {
                 <AppIcon name="volver" size={20} color="currentColor" />
               </button>
             ) : null}
-            <button type="button" onClick={next} className="mg-btn-primary min-h-12 flex-1 text-base">
+            <button
+              type="button"
+              onClick={next}
+              className="min-h-12 flex-1 rounded-xl px-4 py-3.5 text-base font-bold text-white transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F9675] focus-visible:ring-offset-2"
+              style={{ background: 'linear-gradient(120deg, #0B3A2B, #0F9675)', boxShadow: '0 10px 22px rgba(11, 58, 43, 0.20)' }}
+            >
               {isLast ? 'Comenzar' : 'Siguiente'}
             </button>
           </div>

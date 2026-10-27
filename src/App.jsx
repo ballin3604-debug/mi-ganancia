@@ -20,7 +20,7 @@ import Team from './pages/Team';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AppIcon } from './components/icons';
 import SplashScreen from './components/SplashScreen';
-import Onboarding from './components/Onboarding';
+import Onboarding, { ONBOARDING_COMPLETION_KEY } from './components/Onboarding';
 import WelcomeScreen from './components/WelcomeScreen';
 import Tutorial from './components/Tutorial';
 
@@ -117,7 +117,7 @@ export default function App() {
 
   // ── Estado de los nuevos flujos ────────────────────────────────────────
   // Onboarding: primera vez que se abre la app (sin login todavía)
-  const [showOnboarding, setShowOnboarding] = useState(() => !lsGet('mg_onboarding_done'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !lsGet(ONBOARDING_COMPLETION_KEY));
   // Welcome: solo se muestra una vez después de loguearse por primera vez
   const [showWelcome, setShowWelcome] = useState(false);
   // Tutorial: después del setup inicial, una sola vez
@@ -126,6 +126,12 @@ export default function App() {
   const handleSplashDone = useCallback(() => {
     splashShown.done = true;
     setShowSplash(false);
+  }, []);
+
+  useEffect(() => {
+    const showWelcome = () => setShowOnboarding(true);
+    window.addEventListener('mg:show-onboarding', showWelcome);
+    return () => window.removeEventListener('mg:show-onboarding', showWelcome);
   }, []);
 
   // Detectar primer login del usuario para mostrar Welcome
@@ -158,8 +164,7 @@ export default function App() {
   // ── ORQUESTACIÓN DE PANTALLAS ──────────────────────────────────────────
 
   function renderCurrentScreen() {
-    // 1. Onboarding (primera vez en la vida del navegador)
-    if (showOnboarding && !user) {
+    if (showOnboarding) {
       return <Onboarding onFinish={() => setShowOnboarding(false)} />;
     }
 
