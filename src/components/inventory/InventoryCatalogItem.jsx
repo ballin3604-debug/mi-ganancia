@@ -6,8 +6,8 @@ function expiryInfo(nearestExpiry) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const daysLeft = Math.ceil((nearestExpiry.date - today) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0) return { label: 'Vencido', cls: 'bg-red-600 text-white' };
-  if (daysLeft <= 30) return { label: `${daysLeft}d para vencer`, cls: 'bg-amber-500 text-white' };
+  if (daysLeft < 0) return { label: 'Vencido', cls: 'bg-[var(--mg-danger)] text-white' };
+  if (daysLeft <= 30) return { label: `${daysLeft}d para vencer`, cls: 'bg-[var(--mg-gold)] text-white' };
   return null;
 }
 
@@ -76,7 +76,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                 </p>
               )}
             </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'bg-blue-50 text-blue-700'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
               {product.category || 'Otros'}
             </span>
           </div>
@@ -92,7 +92,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
               <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                 Stock Disponible
               </span>
-              <p className={`text-sm font-black ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
                 {product.stock} {product.unitLabel || 'und'}
               </p>
             </div>

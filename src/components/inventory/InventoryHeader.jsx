@@ -43,18 +43,23 @@ export function InventoryHeader({
     <div className="space-y-4">
       {/* Top Header Bar: Title & Primary Actions */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
-              Catálogo de Inventario
-            </h2>
-            <span className="hidden sm:inline-block bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs">
-              {totalProducts} {totalProducts === 1 ? 'producto' : 'productos'}
-            </span>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)]">
+            <AppIcon name="almacen" size={21} color="#fff" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
+                Catálogo de Inventario
+              </h2>
+              <span className="hidden sm:inline-block bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border border-[var(--mg-brand-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full">
+                {totalProducts} {totalProducts === 1 ? 'producto' : 'productos'}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
+              Gestión visual de existencias, precios y categorías
+            </p>
           </div>
-          <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
-            Gestión visual de existencias, precios y categorías
-          </p>
         </div>
 
         {/* Selector de sede: solo cambia la vista del stock (no es filtro) */}
@@ -90,10 +95,10 @@ export function InventoryHeader({
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={onOpenAddProduct}
-            className="bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white rounded-2xl px-4 py-2 font-black text-xs shadow-md hover:shadow-lg transition-all hidden md:flex items-center gap-2 min-h-[40px] border border-[var(--mg-accent-border)]"
+            className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white rounded-2xl px-4 py-2 font-black text-xs shadow-[var(--mg-shadow-md)] hover:shadow-[var(--mg-shadow-lg)] transition-all hidden md:flex items-center gap-2 min-h-[42px]"
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center leading-none">
-              <AppIcon name="agregar" size={14} color="#fff" />
+              <AppIcon name="nuevoProducto" size={14} color="#fff" />
             </span>
             <span>Nuevo Producto</span>
           </motion.button>
@@ -134,7 +139,7 @@ export function InventoryHeader({
                 onClick={onOpenScanner}
                 title="Escanear código de barras"
                 aria-label="Escanear código de barras"
-                className="w-9 h-9 shrink-0 rounded-xl bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white shadow flex items-center justify-center active:scale-90 transition-all"
+                className="w-10 h-10 shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white shadow-[var(--mg-shadow-md)] flex items-center justify-center active:scale-90 transition-all"
               >
                 <AppIcon name="scan" size={20} color="#fff" />
               </button>
@@ -148,7 +153,7 @@ export function InventoryHeader({
                 aria-expanded={showFilters}
                 className={`md:hidden w-9 h-9 shrink-0 rounded-xl border shadow-2xs flex items-center justify-center active:scale-90 transition-all relative ${
                   showFilters
-                    ? 'bg-[var(--mg-accent)] text-white border-[var(--mg-accent)]'
+                    ? 'bg-[var(--mg-brand)] text-white border-[var(--mg-brand)]'
                     : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] border-[var(--mg-border)]'
                 }`}
               >
@@ -253,7 +258,7 @@ export function InventoryHeader({
                   {isActive && (
                     <motion.div
                       layoutId="activeCategoryPill"
-                      className="absolute inset-0 bg-[var(--mg-accent)] rounded-2xl shadow-xs"
+                       className="absolute inset-0 bg-[var(--mg-brand)] rounded-2xl shadow-[var(--mg-shadow-sm)]"
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}

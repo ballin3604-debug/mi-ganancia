@@ -52,7 +52,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
               className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-108"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-4xl text-[var(--mg-text-faint)] bg-gradient-to-br from-[var(--mg-bg-elevated)] to-slate-100/90">
+            <div className="w-full h-full flex flex-col items-center justify-center text-4xl text-[var(--mg-text-faint)] bg-gradient-to-br from-[var(--mg-bg-elevated)] to-[var(--mg-bg-section)]">
               📦
             </div>
           )}
@@ -67,15 +67,15 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
           {/* Status & Expiry Badges (Top Overlay) */}
           <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1 pointer-events-none">
             {isOut ? (
-              <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
+              <span className="bg-[var(--mg-danger)] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
                 ❌ Agotado
               </span>
             ) : isLow ? (
-              <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
+              <span className="bg-[var(--mg-gold)] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
                 ⚠️ {product.stock} und
               </span>
             ) : (
-              <span className="bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs">
+              <span className="bg-[var(--mg-success)] backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs">
                 {product.stock} {product.unitLabel || 'und'}
               </span>
             )}
@@ -83,7 +83,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
             {expiryStatus && (
               <span
                 className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md ${
-                  expiryStatus.type === 'expired' ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'
+                  expiryStatus.type === 'expired' ? 'bg-[var(--mg-danger)] text-white' : 'bg-[var(--mg-gold)] text-white'
                 }`}
               >
                 ⏰ {expiryStatus.label}
@@ -97,7 +97,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
           <div className="space-y-1">
             <span
               className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                categoryColor || 'bg-blue-50 text-blue-700'
+                categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
               }`}
             >
               {product.category || 'Otros'}
@@ -146,7 +146,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
                     </p>
                   )}
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor}`}>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
                   {product.category || 'Otros'}
                 </span>
               </div>
@@ -164,7 +164,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
                   </span>
                   <p
                     className={`text-sm font-black ${
-                      isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'
+                      isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'
                     }`}
                   >
                     {product.stock} {product.unitLabel || 'und'}

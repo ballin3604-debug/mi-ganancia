@@ -124,7 +124,7 @@ export function ProductDetailModal({
               </div>
 
               <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
-                <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${categoryColor || 'bg-blue-50 text-blue-700'}`}>
+                <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
                   {product.category || 'Sin categoría'}
                 </span>
 
@@ -169,7 +169,7 @@ export function ProductDetailModal({
                   <button
                     type="button"
                     onClick={() => setShowTransfer(true)}
-                    className="text-[11px] font-black px-3 py-1.5 rounded-xl bg-[var(--mg-accent)] text-white active:scale-95"
+                    className="text-[11px] font-black px-3 py-1.5 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white shadow-[var(--mg-shadow-sm)] active:scale-95"
                   >
                     🔀 Traspasar
                   </button>
@@ -210,11 +210,11 @@ export function ProductDetailModal({
 
                 <div className="col-span-2 sm:col-span-1 bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">Ganancia Est.</span>
-                  <p className="text-base font-black text-emerald-600 mt-0.5">
+                  <p className="text-base font-black text-[var(--mg-success-text)] mt-0.5">
                     {marginPct !== null ? `+${marginPct}%` : '—'}
                   </p>
                   {profit > 0 && (
-                    <span className="text-[10px] font-bold text-emerald-700 block">({formatBs(profit)} / und)</span>
+                    <span className="text-[10px] font-bold text-[var(--mg-success-text)] block">({formatBs(profit)} / und)</span>
                   )}
                 </div>
               </div>
@@ -238,9 +238,9 @@ export function ProductDetailModal({
               {expiryInfo && (
                 <div className={`p-3 rounded-xl border flex items-center justify-between font-bold ${
                   expiryInfo.isOverdue
-                    ? 'bg-red-50 text-red-700 border-red-200'
+                    ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]'
                     : expiryInfo.isWarning
-                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] border-[var(--mg-gold-border)]'
                       : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] border-[var(--mg-border)]'
                 }`}>
                   <span>Próximo Vencimiento:</span>
@@ -265,7 +265,7 @@ export function ProductDetailModal({
                 onClose();
                 onDelete(product);
               }}
-              className="flex-1 py-3 px-4 bg-[var(--mg-danger-bg)] hover:bg-red-100 text-[var(--mg-danger)] font-extrabold rounded-2xl text-xs border border-red-200 transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+              className="flex-1 py-3 px-4 bg-[var(--mg-danger-bg)] hover:bg-[var(--mg-danger-border)] text-[var(--mg-danger)] font-extrabold rounded-2xl text-xs border border-[var(--mg-danger-border)] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <AppIcon name="eliminar" size={14} />
               <span>Eliminar</span>
@@ -277,7 +277,7 @@ export function ProductDetailModal({
                 onClose();
                 onEdit(product);
               }}
-              className="flex-1 py-3 px-4 bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] text-white font-extrabold rounded-2xl text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+              className="flex-1 py-3 px-4 bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <AppIcon name="editar" size={14} color="#fff" />
               <span>Editar Producto</span>

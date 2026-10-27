@@ -43,7 +43,7 @@ export function InventoryValuationCard({ products, selectedCategory }) {
     <div className="relative overflow-hidden bg-gradient-to-br from-[var(--mg-bg-surface)] via-[var(--mg-bg-elevated)] to-[var(--mg-bg-surface)] rounded-[26px] p-4 sm:p-5 border border-[var(--mg-border)] shadow-xs">
       {/* Decorative subtle background accents */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--mg-accent)]/5 rounded-full blur-2xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-[var(--mg-success)]/5 rounded-full blur-2xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left Side: Category Label & Dynamic Title */}
@@ -94,7 +94,7 @@ export function InventoryValuationCard({ products, selectedCategory }) {
               {formatBs(metrics.totalSalesValue)}
             </p>
             {metrics.profitMarginPct > 0 && (
-              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200 inline-block">
+              <span className="text-[9px] font-black text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] px-1.5 py-0.2 rounded-full border border-[var(--mg-success-border)] inline-block">
                 +{metrics.profitMarginPct}% margen
               </span>
             )}

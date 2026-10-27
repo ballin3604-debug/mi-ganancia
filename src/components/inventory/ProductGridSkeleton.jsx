@@ -8,8 +8,8 @@ export function ProductGridSkeleton({ count = 12 }) {
         >
           <div className="aspect-square w-full rounded-2xl mg-skeleton" />
           <div className="space-y-1.5">
-            <div className="h-3.5 bg-gray-200 rounded-md w-3/4 mg-skeleton" />
-            <div className="h-2.5 bg-gray-200 rounded-md w-1/2 mg-skeleton" />
+            <div className="h-3.5 rounded-md w-3/4 mg-skeleton" />
+            <div className="h-2.5 rounded-md w-1/2 mg-skeleton" />
           </div>
         </div>
       ))}
