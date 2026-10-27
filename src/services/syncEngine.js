@@ -47,15 +47,22 @@ export async function checkOnlineStatus() {
 
     // Fast ping using HEAD method on a lightweight table (fully CORS enabled)
     const pingUrl = `${url}/rest/v1/products?select=id&limit=1`;
-    const response = await fetch(pingUrl, {
-      method: 'HEAD',
-      headers: {
-        'apikey': anonKey,
-        'Authorization': `Bearer ${anonKey}`
-      },
-      cache: 'no-store'
-    });
-    return response.ok || response.status === 200 || response.status === 206;
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+    try {
+      const response = await fetch(pingUrl, {
+        method: 'HEAD',
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`
+        },
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined,
+      });
+      return response.ok || response.status === 200 || response.status === 206;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   } catch (err) {
     console.error('checkOnlineStatus: Ping failed with exception:', err);
     return false;
@@ -1239,6 +1246,39 @@ export async function syncCacheFromServer(businessId) {
     if (fullDue) serverCaps = null;
     const caps = await getServerCaps();
     const stampPatch = {};
+
+    // ── BRANCHES: tabla chica; se cachea completa para que BranchContext y
+    // las ventas por sede funcionen sin internet desde el arranque. ──
+    try {
+      const rows = await fetchAll((from, to) => assertSupabase()
+        .from('branches')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('is_main', { ascending: false })
+        .order('name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to));
+      await safeSyncTable(db.branches, rows, () => false, belongsToBiz);
+    } catch (err) {
+      console.warn('syncEngine: no se pudo sincronizar branches:', err);
+    }
+
+    // El nombre del negocio sale en recibos y en la barra lateral; se cachea
+    // junto con las sedes para no mostrar "Mi negocio" cuando no hay red.
+    try {
+      const { data: bizRow, error: bizErr } = await assertSupabase()
+        .from('businesses')
+        .select('*')
+        .eq('id', businessId)
+        .maybeSingle();
+      if (bizErr) {
+        console.warn('syncEngine: no se pudo sincronizar businesses:', bizErr);
+      } else if (bizRow) {
+        await db.businesses.put(bizRow);
+      }
+    } catch (err) {
+      console.warn('syncEngine: no se pudo sincronizar businesses:', err);
+    }
 
     // ── PRODUCTS: incremental por updated_at. El catálogo ya NO se baja
     // entero cada ciclo: solo las filas que cambiaron desde el watermark. ──

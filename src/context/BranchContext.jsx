@@ -78,7 +78,9 @@ export function BranchProvider({ children }) {
   const activeBranch = visibleBranches.find((b) => b.id === activeBranchId)
     || visibleBranches.find((b) => b.isMain)
     || visibleBranches[0]
-    || null;
+    || (role === 'cashier' && Array.isArray(memberBranches) && memberBranches.length > 0
+      ? { id: memberBranches[0] }
+      : null);
 
   return (
     <BranchContext.Provider value={{

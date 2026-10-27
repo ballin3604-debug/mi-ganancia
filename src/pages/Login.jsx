@@ -36,6 +36,7 @@ export default function Login() {
 
   const isRegister = mode === 'register';
   const isReset = mode === 'reset';
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   function cambiarModo(nuevo) {
     setMode(nuevo);
@@ -269,6 +270,15 @@ export default function Login() {
                     Usa 6 o más caracteres para proteger tu negocio.
                   </p>
                 )}
+              </div>
+            )}
+
+            {offline && (
+              <div role="status" className="flex items-start gap-2 rounded-xl border border-[var(--mg-warning-border)] bg-[var(--mg-warning-bg)] px-3.5 py-2.5">
+                <AppIcon name="alerta" size={16} color="var(--mg-warning)" className="mt-0.5" />
+                <p className="text-xs font-semibold leading-relaxed text-[var(--mg-warning-text)]">
+                  Sin conexión. Si ya iniciaste sesión en este dispositivo, la app debería abrir con tus datos guardados. Para entrar por primera vez necesitas internet.
+                </p>
               </div>
             )}
 

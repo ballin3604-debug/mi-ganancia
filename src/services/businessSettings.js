@@ -11,12 +11,19 @@ export async function getBusinessSettings(businessId) {
   }
 
   // If not fully synced, try fetching the complete data from Supabase
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const controller = !offline && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
   try {
-    const { data, error } = await assertSupabase()
+    if (offline) return local || {};
+    let query = assertSupabase()
       .from('business_settings')
       .select('*')
-      .eq('business_id', businessId)
-      .maybeSingle();
+      .eq('business_id', businessId);
+    if (controller && typeof query.abortSignal === 'function') {
+      query = query.abortSignal(controller.signal);
+    }
+    const { data, error } = await query.maybeSingle();
 
     if (!error && data) {
       // Merge: server values as base, but preserve local edits (like offline categories)
@@ -30,6 +37,8 @@ export async function getBusinessSettings(businessId) {
     }
   } catch (err) {
     console.warn('getBusinessSettings: Could not fetch from Supabase (offline fallback)', err);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 
   // Fallback to local partial if we have it, otherwise empty object

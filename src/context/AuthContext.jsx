@@ -3,7 +3,9 @@ import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services
 import { getUserData } from '../services/auth';
 import { isAdmin } from '../services/admin';
 import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
-import { initializeSyncEngine, syncCacheFromServer, triggerSync } from '../services/syncEngine';
+import { initializeSyncEngine, syncCacheFromServer, triggerSync, isNetworkError } from '../services/syncEngine';
+import { saveLastAuthUser, getOfflineAuthUser, clearLastAuthUser, isOfflineNow } from '../services/offlineSession';
+import { withTimeout } from '../utils/withTimeout';
 
 const AuthContext = createContext(null);
 
@@ -37,6 +39,8 @@ export function AuthProvider({ children }) {
         // Guard check right after the await
         if (thisSessionId !== activeSessionIdRef.current) return;
 
+        if (userData) saveLastAuthUser(supabaseUser);
+
         if (!userData) {
           // Sin perfil: ¿lo invitaron por correo? Entra directo, sin PIN.
           try {
@@ -48,6 +52,7 @@ export function AuthProvider({ children }) {
               const fresh = await getUserData(supabaseUser.id);
               if (fresh) {
                 if (thisSessionId !== activeSessionIdRef.current) return;
+                saveLastAuthUser(supabaseUser);
                 setUserStatus(fresh.status || 'active');
                 setRole(fresh.role === 'cashier' ? 'cashier' : 'owner');
                 setSellerName(fresh.name || userObj.displayName || '');
@@ -131,16 +136,59 @@ export function AuthProvider({ children }) {
       setAuthError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu .env.');
       return;
     }
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleUserSession(session?.user || null);
-    }).catch((err) => {
-      console.error('Error loading session:', err);
-      setLoading(false);
-    });
+    // Check initial session. Si el dispositivo ya se autenticó antes y ahora
+    // está sin internet (o el refresh token no pudo renovarse por red), se
+    // usa la última sesión + perfil cacheados para que la app abra igual.
+    (async () => {
+      try {
+        const { data: { session }, error } = await withTimeout(
+          supabase.auth.getSession(),
+          5000,
+          'auth session timeout',
+        );
+        if (session?.user) {
+          await handleUserSession(session.user);
+          return;
+        }
+
+        if (isOfflineNow() || (error && isNetworkError(error))) {
+          const cachedUser = await getOfflineAuthUser();
+          if (cachedUser) {
+            await handleUserSession(cachedUser);
+            return;
+          }
+        }
+
+        await handleUserSession(null);
+      } catch (err) {
+        console.error('Error loading session:', err);
+        if (isOfflineNow() || isNetworkError(err)) {
+          const cachedUser = await getOfflineAuthUser();
+          if (cachedUser) {
+            await handleUserSession(cachedUser);
+            return;
+          }
+        }
+        setLoading(false);
+      }
+    })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      handleUserSession(session?.user || null);
+      if (event === 'SIGNED_OUT') {
+        // Un fallo de red al renovar el token no debe expulsar al usuario que
+        // está trabajando sin internet. El logout explícito limpia el marcador
+        // antes de llegar acá, así que este caso sí cierra la sesión.
+        if (isOfflineNow()) {
+          const cachedUser = await getOfflineAuthUser();
+          if (cachedUser) return;
+        }
+        clearLastAuthUser();
+        await handleUserSession(null);
+        return;
+      }
+      if (session?.user) {
+        await handleUserSession(session.user);
+      }
     });
 
     return () => {

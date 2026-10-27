@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
 import { getBusinessSettings, getBusinessSectorConfig } from '../services/businessSettings';
 import { DEFAULT_CATEGORY_ID } from '../config/businessCategories';
+import { db } from '../services/localDb';
 
 const BusinessContext = createContext(null);
 
@@ -76,21 +77,44 @@ export function BusinessProvider({ children }) {
     // corresponde al businessId actual.
     let ignore = false;
 
-    Promise.all([
-      supabase.from('businesses').select('*').eq('id', businessId).single(),
-      getBusinessSettings(businessId),
-    ]).then(([res, s]) => {
-      if (ignore) return;
-      if (res.error) {
-        console.error('BusinessContext: no se pudo cargar el negocio:', res.error);
-      } else if (res.data) {
-        setBusiness(res.data);
+    (async () => {
+      // Primero la caché local: pinta el negocio al instante y sigue
+      // funcionando aunque no haya internet.
+      try {
+        const cached = await db.businesses.get(businessId);
+        if (cached && !ignore) setBusiness(cached);
+      } catch (cacheErr) {
+        console.warn('BusinessContext: no se pudo leer el negocio cacheado:', cacheErr);
       }
-      setSettings(normalizeSettings(s));
-    }).catch((err) => {
-      if (ignore) return;
-      console.error('BusinessContext: error cargando negocio/ajustes:', err);
-    });
+
+      // Ajustes: getBusinessSettings ya cae a IndexedDB si la red falla.
+      try {
+        const settings = await getBusinessSettings(businessId);
+        if (!ignore) setSettings(normalizeSettings(settings));
+      } catch (settingsErr) {
+        if (!ignore) console.error('BusinessContext: error cargando ajustes:', settingsErr);
+      }
+
+      if (!supabase || !isSupabaseConfigured) return;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+      try {
+        const res = await supabase.from('businesses').select('*').eq('id', businessId).single();
+        if (ignore) return;
+        if (res.error) {
+          console.error('BusinessContext: no se pudo cargar el negocio:', res.error);
+        } else if (res.data) {
+          setBusiness(res.data);
+          try {
+            await db.businesses.put(res.data);
+          } catch (cacheErr) {
+            console.warn('BusinessContext: no se pudo cachear el negocio:', cacheErr);
+          }
+        }
+      } catch (err) {
+        if (!ignore) console.error('BusinessContext: error cargando negocio:', err);
+      }
+    })();
 
     return () => {
       ignore = true;
@@ -113,7 +137,14 @@ export function BusinessProvider({ children }) {
         console.error('BusinessContext refreshBusiness: no se pudo recargar el negocio:', res.error);
         return;
       }
-      if (res.data) setBusiness(res.data);
+      if (res.data) {
+        setBusiness(res.data);
+        try {
+          await db.businesses.put(res.data);
+        } catch (cacheErr) {
+          console.warn('BusinessContext: no se pudo cachear el negocio:', cacheErr);
+        }
+      }
     } catch (err) {
       console.error('BusinessContext refreshBusiness:', err);
     }

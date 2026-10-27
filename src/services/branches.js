@@ -1,4 +1,5 @@
-import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, assertSupabase } from './supabaseClient';
+import { db } from './localDb';
 
 function mapBranch(b) {
   if (!b) return b;
@@ -10,15 +11,79 @@ function mapBranch(b) {
   };
 }
 
+function sortBranches(rows) {
+  return [...rows].sort((a, b) => {
+    if (!!a.is_main !== !!b.is_main) return a.is_main ? -1 : 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'es');
+  });
+}
+
+function isOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+async function readCachedBranches(businessId) {
+  if (!businessId) return [];
+  try {
+    const rows = await db.branches.where('business_id').equals(businessId).toArray();
+    return sortBranches(rows);
+  } catch (err) {
+    console.warn('getBranches: no se pudo leer la caché local:', err?.message || err);
+    return [];
+  }
+}
+
+async function writeCachedBranches(businessId, rows) {
+  if (!businessId) return;
+  try {
+    await db.transaction('rw', db.branches, async () => {
+      const ids = new Set(rows.map((row) => row.id));
+      const cached = await db.branches.where('business_id').equals(businessId).toArray();
+      const stale = cached.filter((row) => !ids.has(row.id)).map((row) => row.id);
+      if (stale.length > 0) await db.branches.bulkDelete(stale);
+      if (rows.length > 0) await db.branches.bulkPut(rows);
+    });
+  } catch (err) {
+    console.warn('getBranches: no se pudo guardar la caché local:', err?.message || err);
+  }
+}
+
 export async function getBranches(businessId) {
-  const { data, error } = await assertSupabase()
-    .from('branches')
-    .select('*')
-    .eq('business_id', businessId)
-    .order('is_main', { ascending: false })
-    .order('name');
-  if (error) throw error;
-  return (data || []).map(mapBranch);
+  if (!businessId) return [];
+  const cached = await readCachedBranches(businessId);
+
+  if (isOffline()) {
+    return cached.map(mapBranch);
+  }
+
+  try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+    try {
+      let query = assertSupabase()
+        .from('branches')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('is_main', { ascending: false })
+        .order('name');
+      if (controller && typeof query.abortSignal === 'function') {
+        query = query.abortSignal(controller.signal);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      const rows = data || [];
+      await writeCachedBranches(businessId, rows);
+      return rows.map(mapBranch);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  } catch (err) {
+    if (cached.length > 0) {
+      console.warn('getBranches: sin conexión, usando sedes guardadas:', err?.message || err);
+      return cached.map(mapBranch);
+    }
+    throw err;
+  }
 }
 
 export async function addBranch(businessId, { name, type = 'sucursal', address = '', phone = '' }) {
@@ -51,6 +116,11 @@ export async function addBranch(businessId, { name, type = 'sucursal', address =
     console.error('addBranch: INSERT ok pero SELECT devolvió 0 filas (RLS). Posible duplicado si se reintenta.');
     throw new Error('Sede creada. Recargá la lista para verla (no la crees de nuevo).');
   }
+  try {
+    await db.branches.put(data);
+  } catch (cacheErr) {
+    console.warn('addBranch: no se pudo guardar la sede en caché local:', cacheErr?.message || cacheErr);
+  }
   return mapBranch(data);
 }
 
@@ -62,6 +132,11 @@ export async function updateBranch(id, patch) {
   if (patch.phone !== undefined) body.phone = patch.phone;
   const { error } = await assertSupabase().from('branches').update(body).eq('id', id);
   if (error) throw error;
+  try {
+    await db.branches.update(id, body);
+  } catch (cacheErr) {
+    console.warn('updateBranch: no se pudo actualizar la caché local:', cacheErr?.message || cacheErr);
+  }
 }
 
 export async function setMainBranch(businessId, id) {
@@ -76,6 +151,12 @@ export async function setMainBranch(businessId, id) {
       console.error('setMainBranch: no se pudo actualizar sede:', b?.id, updErr);
       throw updErr;
     }
+  }
+  try {
+    await db.branches.where('business_id').equals(businessId).modify({ is_main: false });
+    await db.branches.update(id, { is_main: true });
+  } catch (cacheErr) {
+    console.warn('setMainBranch: no se pudo actualizar la caché local:', cacheErr?.message || cacheErr);
   }
 }
 
@@ -105,5 +186,10 @@ export async function deleteBranch(businessId, branch) {
   if (error) {
     console.error('deleteBranch: no se pudo eliminar sede:', error);
     throw error;
+  }
+  try {
+    await db.branches.delete(branch.id);
+  } catch (cacheErr) {
+    console.warn('deleteBranch: no se pudo borrar la sede de la caché local:', cacheErr?.message || cacheErr);
   }
 }
