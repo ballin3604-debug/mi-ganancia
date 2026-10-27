@@ -22,7 +22,7 @@ function traducirError(message = '') {
   return message || 'Ocurrió un error. Intenta de nuevo.';
 }
 
-export default function Login() {
+export default function Login({ onShowOnboarding } = {}) {
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -114,11 +114,20 @@ export default function Login() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f3f6f4] sm:px-5 sm:py-8">
       <section className="mg-slide-up min-h-screen w-full bg-white px-6 pb-[max(32px,env(safe-area-inset-bottom))] pt-[max(28px,env(safe-area-inset-top))] sm:min-h-0 sm:max-w-[500px] sm:rounded-[28px] sm:border sm:border-[#e7ece8] sm:px-10 sm:py-10 sm:shadow-[0_20px_70px_rgba(19,52,39,0.09)]">
-        <header className="flex h-9 items-center">
+        <header className="flex h-9 items-center justify-between">
           {!imgError ? (
             <img src="/logo-horizontal.png" alt="Mi Ganancia" onError={() => setImgError(true)} className="h-8 w-auto object-contain object-left" />
           ) : (
             <span className="text-lg font-extrabold tracking-tight text-[#103f32]">Mi Ganancia</span>
+          )}
+          {onShowOnboarding && (
+            <button
+              type="button"
+              onClick={onShowOnboarding}
+              className="rounded-full bg-[#eef6f1] px-3 py-1 text-xs font-semibold text-[#17664f] transition hover:bg-[#e1f0e7] active:scale-95"
+            >
+              Ver bienvenida
+            </button>
           )}
         </header>
 
@@ -289,6 +298,18 @@ export default function Login() {
                 {isRegister ? 'Inicia sesión' : 'Crea tu cuenta'}
               </button>
             </p>
+
+            {onShowOnboarding && (
+              <p className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={onShowOnboarding}
+                  className="border-0 bg-transparent p-0 text-xs font-medium text-[#168266] underline underline-offset-4 hover:text-[#105a43]"
+                >
+                  Conoce cómo funciona Mi Ganancia
+                </button>
+              </p>
+            )}
           </>
         )}
 

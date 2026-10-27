@@ -20,7 +20,7 @@ import Team from './pages/Team';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AppIcon } from './components/icons';
 import SplashScreen from './components/SplashScreen';
-import Onboarding, { ONBOARDING_COMPLETION_KEY } from './components/Onboarding';
+import Onboarding from './components/Onboarding';
 import WelcomeScreen from './components/WelcomeScreen';
 import Tutorial from './components/Tutorial';
 
@@ -115,11 +115,17 @@ export default function App() {
   const { user, loading, needsSetup, userStatus, admin, businessId } = useAuth();
   const [showSplash, setShowSplash] = useState(!splashShown.done);
 
-  // ── Estado de los nuevos flujos ────────────────────────────────────────
-  // Onboarding previo (para visitantes en primera apertura de dispositivo antes de login)
-  const [showPreloginOnboarding, setShowPreloginOnboarding] = useState(() => !lsGet(ONBOARDING_COMPLETION_KEY));
-  // Onboarding para nuevo usuario autenticado (control de vista local)
-  const [showUserOnboarding, setShowUserOnboarding] = useState(true);
+  // ── Estado de flujos: Onboarding sin login y Tutorial posterior ─────────
+  // Si no hay login activo (!user), se muestra el Onboarding.
+  // Al pulsar "Comenzar" o "Saltar", avanza a la pantalla de Login en esta pestaña.
+  const [preloginDismissed, setPreloginDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('mg_prelogin_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   // Tutorial: después del setup inicial, una sola vez por usuario
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -139,16 +145,17 @@ export default function App() {
   }, [user, needsSetup, businessId]);
 
   function handlePreloginOnboardingFinish() {
-    lsSet(ONBOARDING_COMPLETION_KEY, '1');
-    setShowPreloginOnboarding(false);
+    try {
+      sessionStorage.setItem('mg_prelogin_dismissed', '1');
+    } catch {}
+    setPreloginDismissed(true);
   }
 
-  function handleUserOnboardingFinish() {
-    if (user) {
-      lsSet(`mg_onboarding_${user.uid}`, '1');
-    }
-    lsSet(ONBOARDING_COMPLETION_KEY, '1');
-    setShowUserOnboarding(false);
+  function handleShowOnboarding() {
+    try {
+      sessionStorage.removeItem('mg_prelogin_dismissed');
+    } catch {}
+    setPreloginDismissed(false);
   }
 
   function handleTutorialFinish() {
@@ -165,23 +172,15 @@ export default function App() {
     // 1. Loading auth mientras se verifica sesión
     if (loading) return <LoadingSpinner />;
 
-    // 2. Visitante no logueado por primera vez en este navegador -> Onboarding previo
-    if (!user && showPreloginOnboarding) {
-      return <Onboarding onFinish={handlePreloginOnboardingFinish} />;
+    // 2. Si no hay login registrado -> Onboarding al inicio
+    if (!user) {
+      if (!preloginDismissed) {
+        return <Onboarding onFinish={handlePreloginOnboardingFinish} />;
+      }
+      return <Login onShowOnboarding={handleShowOnboarding} />;
     }
 
-    // 3. No logueado → Login
-    if (!user) return <Login />;
-
-    // 4. Nuevo correo / cuenta nueva (needsSetup) -> Onboarding garantizado para este usuario
-    const isNewUser = Boolean(user && needsSetup);
-    const userHasSeenOnboarding = Boolean(user && lsGet(`mg_onboarding_${user.uid}`));
-
-    if (isNewUser && !userHasSeenOnboarding && showUserOnboarding) {
-      return <Onboarding onFinish={handleUserOnboardingFinish} />;
-    }
-
-    // 5. Setup de admin sin negocio
+    // 3. Setup de admin sin negocio
     if (admin && needsSetup) return <Setup isAdmin />;
 
     // 6. Admin con negocio
