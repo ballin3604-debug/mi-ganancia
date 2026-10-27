@@ -131,10 +131,21 @@ export default function App() {
   // Tutorial: después del setup inicial, una sola vez por usuario
   const [showTutorial, setShowTutorial] = useState(false);
 
+  // Onboarding de bienvenida al negocio: una sola vez por usuario, después
+  // de que el admin aprueba el acceso. Se marca el paso por la pantalla de
+  // espera para no mostrárselo a quien ya era miembro activo.
+  const [businessWelcomeDoneFor, setBusinessWelcomeDoneFor] = useState(null);
+
   const handleSplashDone = useCallback(() => {
     splashShown.done = true;
     setShowSplash(false);
   }, []);
+
+  useEffect(() => {
+    if (user?.uid && userStatus === 'pending') {
+      lsSet(`mg_pending_seen_${user.uid}`, '1');
+    }
+  }, [user?.uid, userStatus]);
 
   // Detectar setup recién completado para mostrar Tutorial
   useEffect(() => {
@@ -145,6 +156,23 @@ export default function App() {
       }
     }
   }, [user, needsSetup, businessId]);
+
+  const businessWelcomePending =
+    !!user &&
+    !admin &&
+    !needsSetup &&
+    !!businessId &&
+    userStatus === 'active' &&
+    lsGet(`mg_pending_seen_${user.uid}`) === '1' &&
+    lsGet(`mg_business_welcomed_${user.uid}`) !== '1' &&
+    businessWelcomeDoneFor !== user.uid;
+
+  function handleBusinessOnboardingFinish() {
+    if (user) {
+      lsSet(`mg_business_welcomed_${user.uid}`, '1');
+      setBusinessWelcomeDoneFor(user.uid);
+    }
+  }
 
   function handlePreloginOnboardingFinish() {
     try {
@@ -217,6 +245,11 @@ export default function App() {
     // 8. Estados intermedios
     if (userStatus === 'pending' || userStatus === 'rejected' || userStatus === 'suspended') {
       return <PendingApproval status={userStatus} />;
+    }
+
+    // 8.1. Onboarding al primer ingreso tras la aprobación del admin
+    if (businessWelcomePending) {
+      return <Onboarding onFinish={handleBusinessOnboardingFinish} />;
     }
 
     // 9. Usuario activo regular
