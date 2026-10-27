@@ -55,6 +55,66 @@ const STEPS = [
   },
 ];
 
+const MISION_STEPS = [
+  {
+    eyebrow: 'Misión 1 de 3',
+    icon: 'nuevoProducto',
+    color: 'var(--mg-accent)',
+    background: 'var(--mg-accent-bg)',
+    title: 'Añade tu primer producto',
+    description: 'Sin productos no hay ventas y no hay negocio. Al añadirlo solo te pedimos lo esencial: nombre, precio y stock. Todo lo demás queda guardado en "Más detalles".',
+  },
+  {
+    eyebrow: 'Misión 2 de 3',
+    icon: 'paquete',
+    color: 'var(--mg-gold-text)',
+    background: 'var(--mg-gold-bg)',
+    title: '¿Cómo entra tu stock? Tú eliges',
+    description: '',
+    showPaths: true,
+  },
+  {
+    eyebrow: 'Misión final',
+    icon: 'check',
+    color: 'var(--mg-success)',
+    background: 'var(--mg-success-bg)',
+    title: '¡Tu turno!',
+    description: 'La app te lleva directo al formulario rápido. Crea tu primer producto y la misión queda cumplida.',
+  },
+];
+
+function StockPaths() {
+  return (
+    <div className="mt-5 w-full space-y-2 text-left">
+      <div className="flex items-start gap-3 rounded-2xl border-2 border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] p-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-accent)]">
+          <AppIcon name="paquete" size={16} color="#fff" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[13px] font-extrabold text-[var(--mg-text-primary)]">Ya lo tengo</span>
+          <span className="block text-[11px] font-semibold leading-snug text-[var(--mg-text-secondary)]">
+            Cuento directo las unidades que hay: "tengo 20 unds ahora".
+          </span>
+        </span>
+      </div>
+      <div className="flex items-start gap-3 rounded-2xl border-2 border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-gold)]">
+          <AppIcon name="carrito" size={16} color="#fff" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[13px] font-extrabold text-[var(--mg-text-primary)]">Lo acabo de comprar</span>
+          <span className="block text-[11px] font-semibold leading-snug text-[var(--mg-text-secondary)]">
+            Registro la compra: el stock sube solo y ya sé lo que me costó.
+          </span>
+        </span>
+      </div>
+      <p className="pt-1 text-center text-[11px] font-semibold text-[var(--mg-text-muted)]">
+        Para resurtir, hazlo siempre en Compras: ahí se controla el stock de verdad.
+      </p>
+    </div>
+  );
+}
+
 function trapTab(event, container) {
   if (event.key !== 'Tab' || !container) return;
 
@@ -72,7 +132,138 @@ function trapTab(event, container) {
   }
 }
 
-export default function Tutorial({ onFinish }) {
+export default function Tutorial({ onFinish, onStartMission, mission = false }) {
+  if (mission) return <MissionTutorial onFinish={onFinish} onStartMission={onStartMission} />;
+  return <TutorialCarousel onFinish={onFinish} />;
+}
+
+function MissionTutorial({ onFinish, onStartMission }) {
+  const [step, setStep] = useState(0);
+  const trapTabRef = useRef(null);
+  const stepData = MISION_STEPS[step];
+  const isLast = step === MISION_STEPS.length - 1;
+
+  function handleMain() {
+    if (isLast) onStartMission?.();
+    else setStep(step + 1);
+  }
+
+  useEffect(() => {
+    trapTabRef.current?.focus();
+  }, []);
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onFinish?.();
+    } else if (event.key === 'ArrowRight' && !isLast) {
+      event.preventDefault();
+      setStep(step + 1);
+    } else if (event.key === 'ArrowLeft' && step > 0) {
+      event.preventDefault();
+      setStep(step - 1);
+    }
+    trapTab(event, trapTabRef.current);
+  }
+
+  return (
+    <div
+      ref={trapTabRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`mision-step-title-${step}`}
+      aria-describedby={`mision-step-description-${step}`}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/45 px-4 outline-none"
+      style={{ paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+    >
+      <div className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-y-auto rounded-[28px] bg-[var(--mg-bg-surface)] p-5 shadow-[var(--mg-shadow-lg)] sm:p-7">
+        <header className="flex shrink-0 items-center justify-between">
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+            style={{ background: stepData.background, color: stepData.color }}
+          >
+            <AppIcon name="ranking" size={12} color="currentColor" />
+            {stepData.eyebrow}
+          </span>
+          <button
+            type="button"
+            onClick={onFinish}
+            className="min-h-11 rounded-xl px-3 text-sm font-medium text-[var(--mg-text-secondary)] hover:text-[var(--mg-text-primary)]"
+          >
+            Omitir
+          </button>
+        </header>
+
+        <main className="flex min-h-[280px] flex-1 items-center justify-center py-5">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="w-full text-center"
+          >
+            <div
+              className="mx-auto mb-5 flex h-[76px] w-[76px] items-center justify-center rounded-[24px]"
+              style={{ background: stepData.background }}
+              aria-hidden="true"
+            >
+              <AppIcon name={stepData.icon} size={36} color={stepData.color} strokeWidth={1.8} />
+            </div>
+            <h2 id={`mision-step-title-${step}`} className="text-[23px] font-extrabold leading-tight tracking-tight text-[var(--mg-text-primary)] sm:text-[26px]">
+              {stepData.title}
+            </h2>
+            {stepData.description && (
+              <p id={`mision-step-description-${step}`} className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[var(--mg-text-secondary)]">
+                {stepData.description}
+              </p>
+            )}
+            {stepData.showPaths && <StockPaths />}
+          </motion.div>
+        </main>
+
+        <footer className="shrink-0">
+          <div
+            className="mb-4 flex items-center justify-center gap-1.5"
+            role="group"
+            aria-label={`Progreso: paso ${step + 1} de ${MISION_STEPS.length}`}
+          >
+            {MISION_STEPS.map((_, index) => (
+              <span
+                key={index}
+                aria-hidden="true"
+                className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                  index === step ? 'w-7 bg-[var(--mg-gold)]' : 'w-1.5 bg-[var(--mg-border-hover)]'
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {step > 0 ? (
+              <button
+                type="button"
+                onClick={() => setStep(step - 1)}
+                aria-label="Pantalla anterior"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-primary)]"
+              >
+                <AppIcon name="volver" size={20} color="currentColor" />
+              </button>
+            ) : null}
+            <button type="button" onClick={handleMain} className="mg-btn-primary min-h-12 flex-1 text-base">
+              {isLast ? '🎯 Empezar misión' : 'Siguiente'}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function TutorialCarousel({ onFinish }) {
   const [step, setStep] = useState(0);
   const rootRef = useRef(null);
   const wheelLocked = useRef(false);

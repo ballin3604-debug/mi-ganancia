@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { isSupabaseConfigured, supabaseConfigError } from './services/supabaseClient';
 import Layout from './components/Layout';
@@ -113,6 +113,7 @@ export default function App() {
   }
 
   const { user, loading, needsSetup, userStatus, admin, businessId } = useAuth();
+  const navigate = useNavigate();
   const [showSplash, setShowSplash] = useState(!splashShown.done);
 
   // ── Estado de flujos: Onboarding sin login y Tutorial posterior ─────────
@@ -196,6 +197,11 @@ export default function App() {
     setShowTutorial(false);
   }
 
+  function handleTutorialMissionStart() {
+    handleTutorialFinish();
+    navigate('/inventario?action=nuevo&guia=1');
+  }
+
   // ── ORQUESTACIÓN DE PANTALLAS ──────────────────────────────────────────
 
   function renderCurrentScreen() {
@@ -234,7 +240,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
-          {showTutorial && <Tutorial onFinish={handleTutorialFinish} />}
+          {showTutorial && <Tutorial onFinish={handleTutorialFinish} onStartMission={handleTutorialMissionStart} mission={!!admin} />}
         </>
       );
     }
@@ -271,7 +277,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-        {showTutorial && <Tutorial onFinish={handleTutorialFinish} />}
+        {showTutorial && <Tutorial onFinish={handleTutorialFinish} onStartMission={handleTutorialMissionStart} mission={!!admin} />}
       </>
     );
   }

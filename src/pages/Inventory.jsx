@@ -171,6 +171,10 @@ export default function Inventory() {
   // cámara, el borrador guardado reabre el formulario con los datos intactos)
   const [showForm, setShowForm] = useState(() => searchParams.get('action') === 'nuevo' || !!loadProductDraft());
   const [packHelp, setPackHelp] = useState(false);
+  const [practical, setPractical] = useState(() => searchParams.get('guia') === '1');
+  const [stockMode, setStockMode] = useState('directo');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form, setForm] = useState(() => loadProductDraft()?.form || EMPTY_FORM);
   const [expiryDate, setExpiryDate] = useState(() => loadProductDraft()?.expiryDate || '');
@@ -343,8 +347,12 @@ export default function Inventory() {
     }
   }
 
-  function openAdd(prefill = {}) {
+  function openAdd(prefill = {}, forcePractical = false) {
     setEditingProduct(null);
+    setPractical(forcePractical || products.length === 0 || searchParams.get('guia') === '1');
+    setStockMode('directo');
+    setShowAdvanced(false);
+    setCelebrate(false);
     const nextForm = { ...EMPTY_FORM, ...prefill };
     if (sectorConfig?.features?.configurablePresentations) {
       nextForm.unitLabel = nextForm.unitLabel || sectorConfig.defaultUnit || 'Unidad';
@@ -386,6 +394,10 @@ export default function Inventory() {
 
   function openEdit(product) {
     setEditingProduct(product);
+    setPractical(false);
+    setStockMode('directo');
+    setShowAdvanced(true);
+    setCelebrate(false);
     const hasPack = Number(product.packageSize || 0) > 1 && product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined;
     setForm({
       name: product.name,
@@ -437,11 +449,21 @@ export default function Inventory() {
     setForm(EMPTY_FORM);
     setExpiryDate('');
     setExpiryReplenishmentId(null);
+    setShowAdvanced(false);
+    setCelebrate(false);
+    if (searchParams.get('guia')) {
+      navigate('/inventario', { replace: true });
+    }
   }
 
-  async function handleSave(e) {
-    e.preventDefault();
+  async function handleSave(e, options = {}) {
+    const { another = false } = options;
+    if (e?.preventDefault) e.preventDefault();
     if (!form.name.trim() || !form.price || form.stock === '') return;
+    if (practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
+      alert('Dinos cuánto te costó cada unidad: así tu ganancia se calcula sola.');
+      return;
+    }
     if (!sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
@@ -474,6 +496,7 @@ export default function Inventory() {
     }
     delete data.sellPack;
     const formStockVal = data.stock;
+    const eraCatalogoVacio = products.length === 0;
     delete data.stock;
     setSaving(true);
     try {
@@ -502,7 +525,14 @@ export default function Inventory() {
         await updateReplenishmentExpiry(expiryReplenishmentId, expiryDate);
       }
       await fetchAll();
-      closeForm();
+      if (another) {
+        openAdd({}, true);
+      } else {
+        closeForm();
+      }
+      if (!another && !editingProduct && (eraCatalogoVacio || searchParams.get('guia') === '1')) {
+        setCelebrate(true);
+      }
     } catch (err) {
       console.error(err);
       alert(err?.message || 'Error al guardar. Intenta de nuevo.');
@@ -819,7 +849,7 @@ export default function Inventory() {
           <p className="text-xs text-[var(--mg-text-muted)] mt-1 max-w-xs mx-auto font-medium">
             {search
               ? 'Intenta borrar la búsqueda o seleccionar otra categoría.'
-              : 'Toca el botón + para empezar a construir tu catálogo visual.'}
+              : 'Añade tu primer producto y empieza a vender. Lo esencial: nombre, precio y stock.'}
           </p>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -1062,7 +1092,16 @@ export default function Inventory() {
               </div>
 
               <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4">
-                {/* Foto del producto */}
+                {practical && !editingProduct && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full rounded-xl border border-dashed border-[var(--mg-border-hover)] py-2 text-[11px] font-extrabold text-[var(--mg-text-secondary)] hover:text-[var(--mg-text-primary)] transition-all active:scale-[0.98]"
+                  >
+                    {showAdvanced ? '▲ Ocultar detalles' : '+ Más detalles (foto, código de barras, marca…)'}
+                  </button>
+                )}
+                {(!practical || showAdvanced) && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-2">
                     Foto del Producto
@@ -1115,6 +1154,7 @@ export default function Inventory() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Nombre */}
                 <div>
@@ -1133,7 +1173,7 @@ export default function Inventory() {
                   />
                 </div>
 
-                {/* Código de barras */}
+                {(!practical || showAdvanced) && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Código de barras (opcional)
@@ -1160,8 +1200,9 @@ export default function Inventory() {
                     </button>
                   </div>
                 </div>
+                )}
 
-                {/* Marca */}
+                {(!practical || showAdvanced) && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Marca
@@ -1175,8 +1216,10 @@ export default function Inventory() {
                     maxLength={60}
                   />
                 </div>
+                )}
 
                 {/* Categoría */}
+                {(!practical || showAdvanced) && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
@@ -1204,9 +1247,10 @@ export default function Inventory() {
                     ))}
                   </select>
                 </div>
+                )}
 
                 {/* Precios */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Precio Venta (Bs) *
@@ -1225,6 +1269,7 @@ export default function Inventory() {
                     />
                   </div>
 
+                  {!(practical && !editingProduct) && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Precio Compra (Bs)
@@ -1241,28 +1286,152 @@ export default function Inventory() {
                       className="mg-input text-xs font-bold"
                     />
                   </div>
+                  )}
                 </div>
 
                 {/* Stock y Unidad */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
-                    <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                      Stock Actual *{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
-                    </label>
-                    <input
-                      type="number"
-                      value={form.stock}
-                      onChange={(e) => setField('stock', clampNumberInput(e.target.value, { max: 999999 }))}
-                      onKeyDown={blockInvalidNumberKeys}
-                      placeholder="0"
-                      min="0"
-                      max="999999"
-                      step="1"
-                      className="mg-input text-sm font-black"
-                      required
-                    />
+                    {practical && !editingProduct ? (
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
+                          ¿Cómo entra tu stock?
+                        </label>
+                        <button
+                          type="button"
+                          aria-pressed={stockMode === 'directo'}
+                          onClick={() => setStockMode('directo')}
+                          className={`w-full rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.99] ${stockMode === 'directo' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'}`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${stockMode === 'directo' ? 'bg-[var(--mg-accent)]' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
+                              <AppIcon name="paquete" size={16} color={stockMode === 'directo' ? '#fff' : 'currentColor'} />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">Ya lo tengo</span>
+                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Cuento directo las unidades que hay ahora.</span>
+                            </span>
+                          </span>
+                        </button>
+                        {stockMode === 'directo' && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                                ¿Cuántas hay? *
+                              </label>
+                              <input
+                                type="number"
+                                value={form.stock}
+                                onChange={(e) => setField('stock', clampNumberInput(e.target.value, { max: 999999 }))}
+                                onKeyDown={blockInvalidNumberKeys}
+                                placeholder="0"
+                                min="0"
+                                max="999999"
+                                step="1"
+                                className="mg-input text-sm font-black"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                                Costo por und. (opcional)
+                              </label>
+                              <input
+                                type="number"
+                                value={form.supplierPrice}
+                                onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
+                                onKeyDown={blockInvalidNumberKeys}
+                                placeholder="0.00"
+                                min="0"
+                                max="999999"
+                                step="0.01"
+                                className="mg-input text-xs font-bold"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          aria-pressed={stockMode === 'compra'}
+                          onClick={() => setStockMode('compra')}
+                          className={`w-full rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.99] ${stockMode === 'compra' ? 'border-[var(--mg-gold)] bg-[var(--mg-gold-bg)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'}`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${stockMode === 'compra' ? 'bg-[var(--mg-gold)]' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
+                              <AppIcon name="carrito" size={16} color={stockMode === 'compra' ? '#fff' : 'currentColor'} />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">Lo acabo de comprar</span>
+                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Registro la compra: el stock sube solo y sé mi ganancia real.</span>
+                            </span>
+                          </span>
+                        </button>
+                        {stockMode === 'compra' && (
+                          <div className="space-y-2.5 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                                  ¿Cuántas llegaron? *
+                                </label>
+                                <input
+                                  type="number"
+                                  value={form.stock}
+                                  onChange={(e) => setField('stock', clampNumberInput(e.target.value, { max: 999999 }))}
+                                  onKeyDown={blockInvalidNumberKeys}
+                                  placeholder="0"
+                                  min="0"
+                                  max="999999"
+                                  step="1"
+                                  className="mg-input text-sm font-black"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                                  ¿Cuánto te costó cada una? *
+                                </label>
+                                <input
+                                  type="number"
+                                  value={form.supplierPrice}
+                                  onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
+                                  onKeyDown={blockInvalidNumberKeys}
+                                  placeholder="0.00"
+                                  min="0"
+                                  max="999999"
+                                  step="0.01"
+                                  className="mg-input text-xs font-black"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <p className="text-[11px] font-semibold text-[var(--mg-gold-text)]">
+                              Las próximas resurtidas hazlas siempre en Compras: el stock se suma solo y queda el registro.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Stock Actual *{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
+                        </label>
+                        <input
+                          type="number"
+                          value={form.stock}
+                          onChange={(e) => setField('stock', clampNumberInput(e.target.value, { max: 999999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="0"
+                          min="0"
+                          max="999999"
+                          step="1"
+                          className="mg-input text-sm font-black"
+                          required
+                        />
+                      </>
+                    )}
                   </div>
 
+                  {!(practical && !editingProduct) && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Unidad de Medida
@@ -1282,9 +1451,10 @@ export default function Inventory() {
                       <option value="Otros">Otros</option>
                     </select>
                   </div>
+                  )}
                 </div>
 
-                {sectorConfig?.features?.configurablePresentations ? (
+                {(!practical || showAdvanced) && (sectorConfig?.features?.configurablePresentations ? (
                   <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                     <div>
                       <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>
@@ -1492,7 +1662,7 @@ export default function Inventory() {
                     </>
                   )}
                 </div>
-                )}
+                ))}
 
                 {/* Expiry Date */}
                 {expiryReplenishmentId && (
@@ -1510,6 +1680,7 @@ export default function Inventory() {
                 )}
 
                 {/* Min stock alert */}
+                {(!practical || showAdvanced) && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Alerta cuando queden (und.)
@@ -1526,8 +1697,10 @@ export default function Inventory() {
                     className="mg-input text-xs font-semibold"
                   />
                 </div>
+                )}
 
                 {/* Descripción */}
+                {(!practical || showAdvanced) && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Descripción (opcional)
@@ -1541,6 +1714,7 @@ export default function Inventory() {
                     maxLength={120}
                   />
                 </div>
+                )}
 
                 <motion.button
                   whileHover={{ scale: 1.01 }}
@@ -1549,9 +1723,69 @@ export default function Inventory() {
                   disabled={saving}
                   className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold py-3.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 disabled:opacity-50 min-h-[44px]"
                 >
-                  {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : 'Nuevo Producto'}
+                  {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : practical ? 'Guardar producto' : 'Nuevo Producto'}
                 </motion.button>
+
+                {practical && !editingProduct && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => handleSave(null, { another: true })}
+                    className="w-full bg-[var(--mg-brand-bg)] hover:bg-[var(--mg-accent-bg)] border border-[var(--mg-brand-border)] text-[var(--mg-brand)] font-extrabold py-3 rounded-2xl text-xs transition-all active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-1.5"
+                  >
+                    <AppIcon name="agregar" size={14} />
+                    <span>Guardar y añadir otro</span>
+                  </button>
+                )}
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {celebrate && (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 mg-backdrop-in"
+            onClick={() => setCelebrate(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 24 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, y: 24 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[var(--mg-bg-surface)] w-full max-w-xs rounded-[28px] border border-[var(--mg-border)] shadow-2xl p-6 text-center"
+            >
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-[22px] border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]">
+                <AppIcon name="check" size={30} color="var(--mg-success)" strokeWidth={2.5} />
+              </div>
+              <h3 className="text-lg font-black text-[var(--mg-text-primary)] tracking-tight">¡Primer producto listo!</h3>
+              <p className="mt-1.5 text-xs font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                Tu catálogo arrancó. Cuando vendas en Ventas, la ganancia queda plasmada.
+              </p>
+              <div className="mt-4 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCelebrate(false);
+                    openAdd({}, true);
+                  }}
+                  className="mg-btn-primary min-h-12 text-sm"
+                >
+                  Añadir otro producto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCelebrate(false);
+                    navigate('/ventas');
+                  }}
+                  className="min-h-12 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-sm font-extrabold text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)] transition-all active:scale-95"
+                >
+                  Empezar a vender
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
