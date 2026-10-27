@@ -126,6 +126,8 @@ export default function App() {
     }
   });
 
+  const showPreloginOnboarding = !user && !preloginDismissed;
+
   // Tutorial: después del setup inicial, una sola vez por usuario
   const [showTutorial, setShowTutorial] = useState(false);
 
