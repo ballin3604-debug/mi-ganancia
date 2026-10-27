@@ -93,6 +93,9 @@ signing-key-info.txt
 # Builds empaquetados de Android — se regeneran, no son código fuente.
 *.aab
 *.apk
+*.idsig
+local.properties
+source/local.properties
 
 # Carpeta de build/cache de Gradle del wrapper Android (TWA) — generada,
 # no es código fuente (equivalente a node_modules/dist para Android).
