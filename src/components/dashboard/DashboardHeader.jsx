@@ -55,9 +55,9 @@ export function DashboardHeader({ today, businessName, settings, onShowQr, onNav
 
       <div className="relative overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 sm:p-5 shadow-[var(--mg-shadow-sm)]">
         <div className="relative flex items-start gap-3 sm:gap-4">
-          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border ${
+          <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center shrink-0 overflow-hidden border ${
             showLogo
-              ? 'bg-white p-1 border-[var(--mg-border)]'
+              ? 'bg-white p-1.5 border-[var(--mg-border)]'
               : 'bg-[var(--mg-brand)] text-white border-[var(--mg-brand-border)]'
           }`}>
             {showLogo ? (
@@ -68,7 +68,7 @@ export function DashboardHeader({ today, businessName, settings, onShowQr, onNav
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <AppIcon name={categoryId} size={22} strokeWidth={2.1} />
+              <AppIcon name={categoryId} size={36} strokeWidth={2.1} className="w-9 h-9 sm:w-11 sm:h-11" />
             )}
           </div>
 
