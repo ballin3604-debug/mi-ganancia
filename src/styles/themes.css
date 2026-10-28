@@ -69,11 +69,15 @@
   color: #F5F5F4;
 }
 
+[data-theme="gourmet"] .mg-splash__status {
+  color: #B3ADA7;
+}
+
 [data-theme="gourmet"] .mg-splash__progress {
   background: rgba(255, 152, 0, 0.18);
 }
 
 [data-theme="gourmet"] .mg-splash__progress-fill {
-  background: linear-gradient(90deg, #E65100 0%, #FF9800 55%, #FFC107 100%);
-  box-shadow: 0 0 12px rgba(255, 152, 0, 0.55);
+  background: linear-gradient(90deg, #E65100 0%, #FF9800 62%, #FFB74D 100%);
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
 }
