@@ -59,7 +59,7 @@ export default function ProductCatalogCard({ product, priceLabel, metaLabel, sel
         </div>
 
         <div className="p-3 pr-11">
-          <p className="min-h-[2rem] font-extrabold text-xs leading-snug tracking-tight text-[var(--mg-text-primary)] line-clamp-2 transition-colors group-hover:text-[var(--mg-brand)]">
+          <p className="min-h-[2.5rem] font-extrabold text-sm leading-snug tracking-tight text-[var(--mg-text-primary)] line-clamp-2 transition-colors group-hover:text-[var(--mg-brand)]">
             {product.name}
           </p>
 
