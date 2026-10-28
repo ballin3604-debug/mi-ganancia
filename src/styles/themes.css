@@ -61,8 +61,8 @@
 
 [data-theme="gourmet"] .mg-splash {
   background:
-    radial-gradient(58% 46% at 50% 43%, rgba(230, 81, 0, 0.16) 0%, rgba(14, 14, 14, 0) 72%),
-    var(--mg-bg-base);
+    radial-gradient(58% 46% at 50% 43%, rgba(255, 152, 0, 0.22) 0%, rgba(22, 13, 8, 0) 72%),
+    #160D08;
 }
 
 [data-theme="gourmet"] .mg-splash__wordmark {
@@ -70,9 +70,10 @@
 }
 
 [data-theme="gourmet"] .mg-splash__progress {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 152, 0, 0.18);
 }
 
 [data-theme="gourmet"] .mg-splash__progress-fill {
-  background: linear-gradient(90deg, #BF360C 0%, #E65100 72%, #FF9800 100%);
+  background: linear-gradient(90deg, #E65100 0%, #FF9800 55%, #FFC107 100%);
+  box-shadow: 0 0 12px rgba(255, 152, 0, 0.55);
 }
