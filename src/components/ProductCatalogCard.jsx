@@ -19,11 +19,15 @@ function CardImage({ imageData, name }) {
   );
 }
 
-export function StockLabel({ stock, minStock, isDish }) {
+export function StockLabel({ stock, minStock, isDish, isAvailable = true }) {
   if (isDish) {
-    return (
-      <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]">
-        🍽️ Plato
+    return isAvailable ? (
+      <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]">
+        🍽️ Disponible
+      </span>
+    ) : (
+      <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]">
+        🍽️ Agotado
       </span>
     );
   }
@@ -67,7 +71,7 @@ export default function ProductCatalogCard({ product, priceLabel, metaLabel, sel
         </div>
 
         <div className="p-3 pr-11">
-          <p className="min-h-[2.5rem] font-extrabold text-sm leading-snug tracking-tight text-[var(--mg-text-primary)] line-clamp-2 transition-colors group-hover:text-[var(--mg-brand)]">
+          <p className="min-h-[2.5rem] font-extrabold text-sm leading-snug tracking-tight text-[var(--mg-text-primary)] line-clamp-2 transition-colors group-hover:text-[var(--mg-brand-text)]">
             {product.name}
           </p>
 

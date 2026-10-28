@@ -179,7 +179,7 @@ export function BusinessHeaderCard({
               <button
                 type="button"
                 onClick={() => qrRef.current?.click()}
-                className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all border border-[var(--mg-accent-border)] min-h-[44px]"
+                className="w-full bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)] text-[var(--mg-accent-text)] font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all border border-[var(--mg-accent-border)] min-h-[44px]"
               >
                 <AppIcon name="carpeta" size={14} /> {qrData ? 'Cambiar QR' : 'Subir QR'}
               </button>

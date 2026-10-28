@@ -10,6 +10,7 @@ import { DEFAULT_CATEGORY_ID, BUSINESS_CATEGORIES, getCategoryById } from '../co
 import { getReceiptFormat, setReceiptFormat, RECEIPT_FORMATS } from '../utils/receiptFormat';
 import { AppIcon } from '../components/icons';
 import { TicketPreview } from '../components/settings/TicketPreview';
+import { ThemePicker } from '../components/settings/ThemePicker';
 
 /* ─────────────────────────────────────────────
    Ajustes · formato lista (liviano, estilo iOS)
@@ -51,7 +52,7 @@ export default function Settings() {
   const { businessId, admin, user, role } = useAuth();
   const navigate = useNavigate();
   const { business, settings, refreshSettings, refreshBusiness } = useBusiness();
-  const { pickImage, pickQR } = useImageUpload();
+  const { pickImage, pickLogo, pickQR } = useImageUpload();
 
   // ── Valores guardados ──
   const savedSlogan = settings?.slogan || '';
@@ -168,6 +169,7 @@ export default function Settings() {
     vista: 'vista previa ejemplo probar imprimir test',
     respaldo: 'respaldo copia seguridad exportar descargar json backup',
     admin: 'admin panel administracion',
+    tema: 'tema apariencia colores oscuro claro gourmet clasico diseno diseño estilo',
   };
   const q = query.trim().toLowerCase();
   function visible(id) {
@@ -212,16 +214,28 @@ export default function Settings() {
   async function handleImagePick(e, setter, maxSize) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const data = await pickImage(file, maxSize);
-    if (data) setter(data);
-    e.target.value = '';
+    try {
+      const data = maxSize === 250 ? await pickLogo(file) : await pickImage(file, maxSize);
+      if (data) setter(data);
+    } catch (err) {
+      console.error('Error al leer la imagen:', err);
+      alert('No se pudo leer la imagen. Probá con otra foto (JPG o PNG).');
+    } finally {
+      e.target.value = '';
+    }
   }
   async function handleQRPick(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const data = await pickQR(file);
-    if (data) setQrData(data);
-    e.target.value = '';
+    try {
+      const data = await pickQR(file);
+      if (data) setQrData(data);
+    } catch (err) {
+      console.error('Error al leer el QR:', err);
+      alert('No se pudo leer la imagen del QR. Probá con otra foto.');
+    } finally {
+      e.target.value = '';
+    }
   }
   function handleDiscard() {
     setSlogan(savedSlogan); setPhone(savedPhone); setLogoData(savedLogo);
@@ -312,7 +326,7 @@ export default function Settings() {
             <button type="button" onClick={() => setShowRubroModal(true)} className="w-full flex items-center gap-2 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.99]">
               <span className="text-base">{currentCat.emoji}</span>
               <span className="flex-1 text-left truncate">{currentCat.name}</span>
-              <span className="text-xs font-bold text-[var(--mg-accent)]">Cambiar</span>
+              <span className="text-xs font-bold text-[var(--mg-accent-text)]">Cambiar</span>
             </button>
             <div className="text-[11px] leading-snug text-[var(--mg-text-muted)]">
               <p className="font-semibold text-[var(--mg-text-secondary)]">Configuración base preparada para este rubro:</p>
@@ -439,6 +453,7 @@ export default function Settings() {
   const showDatos = isSearching
     ? ['respaldo', 'admin'].some(visible)
     : true;
+  const showApariencia = visible('tema');
 
   return (
     <div className="max-w-xl mx-auto px-4 pt-4 pb-32">
@@ -474,10 +489,10 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Mi negocio</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="nombre" icon="tienda" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Nombre" value={business?.name || 'Sin nombre'} />
+            <Row id="nombre" icon="tienda" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Nombre" value={business?.name || 'Sin nombre'} />
             <Row id="rubro" icon="etiqueta" tint="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]" title="Rubro" value={`${currentCat.emoji} ${currentCat.name}`} />
             <Row
-              id="logo" icon="galeria" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" title="Logo" value={logoData ? 'Agregado · sale en el recibo' : 'Sin logo'}
+              id="logo" icon="galeria" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" title="Logo" value={logoData ? 'Agregado · visible en la app' : 'Sin logo'}
               right={logoData
                 ? <img src={logoData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
@@ -485,7 +500,7 @@ export default function Settings() {
             <Row id="slogan" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Slogan" value={slogan || 'Añadir frase del recibo…'} />
             <Row id="telefono" icon="llamar" tint="bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]" title="Teléfono / WhatsApp" value={phone || 'Añadir número…'} />
             <Row
-              id="qr" icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" title="QR de cobro" value={qrData ? 'Agregado' : 'Sin QR · Tigo, BCP, BNB…'}
+              id="qr" icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" title="QR de cobro" value={qrData ? 'Agregado' : 'Sin QR · Tigo, BCP, BNB…'}
               right={qrData
                 ? <img src={qrData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
@@ -499,8 +514,8 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Facturación y dirección</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="legal" icon="carnet" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Razón social" value={legalName || 'Sin registrar'} />
-            <Row id="nit" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="NIT" value={nit || 'Sin registrar'} />
+            <Row id="legal" icon="carnet" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Razón social" value={legalName || 'Sin registrar'} />
+            <Row id="nit" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="NIT" value={nit || 'Sin registrar'} />
             <Row id="ciudad" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Ciudad" value={city || 'Sin registrar'} />
             <Row id="direccion" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Dirección" value={address || 'Sin registrar'} />
             <Row id="pie" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Mensaje final del ticket" value={footerMessage || '¡Gracias por su compra!'} />
@@ -513,11 +528,11 @@ export default function Settings() {
         <>
           <p className="mg-section-title !mt-5 !px-1">Ticket</p>
           <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="formato" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]" title="Formato del recibo" value={receiptFormat === 'sheet' ? 'Hoja A4' : 'Térmico 80mm'} />
+            <Row id="formato" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Formato del recibo" value={receiptFormat === 'sheet' ? 'Hoja A4' : 'Térmico 80mm'} />
             {visible('verqr') && (
               <div>
                 <div className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2">
-                  <IconBox icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" />
+                  <IconBox icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13px] font-semibold leading-tight">QR al final del ticket</span>
                     <span className="block text-xs text-[var(--mg-text-muted)] font-medium">{qrData ? 'Se imprime si está activado' : 'Primero subí un QR'}</span>
@@ -543,6 +558,14 @@ export default function Settings() {
         </>
       )}
 
+      {/* ── APARIENCIA ── */}
+      {showApariencia && (
+        <>
+          <p className="mg-section-title !mt-5 !px-1">Apariencia</p>
+          <ThemePicker />
+        </>
+      )}
+
       {/* ── DATOS ── */}
       {showDatos && (
         <>
@@ -552,7 +575,7 @@ export default function Settings() {
             {admin && visible('admin') && (
               <div>
                 <button type="button" onClick={() => navigate('/admin')} className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)]">
-                  <IconBox icon="plan" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]" />
+                  <IconBox icon="plan" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
                   <span className="flex-1 min-w-0">
                     <span className="block text-[13px] font-semibold leading-tight">Panel de administración</span>
                     <span className="block text-xs text-[var(--mg-text-muted)] font-medium">Planes, pagos y control</span>
@@ -565,7 +588,7 @@ export default function Settings() {
         </>
       )}
 
-      {isSearching && !showNegocio && !showFiscal && !showTicket && !showDatos && (
+      {isSearching && !showNegocio && !showFiscal && !showTicket && !showDatos && !showApariencia && (
         <p className="text-center text-sm text-[var(--mg-text-muted)] mt-10">Sin resultados para “{query}”.</p>
       )}
 
@@ -629,7 +652,7 @@ export default function Settings() {
                     >
                       <span className="text-lg">{cat.emoji}</span>
                       <span className="flex-1 text-[13px] font-semibold truncate">{cat.name}</span>
-                      {act && <span className="text-[var(--mg-accent)] text-sm font-black">✓</span>}
+                      {act && <span className="text-[var(--mg-accent-text)] text-sm font-black">✓</span>}
                     </button>
                   );
                 })}

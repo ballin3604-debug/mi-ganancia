@@ -47,7 +47,7 @@ function Section({ id, title, children }) {
 function Gallery() {
   return (
     <div className="max-w-5xl mx-auto p-5 space-y-5">
-      <h1 className="text-2xl font-black text-[var(--mg-brand)]">Showcase de componentes (dev)</h1>
+      <h1 className="text-2xl font-black text-[var(--mg-brand-text)]">Showcase de componentes (dev)</h1>
 
       <Section id="iconos" title="Iconos">
         <div className="flex flex-wrap gap-4">

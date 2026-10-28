@@ -151,9 +151,10 @@ export function BusinessProvider({ children }) {
   }
 
   const sectorConfig = getBusinessSectorConfig(settings);
+  const tipoNegocio = settings?.businessCategory || settings?.business_category || DEFAULT_CATEGORY_ID;
 
   return (
-    <BusinessContext.Provider value={{ business, settings, sectorConfig, refreshSettings, refreshBusiness }}>
+    <BusinessContext.Provider value={{ business, settings, sectorConfig, tipoNegocio, refreshSettings, refreshBusiness }}>
       {children}
     </BusinessContext.Provider>
   );

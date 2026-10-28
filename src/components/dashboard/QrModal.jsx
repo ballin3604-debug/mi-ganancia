@@ -26,7 +26,7 @@ export function QrModal({ showQr, settings, onClose, onNavigateSettings }) {
           onClick={onClose}
           type="button"
           aria-label="Cerrar modal QR"
-          className="absolute top-4 right-4 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-full text-[var(--mg-text-muted)] hover:text-[var(--mg-brand)] hover:border-[var(--mg-brand-border)] flex items-center justify-center min-h-[44px] min-w-[44px] transition-colors"
+          className="absolute top-4 right-4 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-full text-[var(--mg-text-muted)] hover:text-[var(--mg-brand-text)] hover:border-[var(--mg-brand-border)] flex items-center justify-center min-h-[44px] min-w-[44px] transition-colors"
         >
           <AppIcon name="cerrar" size={18} />
         </button>

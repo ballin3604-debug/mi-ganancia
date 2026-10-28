@@ -130,7 +130,7 @@ export function PetFormModal({ businessId, owners, initialPet, onSave, onClose }
               {species === 'gato' ? '🐱' : species === 'otro' ? '🐾' : '🐶'}
             </div>
           )}
-          <label className="relative flex-1 bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-extrabold py-2.5 rounded-xl text-xs text-center cursor-pointer overflow-hidden">
+          <label className="relative flex-1 bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] font-extrabold py-2.5 rounded-xl text-xs text-center cursor-pointer overflow-hidden">
             📷 {photoUrl ? 'Cambiar foto' : 'Foto (opcional)'}
             <input type="file" accept="image/*" onChange={handlePhoto} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
           </label>
@@ -146,7 +146,7 @@ export function PetFormModal({ businessId, owners, initialPet, onSave, onClose }
             {SPECIES.map((s) => (
               <button
                 key={s.id} type="button" onClick={() => setSpecies(s.id)}
-                className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${species === s.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+                className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${species === s.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
               >
                 {s.label}
               </button>
@@ -196,13 +196,13 @@ export function PetFormModal({ businessId, owners, initialPet, onSave, onClose }
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button" onClick={() => setOwnerMode('exist')}
-                className={`py-2 rounded-xl text-xs font-bold border-2 ${ownerMode === 'exist' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+                className={`py-2 rounded-xl text-xs font-bold border-2 ${ownerMode === 'exist' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
               >
                 Dueño existente
               </button>
               <button
                 type="button" onClick={() => setOwnerMode('new')}
-                className={`py-2 rounded-xl text-xs font-bold border-2 ${ownerMode === 'new' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+                className={`py-2 rounded-xl text-xs font-bold border-2 ${ownerMode === 'new' ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
               >
                 Dueño nuevo
               </button>
@@ -338,7 +338,7 @@ export function PrescriptionFormModal({ petName, onSave, onClose }) {
         ))}
         <button
           type="button" onClick={() => setItems((prev) => [...prev, { name: '', dosage: '', frequency: '', duration: '' }])}
-          className="w-full border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent)] rounded-xl py-2 text-xs font-bold active:scale-95 flex items-center justify-center gap-1.5"
+          className="w-full border-2 border-dashed border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] rounded-xl py-2 text-xs font-bold active:scale-95 flex items-center justify-center gap-1.5"
         >
           <AppIcon name="agregar" size={14} /> Agregar medicamento
         </button>
@@ -443,7 +443,7 @@ export function ReminderFormModal({ petName, onSave, onClose }) {
           {REMINDER_TYPES.map((t) => (
             <button
               key={t.id} type="button" onClick={() => setType(t.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border-2 ${type === t.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border-2 ${type === t.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
             >
               {t.label}
             </button>

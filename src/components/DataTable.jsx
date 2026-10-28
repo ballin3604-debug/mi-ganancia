@@ -103,7 +103,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                   <button
                     type="button"
                     onClick={() => setVisibleKeys(columns.map((c) => c.key))}
-                    className="text-[11px] font-bold text-[var(--mg-accent)] hover:underline"
+                    className="text-[11px] font-bold text-[var(--mg-accent-text)] hover:underline"
                   >
                     Seleccionar todo
                   </button>
@@ -159,7 +159,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c)}
-                  className={`bg-[var(--mg-bg-section)] text-[var(--mg-brand)] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
+                  className={`bg-[var(--mg-bg-section)] text-[var(--mg-brand-text)] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
                     c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
                   } ${c.width || ''} ${c.sortable ? 'cursor-pointer hover:bg-[var(--mg-brand-bg)] transition-colors' : ''}`}
                 >

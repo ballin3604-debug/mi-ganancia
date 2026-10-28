@@ -166,14 +166,14 @@ export function CashierHome({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-[var(--mg-brand)] truncate">
+              <h1 className="text-2xl font-black text-[var(--mg-brand-text)] truncate">
                 Hola, {firstName}
               </h1>
               <button
                 type="button"
                 onClick={() => { setNameDraft(looksLikeEmail ? '' : firstName); setEditingName(true); }}
                 title={looksLikeEmail ? 'Pon tu nombre' : 'Cambiar nombre'}
-                className="w-8 h-8 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-[var(--mg-text-muted)] hover:text-[var(--mg-brand)] hover:border-[var(--mg-brand-border)] shrink-0 transition-colors"
+                className="w-8 h-8 rounded-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center text-[var(--mg-text-muted)] hover:text-[var(--mg-brand-text)] hover:border-[var(--mg-brand-border)] shrink-0 transition-colors"
               >
                 <AppIcon name="editar" size={13} />
               </button>

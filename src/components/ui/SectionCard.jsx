@@ -4,7 +4,7 @@ export default function SectionCard({ title, subtitle, action, children, classNa
       {title || action ? (
         <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-4 py-3.5 sm:px-5">
           <div className="min-w-0">
-            <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">{title}</h2>
+            <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">{title}</h2>
             {subtitle ? <p className="mt-0.5 text-[11px] font-medium text-[var(--mg-text-muted)]">{subtitle}</p> : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}

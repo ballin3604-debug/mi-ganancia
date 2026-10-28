@@ -155,7 +155,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                   aria-pressed={expenseType === 'fixed'}
                   className={`flex min-h-[50px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-extrabold transition-all active:scale-95 ${
                     expenseType === 'fixed'
-                      ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-[var(--mg-shadow-sm)]'
+                      ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] shadow-[var(--mg-shadow-sm)]'
                       : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                   }`}
                 >
@@ -221,7 +221,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                       aria-pressed={active}
                       className={`flex min-h-[42px] items-center gap-1.5 rounded-xl border p-2 text-xs font-extrabold transition-all active:scale-95 ${
                         active
-                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] shadow-[var(--mg-shadow-sm)]'
+                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] shadow-[var(--mg-shadow-sm)]'
                           : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
                       }`}
                     >
@@ -280,7 +280,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                       aria-pressed={active}
                       className={`flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border p-2 text-[11px] font-extrabold transition-all active:scale-95 ${
                         active
-                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                          ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                           : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                       }`}
                     >

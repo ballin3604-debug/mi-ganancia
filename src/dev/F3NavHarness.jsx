@@ -14,7 +14,7 @@ function DemoPage() {
         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">
           Showcase dev · datos simulados · sin sesión real
         </p>
-        <h1 className="text-[var(--mg-brand)] text-2xl font-black mt-1.5">
+        <h1 className="text-[var(--mg-brand-text)] text-2xl font-black mt-1.5">
           Contenido de la página
         </h1>
         <p className="text-[var(--mg-text-secondary)] text-sm mt-2">

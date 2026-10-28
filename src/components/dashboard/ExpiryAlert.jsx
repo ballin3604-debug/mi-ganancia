@@ -14,7 +14,7 @@ export function ExpiryAlert({ expiredCount = 0, soonCount = 0, items = [], onNav
   return (
     <section className="bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
       <div className="flex items-start justify-between gap-3 mb-1">
-        <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+        <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
           <span className="w-8 h-8 rounded-xl bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] flex items-center justify-center shrink-0">
             <AppIcon name="reloj" size={16} />
           </span>

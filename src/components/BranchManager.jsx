@@ -50,7 +50,7 @@ function BranchForm({ onDone }) {
         ].map((t) => (
           <button
             key={t.id} type="button" onClick={() => setType(t.id)}
-            className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-1.5 ${type === t.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
+            className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-1.5 ${type === t.id ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'}`}
           >
             <AppIcon name={t.icon} size={15} /> {t.label}
           </button>
@@ -137,7 +137,7 @@ function BranchTransferModal({ businessId, userId, branches, products, stockMap,
             {selected ? (
               <div className="flex items-center justify-between bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl px-3 py-2">
                 <span className="text-xs font-black text-[var(--mg-text-primary)] truncate">{selected.name}</span>
-                <button type="button" onClick={() => { setProductId(''); setQuery(''); }} className="text-[11px] font-bold text-[var(--mg-accent)] shrink-0">Cambiar</button>
+                <button type="button" onClick={() => { setProductId(''); setQuery(''); }} className="text-[11px] font-bold text-[var(--mg-accent-text)] shrink-0">Cambiar</button>
               </div>
             ) : (
               <>
@@ -346,7 +346,7 @@ function BranchManagerInner() {
             onClick={() => { setShowHistory((v) => { if (!v) loadHistory(); return !v; }); }}
             className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
               showHistory
-                ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                 : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)]'
             }`}
           >
@@ -359,13 +359,13 @@ function BranchManagerInner() {
       <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg-soft)] p-4">
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]">
               <AppIcon name="tienda" size={18} />
             </span>
             <div>
               <p className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-[var(--mg-text-primary)]">
                 Operando en: {activeBranch?.name || '—'}
-                <span className="rounded-md bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-accent)]">Punto de venta activo</span>
+                <span className="rounded-md bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-accent-text)]">Punto de venta activo</span>
               </p>
               <p className="mt-1 text-xs leading-relaxed text-[var(--mg-text-secondary)]">
                 Las ventas se registran en esta sede. Los <strong>almacenes</strong> abastecen a tus sucursales con traspasos.
@@ -375,7 +375,7 @@ function BranchManagerInner() {
           <button
             type="button"
             onClick={() => { setTransferFrom(null); setShowTransfer(true); }}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-bg-surface)] px-3 py-2 text-xs font-bold text-[var(--mg-accent)] transition-all hover:bg-[var(--mg-accent-bg)]"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-bg-surface)] px-3 py-2 text-xs font-bold text-[var(--mg-accent-text)] transition-all hover:bg-[var(--mg-accent-bg)]"
           >
             <AppIcon name="traspaso" size={14} /> Traspasar stock
           </button>
@@ -529,11 +529,11 @@ function BranchManagerInner() {
 
                 <div className="px-4 py-2.5 bg-[var(--mg-bg-elevated)]/60 border-t border-[var(--mg-separator)] flex items-center gap-1.5 flex-wrap">
                   {!active ? (
-                    <button type="button" onClick={() => selectBranch(b.id)} className="px-3 py-1.5 text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-bg-surface)] border border-[var(--mg-accent-border)] rounded-xl active:scale-95 flex items-center gap-1">
+                    <button type="button" onClick={() => selectBranch(b.id)} className="px-3 py-1.5 text-[11px] font-black text-[var(--mg-accent-text)] bg-[var(--mg-bg-surface)] border border-[var(--mg-accent-border)] rounded-xl active:scale-95 flex items-center gap-1">
                       <AppIcon name="ok" size={12} /> Operar aquí
                     </button>
                   ) : (
-                    <span className="text-[11px] font-bold text-[var(--mg-accent)] flex items-center gap-1 px-1">
+                    <span className="text-[11px] font-bold text-[var(--mg-accent-text)] flex items-center gap-1 px-1">
                       <span className="w-2 h-2 rounded-full bg-[var(--mg-accent)]" /> Sede activa en caja
                     </span>
                   )}

@@ -12,13 +12,13 @@ export default function ReportHeader({
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {icon ? (
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-2xl text-[var(--mg-brand)] sm:h-12 sm:w-12">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-2xl text-[var(--mg-brand-text)] sm:h-12 sm:w-12">
               {icon}
             </span>
           ) : null}
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Reportes</p>
-            <h1 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)] sm:text-2xl">{title}</h1>
+            <h1 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand-text)] sm:text-2xl">{title}</h1>
             {subtitle ? (
               <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-[var(--mg-text-secondary)] sm:text-sm">{subtitle}</p>
             ) : null}

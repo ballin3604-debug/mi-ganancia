@@ -812,11 +812,11 @@ export default function MatrixReport() {
 
                         <div className="space-y-3">
                             <div className="flex items-center gap-2.5 px-1">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                                     <AppIcon name="gastos" size={17} />
                                 </span>
                                 <div>
-                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Detalle de egresos</h2>
+                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Detalle de egresos</h2>
                                     <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
                                         {filteredExpenses.length} {filteredExpenses.length === 1 ? 'movimiento registrado' : 'movimientos registrados'} en el período.
                                     </p>
@@ -838,7 +838,7 @@ export default function MatrixReport() {
                                                         {dateStr} · {exp.supplier || 'Sin proveedor'}
                                                     </p>
                                                 </div>
-                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
+                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
                                                     Bs {Number(exp.amount || 0).toFixed(2)}
                                                 </span>
                                             </div>
@@ -846,7 +846,7 @@ export default function MatrixReport() {
                                                 <span className="rounded-full bg-[var(--mg-bg-elevated)] px-2 py-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
                                                     {exp.category || 'Otros'}
                                                 </span>
-                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
                                                     {isFixed ? 'Fijo' : 'Diario'}
                                                 </span>
                                             </div>
@@ -869,7 +869,7 @@ export default function MatrixReport() {
                                             {['Fecha', 'Concepto / Descripción', 'Proveedor', 'Categoría', 'Tipo', 'Monto'].map((label, idx) => (
                                                 <th
                                                     key={label}
-                                                    className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                    className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand-text)] ${
                                                         idx === 5 ? 'text-right' : idx >= 3 ? 'text-center' : 'text-left'
                                                     }`}
                                                 >
@@ -895,11 +895,11 @@ export default function MatrixReport() {
                                                         </span>
                                                     </td>
                                                     <td className="p-3.5 text-center">
-                                                        <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
+                                                        <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'}`}>
                                                             {isFixed ? 'Fijo' : 'Diario'}
                                                         </span>
                                                     </td>
-                                                    <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand)]">
+                                                    <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand-text)]">
                                                         Bs {Number(exp.amount || 0).toFixed(2)}
                                                     </td>
                                                 </tr>
@@ -942,7 +942,7 @@ export default function MatrixReport() {
                                     <AppIcon name="etiqueta" size={17} />
                                 </span>
                                 <div>
-                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Detalle de costos</h2>
+                                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Detalle de costos</h2>
                                     <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
                                         Costo de proveedor de cada producto vendido.
                                     </p>
@@ -1088,7 +1088,7 @@ export default function MatrixReport() {
                                         <p className="text-[11px] font-black uppercase tracking-wider text-[var(--mg-text-secondary)]">
                                             Productos ({inventoryRows.length})
                                         </p>
-                                        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand)]">
+                                        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand-text)]">
                                             Valor: Bs {inventoryRows.reduce((sum, p) => sum + Number(p.stock || 0) * Number(p.price || 0), 0).toFixed(2)}
                                         </p>
                                     </div>
@@ -1121,7 +1121,7 @@ export default function MatrixReport() {
                                                         </span>
                                                     </div>
                                                     <span className="shrink-0 text-right">
-                                                        <span className="block text-sm font-black tabular-nums text-[var(--mg-brand)]">
+                                                        <span className="block text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
                                                             Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}
                                                         </span>
                                                         <AppIcon name="detalle" size={15} className="ml-auto mt-0.5 text-[var(--mg-text-faint)]" />
@@ -1147,7 +1147,7 @@ export default function MatrixReport() {
                                         <button
                                             type="button"
                                             onClick={() => setKardexProductId(p.id)}
-                                            className="cursor-pointer text-left font-bold text-[var(--mg-text-primary)] transition-colors hover:text-[var(--mg-accent)] hover:underline"
+                                            className="cursor-pointer text-left font-bold text-[var(--mg-text-primary)] transition-colors hover:text-[var(--mg-accent-text)] hover:underline"
                                             title="Ver kardex del producto en el periodo"
                                         >
                                             {p.name}
@@ -1177,7 +1177,7 @@ export default function MatrixReport() {
                                 {
                                     key: 'valorTotal', label: 'Valor Total', align: 'right', width: 'w-32',
                                     render: (p) => (
-                                        <span className="font-black tabular-nums text-[var(--mg-brand)]">Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}</span>
+                                        <span className="font-black tabular-nums text-[var(--mg-brand-text)]">Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}</span>
                                     ),
                                 },
                                 {
@@ -1196,7 +1196,7 @@ export default function MatrixReport() {
                                     render: (p) => {
                                         const exits = productMovements[p.id] || 0;
                                         return exits > 0 ? (
-                                            <span className="rounded-full bg-[var(--mg-accent-bg)] px-2 py-1 font-black tabular-nums text-[var(--mg-accent)]">−{exits} und.</span>
+                                            <span className="rounded-full bg-[var(--mg-accent-bg)] px-2 py-1 font-black tabular-nums text-[var(--mg-accent-text)]">−{exits} und.</span>
                                         ) : (
                                             <span className="font-bold tabular-nums text-[var(--mg-text-faint)]">0 und.</span>
                                         );
@@ -1383,9 +1383,9 @@ export default function MatrixReport() {
                                         {['Fecha', 'Total vendido', 'Costo vendido', 'Ganancia bruta', 'Gastos diarios', 'Ganancia neta'].map((label, idx) => (
                                             <th
                                                 key={label}
-                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand-text)] ${
                                                     idx === 0 ? 'text-left' : 'text-right'
-                                                } ${idx === 5 ? 'text-[var(--mg-accent)]' : ''}`}
+                                                } ${idx === 5 ? 'text-[var(--mg-accent-text)]' : ''}`}
                                             >
                                                 {label}
                                             </th>
@@ -1450,7 +1450,7 @@ export default function MatrixReport() {
                                 <AppIcon name="ranking" size={17} />
                             </span>
                             <div>
-                                <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Ranking de productos</h2>
+                                <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Ranking de productos</h2>
                                 <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
                                     Ordenado por unidades vendidas e ingresos del período.
                                 </p>
@@ -1466,7 +1466,7 @@ export default function MatrixReport() {
                                             pos === 1
                                                 ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
                                                 : pos <= 3
-                                                    ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                                                    ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
                                                     : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                                         }`}>
                                             {pos}
@@ -1482,7 +1482,7 @@ export default function MatrixReport() {
                                             <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{item.productName}</p>
                                             <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">{item.quantity} und. vendidas</p>
                                         </div>
-                                        <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
+                                        <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
                                             Bs {item.totalRevenue.toFixed(2)}
                                         </span>
                                     </div>
@@ -1504,7 +1504,7 @@ export default function MatrixReport() {
                                         {['Posición', 'Producto', 'Unidades vendidas', 'Monto generado'].map((label, idx) => (
                                             <th
                                                 key={label}
-                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand)] ${
+                                                className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand-text)] ${
                                                     idx === 0 || idx === 2 ? 'text-center' : idx === 3 ? 'text-right' : 'text-left'
                                                 } ${idx === 0 ? 'w-24' : idx === 2 ? 'w-32' : idx === 3 ? 'w-40' : ''}`}
                                             >
@@ -1523,7 +1523,7 @@ export default function MatrixReport() {
                                                         pos === 1
                                                             ? 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
                                                             : pos <= 3
-                                                                ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                                                                ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
                                                                 : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
                                                     }`}>
                                                         {pos}
@@ -1544,7 +1544,7 @@ export default function MatrixReport() {
                                                 <td className="p-3.5 text-center font-black tabular-nums text-[var(--mg-text-primary)]">
                                                     {item.quantity} und.
                                                 </td>
-                                                <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand)]">
+                                                <td className="p-3.5 text-right font-black tabular-nums text-[var(--mg-brand-text)]">
                                                     Bs {item.totalRevenue.toFixed(2)}
                                                 </td>
                                             </tr>
@@ -1615,7 +1615,7 @@ function KardexModal({ data, periodLabel, onClose }) {
             >
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-5 py-4">
                     <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand)]">Kardex · {periodLabel}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand-text)]">Kardex · {periodLabel}</p>
                         <h3 className="mt-0.5 truncate text-lg font-black text-[var(--mg-text-primary)]">{product.name}</h3>
                         {product.brand && <p className="text-xs font-medium text-[var(--mg-text-muted)]">{product.brand}</p>}
                     </div>
@@ -1639,8 +1639,8 @@ function KardexModal({ data, periodLabel, onClose }) {
                         <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-success-text)]">+{totalIn}</span>
                     </div>
                     <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] p-2.5 text-center">
-                        <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-accent)]">Salidas</span>
-                        <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-accent)]">−{totalOut}</span>
+                        <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--mg-accent-text)]">Salidas</span>
+                        <span className="mt-0.5 block text-sm font-black tabular-nums text-[var(--mg-accent-text)]">−{totalOut}</span>
                     </div>
                 </div>
 
@@ -1665,7 +1665,7 @@ function KardexModal({ data, periodLabel, onClose }) {
                                             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${
                                                 m.type === 'entrada'
                                                     ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
-                                                    : 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                                                    : 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                                             }`}>
                                                 {m.type === 'entrada' ? 'Entrada' : 'Salida'}
                                             </span>
@@ -1684,7 +1684,7 @@ function KardexModal({ data, periodLabel, onClose }) {
                 </div>
 
                 <div className="px-5 pb-4">
-                    <div className="flex items-center justify-between rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-4 py-2.5 text-sm font-black text-[var(--mg-brand)]">
+                    <div className="flex items-center justify-between rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-4 py-2.5 text-sm font-black text-[var(--mg-brand-text)]">
                         <span>Stock actual</span>
                         <span className="tabular-nums">{currentStock} und.</span>
                     </div>
@@ -1739,7 +1739,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
             >
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-5 py-4">
                     <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand)]">Detalle de ganancia</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-brand-text)]">Detalle de ganancia</p>
                         <h3 className="mt-0.5 truncate text-lg font-black text-[var(--mg-text-primary)]">{dateLabel}</h3>
                     </div>
                     <button
@@ -1771,7 +1771,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                     </div>
 
                     <div className="space-y-3">
-                        <h4 className="flex items-center gap-1.5 border-b border-[var(--mg-separator)] pb-2 text-xs font-black uppercase tracking-widest text-[var(--mg-brand)]">
+                        <h4 className="flex items-center gap-1.5 border-b border-[var(--mg-separator)] pb-2 text-xs font-black uppercase tracking-widest text-[var(--mg-brand-text)]">
                             <AppIcon name="carrito" size={14} />
                             Ventas del día ({daySales.length})
                         </h4>
@@ -1805,7 +1805,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                                                         {payment.label}
                                                     </span>
                                                 </div>
-                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand)]">
+                                                <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
                                                     Bs {(sale.total || 0).toFixed(2)}
                                                 </span>
                                             </div>
@@ -1866,7 +1866,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="truncate font-semibold text-[var(--mg-text-primary)]">{exp.description}</span>
                                                         <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-black uppercase ${
-                                                            isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
+                                                            isFixed ? 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]' : 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
                                                         }`}>
                                                             {isFixed ? 'Fijo' : 'Diario'}
                                                         </span>

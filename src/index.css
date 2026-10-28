@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import './styles/tokens.generated.css';
+@import './styles/themes.css';
 
 @tailwind base;
 @tailwind components;
@@ -93,7 +94,7 @@ input[type="number"]::-webkit-outer-spin-button {
   /* Botón secundario iOS — fondo translúcido azul */
   .mg-btn-secondary {
     @apply bg-[var(--mg-accent-bg)] hover:bg-[var(--mg-accent-border)]
-           text-[var(--mg-accent)] font-semibold px-4 py-3.5 rounded-xl
+           text-[var(--mg-accent-text)] font-semibold px-4 py-3.5 rounded-xl
            transition-all active:scale-[0.97]
            disabled:opacity-50 disabled:cursor-not-allowed;
   }

@@ -158,6 +158,9 @@ function isChildActive(location, childTo) {
 export default function Layout() {
   const { user, role } = useAuth();
   const { business, settings, sectorConfig } = useBusiness();
+  // Logo del negocio: si subió uno en Ajustes, se muestra en toda la app.
+  const businessLogo = settings?.logoData || '/logo-icon.png?v=2';
+  const businessLogoAlt = business?.name ? `Logo de ${business.name}` : 'Logo Mi Ganancia';
   // Restaurante: sin compras ni sucursales; sin reportes de inventario/compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const { online, pendingCount, errorCount } = useSyncStatus();
@@ -266,13 +269,13 @@ export default function Layout() {
         <div className="px-3 py-4 border-b border-[var(--mg-separator)] overflow-hidden">
           <div className={`flex items-center gap-2.5 ${sidebarOpen ? '' : 'justify-center'}`}>
             <img
-              src="/logo-icon.png?v=2"
-              alt="Logo Mi Ganancia"
-              className="w-10 h-10 rounded-xl object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
+              src={businessLogo}
+              alt={businessLogoAlt}
+              className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
             />
             {sidebarOpen && (
               <div className="min-w-0">
-                <p className="text-[var(--mg-brand)] font-black text-[15px] leading-tight tracking-tight truncate">
+                <p className="text-[var(--mg-brand-text)] font-black text-[15px] leading-tight tracking-tight truncate">
                   Mi Ganancia
                 </p>
                 <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight mt-0.5 flex items-center gap-1.5">
@@ -342,7 +345,7 @@ export default function Layout() {
                   data-tutorial={item.key}
                   aria-expanded={isOpen}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-colors ${
-                    isGroupActive ? 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)]' : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                    isGroupActive ? 'text-[var(--mg-brand-text)] bg-[var(--mg-brand-bg)]' : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
                   }`}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
@@ -369,7 +372,7 @@ export default function Layout() {
                           key={child.key}
                           to={child.to}
                           className={`block px-2.5 py-1.5 rounded-lg text-[12px] transition-colors ${
-                            childActive ? 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)] font-bold' : 'text-[var(--mg-text-muted)] font-semibold hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
+                            childActive ? 'text-[var(--mg-brand-text)] bg-[var(--mg-brand-bg)] font-bold' : 'text-[var(--mg-text-muted)] font-semibold hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
                           }`}
                         >
                           {child.label}
@@ -446,12 +449,12 @@ export default function Layout() {
                 </svg>
               </button>
               <img
-                src="/logo-icon.png?v=2"
-                alt="Logo Mi Ganancia"
-                className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
+                src={businessLogo}
+                alt={businessLogoAlt}
+                className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
               />
               <div className="min-w-0">
-                <h1 className="text-[var(--mg-brand)] text-[15px] font-black leading-tight truncate flex items-center gap-1.5 tracking-tight">
+                <h1 className="text-[var(--mg-brand-text)] text-[15px] font-black leading-tight truncate flex items-center gap-1.5 tracking-tight">
                   Mi Ganancia
                   <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${online ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-warning)] animate-pulse'}`} />
                 </h1>
@@ -508,7 +511,7 @@ export default function Layout() {
             end
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 pt-1 pb-1 px-2 min-h-[48px] flex-1 transition-colors ${
-                isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
+                isActive ? 'text-[var(--mg-brand-text)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
               }`
             }
           >
@@ -529,7 +532,7 @@ export default function Layout() {
             to="/ventas"
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 pt-1 pb-1 px-2 min-h-[48px] flex-1 transition-colors ${
-                isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
+                isActive ? 'text-[var(--mg-brand-text)]' : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
               }`
             }
           >
@@ -573,12 +576,12 @@ export default function Layout() {
               {/* Marca */}
               <div className="flex items-center gap-2.5 px-4 pt-4 pb-3.5 border-b border-[var(--mg-separator)]">
                 <img
-                  src="/logo-icon.png?v=2"
-                  alt="Logo Mi Ganancia"
-                  className="w-9 h-9 rounded-lg object-contain bg-[var(--mg-bg-surface)] p-0.5 shrink-0 border border-[var(--mg-border)]"
+                  src={businessLogo}
+                  alt={businessLogoAlt}
+                  className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[var(--mg-brand)] font-black text-base leading-tight truncate tracking-tight">
+                  <p className="text-[var(--mg-brand-text)] font-black text-base leading-tight truncate tracking-tight">
                     Mi Ganancia
                   </p>
                   <p className="text-[var(--mg-text-muted)] text-[11px] leading-tight truncate">
@@ -612,14 +615,14 @@ export default function Layout() {
                       onClick={() => setShowMenuDrawer(false)}
                       className={`relative flex items-center gap-3 px-4 py-3 min-h-[48px] transition-colors active:bg-[var(--mg-bg-elevated)] ${
                         isActive
-                          ? 'text-[var(--mg-brand)] font-bold bg-[var(--mg-brand-bg)]'
+                          ? 'text-[var(--mg-brand-text)] font-bold bg-[var(--mg-brand-bg)]'
                           : 'text-[var(--mg-text-secondary)] font-semibold hover:bg-[var(--mg-bg-elevated)]'
                       }`}
                     >
                       {isActive && (
                         <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--mg-brand)] rounded-r-full" />
                       )}
-                      <span className={`w-6 h-6 flex items-center justify-center shrink-0 ${isActive ? 'text-[var(--mg-brand)]' : 'text-[var(--mg-text-muted)]'}`}>
+                      <span className={`w-6 h-6 flex items-center justify-center shrink-0 ${isActive ? 'text-[var(--mg-brand-text)]' : 'text-[var(--mg-text-muted)]'}`}>
                         <Icon />
                       </span>
                       <span className="text-[15px]">{label}</span>

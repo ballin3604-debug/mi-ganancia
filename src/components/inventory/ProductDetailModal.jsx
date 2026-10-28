@@ -20,6 +20,7 @@ export function ProductDetailModal({
   onEdit,
   onDelete,
   onQuickUpdateStock,
+  onToggleAvailability,
   categoryColor,
   branches = [],
   stockRows = [],
@@ -127,7 +128,7 @@ export function ProductDetailModal({
               </div>
 
               <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
-                <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
+                <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'}`}>
                   {product.category || 'Sin categoría'}
                 </span>
 
@@ -148,7 +149,7 @@ export function ProductDetailModal({
                 )}
 
                 {Number(product.packageSize || 0) > 1 && product.packPrice && (
-                  <p className="text-[11px] font-bold text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5">
+                  <p className="text-[11px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5">
                     📦 {(product.packLabel || 'Paquete').trim() || 'Paquete'} x{product.packageSize}: Bs {Number(product.packPrice).toFixed(2)}
                     {product.packPriceHot ? ` · caliente Bs ${Number(product.packPriceHot).toFixed(2)}` : ''}
                   </p>
@@ -201,7 +202,7 @@ export function ProductDetailModal({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">Precio Venta</span>
-                  <p className="text-base font-black text-[var(--mg-accent)] mt-0.5">{formatBs(price)}</p>
+                  <p className="text-base font-black text-[var(--mg-accent-text)] mt-0.5">{formatBs(price)}</p>
                 </div>
 
                 <div className="bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
@@ -222,18 +223,40 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Total Stock Valuation */}
-              <div className="bg-[var(--mg-accent-bg)] p-3 rounded-xl border border-[var(--mg-accent-border)] flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-extrabold text-[var(--mg-accent)] block">Valor Total en Ventas:</span>
-                  {product.isDish ? (
-                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">🍽️ Plato: se vende sin inventario</span>
-                  ) : (
-                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">({currentStock} unidades × {formatBs(price)})</span>
+              {/* Plato: disponibilidad en lugar de valorización */}
+              {product.isDish ? (
+                <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                  product.isAvailable === false
+                    ? 'bg-[var(--mg-danger-bg)] border-[var(--mg-danger-border)]'
+                    : 'bg-[var(--mg-success-bg)] border-[var(--mg-success-border)]'
+                }`}>
+                  <div className="min-w-0">
+                    <span className={`font-extrabold block text-xs ${product.isAvailable === false ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'}`}>
+                      {product.isAvailable === false ? '⛔ Agotado' : '✅ Disponible'}
+                    </span>
+                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">
+                      {product.isAvailable === false ? 'No aparece en Ventas hasta reactivarlo' : 'Se puede vender en el POS'}
+                    </span>
+                  </div>
+                  {onToggleAvailability && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleAvailability(product)}
+                      className="shrink-0 text-[11px] font-extrabold px-3 py-2 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] active:scale-95 transition-all min-h-[36px]"
+                    >
+                      {product.isAvailable === false ? 'Marcar disponible' : 'Marcar agotado'}
+                    </button>
                   )}
                 </div>
-                <p className="text-base font-black text-[var(--mg-accent)]">{formatBs(product.isDish ? 0 : totalSaleValue)}</p>
-              </div>
+              ) : (
+                <div className="bg-[var(--mg-accent-bg)] p-3 rounded-xl border border-[var(--mg-accent-border)] flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-extrabold text-[var(--mg-accent-text)] block">Valor Total en Ventas:</span>
+                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">({currentStock} unidades × {formatBs(price)})</span>
+                  </div>
+                  <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(totalSaleValue)}</p>
+                </div>
+              )}
             </div>
 
             {/* Dates & Expiry Section */}

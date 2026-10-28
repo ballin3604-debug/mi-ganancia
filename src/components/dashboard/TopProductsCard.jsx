@@ -11,8 +11,8 @@ export function TopProductsCard({ data = [] }) {
     <section className="bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
+          <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
               <AppIcon name="reportes" size={16} />
             </span>
             Productos más vendidos

@@ -38,7 +38,7 @@ export function LogoutModal({ isOpen, onClose, user, business }) {
           </h3>
 
           <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-1.5 leading-relaxed">
-            Se pausará la sesión activa de <strong className="text-[var(--mg-text-primary)]">{user?.displayName || 'Usuario'}</strong> en <strong className="text-[var(--mg-accent)]">{business?.name || 'Mi Ganancia'}</strong>. Todos tus datos locales están guardados.
+            Se pausará la sesión activa de <strong className="text-[var(--mg-text-primary)]">{user?.displayName || 'Usuario'}</strong> en <strong className="text-[var(--mg-accent-text)]">{business?.name || 'Mi Ganancia'}</strong>. Todos tus datos locales están guardados.
           </p>
 
           <div className="my-5 p-3 rounded-2xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-between text-xs text-[var(--mg-text-secondary)] font-bold">

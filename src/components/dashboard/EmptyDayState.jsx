@@ -28,7 +28,7 @@ export function EmptyDayState({ isOwner, onNavigate }) {
           className="relative mb-5"
         >
           <div className="absolute inset-0 bg-[var(--mg-accent)]/10 rounded-full blur-2xl" />
-          <div className="relative w-20 h-20 rounded-[26px] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] flex items-center justify-center text-[var(--mg-accent)]">
+          <div className="relative w-20 h-20 rounded-[26px] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] flex items-center justify-center text-[var(--mg-accent-text)]">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>

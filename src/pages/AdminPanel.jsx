@@ -32,9 +32,9 @@ function formatDate(ts) {
 function Badge({ status }) {
   const map = {
     pending:   'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
-    approved:  'bg-[var(--mg-info-bg)] text-[var(--mg-accent)]',
+    approved:  'bg-[var(--mg-info-bg)] text-[var(--mg-accent-text)]',
     rejected:  'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]',
-    active:    'bg-[var(--mg-info-bg)] text-[var(--mg-accent)]',
+    active:    'bg-[var(--mg-info-bg)] text-[var(--mg-accent-text)]',
     suspended: 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]',
   };
   const labels = {
@@ -617,8 +617,8 @@ export default function AdminPanel() {
                     </div>
 
                     <div className="mb-3 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--mg-accent)]">Negocio solicitado</p>
-                      <p className="text-base font-bold text-[var(--mg-accent)]">{req.businessName}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--mg-accent-text)]">Negocio solicitado</p>
+                      <p className="text-base font-bold text-[var(--mg-accent-text)]">{req.businessName}</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -784,7 +784,7 @@ export default function AdminPanel() {
                     <button
                       type="button"
                       onClick={() => setImportBusiness(biz)}
-                      className="w-full mt-2 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-sm active:scale-95"
+                      className="w-full mt-2 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] font-bold py-2.5 rounded-xl text-sm active:scale-95"
                     >
                       Importar catálogo
                     </button>
@@ -813,7 +813,7 @@ export default function AdminPanel() {
                         <AppIcon name="camara" size={24} />
                       </div>
                     )}
-                    <label className="relative flex-1 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-bold py-2.5 rounded-xl text-sm text-center active:scale-95 cursor-pointer select-none overflow-hidden">
+                    <label className="relative flex-1 bg-[var(--mg-info-bg)] border-2 border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] font-bold py-2.5 rounded-xl text-sm text-center active:scale-95 cursor-pointer select-none overflow-hidden">
                       {uploadingCatalogImage ? 'Subiendo...' : (catalogForm.imageData ? 'Cambiar foto' : 'Subir foto')}
                       <input type="file" accept="image/*" onChange={handleCatalogImagePick} disabled={uploadingCatalogImage}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
@@ -885,7 +885,7 @@ export default function AdminPanel() {
                         <p className="font-bold text-[var(--mg-text-primary)] text-sm truncate">{product.name}</p>
                         <p className="text-xs text-[var(--mg-text-faint)] truncate">{product.brand || '—'} · {product.category}</p>
                       </div>
-                      <p className="text-sm font-black text-[var(--mg-accent)] shrink-0">Bs {Number(product.suggestedPrice || 0).toFixed(2)}</p>
+                      <p className="text-sm font-black text-[var(--mg-accent-text)] shrink-0">Bs {Number(product.suggestedPrice || 0).toFixed(2)}</p>
                       <button onClick={() => handleDeleteCatalogProduct(product)}
                         className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--mg-text-muted)] hover:bg-[var(--mg-danger-bg)] hover:text-[var(--mg-danger)] active:scale-95 transition-all shrink-0">
                         <AppIcon name="eliminar" size={15} />

@@ -11,7 +11,7 @@ export default function PageHeader({ icon = 'tienda', eyebrow, title, subtitle, 
           {eyebrow ? (
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">{eyebrow}</p>
           ) : null}
-          <h1 className="text-xl font-black tracking-tight text-[var(--mg-brand)] sm:text-2xl">{title}</h1>
+          <h1 className="text-xl font-black tracking-tight text-[var(--mg-brand-text)] sm:text-2xl">{title}</h1>
           {subtitle ? (
             <p className="mt-0.5 text-xs font-medium leading-snug text-[var(--mg-text-secondary)] sm:text-sm">{subtitle}</p>
           ) : null}

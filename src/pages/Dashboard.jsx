@@ -482,14 +482,14 @@ export default function Dashboard() {
       <section className="bg-[var(--mg-bg-surface)] rounded-3xl p-4 sm:p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
-              <h3 className="font-black text-base text-[var(--mg-brand)]">Análisis del día</h3>
+              <h3 className="font-black text-base text-[var(--mg-brand-text)]">Análisis del día</h3>
               <p className="text-xs text-[var(--mg-text-muted)]">Productos, categorías y tendencia por hora</p>
             </div>
             <button
               onClick={handleExport}
               disabled={exporting}
               type="button"
-              className="text-xs font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline flex items-center gap-1 disabled:opacity-50 min-h-[32px]"
+              className="text-xs font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline flex items-center gap-1 disabled:opacity-50 min-h-[32px]"
             >
               {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
             </button>

@@ -24,7 +24,7 @@ export function AuditPurchasesList({ rows }) {
         <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--mg-text-secondary)]">
           Compras ({rows.length})
         </p>
-        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand)]">
+        <p className="text-[11px] font-black tabular-nums text-[var(--mg-brand-text)]">
           Total: {formatBs(total)}
         </p>
       </div>
@@ -48,7 +48,7 @@ export function AuditPurchasesList({ rows }) {
                   {fecha}{hora ? ` · ${hora}` : ''}
                 </p>
               </div>
-              <span className="flex shrink-0 items-center gap-1.5 text-sm font-black tabular-nums text-[var(--mg-brand)]">
+              <span className="flex shrink-0 items-center gap-1.5 text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
                 {formatBs(r.totalCost)}
                 <CartBillIcon className="h-8 w-9" />
               </span>

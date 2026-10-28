@@ -97,13 +97,13 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
           <div className="space-y-1">
             <span
               className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
               }`}
             >
               {product.category || 'Otros'}
             </span>
 
-            <h4 className="font-extrabold text-[var(--mg-text-primary)] text-xs sm:text-sm line-clamp-2 leading-snug tracking-tight group-hover:text-[var(--mg-accent)] transition-colors">
+            <h4 className="font-extrabold text-[var(--mg-text-primary)] text-xs sm:text-sm line-clamp-2 leading-snug tracking-tight group-hover:text-[var(--mg-accent-text)] transition-colors">
               {product.name}
             </h4>
           </div>
@@ -146,7 +146,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
                     </p>
                   )}
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'}`}>
                   {product.category || 'Otros'}
                 </span>
               </div>
@@ -156,7 +156,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                     Precio Venta
                   </span>
-                  <p className="text-base font-black text-[var(--mg-accent)]">{formatBs(price)}</p>
+                  <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(price)}</p>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
@@ -173,7 +173,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
               </div>
 
               {marginPct !== null && (
-                <div className="bg-[var(--mg-accent-bg)] p-2 rounded-xl text-[11px] font-bold text-[var(--mg-accent)] flex items-center justify-between border border-[var(--mg-accent-border)]">
+                <div className="bg-[var(--mg-accent-bg)] p-2 rounded-xl text-[11px] font-bold text-[var(--mg-accent-text)] flex items-center justify-between border border-[var(--mg-accent-border)]">
                   <span>Margen est. ganancia:</span>
                   <span className="font-black">
                     +{marginPct}% ({formatBs(profit)})

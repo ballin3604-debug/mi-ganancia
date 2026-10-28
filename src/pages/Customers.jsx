@@ -113,7 +113,7 @@ export default function Customers() {
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); openModal(c); }}
-                                        className="w-9 h-9 hover:bg-[var(--mg-accent-bg)] rounded-xl flex items-center justify-center text-gray-500 hover:text-[var(--mg-accent)] active:scale-95 transition-all shrink-0"
+                                        className="w-9 h-9 hover:bg-[var(--mg-accent-bg)] rounded-xl flex items-center justify-center text-gray-500 hover:text-[var(--mg-accent-text)] active:scale-95 transition-all shrink-0"
                                         title="Editar cliente"
                                     >
                                         <AppIcon name="editar" size={16} />

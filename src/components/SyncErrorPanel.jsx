@@ -145,7 +145,7 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
                           <AppIcon name="reloj" size={12} color="var(--mg-gold-text)" /> Reintentando ({op.retry_count || 0}/5 reintentos)
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--mg-accent)]">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--mg-accent-text)]">
                           <AppIcon name="reloj" size={12} color="var(--mg-accent)" /> Pendiente de envío
                         </span>
                       )}

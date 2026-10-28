@@ -75,7 +75,7 @@ function UpdateBanner() {
         <p className="flex-1 text-sm font-semibold">Nueva versión disponible</p>
         <button
           onClick={handleUpdate}
-          className="min-h-[36px] rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[var(--mg-accent)] active:scale-95"
+          className="min-h-[36px] rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[var(--mg-accent-deep)] active:scale-95"
         >
           Actualizar
         </button>

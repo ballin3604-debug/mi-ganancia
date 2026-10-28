@@ -23,7 +23,7 @@ export function BusinessNameCard({ currentName, onSave }) {
     <div className="bg-[var(--mg-bg-surface)] rounded-[22px] p-4 border border-[var(--mg-border)] shadow-xs">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-10 h-10 rounded-2xl bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] flex items-center justify-center font-black text-lg shrink-0">
+          <span className="w-10 h-10 rounded-2xl bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] flex items-center justify-center font-black text-lg shrink-0">
             {(editing ? value : currentName)?.charAt(0)?.toUpperCase() || 'M'}
           </span>
           <div className="min-w-0">

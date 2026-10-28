@@ -14,6 +14,7 @@ import {
 } from '../services/products';
 import {
   getCategories,
+  getDefaultCategories,
   subscribeToCategories,
   addCategory,
   removeCategory,
@@ -58,6 +59,7 @@ const EMPTY_FORM = {
   unit: 'Unidad',
   packageSize: '',
   isDish: false,
+  isAvailable: true,
   presentations: [],
 };
 
@@ -73,14 +75,14 @@ function getNearestExpiry(replenishments, productId) {
 }
 
 const CATEGORY_COLORS = [
-  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]',
+  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]',
   'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
-  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]',
+  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]',
   'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]',
-  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]',
+  'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]',
   'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]',
   'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]',
-  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]',
+  'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]',
 ];
 
 function getCatColor(categories, catName) {
@@ -114,7 +116,7 @@ function clearProductDraft() {
 
 export default function Inventory() {
   const { businessId, hasPermission } = useAuth();
-  const { sectorConfig } = useBusiness();
+  const { sectorConfig, tipoNegocio } = useBusiness();
   const { pickImage } = useImageUpload();
   const location = useLocation();
   const navigate = useNavigate();
@@ -377,6 +379,7 @@ export default function Inventory() {
       return {
         ...f,
         isDish: false,
+        isAvailable: true,
         minStock: f.minStock === '0' ? '5' : f.minStock,
       };
     });
@@ -453,6 +456,7 @@ export default function Inventory() {
       unit: product.unit || 'Unidad',
       packageSize: product.packageSize ? String(product.packageSize) : '',
       isDish: !!product.isDish,
+      isAvailable: product.isAvailable !== false,
       presentations: Array.isArray(product.presentations) && product.presentations.length > 0
         ? product.presentations.map((presentation) => ({ ...presentation }))
         : getSellOptions(product).map((option, index) => ({
@@ -517,6 +521,7 @@ export default function Inventory() {
         packageSize: '',
         stock: 0,
         minStock: '0',
+        isAvailable: form.isAvailable !== false,
       };
       delete data.presentations;
     } else if (sectorConfig?.features?.configurablePresentations) {
@@ -637,6 +642,22 @@ export default function Inventory() {
     }
   }
 
+  async function handleAddSuggestedCategory(name) {
+    if (!name || savingCat) return;
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) return;
+    setSavingCat(true);
+    try {
+      await addCategory(businessId, name);
+      await fetchAll();
+      if (showForm) setField('category', name);
+    } catch (err) {
+      console.error('Error al agregar categoría sugerida:', err);
+      alert(`No se pudo agregar la categoría.\n\n${err?.message || err}`);
+    } finally {
+      setSavingCat(false);
+    }
+  }
+
   async function handleRemoveCategory(cat) {
     if (!window.confirm(`¿Eliminar categoría "${cat}"?`)) return;
     try {
@@ -693,6 +714,13 @@ export default function Inventory() {
   }
 
   const allCategories = useMemo(() => ['Todas', ...categories], [categories]);
+
+  const categorySuggestions = useMemo(() => {
+    const existing = new Set(categories.map((c) => c.toLowerCase()));
+    return getDefaultCategories(tipoNegocio).filter(
+      (c) => c !== 'Otros' && !existing.has(c.toLowerCase())
+    );
+  }, [categories, tipoNegocio]);
 
   // Product counts per category for the header pill badges
   const categoryCounts = useMemo(() => {
@@ -839,6 +867,23 @@ export default function Inventory() {
     }
   }
 
+  async function handleToggleAvailability(product) {
+    if (!product?.isDish) return;
+    const next = product.isAvailable === false;
+    try {
+      await updateProduct(product.id, {
+        ...product,
+        isAvailable: next,
+        expectedStock: product.stock,
+      });
+      await fetchAll();
+      setSelectedDetailProduct((prev) => (prev && prev.id === product.id ? { ...prev, isAvailable: next } : prev));
+    } catch (err) {
+      console.error('Error al cambiar disponibilidad:', err);
+      alert('No se pudo cambiar la disponibilidad del plato.');
+    }
+  }
+
   return (
     <div className="p-3.5 sm:p-5 lg:p-6 pb-28 mg-fade-in w-full mx-auto space-y-5 max-w-7xl">
       {/* Top Header & Search Controls */}
@@ -865,6 +910,7 @@ export default function Inventory() {
         onOpenCatManager={() => setShowCatManager(true)}
         onOpenScanner={showBarcode ? () => openScanner('search') : undefined}
         searchPlaceholder={isRestaurantMode ? 'Buscar plato o producto...' : undefined}
+        allLabel={isRestaurantMode ? 'Todo el menú' : undefined}
         showRecentFilter={!isRestaurantMode}
         expiryCounts={expiryCounts}
         showExpiryFilters={showExpiryFilters}
@@ -881,14 +927,14 @@ export default function Inventory() {
         onClick={() => navigate('/reportes?type=inventory')}
         className="group w-full flex items-center gap-3 bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] rounded-2xl px-4 py-3 shadow-[var(--mg-shadow-sm)] hover:border-[var(--mg-brand-border)] hover:shadow-[var(--mg-shadow-md)] active:scale-[0.99] transition-all text-left"
       >
-        <span className="w-11 h-11 rounded-2xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border border-[var(--mg-brand-border)] flex items-center justify-center shrink-0">
+        <span className="w-11 h-11 rounded-2xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border border-[var(--mg-brand-border)] flex items-center justify-center shrink-0">
           <AppIcon name="reportes" size={20} />
         </span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-black text-[var(--mg-text-primary)]">Reporte de inventario</span>
           <span className="block text-[11px] text-[var(--mg-text-muted)] font-semibold truncate">Valorización, stock y kardex por producto</span>
         </span>
-        <span className="text-lg font-black text-[var(--mg-brand)] shrink-0 transition-transform group-hover:translate-x-0.5">›</span>
+        <span className="text-lg font-black text-[var(--mg-brand-text)] shrink-0 transition-transform group-hover:translate-x-0.5">›</span>
       </button>
       )}
 
@@ -901,7 +947,7 @@ export default function Inventory() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center py-14 bg-[var(--mg-bg-surface)] rounded-[26px] border border-[var(--mg-border)] shadow-xs p-8 max-w-lg mx-auto"
         >
-          <div className="w-16 h-16 rounded-3xl bg-[var(--mg-brand-bg)] border border-[var(--mg-brand-border)] flex items-center justify-center mx-auto mb-3 shadow-[var(--mg-shadow-sm)] text-[var(--mg-brand)]">
+          <div className="w-16 h-16 rounded-3xl bg-[var(--mg-brand-bg)] border border-[var(--mg-brand-border)] flex items-center justify-center mx-auto mb-3 shadow-[var(--mg-shadow-sm)] text-[var(--mg-brand-text)]">
             <AppIcon name="paquete" size={30} />
           </div>
           <p className="font-black text-[var(--mg-text-primary)] text-base">No hay productos que coincidan</p>
@@ -939,7 +985,7 @@ export default function Inventory() {
                         <span className="flex items-center gap-1.5 flex-wrap mt-1">
                           <StockLabel stock={prod.stock} minStock={prod.minStock} />
                           {hasPack && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
                               📦 {(prod.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
                             </span>
                           )}
@@ -1010,6 +1056,7 @@ export default function Inventory() {
         onEdit={(p) => openEdit(p)}
         onDelete={(p) => setConfirmDeleteProduct(p)}
         onQuickUpdateStock={handleQuickUpdateStock}
+        onToggleAvailability={handleToggleAvailability}
         branches={branches}
         stockRows={stockRows}
         businessId={businessId}
@@ -1183,7 +1230,7 @@ export default function Inventory() {
                         <button
                           type="button"
                           onClick={() => setShowCamera(true)}
-                          className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] font-extrabold py-2 rounded-xl text-xs active:scale-95 flex flex-col items-center gap-0.5 cursor-pointer select-none transition-all"
+                          className="bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] font-extrabold py-2 rounded-xl text-xs active:scale-95 flex flex-col items-center gap-0.5 cursor-pointer select-none transition-all"
                         >
                           <AppIcon name="camara" size={14} />
                           <span>Cámara</span>
@@ -1261,6 +1308,35 @@ export default function Inventory() {
                   </div>
                 )}
 
+                {form.isDish && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3.5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-extrabold text-[var(--mg-text-primary)]">Disponible para vender</p>
+                      <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] leading-snug">
+                        {form.isAvailable === false
+                          ? 'Agotado: no aparece en Ventas hasta reactivarlo.'
+                          : 'Se puede pedir en Ventas ahora mismo.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={form.isAvailable !== false}
+                      aria-label="Disponible para vender"
+                      onClick={() => setField('isAvailable', form.isAvailable === false)}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors active:scale-95 ${
+                        form.isAvailable !== false ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-border-hover)]'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all ${
+                          form.isAvailable !== false ? 'left-[22px]' : 'left-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+
                 {(!practical || showAdvanced) && !form.isDish && showBarcode && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
@@ -1318,7 +1394,7 @@ export default function Inventory() {
                       // Abre el gestor ENCIMA del formulario sin cerrarlo:
                       // los datos ya escritos se conservan.
                       onClick={() => setShowCatManager(true)}
-                      className="text-[11px] text-[var(--mg-accent)] font-extrabold hover:underline"
+                      className="text-[11px] text-[var(--mg-accent-text)] font-extrabold hover:underline"
                     >
                       + Gestionar categorías
                     </button>
@@ -1352,7 +1428,7 @@ export default function Inventory() {
                       min="0"
                       max="999999"
                       step="0.01"
-                      className="mg-input text-sm font-black text-[var(--mg-accent)]"
+                      className="mg-input text-sm font-black text-[var(--mg-accent-text)]"
                       required
                     />
                   </div>
@@ -1572,7 +1648,7 @@ export default function Inventory() {
                         <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Factor</label>
                         <div className="mg-input flex items-center text-xs font-black">1 unidad base</div>
                       </div>
-                      <p className="col-span-2 text-[11px] font-semibold text-[var(--mg-brand)]">
+                      <p className="col-span-2 text-[11px] font-semibold text-[var(--mg-brand-text)]">
                         Precio base: Bs {Number(form.price || 0).toFixed(2)} · el precio se edita en el campo Precio de venta.
                       </p>
                     </div>
@@ -1630,7 +1706,7 @@ export default function Inventory() {
                     <button
                       type="button"
                       onClick={addPresentation}
-                      className="w-full rounded-xl border border-dashed border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-3 py-2.5 text-xs font-extrabold text-[var(--mg-brand)]"
+                      className="w-full rounded-xl border border-dashed border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-3 py-2.5 text-xs font-extrabold text-[var(--mg-brand-text)]"
                     >
                       + Agregar presentación
                     </button>
@@ -1662,7 +1738,7 @@ export default function Inventory() {
                     </button>
                   </div>
                   {packHelp && (
-                    <p className="text-[11px] text-[var(--mg-accent)] font-semibold bg-white/70 border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
+                    <p className="text-[11px] text-[var(--mg-accent-text)] font-semibold bg-[var(--mg-accent-bg-soft)] border border-[var(--mg-accent-border)] rounded-lg px-2 py-1.5">
                       Actívalo si además de la unidad suelta vendés el paquete cerrado (ej: lata suelta y chipa x12). El stock siempre vive en unidades: vender 1 paquete descuenta las unidades que trae.
                     </p>
                   )}
@@ -1731,7 +1807,7 @@ export default function Inventory() {
                             placeholder="0.00"
                             min="0"
                             step="0.01"
-                            className="mg-input text-xs font-black text-[var(--mg-accent)]"
+                            className="mg-input text-xs font-black text-[var(--mg-accent-text)]"
                           />
                         </div>
                         <div>
@@ -1825,7 +1901,7 @@ export default function Inventory() {
                     type="button"
                     disabled={saving}
                     onClick={() => handleSave(null, { another: true })}
-                    className="w-full bg-[var(--mg-brand-bg)] hover:bg-[var(--mg-accent-bg)] border border-[var(--mg-brand-border)] text-[var(--mg-brand)] font-extrabold py-3 rounded-2xl text-xs transition-all active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-1.5"
+                    className="w-full bg-[var(--mg-brand-bg)] hover:bg-[var(--mg-accent-bg)] border border-[var(--mg-brand-border)] text-[var(--mg-brand-text)] font-extrabold py-3 rounded-2xl text-xs transition-all active:scale-95 disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-1.5"
                   >
                     <AppIcon name="agregar" size={14} />
                     <span>Guardar y añadir otro</span>
@@ -1931,6 +2007,28 @@ export default function Inventory() {
                   </button>
                 </form>
 
+                {categorySuggestions.length > 0 && (
+                  <div className="rounded-xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] p-3">
+                    <p className="text-[11px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
+                      Sugerencias para tu rubro
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {categorySuggestions.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => handleAddSuggestedCategory(cat)}
+                          disabled={savingCat}
+                          className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2.5 py-1 text-[11px] font-bold text-[var(--mg-text-secondary)] transition-all hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)] active:scale-95 disabled:opacity-50"
+                        >
+                          <span className="text-xs leading-none">+</span>
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Lista de categorías */}
                 <div className="space-y-2">
                   {categories.map((cat) => (
@@ -1970,7 +2068,7 @@ export default function Inventory() {
                             <button
                               type="button"
                               onClick={() => startEditCategory(cat)}
-                              className="text-[var(--mg-accent)] text-xs font-extrabold px-2 py-1 hover:bg-[var(--mg-accent-bg)] rounded-lg transition-colors"
+                              className="text-[var(--mg-accent-text)] text-xs font-extrabold px-2 py-1 hover:bg-[var(--mg-accent-bg)] rounded-lg transition-colors"
                             >
                               Editar
                             </button>

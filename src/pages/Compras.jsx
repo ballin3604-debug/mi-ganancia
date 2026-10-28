@@ -286,7 +286,7 @@ export default function Compras() {
     },
     {
       key: 'total', label: 'Total', align: 'right', width: 'w-28',
-      render: (r) => <span className="font-black text-[var(--mg-brand)]">{formatBs(r.totalCost)}</span>,
+      render: (r) => <span className="font-black text-[var(--mg-brand-text)]">{formatBs(r.totalCost)}</span>,
     },
   ];
 
@@ -356,7 +356,7 @@ export default function Compras() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Reposición</p>
-                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)]">Comprar</h2>
+                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand-text)]">Comprar</h2>
                   <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
                     {branches.find((b) => b.id === activeBranchId)?.name
                       ? `${branches.find((b) => b.id === activeBranchId).name} · `
@@ -511,11 +511,11 @@ export default function Compras() {
               {/* Lista simple en celular, tabla completa en PC */}
               <div className="space-y-3 lg:hidden">
                 <div className="flex items-center gap-2.5 px-1">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                     <AppIcon name="historial" size={17} />
                   </span>
                   <div>
-                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand)]">Historial de compras</h2>
+                    <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Historial de compras</h2>
                     <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">Todas tus reposiciones, de la más reciente a la más antigua.</p>
                   </div>
                 </div>
@@ -621,7 +621,7 @@ export default function Compras() {
           <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black">
             <div className="flex items-center justify-between border-b border-[var(--mg-separator)] p-4">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                   <AppIcon name="scan" size={17} />
                 </span>
                 <div>

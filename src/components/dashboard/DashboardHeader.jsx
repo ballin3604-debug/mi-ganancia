@@ -18,7 +18,7 @@ function SyncBadge() {
     dot = 'bg-[var(--mg-danger)]';
   } else if (pendingCount > 0) {
     label = `Sincronizando (${pendingCount})`;
-    styles = 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]';
+    styles = 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]';
     dot = 'bg-[var(--mg-accent)] animate-pulse';
   }
 
@@ -63,7 +63,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
               {today}
             </p>
             <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-black text-[var(--mg-brand)] tracking-tight truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-[var(--mg-brand-text)] tracking-tight truncate">
                 Hola, {userFirstName}
               </h1>
               <SyncBadge />
@@ -79,10 +79,10 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
               onClick={onShowQr}
               type="button"
               aria-label="Ver código QR de cobro"
-              className="shrink-0 inline-flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-10 sm:px-3 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-accent-bg)] text-[var(--mg-text-secondary)] hover:text-[var(--mg-accent)] font-bold text-xs rounded-xl border border-[var(--mg-border)] hover:border-[var(--mg-accent-border)] active:scale-95 transition-all"
+              className="shrink-0 inline-flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-10 sm:px-3 bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-accent-bg)] text-[var(--mg-text-secondary)] hover:text-[var(--mg-accent-text)] font-bold text-xs rounded-xl border border-[var(--mg-border)] hover:border-[var(--mg-accent-border)] active:scale-95 transition-all"
               title="Ver QR de cobro"
             >
-              <svg className="w-4 h-4 text-[var(--mg-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-[var(--mg-accent-text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
               </svg>
               <span className="hidden sm:inline">Cobrar QR</span>

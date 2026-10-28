@@ -18,7 +18,7 @@ function cycleAmount(plan, cycle) {
 
 function StepNumber({ value }) {
   return (
-    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--mg-accent-bg)] text-[11px] font-black text-[var(--mg-accent)]">
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--mg-accent-bg)] text-[11px] font-black text-[var(--mg-accent-text)]">
       {value}
     </span>
   );
@@ -122,11 +122,11 @@ export default function PaymentModal({ businessId, initialPlan = 'pro', initialC
                         : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] hover:border-[var(--mg-border-hover)]'
                     }`}
                   >
-                    <span className={`flex items-center gap-2 text-sm font-black ${activePlan ? 'text-[var(--mg-accent)]' : 'text-[var(--mg-text-primary)]'}`}>
+                    <span className={`flex items-center gap-2 text-sm font-black ${activePlan ? 'text-[var(--mg-accent-text)]' : 'text-[var(--mg-text-primary)]'}`}>
                       <AppIcon name={id === 'pro' ? 'plan' : 'ranking'} size={16} />
                       {id === 'pro' ? 'Pro' : 'Premium'}
                     </span>
-                    <span className={`mt-1 block text-[11px] font-semibold ${activePlan ? 'text-[var(--mg-accent)]' : 'text-[var(--mg-text-muted)]'}`}>
+                    <span className={`mt-1 block text-[11px] font-semibold ${activePlan ? 'text-[var(--mg-accent-text)]' : 'text-[var(--mg-text-muted)]'}`}>
                       Bs {PLANS[id].priceMonthly}/mes
                     </span>
                   </button>
@@ -148,7 +148,7 @@ export default function PaymentModal({ businessId, initialPlan = 'pro', initialC
                     aria-pressed={activeCycle}
                     className={`rounded-2xl border px-3 py-2.5 text-xs font-bold transition-all ${
                       activeCycle
-                        ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                        ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                         : 'border-[var(--mg-border)] text-[var(--mg-text-muted)] hover:border-[var(--mg-border-hover)]'
                     }`}
                   >
@@ -161,7 +161,7 @@ export default function PaymentModal({ businessId, initialPlan = 'pro', initialC
 
           <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg-soft)] p-4 text-center">
             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--mg-text-muted)]">Total a pagar</p>
-            <p className="mt-1 text-3xl font-black tabular-nums text-[var(--mg-accent)]">Bs {amount.toFixed(2)}</p>
+            <p className="mt-1 text-3xl font-black tabular-nums text-[var(--mg-accent-text)]">Bs {amount.toFixed(2)}</p>
             <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-secondary)]">
               {plan.name} · {cycle === 'yearly' ? '12 meses' : '30 días'}
             </p>
@@ -231,7 +231,7 @@ export default function PaymentModal({ businessId, initialPlan = 'pro', initialC
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] py-2.5 text-xs font-extrabold text-[var(--mg-accent)] transition-transform active:scale-95"
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] py-2.5 text-xs font-extrabold text-[var(--mg-accent-text)] transition-transform active:scale-95"
                 >
                   <AppIcon name="camara" size={14} /> Cámara
                 </button>

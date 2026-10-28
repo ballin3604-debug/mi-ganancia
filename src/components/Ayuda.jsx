@@ -46,7 +46,7 @@ export default function Ayuda() {
         onClick={() => setAbierto(true)}
         title={`¿Qué es esto? ${info.titulo}`}
         aria-label="Ayuda: qué es esta pantalla"
-        className={`fixed z-40 bottom-24 lg:bottom-6 right-4 lg:right-6 w-11 h-11 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-lg items-center justify-center text-lg font-black text-[var(--mg-accent)] active:scale-90 hover:shadow-xl transition-all ${
+        className={`fixed z-40 bottom-24 lg:bottom-6 right-4 lg:right-6 w-11 h-11 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-lg items-center justify-center text-lg font-black text-[var(--mg-accent-text)] active:scale-90 hover:shadow-xl transition-all ${
           location.pathname.startsWith('/inventario') ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -71,7 +71,7 @@ export default function Ayuda() {
                 <h3 className="font-extrabold text-[var(--mg-text-primary)] text-[15px] leading-tight">
                   {info.titulo}
                 </h3>
-                <p className="text-[13px] text-[var(--mg-accent)] font-bold mt-0.5 leading-snug">
+                <p className="text-[13px] text-[var(--mg-accent-text)] font-bold mt-0.5 leading-snug">
                   {info.linea}
                 </p>
               </div>
@@ -99,7 +99,7 @@ export default function Ayuda() {
                   <ol className="space-y-2">
                     {info.pasos.map((paso, i) => (
                       <li key={i} className="flex gap-2.5 items-start text-[13px]">
-                        <span className="w-5 h-5 rounded-full bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent)] text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="w-5 h-5 rounded-full bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] text-[var(--mg-accent-text)] text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5">
                           {i + 1}
                         </span>
                         <span className="text-[var(--mg-text-secondary)] font-medium leading-snug">
@@ -113,7 +113,7 @@ export default function Ayuda() {
 
               {info.ejemplo && (
                 <div className="bg-[var(--mg-accent-bg-soft)] border border-[var(--mg-accent-border)] rounded-2xl p-3.5">
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-accent)] mb-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-accent-text)] mb-1">
                     Ejemplo de tienda
                   </p>
                   <p className="text-[13px] text-[var(--mg-text-secondary)] leading-relaxed italic">

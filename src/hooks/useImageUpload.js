@@ -5,7 +5,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
  * - Regular images (logos, products): 300px max, JPEG 0.72
  * - QR codes: 600px max, PNG (lossless) — critical for scan accuracy
  */
-function resizeImage(file, maxSize, format, quality) {
+function resizeImage(file, maxSize, format, quality, { transparent = false } = {}) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -28,8 +28,10 @@ function resizeImage(file, maxSize, format, quality) {
         // For QR: white background + nearest-neighbor (sharp pixels)
         if (format === 'png') {
           ctx.imageSmoothingEnabled = false;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
+          if (!transparent) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+          }
         } else {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
@@ -58,6 +60,23 @@ export function useImageUpload() {
       return null;
     }
     return resizeImage(file, maxSize, 'jpeg', 0.72);
+  }
+
+  /**
+   * Logos: PNG con transparencia (sin fondo blanco), hasta 400px.
+   * Se usa en Ajustes → Logo y en el sidebar/header.
+   */
+  async function pickLogo(file) {
+    if (!file) return null;
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona una imagen.');
+      return null;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es muy grande. Máximo 10MB.');
+      return null;
+    }
+    return resizeImage(file, 400, 'png', 1, { transparent: true });
   }
 
   /**
@@ -124,7 +143,7 @@ export function useImageUpload() {
     return `${data.publicUrl}?v=${Date.now()}`;
   }
 
-  return { pickImage, pickQR, uploadProductImage };
+  return { pickImage, pickLogo, pickQR, uploadProductImage };
 }
 
 function applyQRSharpening(base64) {

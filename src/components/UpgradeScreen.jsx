@@ -152,7 +152,7 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
               <button
                 type="button"
                 onClick={() => refreshPlan()}
-                className="w-full text-center text-[11px] font-bold text-[var(--mg-accent)] mt-2"
+                className="w-full text-center text-[11px] font-bold text-[var(--mg-accent-text)] mt-2"
               >
                 🔄 Ya me aprobaron · revisar mi plan
               </button>
@@ -200,7 +200,7 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
                 ))}
               </ul>
               {mine ? (
-                <p className="text-center text-xs font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2.5">
+                <p className="text-center text-xs font-black text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2.5">
                   Tu plan actual
                 </p>
               ) : card.selectable === false || planId === 'premium' ? (

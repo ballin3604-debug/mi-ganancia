@@ -92,7 +92,7 @@ function BranchesPicker({ branches, selectedBranches, onToggle }) {
           return (
             <button
               key={b.id} type="button" onClick={() => onToggle(b.id)}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${on ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]' : 'border-[var(--mg-border)] text-[var(--mg-text-secondary)]'}`}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${on ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]' : 'border-[var(--mg-border)] text-[var(--mg-text-secondary)]'}`}
             >
               <span className="truncate">{b.name}</span>
               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? 'border-[var(--mg-accent)] bg-[var(--mg-accent)] text-white' : 'border-[var(--mg-border-hover)] text-transparent'}`}>
@@ -138,7 +138,7 @@ function RoleBadge({ role }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-1 text-[11px] font-black text-[var(--mg-accent)]">
+    <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-1 text-[11px] font-black text-[var(--mg-accent-text)]">
       <AppIcon name="equipo" size={12} /> Cajero
     </span>
   );
@@ -423,7 +423,7 @@ export function TeamSection({
               <span className="block text-sm font-black text-[var(--mg-text-primary)] truncate">
                 Se agregó el correo {toast.email}
               </span>
-              <span className="block text-xs font-bold text-[var(--mg-accent)] tabular-nums mt-0.5">
+              <span className="block text-xs font-bold text-[var(--mg-accent-text)] tabular-nums mt-0.5">
                 Usuarios Activos {toast.active}/{toast.max}
               </span>
             </span>

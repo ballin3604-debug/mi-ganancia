@@ -14,7 +14,7 @@ export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confi
         >
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${
-              danger ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+              danger ? 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]' : 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
             }`}>
               {danger ? '⚠️' : '❓'}
             </div>

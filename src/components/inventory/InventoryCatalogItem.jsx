@@ -37,9 +37,9 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
         priceLabel={formatBs(price)}
         metaLabel={
           <span className="flex items-center gap-1.5 flex-wrap">
-            <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} />
+            <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} />
             {hasPack && (
-              <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]">
+              <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
                 📦 {(product.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
               </span>
             )}
@@ -79,7 +79,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                 </p>
               )}
             </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${categoryColor || 'border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'}`}>
               {product.category || 'Otros'}
             </span>
           </div>
@@ -89,7 +89,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
               <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                 Precio Venta
               </span>
-              <p className="text-base font-black text-[var(--mg-accent)]">{formatBs(price)}</p>
+              <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(price)}</p>
             </div>
             <div className="text-right">
               <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
@@ -106,7 +106,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
           </div>
 
           {marginPct !== null && (
-            <div className="bg-[var(--mg-accent-bg)] p-2 rounded-xl text-[11px] font-bold text-[var(--mg-accent)] flex items-center justify-between border border-[var(--mg-accent-border)]">
+            <div className="bg-[var(--mg-accent-bg)] p-2 rounded-xl text-[11px] font-bold text-[var(--mg-accent-text)] flex items-center justify-between border border-[var(--mg-accent-border)]">
               <span>Margen est. ganancia:</span>
               <span className="font-black">+{marginPct}% ({formatBs(profit)})</span>
             </div>

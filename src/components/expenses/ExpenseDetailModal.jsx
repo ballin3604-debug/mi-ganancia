@@ -95,7 +95,7 @@ export function ExpenseDetailModal({ expense, isOpen, onClose, onEdit, onDelete 
 
             {expense.notes && (
               <div className="p-3 bg-[var(--mg-accent-bg)] rounded-xl border border-[var(--mg-accent-border)] text-xs text-[var(--mg-text-secondary)]">
-                <strong className="text-[var(--mg-accent)] block mb-0.5">Observaciones:</strong>
+                <strong className="text-[var(--mg-accent-text)] block mb-0.5">Observaciones:</strong>
                 {expense.notes}
               </div>
             )}

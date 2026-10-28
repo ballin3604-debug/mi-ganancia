@@ -414,7 +414,7 @@ let serverCaps = null;
 async function getServerCaps() {
   if (serverCaps) return serverCaps;
   serverCaps = {
-    productPres: true, productBarcode: true, productPresentations: true, productDish: true, itemPres: true, salesBranch: true,
+    productPres: true, productBarcode: true, productPresentations: true, productDish: true, productAvailable: true, itemPres: true, salesBranch: true,
     branchTables: true,
     businessSettings: null, // null = aún no probado; objeto {col: true/false}
     expenseExtra: null,
@@ -445,6 +445,12 @@ async function getServerCaps() {
     if (error) serverCaps.productDish = false;
   } catch {
     serverCaps.productDish = false;
+  }
+  try {
+    const { error } = await assertSupabase().from('products').select('is_available').limit(0);
+    if (error) serverCaps.productAvailable = false;
+  } catch {
+    serverCaps.productAvailable = false;
   }
   try {
     const { error } = await assertSupabase().from('sale_items').select('presentation').limit(0);
@@ -488,7 +494,7 @@ async function getServerCaps() {
   } catch {
     serverCaps.expenseExtra = null;
   }
-  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.productPresentations || !serverCaps.productDish || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
+  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.productPresentations || !serverCaps.productDish || !serverCaps.productAvailable || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
     console.warn('syncEngine: columnas/tablas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
   }
   return serverCaps;
@@ -513,12 +519,13 @@ const NEW_PRES_KEYS = ['unit_label', 'pack_label', 'pack_price', 'pack_price_hot
 async function stripUnknownProductKeys(obj) {
   const caps = await getServerCaps();
   if (!obj || typeof obj !== 'object') return obj;
-  if (caps.productPres && caps.productBarcode && caps.productPresentations && caps.productDish) return obj;
+  if (caps.productPres && caps.productBarcode && caps.productPresentations && caps.productDish && caps.productAvailable) return obj;
   const copy = { ...obj };
   if (!caps.productPres) NEW_PRES_KEYS.forEach((k) => { delete copy[k]; });
   if (!caps.productBarcode) delete copy.barcode;
   if (!caps.productPresentations) delete copy.presentations;
   if (!caps.productDish) delete copy.is_dish;
+  if (!caps.productAvailable) delete copy.is_available;
   return copy;
 }
 

@@ -156,7 +156,7 @@ export default function Expenses() {
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Finanzas</p>
-              <h1 className="text-xl font-black tracking-tight text-[var(--mg-brand)] sm:text-2xl">Egresos</h1>
+              <h1 className="text-xl font-black tracking-tight text-[var(--mg-brand-text)] sm:text-2xl">Egresos</h1>
               <p className="mt-0.5 text-xs font-medium leading-snug text-[var(--mg-text-secondary)] sm:text-sm">
                 Gastos operativos, compras de caja y costos fijos del negocio.
               </p>
@@ -218,7 +218,7 @@ export default function Expenses() {
               title="Distribución por categoría"
               subtitle="Participación de cada categoría en el total de egresos."
               action={(
-                <span className="rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-0.5 text-[10px] font-black text-[var(--mg-accent)]">
+                <span className="rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-0.5 text-[10px] font-black text-[var(--mg-accent-text)]">
                   {byCategory.length} {byCategory.length === 1 ? 'categoría' : 'categorías'}
                 </span>
               )}
@@ -309,7 +309,7 @@ export default function Expenses() {
                         <p className="truncate text-xs font-extrabold text-[var(--mg-text-primary)] sm:text-sm">{exp.description}</p>
                         <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                           isFixed
-                            ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                            ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                             : 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
                         }`}>
                           {isFixed ? 'Fijo' : 'Diario'}

@@ -169,7 +169,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
           <div className="flex items-center gap-1.5">
             {stepper}
           </div>
-          <span className="text-sm font-black tabular-nums text-[var(--mg-brand)]">
+          <span className="text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
             {formatBs(unitPrice * quantity)}
           </span>
         </div>
@@ -199,7 +199,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
       <div className="flex shrink-0 flex-col items-end">
         <div className="flex items-center gap-1.5">
           {stepper}
-          <span className="w-20 text-right text-sm font-black tabular-nums text-[var(--mg-brand)]">
+          <span className="w-20 text-right text-sm font-black tabular-nums text-[var(--mg-brand-text)]">
             {formatBs(unitPrice * quantity)}
           </span>
           {trashBtn}
@@ -674,8 +674,8 @@ export default function Sales() {
 
   const METHOD_META = {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]' },
-    qr: { label: 'QR', icon: 'qr', pill: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]' },
-    mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border-[var(--mg-brand-border)]' },
+    qr: { label: 'QR', icon: 'qr', pill: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]' },
+    mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border-[var(--mg-brand-border)]' },
   };
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
@@ -729,7 +729,7 @@ export default function Sales() {
     },
     {
       key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32',
-      render: (r) => <span className="font-black text-[var(--mg-brand)] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
+      render: (r) => <span className="font-black text-[var(--mg-brand-text)] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
     },
     {
       key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28',
@@ -873,7 +873,7 @@ export default function Sales() {
   }, [products, stockMap, activeBranchId, hasBranchRows]);
 
   const availableProducts = useMemo(() => {
-    return productsWithStock.filter((p) => p.stock > 0);
+    return productsWithStock.filter((p) => p.stock > 0 && !(p.isDish && p.isAvailable === false));
   }, [productsWithStock]);
 
   // Productos vendidos recientemente (últimos 20, más reciente primero) —
@@ -1297,11 +1297,11 @@ export default function Sales() {
           {isMobile && <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[var(--mg-border-hover)]" />}
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                 <AppIcon name="carrito" size={17} />
               </span>
               <div className="min-w-0">
-                <h3 className="text-base font-black tracking-tight text-[var(--mg-brand)]">Tu carrito</h3>
+                <h3 className="text-base font-black tracking-tight text-[var(--mg-brand-text)]">Tu carrito</h3>
                 <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
                   {totalBaseUnits} {totalBaseUnits === 1 ? 'unidad' : 'unidades'} · {cartItems.length} {cartItems.length === 1 ? 'línea' : 'líneas'}
                 </p>
@@ -1562,13 +1562,13 @@ export default function Sales() {
                     (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) ||
                     (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total)
                   }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-[var(--mg-brand)] transition-all hover:bg-[var(--mg-bg-elevated)] active:scale-95 disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-[var(--mg-brand-deep)] transition-all hover:bg-white/90 active:scale-95 disabled:opacity-60"
                 >
                   {registering ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
                   ) : (
                     <>
-                      <AppIcon name="check" size={16} color="var(--mg-brand)" />
+                      <AppIcon name="check" size={16} color="var(--mg-brand-deep)" />
                       Cobrar
                     </>
                   )}
@@ -1595,14 +1595,14 @@ export default function Sales() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Punto de venta</p>
-                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)]">Nueva venta</h2>
+                  <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand-text)]">Nueva venta</h2>
                   <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
                     {activeBranch?.name ? `${activeBranch.name} · ` : ''}{isRestaurantMode ? 'Busca o toca un plato' : 'Busca, escanea o toca un producto'}
                   </p>
                 </div>
               </div>
               {totalBaseUnits > 0 && (
-                <span className="shrink-0 rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-1.5 text-xs font-black text-[var(--mg-accent)] lg:hidden">
+                <span className="shrink-0 rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-1.5 text-xs font-black text-[var(--mg-accent-text)] lg:hidden">
                   {totalBaseUnits} en carrito
                 </span>
               )}
@@ -1787,9 +1787,9 @@ export default function Sales() {
                               </span>
                             </td>
                             <td className="p-3 text-right font-semibold text-[var(--mg-success-text)]">{formatBs(st.cash)}</td>
-                            <td className="p-3 text-right font-semibold text-[var(--mg-accent)]">{formatBs(st.qr)}</td>
-                            <td className="p-3 text-right font-semibold text-[var(--mg-brand)]">{formatBs(st.mixto)}</td>
-                            <td className="p-3 text-right font-black text-[var(--mg-brand)]">{formatBs(st.enCaja)}</td>
+                            <td className="p-3 text-right font-semibold text-[var(--mg-accent-text)]">{formatBs(st.qr)}</td>
+                            <td className="p-3 text-right font-semibold text-[var(--mg-brand-text)]">{formatBs(st.mixto)}</td>
+                            <td className="p-3 text-right font-black text-[var(--mg-brand-text)]">{formatBs(st.enCaja)}</td>
                             <td className="p-3 text-right font-bold text-[var(--mg-success-text)]">{formatBs(st.ganancia)}</td>
                           </tr>
                         ))}
@@ -1806,7 +1806,7 @@ export default function Sales() {
                         <div className="grid grid-cols-3 gap-2.5">
                           <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3 text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">En caja</p>
-                            <p className="text-lg font-black text-[var(--mg-brand)]">{formatBs(st.enCaja)}</p>
+                            <p className="text-lg font-black text-[var(--mg-brand-text)]">{formatBs(st.enCaja)}</p>
                           </div>
                           <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Ventas</p>
@@ -1820,8 +1820,8 @@ export default function Sales() {
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                           {[
                             { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] border-[var(--mg-success-border)]' },
-                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border-[var(--mg-accent-border)]' },
-                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-[var(--mg-brand)] bg-[var(--mg-brand-bg)] border-[var(--mg-brand-border)]' },
+                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] border-[var(--mg-accent-border)]' },
+                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-[var(--mg-brand-text)] bg-[var(--mg-brand-bg)] border-[var(--mg-brand-border)]' },
                           ].map((m) => (
                             <div key={m.label} className={`rounded-2xl border p-2.5 text-center ${m.cls}`}>
                               <p className="flex justify-center"><AppIcon name={m.icon} size={18} /></p>
@@ -1888,7 +1888,11 @@ export default function Sales() {
                     : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
                 }`}
               >
-                {cat}
+                {cat === 'Todas'
+                  ? (isRestaurantMode ? 'Todo el menú' : 'Todas')
+                  : cat === RECENT_CATEGORY
+                    ? (isRestaurantMode ? 'Más pedidos' : cat)
+                    : cat}
               </button>
             ))}
           </div>
@@ -2038,7 +2042,7 @@ export default function Sales() {
         >
           <div className="relative flex items-center">
             <AppIcon name="carrito" size={20} color="#fff" />
-            <span className="absolute -right-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--mg-brand)] shadow-md">
+            <span className="absolute -right-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--mg-brand-deep)] shadow-md">
               {totalBaseUnits}
             </span>
           </div>
@@ -2146,7 +2150,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={handlePrintSuccessSale}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand-text)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
               >
                 <AppIcon name="recibo" size={14} /> Imprimir recibo
 
@@ -2269,7 +2273,7 @@ export default function Sales() {
           <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--mg-separator)] p-4">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                   <AppIcon name="scan" size={17} />
                 </span>
                 <div>

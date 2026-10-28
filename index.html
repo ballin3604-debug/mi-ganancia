@@ -20,7 +20,22 @@
         background: #F4F6FA;
         color-scheme: light;
       }
+      html[data-theme="gourmet"], html[data-theme="gourmet"] body, html[data-theme="gourmet"] #root {
+        background: #0E0E0E;
+        color-scheme: dark;
+      }
     </style>
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('mg-theme') === 'gourmet') {
+            document.documentElement.setAttribute('data-theme', 'gourmet');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', '#0E0E0E');
+          }
+        } catch (e) { /* nunca romper el arranque */ }
+      })();
+    </script>
     <script>
       // Guardián de arranque: si el JS no carga en 8s (caché vieja apuntando
       // a un bundle que ya no existe → pantalla en blanco), limpia todo y

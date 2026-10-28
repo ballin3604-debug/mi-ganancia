@@ -54,7 +54,7 @@ export default function PresentationPicker({ product, cartCounts = {}, cartBaseU
                     : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] hover:border-[var(--mg-border-hover)]'
                 }`}
               >
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${count > 0 ? 'border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-brand)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${count > 0 ? 'border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-brand-text)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'}`}>
                   <AppIcon name={opt.factor > 1 ? 'paquete' : 'etiqueta'} size={19} />
                 </span>
                 <span className="min-w-0 flex-1">

@@ -401,7 +401,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <button
               type="button"
               onClick={handlePrintPurchase}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] py-2.5 text-xs font-bold text-[var(--mg-brand-text)] shadow-sm transition-all hover:bg-[var(--mg-border-hover)] active:scale-95"
             >
               <AppIcon name="recibo" size={14} /> Imprimir detalle
             </button>
@@ -423,7 +423,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Entrada de inventario</p>
-          <h3 className="text-xl font-black tracking-tight text-[var(--mg-brand)]">Registrar compra</h3>
+          <h3 className="text-xl font-black tracking-tight text-[var(--mg-brand-text)]">Registrar compra</h3>
         </div>
         {onClose && (
           <button
@@ -448,7 +448,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 {product.brand && `${product.brand} · `}Stock{branches.length > 1 ? ` en ${(branches.find((b) => b.id === (purchaseBranchId || activeBranchId))?.name) || 'sede'}` : ''}: <strong className="text-[var(--mg-text-secondary)]">{product.stock} und.</strong>
               </p>
               {lastPurchase && (
-                <p className="mt-1 flex items-start gap-1 text-[11px] font-semibold text-[var(--mg-brand)]">
+                <p className="mt-1 flex items-start gap-1 text-[11px] font-semibold text-[var(--mg-brand-text)]">
                   <AppIcon name="paquete" size={12} />
                   {lastPurchase.purchaseUnitType === 'package' && lastPurchase.packageSize
                     ? `La última vez lo compraste por caja de ${lastPurchase.packageSize}.`
@@ -471,7 +471,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       onClick={() => setPurchaseBranchId(b.id)}
                       className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${
                         (purchaseBranchId || activeBranchId) === b.id
-                          ? 'border-[var(--mg-brand)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand)]'
+                          ? 'border-[var(--mg-brand)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
                           : 'border-[var(--mg-border)] text-[var(--mg-text-muted)]'
                       }`}
                     >
@@ -520,7 +520,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                       <p className="text-xs text-[var(--mg-text-secondary)] mt-0.5">Compré unidades sueltas</p>
                       <p className="text-[11px] text-[var(--mg-text-faint)] mt-1 italic">Ej: 12 botellas sueltas a Bs 8 cada una</p>
                       {helpTopic === 'unit' && (
-                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand)]">
+                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand-text)]">
                           Elegí esto si el proveedor te cobra por cada unidad suelta. El costo que pongas abajo es el de UNA unidad.
                         </p>
                       )}
@@ -569,7 +569,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                           : 'Ej: 10 cajas de 12 botellas, cada caja a Bs 84'}
                       </p>
                       {helpTopic === 'pack' && (
-                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand)]">
+                        <p className="mt-1.5 rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[11px] font-semibold text-[var(--mg-brand-text)]">
                           {configuredPurchaseMode
                             ? 'Elegí esta opción y seleccioná el empaque recibido. El costo ingresado es por cada empaque.'
                             : 'Elegí esto si pagás por caja cerrada. Abajo poné cuántas cajas compraste, cuántas unidades trae cada una y el costo POR CAJA: la app saca sola el costo por unidad.'}
@@ -637,7 +637,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                   </div>
                 </div>
                 {packageCountVal > 0 && packageSizeVal > 0 && (
-                  <p className="mt-1.5 text-xs font-bold text-[var(--mg-brand)]">= {qtyVal} unidades totales</p>
+                  <p className="mt-1.5 text-xs font-bold text-[var(--mg-brand-text)]">= {qtyVal} unidades totales</p>
                 )}
               </div>
             ) : (
@@ -803,7 +803,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
               <button
                 type="button"
                 onClick={addExtraCostRow}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--mg-brand-border)] py-2 text-xs font-bold text-[var(--mg-brand)] transition-colors hover:bg-[var(--mg-brand-bg)] active:scale-95"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--mg-brand-border)] py-2 text-xs font-bold text-[var(--mg-brand-text)] transition-colors hover:bg-[var(--mg-brand-bg)] active:scale-95"
               >
                 <AppIcon name="agregar" size={14} /> Agregar gasto extra
               </button>
@@ -860,7 +860,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 <div className="relative rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
                   <span className="absolute right-2 top-1.5 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">Calculado</span>
                   <p className="mt-2 text-[10px] font-semibold uppercase text-[var(--mg-text-muted)]">Costo real por unidad</p>
-                  <p className="mt-0.5 text-base font-black text-[var(--mg-brand)]">{formatBs(costoUnitarioReal)}</p>
+                  <p className="mt-0.5 text-base font-black text-[var(--mg-brand-text)]">{formatBs(costoUnitarioReal)}</p>
                 </div>
                 <div className="relative rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
                   <span className="absolute right-2 top-1.5 text-[8px] font-bold uppercase tracking-wider text-[var(--mg-text-faint)]">Calculado</span>
@@ -885,7 +885,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 </div>
                 <div className="flex justify-between items-center border-t border-[var(--mg-border)] pt-2 mt-1">
                   <span className="font-black text-[var(--mg-text-primary)]">Total desembolsado</span>
-                  <span className="text-lg font-black text-[var(--mg-brand)]">{formatBs(totalCostVal)}</span>
+                  <span className="text-lg font-black text-[var(--mg-brand-text)]">{formatBs(totalCostVal)}</span>
                 </div>
                 <p className="text-[10px] text-[var(--mg-text-faint)] font-bold pt-1">
                   Stock final tras compra: <strong className="text-[var(--mg-text-secondary)]">{(product.stock || 0) + qtyVal} unidades</strong>

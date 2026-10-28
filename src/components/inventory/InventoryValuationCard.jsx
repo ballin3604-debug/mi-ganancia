@@ -49,7 +49,7 @@ export function InventoryValuationCard({ products, selectedCategory }) {
         {/* Left Side: Category Label & Dynamic Title */}
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border border-[var(--mg-accent-border)] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border border-[var(--mg-accent-border)] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               <AppIcon name="reportes" size={12} />
               <span>Valorización de Inventario</span>
             </span>
@@ -90,7 +90,7 @@ export function InventoryValuationCard({ products, selectedCategory }) {
             <span className="text-[10px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
               Valor en Ventas
             </span>
-            <p className="text-lg sm:text-xl font-black text-[var(--mg-accent)] tracking-tight">
+            <p className="text-lg sm:text-xl font-black text-[var(--mg-accent-text)] tracking-tight">
               {formatBs(metrics.totalSalesValue)}
             </p>
             {metrics.profitMarginPct > 0 && (

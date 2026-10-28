@@ -108,8 +108,8 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         {/* Rendimiento mensual */}
         <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
+            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
                 <AppIcon name="reportes" size={16} />
               </span>
               Rendimiento del Negocio ({monthly.length} {monthly.length === 1 ? 'mes' : 'meses'})
@@ -151,7 +151,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
             <span className="text-[var(--mg-text-muted)] font-medium">
               Margen Neto Promedio: <strong className="text-[var(--mg-text-primary)]">{avgMargin.toFixed(1)}%</strong>
             </span>
-            <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline">
+            <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline">
               Ver análisis mensual detallado →
             </button>
           </div>
@@ -160,7 +160,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         {/* Alertas de stock */}
         <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] flex items-center justify-center shrink-0">
                 <AppIcon name="reloj" size={16} />
               </span>
@@ -211,8 +211,8 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         {showBranches && (
         <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] flex items-center justify-center shrink-0">
+            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
                 <AppIcon name="sucursales" size={16} />
               </span>
               Desempeño por Sucursal
@@ -243,13 +243,13 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
         {/* Ventas en vivo */}
         <div className={`bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)] ${showBranches ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
+            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] flex items-center justify-center shrink-0">
                 <span className="w-2 h-2 rounded-full bg-[var(--mg-success)] animate-pulse" />
               </span>
               Ventas Recientes en Vivo
             </h3>
-            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=auditoria')} className="text-[11px] font-bold text-[var(--mg-accent)] hover:text-[var(--mg-accent-hover)] hover:underline">
+            <button type="button" onClick={() => onNavigate && onNavigate('/ventas?tab=auditoria')} className="text-[11px] font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline">
               Auditoría →
             </button>
           </div>

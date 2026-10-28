@@ -60,7 +60,7 @@ export function ReceiptFormatCard() {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-lg shrink-0">{op.icon}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs font-black truncate ${activa ? 'text-[var(--mg-accent)]' : 'text-[var(--mg-text-primary)]'}`}>
+                    <p className={`text-xs font-black truncate ${activa ? 'text-[var(--mg-accent-text)]' : 'text-[var(--mg-text-primary)]'}`}>
                       {op.title}
                     </p>
                     <p className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider">

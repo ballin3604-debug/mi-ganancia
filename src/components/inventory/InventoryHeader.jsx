@@ -34,6 +34,7 @@ export function InventoryHeader({
   showExpiryFilters = true,
   showRecentFilter = true,
   searchPlaceholder = 'Buscar nombre, marca o código...',
+  allLabel,
   showFilters = true,
   onToggleFilters,
   activeFilterCount = 0,
@@ -55,7 +56,7 @@ export function InventoryHeader({
               <h2 className="text-xl sm:text-2xl font-black text-[var(--mg-text-primary)] tracking-tight">
                 Catálogo de Inventario
               </h2>
-              <span className="hidden sm:inline-block bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border border-[var(--mg-brand-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full">
+              <span className="hidden sm:inline-block bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border border-[var(--mg-brand-border)] text-[11px] font-black px-2.5 py-0.5 rounded-full">
                 {totalProducts} {totalProducts === 1 ? 'producto' : 'productos'}
               </span>
             </div>
@@ -238,7 +239,7 @@ export function InventoryHeader({
               onClick={onRecentFilterToggle}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border transition-all active:scale-95 shrink-0 flex items-center gap-1 min-h-[32px] ${
                 filterRecent
-                  ? 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)] shadow-2xs'
+                  ? 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)] shadow-2xs'
                   : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border-[var(--mg-border)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
@@ -273,7 +274,7 @@ export function InventoryHeader({
                   )}
 
                   <span className={`relative z-10 transition-colors ${isActive ? 'text-white font-black' : 'text-[var(--mg-text-secondary)]'}`}>
-                    {cat}
+                    {cat === 'Todas' && allLabel ? allLabel : cat}
                   </span>
 
                   <span

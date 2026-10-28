@@ -1,8 +1,8 @@
 import { AppIcon } from '../icons';
 
 const TONES = {
-  brand: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand)] border-[var(--mg-brand-border)]',
-  action: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]',
+  brand: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border-[var(--mg-brand-border)]',
+  action: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]',
   success: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]',
   warning: 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] border-[var(--mg-gold-border)]',
   danger: 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]',

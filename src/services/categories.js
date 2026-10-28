@@ -2,12 +2,18 @@ import { db } from './localDb';
 import { enqueueOperation, buildOutboxOp } from './syncEngine';
 import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { notifyProductChanges } from './products';
+import { getCategoryById } from '../config/businessCategories';
 
 export const DEFAULT_CATEGORIES = [
   'Bebidas', 'Lácteos', 'Panadería', 'Carnes', 'Frutas y Verduras',
   'Limpieza', 'Higiene personal', 'Snacks y dulces', 'Granos y cereales',
   'Condimentos', 'Medicamentos', 'Electrónicos', 'Ropa', 'Papelería', 'Otros',
 ];
+
+export function getDefaultCategories(businessCategory) {
+  const cat = getCategoryById(businessCategory);
+  return cat.defaultCategories || DEFAULT_CATEGORIES;
+}
 
 const categoryListeners = new Set();
 
@@ -36,18 +42,19 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export async function getCategories(businessId) {
+export async function getCategories(businessId, businessCategory) {
   // Read local first
   const local = await db.business_settings.get(businessId);
   if (local && local.categories) {
     return local.categories;
   }
+  const categoryHint = businessCategory || local?.business_category || local?.businessCategory;
 
   // Fallback to Supabase if online, write to cache
   try {
     const { data, error } = await assertSupabase()
       .from('business_settings')
-      .select('categories')
+      .select('categories, business_category')
       .eq('business_id', businessId)
       .maybeSingle();
 
@@ -58,22 +65,25 @@ export async function getCategories(businessId) {
       return data.categories;
     }
 
-    // Row does not exist on Supabase, initialize with default categories
+    // Row does not exist on Supabase, initialize with the sector defaults
     if (!data) {
+      const defaults = getDefaultCategories(categoryHint);
       const existing = await db.business_settings.get(businessId);
-      const updated = { business_id: businessId, ...existing, categories: DEFAULT_CATEGORIES };
+      const updated = { business_id: businessId, ...existing, categories: defaults };
       await db.business_settings.put(updated);
 
       // Queue write to Supabase
-      await enqueueOperation('SAVE_BUSINESS_SETTINGS', { business_id: businessId, categories: DEFAULT_CATEGORIES }, businessId);
-      return DEFAULT_CATEGORIES;
+      await enqueueOperation('SAVE_BUSINESS_SETTINGS', { business_id: businessId, categories: defaults }, businessId);
+      return defaults;
     }
+
+    return getDefaultCategories(categoryHint || data.business_category);
   } catch (err) {
-    console.warn('getCategories: offline fallback to DEFAULT_CATEGORIES', err);
+    console.warn('getCategories: offline fallback to sector categories', err);
   }
 
   // Fallback if offline and no cache
-  return DEFAULT_CATEGORIES;
+  return getDefaultCategories(categoryHint);
 }
 
 export async function addCategory(businessId, name) {

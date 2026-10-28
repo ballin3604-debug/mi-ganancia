@@ -29,7 +29,7 @@ export default function PatientDetail({
 
   return (
     <div className="space-y-3.5 mg-fade-in">
-      <button type="button" onClick={onBack} className="text-sm font-bold text-[var(--mg-accent)] active:scale-95">
+      <button type="button" onClick={onBack} className="text-sm font-bold text-[var(--mg-accent-text)] active:scale-95">
         ← Pacientes
       </button>
 
@@ -148,7 +148,7 @@ export default function PatientDetail({
                     </div>
                     <button
                       type="button" onClick={() => onPrintReceta(t.data)}
-                      className="mt-2 text-[11px] font-black text-[var(--mg-accent)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-lg px-3 py-1.5 active:scale-95 flex items-center gap-1.5"
+                      className="mt-2 text-[11px] font-black text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-lg px-3 py-1.5 active:scale-95 flex items-center gap-1.5"
                     >
                       <AppIcon name="recibo" size={12} /> Imprimir receta
                     </button>

@@ -117,7 +117,7 @@ export const BUSINESS_CATEGORIES = [
         'from-red-400 to-rose-600',
       ],
     },
-    defaultCategories: ['Platos', 'Bebidas', 'Entradas', 'Postres', 'Extras', 'Otros'],
+    defaultCategories: ['Platos', 'Bebidas', 'Entradas', 'Guarniciones', 'Postres', 'Extras', 'Otros'],
   },
   {
     id: 'ferreteria',

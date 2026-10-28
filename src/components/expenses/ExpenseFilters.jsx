@@ -63,7 +63,7 @@ export function ExpenseFilters({
                   aria-pressed={active}
                   className={`min-h-[34px] rounded-lg px-2.5 text-[11px] font-extrabold transition-all active:scale-95 ${
                     active
-                      ? 'border border-[var(--mg-accent-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-accent)] shadow-[var(--mg-shadow-sm)]'
+                      ? 'border border-[var(--mg-accent-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-accent-text)] shadow-[var(--mg-shadow-sm)]'
                       : 'text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)]'
                   }`}
                 >
@@ -103,7 +103,7 @@ export function ExpenseFilters({
           aria-pressed={selectedCategory === 'all'}
           className={`flex min-h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition-all active:scale-95 ${
             selectedCategory === 'all'
-              ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+              ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
               : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:border-[var(--mg-border-hover)]'
           }`}
         >
@@ -129,7 +129,7 @@ export function ExpenseFilters({
               aria-pressed={active}
               className={`flex min-h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition-all active:scale-95 ${
                 active
-                  ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent)]'
+                  ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
                   : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:border-[var(--mg-border-hover)]'
               }`}
             >
