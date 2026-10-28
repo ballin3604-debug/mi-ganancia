@@ -271,7 +271,7 @@ export default function Layout() {
             <img
               src={businessLogo}
               alt={businessLogoAlt}
-              className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+              className="w-10 h-10 rounded-xl object-contain shrink-0 border border-[var(--mg-border)]"
             />
             {sidebarOpen && (
               <div className="min-w-0">
@@ -451,7 +451,7 @@ export default function Layout() {
               <img
                 src={businessLogo}
                 alt={businessLogoAlt}
-                className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+                className="w-9 h-9 rounded-lg object-contain shrink-0 border border-[var(--mg-border)]"
               />
               <div className="min-w-0">
                 <h1 className="text-[var(--mg-brand-text)] text-[15px] font-black leading-tight truncate flex items-center gap-1.5 tracking-tight">
@@ -578,7 +578,7 @@ export default function Layout() {
                 <img
                   src={businessLogo}
                   alt={businessLogoAlt}
-                  className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 shrink-0 border border-[var(--mg-border)]"
+                  className="w-9 h-9 rounded-lg object-contain shrink-0 border border-[var(--mg-border)]"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-[var(--mg-brand-text)] font-black text-base leading-tight truncate tracking-tight">

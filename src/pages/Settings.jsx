@@ -343,7 +343,7 @@ export default function Settings() {
         return (
           <div className="px-3 pb-3 pt-2 border-t border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)]/40 flex items-center gap-3">
             {logoData
-              ? <img src={logoData} alt="Logo" className="w-12 h-12 rounded-lg object-contain border border-[var(--mg-border)] bg-white p-0.5" />
+              ? <img src={logoData} alt="Logo" className="w-12 h-12 rounded-lg object-contain border border-[var(--mg-border)]" />
               : <span className="w-12 h-12 rounded-lg bg-[var(--mg-bg-section)] border border-dashed border-[var(--mg-border)] flex items-center justify-center"><AppIcon name="tienda" size={18} /></span>}
             <div className="flex-1 flex gap-2">
               <button type="button" onClick={() => logoRef.current?.click()} className="mg-btn-secondary !py-2 text-xs flex-1">{logoData ? 'Cambiar' : 'Subir'}</button>
@@ -494,7 +494,7 @@ export default function Settings() {
             <Row
               id="logo" icon="galeria" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" title="Logo" value={logoData ? 'Agregado · visible en la app' : 'Sin logo'}
               right={logoData
-                ? <img src={logoData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
+                ? <img src={logoData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)]" />
                 : <Chevron />}
             />
             <Row id="slogan" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Slogan" value={slogan || 'Añadir frase del recibo…'} />
