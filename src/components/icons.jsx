@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-// Mi Ganancia · Set central de iconos (lucide-react + colores de marca)
-// Cambiar un color o tamaño aquí se refleja en toda la app.
+// Mi Ganancia · Set central de iconos (lucide-react)
+// Por defecto heredan el color del texto del contenedor, así se
+// adaptan a los temas claro/oscuro. Pasá `color` para forzar uno.
 // Uso: <AppIcon name="scan" size={18} /> o <AppIcon name="qr" />
 // ─────────────────────────────────────────────────────────────
 import {
@@ -61,86 +62,85 @@ import {
   RefreshCw,
   WifiOff,
 } from 'lucide-react';
-import { palette } from '../design/tokens.js';
-
-// Petróleo marca, esmeralda éxito, ámbar alerta, rojo peligro, petróleo QR
+// Colores semánticos opcionales (variables del tema) para pasar a `color`.
+// Por defecto AppIcon usa currentColor y hereda el color del contenedor.
 export const BRAND_COLORS = {
-  primary: palette.brand[700],
-  success: palette.emerald[600],
-  warning: palette.amber[600],
-  danger: palette.red[600],
-  qr: palette.brand[500],
+  primary: 'var(--mg-brand-text)',
+  success: 'var(--mg-success-text)',
+  warning: 'var(--mg-warning-text)',
+  danger: 'var(--mg-danger)',
+  qr: 'var(--mg-accent-text)',
 };
 
 const ICONS = {
-  scan: { Component: ScanLine, color: BRAND_COLORS.primary },
-  search: { Component: Search, color: BRAND_COLORS.primary },
-  cash: { Component: Banknote, color: BRAND_COLORS.success },
-  qr: { Component: QrCode, color: BRAND_COLORS.qr },
-  mixto: { Component: Split, color: BRAND_COLORS.primary },
-  detalle: { Component: Eye, color: BRAND_COLORS.primary },
-  recibo: { Component: Printer, color: BRAND_COLORS.primary },
-  csv: { Component: FileSpreadsheet, color: BRAND_COLORS.success },
-  pdf: { Component: FileText, color: BRAND_COLORS.danger },
-  editar: { Component: Pencil, color: BRAND_COLORS.primary },
-  eliminar: { Component: Trash2, color: BRAND_COLORS.danger },
-  guardar: { Component: Save, color: BRAND_COLORS.primary },
-  cancelar: { Component: CircleX, color: BRAND_COLORS.warning },
-  nuevoProducto: { Component: PackagePlus, color: BRAND_COLORS.primary },
-  camara: { Component: Camera, color: BRAND_COLORS.primary },
-  carrito: { Component: ShoppingCart, color: BRAND_COLORS.primary },
-  whatsapp: { Component: MessageCircle, color: BRAND_COLORS.success },
-  llamar: { Component: Phone, color: BRAND_COLORS.primary },
-  equipo: { Component: Users, color: BRAND_COLORS.primary },
-  reportes: { Component: ChartColumn, color: BRAND_COLORS.primary },
-  ranking: { Component: Trophy, color: BRAND_COLORS.warning },
-  caja: { Component: Wallet, color: BRAND_COLORS.primary },
-  gastos: { Component: ReceiptText, color: BRAND_COLORS.danger },
-  galeria: { Component: ImageIcon, color: BRAND_COLORS.primary },
-  agregar: { Component: Plus, color: BRAND_COLORS.primary },
-  check: { Component: Check, color: BRAND_COLORS.success },
-  cerrar: { Component: X, color: BRAND_COLORS.primary },
-  carpeta: { Component: Folder, color: BRAND_COLORS.primary },
-  tienda: { Component: Store, color: BRAND_COLORS.primary },
-  texto: { Component: Type, color: BRAND_COLORS.primary },
-  etiqueta: { Component: Tag, color: BRAND_COLORS.primary },
-  reloj: { Component: Clock, color: BRAND_COLORS.warning },
-  sucursales: { Component: Building2, color: BRAND_COLORS.primary },
-  plan: { Component: Rocket, color: BRAND_COLORS.primary },
-  respaldo: { Component: Download, color: BRAND_COLORS.primary },
-  consulta: { Component: Stethoscope, color: BRAND_COLORS.primary },
-  receta: { Component: Pill, color: BRAND_COLORS.primary },
-  vacuna: { Component: Syringe, color: BRAND_COLORS.success },
-  recordatorio: { Component: Bell, color: BRAND_COLORS.warning },
-  carnet: { Component: IdCard, color: BRAND_COLORS.primary },
-  ayuda: { Component: CircleHelp, color: BRAND_COLORS.primary },
-  paquete: { Component: Package, color: BRAND_COLORS.primary },
-  almacen: { Component: Warehouse, color: BRAND_COLORS.warning },
-  historial: { Component: History, color: BRAND_COLORS.primary },
-  traspaso: { Component: ArrowRightLeft, color: BRAND_COLORS.primary },
-  tarjeta: { Component: CreditCard, color: BRAND_COLORS.primary },
-  suspender: { Component: Ban, color: BRAND_COLORS.warning },
-  reactivar: { Component: UserCheck, color: BRAND_COLORS.success },
-  permisos: { Component: ShieldCheck, color: BRAND_COLORS.primary },
-  mas: { Component: Plus, color: BRAND_COLORS.primary },
-  ok: { Component: CheckCircle2, color: BRAND_COLORS.success },
-  alerta: { Component: AlertTriangle, color: BRAND_COLORS.warning },
-  volver: { Component: ArrowLeft, color: BRAND_COLORS.primary },
-  ver: { Component: Eye, color: BRAND_COLORS.primary },
-  ocultar: { Component: EyeOff, color: BRAND_COLORS.primary },
-  seguro: { Component: Lock, color: BRAND_COLORS.primary },
-  sincronizar: { Component: RefreshCw, color: BRAND_COLORS.primary },
-  sinConexion: { Component: WifiOff, color: BRAND_COLORS.warning },
+  scan: { Component: ScanLine },
+  search: { Component: Search },
+  cash: { Component: Banknote },
+  qr: { Component: QrCode },
+  mixto: { Component: Split },
+  detalle: { Component: Eye },
+  recibo: { Component: Printer },
+  csv: { Component: FileSpreadsheet },
+  pdf: { Component: FileText },
+  editar: { Component: Pencil },
+  eliminar: { Component: Trash2 },
+  guardar: { Component: Save },
+  cancelar: { Component: CircleX },
+  nuevoProducto: { Component: PackagePlus },
+  camara: { Component: Camera },
+  carrito: { Component: ShoppingCart },
+  whatsapp: { Component: MessageCircle },
+  llamar: { Component: Phone },
+  equipo: { Component: Users },
+  reportes: { Component: ChartColumn },
+  ranking: { Component: Trophy },
+  caja: { Component: Wallet },
+  gastos: { Component: ReceiptText },
+  galeria: { Component: ImageIcon },
+  agregar: { Component: Plus },
+  check: { Component: Check },
+  cerrar: { Component: X },
+  carpeta: { Component: Folder },
+  tienda: { Component: Store },
+  texto: { Component: Type },
+  etiqueta: { Component: Tag },
+  reloj: { Component: Clock },
+  sucursales: { Component: Building2 },
+  plan: { Component: Rocket },
+  respaldo: { Component: Download },
+  consulta: { Component: Stethoscope },
+  receta: { Component: Pill },
+  vacuna: { Component: Syringe },
+  recordatorio: { Component: Bell },
+  carnet: { Component: IdCard },
+  ayuda: { Component: CircleHelp },
+  paquete: { Component: Package },
+  almacen: { Component: Warehouse },
+  historial: { Component: History },
+  traspaso: { Component: ArrowRightLeft },
+  tarjeta: { Component: CreditCard },
+  suspender: { Component: Ban },
+  reactivar: { Component: UserCheck },
+  permisos: { Component: ShieldCheck },
+  mas: { Component: Plus },
+  ok: { Component: CheckCircle2 },
+  alerta: { Component: AlertTriangle },
+  volver: { Component: ArrowLeft },
+  ver: { Component: Eye },
+  ocultar: { Component: EyeOff },
+  seguro: { Component: Lock },
+  sincronizar: { Component: RefreshCw },
+  sinConexion: { Component: WifiOff },
 };
 
-export function AppIcon({ name, size = 18, color, strokeWidth = 2, className = '' }) {
+export function AppIcon({ name, size = 18, color = 'currentColor', strokeWidth = 2, className = '' }) {
   const entry = ICONS[name];
   if (!entry) return null;
   const { Component } = entry;
   return (
     <Component
       size={size}
-      color={color || entry.color}
+      color={color}
       strokeWidth={strokeWidth}
       className={`shrink-0 ${className}`}
     />

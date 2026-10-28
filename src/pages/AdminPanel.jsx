@@ -964,7 +964,7 @@ export default function AdminPanel() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true" aria-label="Eliminar negocio">
           <div className="w-full max-w-sm space-y-4 rounded-3xl bg-[var(--mg-bg-surface)] p-6 shadow-[var(--mg-shadow-lg)]">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] flex items-center justify-center">
               <AppIcon name="eliminar" size={24} />
             </div>
             <div>

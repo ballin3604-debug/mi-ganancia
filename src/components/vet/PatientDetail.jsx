@@ -56,7 +56,7 @@ export default function PatientDetail({
           <button type="button" onClick={() => onEdit(pet)} className="w-9 h-9 rounded-xl bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] flex items-center justify-center active:scale-95" title="Editar">
             <AppIcon name="editar" size={15} />
           </button>
-          <button type="button" onClick={() => onDelete(pet)} className="w-9 h-9 rounded-xl bg-[var(--mg-danger-bg)] border border-red-200 flex items-center justify-center active:scale-95" title="Eliminar">
+          <button type="button" onClick={() => onDelete(pet)} className="w-9 h-9 rounded-xl bg-[var(--mg-danger-bg)] border border-red-200 text-[var(--mg-danger)] flex items-center justify-center active:scale-95" title="Eliminar">
             <AppIcon name="eliminar" size={15} />
           </button>
         </div>

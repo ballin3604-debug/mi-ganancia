@@ -29,7 +29,7 @@ function Chevron() {
 function IconBox({ icon, tint }) {
   return (
     <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
-      <AppIcon name={icon} size={15} />
+      <AppIcon name={icon} size={15} color="currentColor" />
     </span>
   );
 }
