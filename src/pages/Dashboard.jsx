@@ -423,7 +423,7 @@ export default function Dashboard() {
       {/* CABECERA: SEDE, SALUDO Y ACCIONES PRINCIPALES */}
       <DashboardHeader
         today={todayStr}
-        user={user}
+        businessName={business?.name || settings?.businessName || 'Mi negocio'}
         settings={settings}
         onShowQr={() => setShowQr(true)}
         onNavigate={(path, opts) => navigate(path, opts)}

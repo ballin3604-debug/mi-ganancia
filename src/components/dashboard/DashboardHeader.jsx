@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { BranchSelect } from '../BranchSelect';
+import { AppIcon } from '../icons';
 
 function SyncBadge() {
   const { online, pendingCount, errorCount } = useSyncStatus();
@@ -30,8 +32,16 @@ function SyncBadge() {
   );
 }
 
-export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, branches = [], homeBranch = 'all', onBranchChange }) {
-  const userFirstName = user?.displayName?.split(' ')[0] || 'Vendedor';
+export function DashboardHeader({ today, businessName, settings, onShowQr, onNavigate, branches = [], homeBranch = 'all', onBranchChange }) {
+  const businessLogo = settings?.logoData || '';
+  const categoryId = settings?.businessCategory || settings?.business_category || 'otro';
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [businessLogo]);
+
+  const showLogo = !!businessLogo && !logoError;
 
   return (
     <div className="space-y-3">
@@ -45,16 +55,20 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
 
       <div className="relative overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 sm:p-5 shadow-[var(--mg-shadow-sm)]">
         <div className="relative flex items-start gap-3 sm:gap-4">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-lg shrink-0 overflow-hidden border border-[var(--mg-brand-border)]">
-            {user?.photoURL ? (
+          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border ${
+            showLogo
+              ? 'bg-white p-1 border-[var(--mg-border)]'
+              : 'bg-[var(--mg-brand)] text-white border-[var(--mg-brand-border)]'
+          }`}>
+            {showLogo ? (
               <img
-                src={user.photoURL}
-                alt={userFirstName}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                src={businessLogo}
+                alt={businessName ? `Logo de ${businessName}` : 'Logo del negocio'}
+                className="w-full h-full object-contain"
+                onError={() => setLogoError(true)}
               />
             ) : (
-              <span>{userFirstName.charAt(0)}</span>
+              <AppIcon name={categoryId} size={22} strokeWidth={2.1} />
             )}
           </div>
 
@@ -64,7 +78,7 @@ export function DashboardHeader({ today, user, settings, onShowQr, onNavigate, b
             </p>
             <div className="mt-1 flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-black text-[var(--mg-brand-text)] tracking-tight truncate">
-                Hola, {userFirstName}
+                {businessName || 'Mi negocio'}
               </h1>
               <SyncBadge />
             </div>

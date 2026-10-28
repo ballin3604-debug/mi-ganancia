@@ -61,6 +61,12 @@ import {
   Lock,
   RefreshCw,
   WifiOff,
+  Croissant,
+  Wine,
+  Wrench,
+  Shirt,
+  PawPrint,
+  UtensilsCrossed,
 } from 'lucide-react';
 // Colores semánticos opcionales (variables del tema) para pasar a `color`.
 // Por defecto AppIcon usa currentColor y hereda el color del contenedor.
@@ -102,6 +108,14 @@ const ICONS = {
   cerrar: { Component: X },
   carpeta: { Component: Folder },
   tienda: { Component: Store },
+  panaderia: { Component: Croissant },
+  licorera: { Component: Wine },
+  restaurante: { Component: UtensilsCrossed },
+  ferreteria: { Component: Wrench },
+  farmacia: { Component: Pill },
+  ropa: { Component: Shirt },
+  veterinaria: { Component: PawPrint },
+  otro: { Component: Building2 },
   texto: { Component: Type },
   etiqueta: { Component: Tag },
   reloj: { Component: Clock },
