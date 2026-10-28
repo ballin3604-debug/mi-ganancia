@@ -20,7 +20,7 @@ function timeAgo(date) {
   return `hace ${Math.floor(h / 24)} d`;
 }
 
-export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], branchId = 'all', mainBranchId = null, branchName = '', onNavigate, onReimprint, printingSaleId }) {
+export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], branchId = 'all', mainBranchId = null, branchName = '', showBranches = true, reorderPath = '/compras', onNavigate, onReimprint, printingSaleId }) {
   const { branches } = useBranches();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
@@ -183,7 +183,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                   </div>
                   <button
                     type="button"
-                    onClick={() => onNavigate && onNavigate('/compras', { state: { reorderProductId: p.id } })}
+                    onClick={() => onNavigate && onNavigate(reorderPath, { state: { reorderProductId: p.id } })}
                     className="text-[11px] font-black text-white bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] px-2.5 py-1.5 rounded-lg shrink-0 transition-colors"
                   >
                     + Reordenar
@@ -207,7 +207,8 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 lg:items-start gap-4">
-        {/* Sucursales */}
+        {/* Sucursales (fuera en restaurante: sede única) */}
+        {showBranches && (
         <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
@@ -237,9 +238,10 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
             <p className="text-xs text-[var(--mg-text-muted)] font-medium">Sin ventas este mes todavía.</p>
           )}
         </div>
+        )}
 
         {/* Ventas en vivo */}
-        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
+        <div className={`bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)] ${showBranches ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-black text-[var(--mg-brand)] flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] flex items-center justify-center shrink-0">

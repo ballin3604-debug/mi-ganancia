@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBusiness } from '../context/BusinessContext';
 import { subscribeToSales, subscribeToSaleItems } from '../services/sales';
 import { subscribeToExpenses } from '../services/expenses';
 import { subscribeToProducts, subscribeToReplenishments } from '../services/products';
@@ -40,6 +41,10 @@ const REPORT_TYPE_META = {
 
 export default function MatrixReport() {
     const { businessId } = useAuth();
+    const { sectorConfig } = useBusiness();
+    // Restaurante: los platos no tienen stock que valorizar; el reporte de
+    // inventario no aplica (Ranking y Ganancias cubren lo necesario).
+    const isRestaurantMode = !!sectorConfig?.features?.dishes;
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [allSales, setSales] = useState([]);
@@ -74,7 +79,9 @@ export default function MatrixReport() {
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const requestedType = searchParams.get('type');
-    const reportType = VALID_REPORT_TYPES.includes(requestedType) ? requestedType : 'profit'; // 'ranking' | 'expenses' | 'inventory' | 'profit' | 'costoVendido'
+    // En restaurante el reporte de inventario cae a Ganancias Diarias.
+    const effectiveType = isRestaurantMode && requestedType === 'inventory' ? 'profit' : requestedType;
+    const reportType = VALID_REPORT_TYPES.includes(effectiveType) ? effectiveType : 'profit'; // 'ranking' | 'expenses' | 'inventory' | 'profit' | 'costoVendido'
     // Solo aplica al reporte de Egresos: llegar con ?flow=daily (desde el
     // botón "Gastos Diarios" de Ganancias Diarias) lo filtra a solo egresos
     // diarios, excluyendo los fijos.

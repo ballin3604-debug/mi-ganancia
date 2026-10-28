@@ -157,7 +157,9 @@ function isChildActive(location, childTo) {
 
 export default function Layout() {
   const { user, role } = useAuth();
-  const { business, settings } = useBusiness();
+  const { business, settings, sectorConfig } = useBusiness();
+  // Restaurante: sin compras ni sucursales; sin reportes de inventario/compras.
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const { online, pendingCount, errorCount } = useSyncStatus();
   const location = useLocation();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
@@ -218,8 +220,23 @@ export default function Layout() {
   if (isCashier && OWNER_ONLY_PATHS.includes(location.pathname)) {
     return <Navigate to="/" replace />;
   }
+  if (isRestaurantMode && (location.pathname.startsWith('/compras') || location.pathname.startsWith('/sucursales'))) {
+    return <Navigate to="/" replace />;
+  }
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || !isCashier);
+  const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || !isCashier)
+    .filter((item) => !(isRestaurantMode && (item.key === 'purchases' || item.key === 'branches')))
+    .map((item) => (
+      isRestaurantMode && item.children
+        ? {
+          ...item,
+          children: item.children.filter((child) => !(
+            isRestaurantMode
+            && (child.key === 'inventory-report' || child.key === 'reports-purchases' || child.key === 'reports-inventory')
+          )),
+        }
+        : item
+    ));
   // En celular no se muestra la sección Reportes (solo PC).
   const mobileItems = visibleItems.filter((item) => item.key !== 'reports').map((item) =>
     item.children ? { to: item.basePath, label: item.label, Icon: item.Icon, end: false, key: item.key } : item

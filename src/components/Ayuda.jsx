@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AYUDA, claveAyudaParaRuta } from '../utils/texto-ayuda';
+import { useBusiness } from '../context/BusinessContext';
 
 // Botón flotante "?" + modal de ayuda contextual.
 // Se monta una sola vez en Layout y automáticamente muestra la ayuda
@@ -29,7 +30,13 @@ export default function Ayuda() {
   }, [location.pathname, location.search]);
 
   const clave = claveAyudaParaRuta(location.pathname, location.search);
-  const info = AYUDA[clave] || AYUDA.inicio;
+  const rawInfo = AYUDA[clave] || AYUDA.inicio;
+  const { sectorConfig } = useBusiness();
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  // Restaurante: sin escáner de código de barras, esos pasos no aplican.
+  const info = isRestaurantMode
+    ? { ...rawInfo, pasos: (rawInfo.pasos || []).filter((paso) => !/código de barras|lector|escane/i.test(paso)) }
+    : rawInfo;
 
   return (
     <>

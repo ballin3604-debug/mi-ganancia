@@ -32,6 +32,8 @@ export function InventoryHeader({
   onOpenScanner,
   expiryCounts = { porVencer: 0, vencidos: 0 },
   showExpiryFilters = true,
+  showRecentFilter = true,
+  searchPlaceholder = 'Buscar nombre, marca o código...',
   showFilters = true,
   onToggleFilters,
   activeFilterCount = 0,
@@ -120,7 +122,7 @@ export function InventoryHeader({
                 type="text"
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Buscar nombre, marca o código..."
+                placeholder={searchPlaceholder}
                 className="w-full bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl pl-8 pr-8 py-2 text-xs text-[var(--mg-text-primary)] font-bold placeholder:text-[var(--mg-text-muted)] placeholder:font-normal focus:outline-none focus:border-[var(--mg-accent)] focus:ring-2 focus:ring-[var(--mg-accent)]/10 transition-all min-h-[36px]"
               />
               {search && (
@@ -230,6 +232,7 @@ export function InventoryHeader({
             </button>
             )}
 
+            {showRecentFilter && (
             <button
               type="button"
               onClick={onRecentFilterToggle}
@@ -242,6 +245,7 @@ export function InventoryHeader({
               <AppIcon name="agregar" size={12} />
               <span>Recién comprado</span>
             </button>
+            )}
           </div>
         </div>
 

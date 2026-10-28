@@ -38,7 +38,9 @@ function SectionHeader({ title }) {
 export default function Dashboard() {
   const { businessId, user, role } = useAuth();
   const isOwner = role === 'owner';
-  const { business, settings } = useBusiness();
+  const { business, settings, sectorConfig } = useBusiness();
+  // Restaurante: sin compras ni vencimientos en el inicio.
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const navigate = useNavigate();
   // Todo el contenido del inicio siempre visible: sin anuncios de planes.
 
@@ -442,19 +444,22 @@ export default function Dashboard() {
           comprasCount={comprasHoy.count}
           gananciaNeta={gananciaHoy}
           margen={margenHoy}
+          showCompras={!isRestaurantMode}
           onNavigate={(path) => navigate(path)}
         />
       </section>
 
-      {/* Productos top + vencimientos en una fila */}
+      {/* Productos top + vencimientos en una fila (vencimientos fuera en restaurante) */}
       <div className="mg-grid-auto">
         <TopProductsCard data={topProductsChartData} />
-        <ExpiryAlert
-          expiredCount={expirySummary.expired}
-          soonCount={expirySummary.soon}
-          items={expirySummary.items}
-          onNavigate={(path) => navigate(path)}
-        />
+        {!isRestaurantMode && (
+          <ExpiryAlert
+            expiredCount={expirySummary.expired}
+            soonCount={expirySummary.soon}
+            items={expirySummary.items}
+            onNavigate={(path) => navigate(path)}
+          />
+        )}
       </div>
 
       {/* PULSO DEL NEGOCIO: mensual, stock, sucursales y en vivo */}
@@ -465,6 +470,8 @@ export default function Dashboard() {
         lowStock={lowStock}
         branchId={homeBranch}
         mainBranchId={mainBranchId}
+        showBranches={!isRestaurantMode}
+        reorderPath={isRestaurantMode ? '/inventario' : '/compras'}
         branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
         onNavigate={(path, opts) => navigate(path, opts)}
         onReimprint={handleReimprint}

@@ -222,7 +222,9 @@ export default function Sales() {
   const isOwner = role !== 'cashier';
   const canSeeCosts = isOwner || hasPermission('ver_costos');
   const canExport = hasPermission('exportar');
-  const { business, settings } = useBusiness();
+  const { business, settings, sectorConfig } = useBusiness();
+  // Restaurante: tickets sin cliente ni código de barras.
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const { branches, activeBranchId, activeBranch, selectBranch } = useBranches();
   // Un almacén custodia y distribuye: no vende al público en ningún caso.
   const sellingBlocked = activeBranch?.type === 'almacen';
@@ -1388,7 +1390,8 @@ export default function Sales() {
             </div>
           </div>
 
-          {/* Cliente */}
+          {/* Cliente (fuera en restaurante: el ticket va sin cliente) */}
+          {!isRestaurantMode && (
           <div>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">
               Cliente
@@ -1416,6 +1419,7 @@ export default function Sales() {
               </select>
             )}
           </div>
+          )}
 
           {/* Calculadora de cambio para Efectivo */}
           {paymentMethod === 'cash' && (
@@ -1593,7 +1597,7 @@ export default function Sales() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Punto de venta</p>
                   <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand)]">Nueva venta</h2>
                   <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
-                    {activeBranch?.name ? `${activeBranch.name} · ` : ''}Busca, escanea o toca un producto
+                    {activeBranch?.name ? `${activeBranch.name} · ` : ''}{isRestaurantMode ? 'Busca o toca un plato' : 'Busca, escanea o toca un producto'}
                   </p>
                 </div>
               </div>
@@ -1855,19 +1859,21 @@ export default function Sales() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar producto, marca o código..."
+                placeholder={isRestaurantMode ? 'Buscar plato o producto...' : 'Buscar producto, marca o código...'}
                 className="mg-input min-h-[52px] pl-11 text-base"
               />
             </div>
-            <button
-              type="button"
-              onClick={openScanner}
-              title="Escanear código de barras"
-              aria-label="Escanear código de barras"
-              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
-            >
-              <AppIcon name="scan" size={23} color="#fff" />
-            </button>
+            {!isRestaurantMode && (
+              <button
+                type="button"
+                onClick={openScanner}
+                title="Escanear código de barras"
+                aria-label="Escanear código de barras"
+                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
+              >
+                <AppIcon name="scan" size={23} color="#fff" />
+              </button>
+            )}
           </div>
 
           <div className="flex shrink-0 gap-2 overflow-x-auto px-0 pb-1 scrollbar-none">
@@ -2016,7 +2022,7 @@ export default function Sales() {
               <EmptyState
                 icon="carrito"
                 title="Tu carrito está vacío"
-                description="Toca un producto para agregarlo. Puedes escanear su código o buscar por nombre."
+                description={isRestaurantMode ? 'Toca un plato para agregarlo o busca por nombre.' : 'Toca un producto para agregarlo. Puedes escanear su código o buscar por nombre.'}
                 className="w-full border-0 bg-transparent px-2 py-0"
               />
             </div>

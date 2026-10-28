@@ -1,5 +1,6 @@
 import { formatBs } from '../../utils/currency';
 import ProductCatalogCard, { StockLabel } from '../ProductCatalogCard';
+import { useBusiness } from '../../context/BusinessContext';
 
 function expiryInfo(nearestExpiry) {
   if (!nearestExpiry?.date) return null;
@@ -15,6 +16,8 @@ function expiryInfo(nearestExpiry) {
 // (ProductCatalogCard) + ficha ampliada al pasar el puntero (solo desktop,
 // 100% CSS sin animaciones JS para que el scroll se sienta firme).
 export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, onSelect }) {
+  const { sectorConfig } = useBusiness();
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const price = Number(product.price || 0);
   const supplierPrice = Number(product.supplierPrice || 0);
   const profit = supplierPrice > 0 ? price - supplierPrice : null;
@@ -70,7 +73,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                   {product.brand}
                 </p>
               )}
-              {product.barcode && (
+              {!isRestaurantMode && product.barcode && (
                 <p className="text-[10px] font-mono font-bold text-[var(--mg-text-muted)] mt-0.5">
                   🏷️ {product.barcode}
                 </p>

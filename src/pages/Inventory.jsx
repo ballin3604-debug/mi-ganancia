@@ -153,8 +153,10 @@ export default function Inventory() {
     setFilterLowStock(false);
   }
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
-  // Restaurante: los platos no llevan vencimiento ni inventario → sin esos filtros.
-  const showExpiryFilters = !sectorConfig?.features?.dishes;
+  // Restaurante: sin vencimiento, sin código de barras, sin compras.
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  const showExpiryFilters = !isRestaurantMode;
+  const showBarcode = !isRestaurantMode;
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
   const hasBranchRows = stockRows.length > 0;
@@ -861,7 +863,9 @@ export default function Inventory() {
         onClearFilters={clearAllFilters}
         onOpenAddProduct={() => openAdd()}
         onOpenCatManager={() => setShowCatManager(true)}
-        onOpenScanner={() => openScanner('search')}
+        onOpenScanner={showBarcode ? () => openScanner('search') : undefined}
+        searchPlaceholder={isRestaurantMode ? 'Buscar plato o producto...' : undefined}
+        showRecentFilter={!isRestaurantMode}
         expiryCounts={expiryCounts}
         showExpiryFilters={showExpiryFilters}
         branches={branches}
@@ -869,9 +873,9 @@ export default function Inventory() {
         onBranchChange={setInvBranch}
       />
 
-      {/* Acceso al reporte de inventario (valorización y kardex) */}
-
-      {/* Acceso al reporte de inventario (valorización y kardex) */}
+      {/* Acceso al reporte de inventario (valorización y kardex): no aplica
+          a restaurante, donde los platos no tienen stock que valorizar. */}
+      {!isRestaurantMode && (
       <button
         type="button"
         onClick={() => navigate('/reportes?type=inventory')}
@@ -886,6 +890,7 @@ export default function Inventory() {
         </span>
         <span className="text-lg font-black text-[var(--mg-brand)] shrink-0 transition-transform group-hover:translate-x-0.5">›</span>
       </button>
+      )}
 
       {/* Catalog Grid View */}
       {loading ? (
@@ -1152,7 +1157,7 @@ export default function Inventory() {
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="w-full rounded-xl border border-dashed border-[var(--mg-border-hover)] py-2 text-[11px] font-extrabold text-[var(--mg-text-secondary)] hover:text-[var(--mg-text-primary)] transition-all active:scale-[0.98]"
                   >
-                    {showAdvanced ? '▲ Ocultar detalles' : '+ Más detalles (foto, código de barras, marca…)'}
+                    {showAdvanced ? '▲ Ocultar detalles' : (isRestaurantMode ? '+ Más detalles (foto, marca…)' : '+ Más detalles (foto, código de barras, marca…)')}
                   </button>
                 )}
                 {(!practical || showAdvanced) && (
@@ -1256,7 +1261,7 @@ export default function Inventory() {
                   </div>
                 )}
 
-                {(!practical || showAdvanced) && !form.isDish && (
+                {(!practical || showAdvanced) && !form.isDish && showBarcode && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Código de barras (opcional)

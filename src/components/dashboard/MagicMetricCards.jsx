@@ -12,6 +12,7 @@ export function MagicMetricCards({
   comprasCount = 0,
   gananciaNeta = 0,
   margen = 0,
+  showCompras = true,
   onNavigate
 }) {
 
@@ -82,7 +83,7 @@ export function MagicMetricCards({
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className="bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden sm:col-span-1 xl:col-span-4"
+        className={`bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden sm:col-span-1 ${showCompras ? 'xl:col-span-4' : 'xl:col-span-7'}`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -112,7 +113,8 @@ export function MagicMetricCards({
         </div>
       </motion.div>
 
-      {/* 3. COMPRAS DE HOY: métrica secundaria */}
+      {/* 3. COMPRAS DE HOY: métrica secundaria (fuera en restaurante) */}
+      {showCompras && (
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
@@ -142,6 +144,7 @@ export function MagicMetricCards({
           </span>
         </div>
       </motion.div>
+      )}
 
     </motion.div>
   );

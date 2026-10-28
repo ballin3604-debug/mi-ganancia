@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
 import { TransferModal } from './TransferModal';
 import { AppIcon } from '../icons';
+import { useBusiness } from '../../context/BusinessContext';
 
 function formatDate(dateVal) {
   if (!dateVal) return '—';
@@ -24,6 +25,8 @@ export function ProductDetailModal({
   stockRows = [],
   businessId,
 }) {
+  const { sectorConfig } = useBusiness();
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const [updatingStock, setUpdatingStock] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
 
@@ -138,7 +141,7 @@ export function ProductDetailModal({
                   </p>
                 )}
 
-                {product.barcode && (
+                {!isRestaurantMode && product.barcode && (
                   <p className="text-[11px] font-mono font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-border)]">
                     🏷️ {product.barcode}
                   </p>
