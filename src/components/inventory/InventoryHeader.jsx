@@ -31,6 +31,7 @@ export function InventoryHeader({
   onOpenCatManager,
   onOpenScanner,
   expiryCounts = { porVencer: 0, vencidos: 0 },
+  showExpiryFilters = true,
   showFilters = true,
   onToggleFilters,
   activeFilterCount = 0,
@@ -189,6 +190,7 @@ export function InventoryHeader({
                 </span>
               )}
             </button>
+            {showExpiryFilters && (
             <button
               type="button"
               onClick={() => onExpiryFilterChange(filterExpiry === 'porVencer' ? 'todos' : 'porVencer')}
@@ -206,7 +208,9 @@ export function InventoryHeader({
                 </span>
               )}
             </button>
+            )}
 
+            {showExpiryFilters && (
             <button
               type="button"
               onClick={() => onExpiryFilterChange(filterExpiry === 'vencidos' ? 'todos' : 'vencidos')}
@@ -224,6 +228,7 @@ export function InventoryHeader({
                 </span>
               )}
             </button>
+            )}
 
             <button
               type="button"

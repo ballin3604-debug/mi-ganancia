@@ -15,6 +15,7 @@ function mapProduct(p) {
     supplierPrice: p.supplier_price,
     imageData: p.image_url,
     packageSize: p.package_size,
+    isDish: !!p.is_dish,
     presentations: Array.isArray(p.presentations) ? p.presentations : [],
     createdAt: p.created_at ? { toDate: () => new Date(p.created_at) } : null,
     updatedAt: p.updated_at ? { toDate: () => new Date(p.updated_at) } : null,
@@ -139,6 +140,7 @@ export async function addProduct(businessId, data) {
     image_url: data.imageData || '',
     supplier_price: data.supplierPrice !== undefined && data.supplierPrice !== '' ? Number(data.supplierPrice) : null,
     unit: data.unit || 'Unidad',
+    is_dish: !!data.isDish,
     package_size: data.packageSize !== undefined && data.packageSize !== '' ? Number(data.packageSize) : null,
     created_at: now,
     updated_at: now,
@@ -186,6 +188,9 @@ export function buildProductUpdateData(existing, data, now) {
 
   if (data.supplierPrice !== undefined) {
     updateData.supplier_price = data.supplierPrice !== '' ? Number(data.supplierPrice) : null;
+  }
+  if (data.isDish !== undefined) {
+    updateData.is_dish = !!data.isDish;
   }
   if (data.unit !== undefined) {
     updateData.unit = data.unit;

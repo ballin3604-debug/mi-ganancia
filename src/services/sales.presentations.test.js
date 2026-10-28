@@ -378,6 +378,14 @@ describe('ventas con presentaciones configurables', () => {
     expect(migration).toContain("jsonb_typeof(presentations) is distinct from 'array'");
   });
 
+  it('la migración de platos excluye is_dish de los decrementos de stock', () => {
+    const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261028000002_platos_restaurante.sql'), 'utf8');
+    expect(migration).toContain('add column if not exists is_dish boolean not null default false');
+    expect(migration.match(/coalesce\(v_product\.is_dish, false\)/g)?.length).toBe(2);
+    expect(migration).toContain('grant execute on function public.registrar_venta(');
+    expect(migration).toContain('grant execute on function public.registrar_venta_presentaciones(');
+  });
+
   it('mantiene idempotentes subtotal y branch_id que ya introducen migraciones anteriores', () => {
     const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261026000000_configurable_presentations.sql'), 'utf8');
     const branchMigration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260923222121_branches.sql'), 'utf8');

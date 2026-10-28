@@ -61,11 +61,13 @@ export default function Compras() {
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
   const hasBranchRows = stockRows.length > 0;
-  const productsWithStock = useMemo(() => (
-    activeBranchId && hasBranchRows
-      ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${activeBranchId}:${p.id}`) ?? 0) }))
-      : products
-  ), [products, stockMap, activeBranchId, hasBranchRows]);
+  const productsWithStock = useMemo(() => {
+    // Plato: no se compra ni se repone (no lleva inventario).
+    const base = products.filter((p) => !p.isDish);
+    return activeBranchId && hasBranchRows
+      ? base.map((p) => ({ ...p, stock: Number(stockMap.get(`${activeBranchId}:${p.id}`) ?? 0) }))
+      : base;
+  }, [products, stockMap, activeBranchId, hasBranchRows]);
 
   const [startDate, setStartDate] = useState(() => toLocalISODate(new Date()));
   const [endDate, setEndDate] = useState(() => toLocalISODate(new Date()));

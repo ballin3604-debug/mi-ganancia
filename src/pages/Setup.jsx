@@ -13,6 +13,7 @@ import {
   Shirt,
   PawPrint,
   Building2,
+  UtensilsCrossed,
   KeyRound,
   ArrowRight,
   Check,
@@ -26,6 +27,7 @@ const CATEGORY_ICONS = {
   farmacia: Pill,
   ropa: Shirt,
   veterinaria: PawPrint,
+  restaurante: UtensilsCrossed,
   otro: Building2,
 };
 

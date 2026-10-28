@@ -57,6 +57,7 @@ const EMPTY_FORM = {
   supplierPrice: '',
   unit: 'Unidad',
   packageSize: '',
+  isDish: false,
   presentations: [],
 };
 
@@ -152,6 +153,8 @@ export default function Inventory() {
     setFilterLowStock(false);
   }
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
+  // Restaurante: los platos no llevan vencimiento ni inventario → sin esos filtros.
+  const showExpiryFilters = !sectorConfig?.features?.dishes;
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
   const hasBranchRows = stockRows.length > 0;
@@ -347,6 +350,36 @@ export default function Inventory() {
     }
   }
 
+  // Plato (restaurante): sin stock, sin marca, sin vencimiento, sin paquete.
+  // El ticket dice "Plato" porque vive en unit_label.
+  function toggleDish(value) {
+    setStockMode('directo');
+    setForm((f) => {
+      if (value) {
+        return {
+          ...f,
+          isDish: true,
+          stock: 0,
+          minStock: '0',
+          supplierPrice: '',
+          sellPack: false,
+          packLabel: '',
+          packPrice: '',
+          packPriceHot: '',
+          packageSize: '',
+          barcode: '',
+          brand: '',
+          unitLabel: f.unitLabel || sectorConfig?.defaultUnit || 'Plato',
+        };
+      }
+      return {
+        ...f,
+        isDish: false,
+        minStock: f.minStock === '0' ? '5' : f.minStock,
+      };
+    });
+  }
+
   function openAdd(prefill = {}, forcePractical = false) {
     setEditingProduct(null);
     setPractical(forcePractical || products.length === 0 || searchParams.get('guia') === '1');
@@ -401,7 +434,7 @@ export default function Inventory() {
     const hasPack = Number(product.packageSize || 0) > 1 && product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined;
     setForm({
       name: product.name,
-      barcode: product.barcode || '',
+      barcode: product.isDish ? '' : (product.barcode || ''),
       unitLabel: product.unitLabel || (sectorConfig?.features?.configurablePresentations ? sectorConfig.defaultUnit : '') || '',
       sellPack: !!hasPack,
       packLabel: product.packLabel || '',
@@ -417,6 +450,7 @@ export default function Inventory() {
       supplierPrice: product.supplierPrice ? String(product.supplierPrice) : '',
       unit: product.unit || 'Unidad',
       packageSize: product.packageSize ? String(product.packageSize) : '',
+      isDish: !!product.isDish,
       presentations: Array.isArray(product.presentations) && product.presentations.length > 0
         ? product.presentations.map((presentation) => ({ ...presentation }))
         : getSellOptions(product).map((option, index) => ({
@@ -459,17 +493,31 @@ export default function Inventory() {
   async function handleSave(e, options = {}) {
     const { another = false } = options;
     if (e?.preventDefault) e.preventDefault();
-    if (!form.name.trim() || !form.price || form.stock === '') return;
-    if (practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
+    if (!form.name.trim() || !form.price || (!form.isDish && form.stock === '')) return;
+    if (!form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
       alert('Dinos cuánto te costó cada unidad: así tu ganancia se calcula sola.');
       return;
     }
-    if (!sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
+    if (!form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
     }
     let data;
-    if (sectorConfig?.features?.configurablePresentations) {
+    if (form.isDish) {
+      data = {
+        ...form,
+        barcode: '',
+        brand: '',
+        supplierPrice: '',
+        packLabel: '',
+        packPrice: '',
+        packPriceHot: '',
+        packageSize: '',
+        stock: 0,
+        minStock: '0',
+      };
+      delete data.presentations;
+    } else if (sectorConfig?.features?.configurablePresentations) {
       try {
         const presentations = validatePresentationDefinitions(form.presentations, {
           baseName: form.unitLabel || 'Unidad',
@@ -502,7 +550,10 @@ export default function Inventory() {
     try {
       if (editingProduct) {
         const globalCur = Number(products.find((p) => p.id === editingProduct.id)?.stock || 0);
-        if (targetBranchId) {
+        if (form.isDish) {
+          // Plato: el inventario queda en 0 y no se toca stock de sede.
+          await updateProduct(editingProduct.id, { ...data, stock: 0 });
+        } else if (targetBranchId) {
           // El stock vive en la sede: global nuevo = global actual + (nuevo − anterior de sede).
           // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
           // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
@@ -517,7 +568,9 @@ export default function Inventory() {
         }
       } else if (targetBranchId) {
         const created = await addProduct(businessId, { ...data, stock: Number(formStockVal) });
-        await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
+        if (!form.isDish) {
+          await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
+        }
       } else {
         await addProduct(businessId, { ...data, stock: Number(formStockVal) });
       }
@@ -722,7 +775,7 @@ export default function Inventory() {
       )
       .filter((p) => filterCategory === 'Todas' || p.category === filterCategory)
       .filter((p) => {
-        if (filterExpiry === 'todos') return true;
+        if (filterExpiry === 'todos' || !showExpiryFilters) return true;
         const exp = productExpiry[p.id];
         if (!exp) return false;
         const today = new Date();
@@ -732,11 +785,11 @@ export default function Inventory() {
         return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
       })
       .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id))
-      .filter((p) => !filterLowStock || (Number(p.stock) || 0) <= (Number(p.minStock) || 5));
-  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds]);
+      .filter((p) => !filterLowStock || (!p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)));
+  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters]);
 
   const lowStockCount = useMemo(() => (
-    viewProducts.filter((p) => (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
+    viewProducts.filter((p) => !p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
   ), [viewProducts]);
 
   const visibleProducts = useMemo(
@@ -810,6 +863,7 @@ export default function Inventory() {
         onOpenCatManager={() => setShowCatManager(true)}
         onOpenScanner={() => openScanner('search')}
         expiryCounts={expiryCounts}
+        showExpiryFilters={showExpiryFilters}
         branches={branches}
         invBranch={invBranch}
         onBranchChange={setInvBranch}
@@ -1165,7 +1219,7 @@ export default function Inventory() {
                     type="text"
                     value={form.name}
                     onChange={(e) => setField('name', e.target.value)}
-                    placeholder="Ej: Coca-Cola 2L"
+                    placeholder={form.isDish ? 'Ej: Milanesa napolitana' : 'Ej: Coca-Cola 2L'}
                     className="mg-input font-bold text-sm"
                     required
                     autoFocus
@@ -1173,7 +1227,36 @@ export default function Inventory() {
                   />
                 </div>
 
-                {(!practical || showAdvanced) && (
+                {/* Plato o producto con stock (restaurante) */}
+                {sectorConfig?.features?.dishes && (
+                  <div>
+                    <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                      ¿Qué vas a vender?
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        aria-pressed={!!form.isDish}
+                        onClick={() => toggleDish(true)}
+                        className={`rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.99] ${form.isDish ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'}`}
+                      >
+                        <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">🍽️ Plato</span>
+                        <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Se cocina al momento: no lleva stock.</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!form.isDish}
+                        onClick={() => toggleDish(false)}
+                        className={`rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.99] ${!form.isDish ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]' : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'}`}
+                      >
+                        <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">📦 Producto</span>
+                        <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Se cuenta y descuenta del inventario.</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {(!practical || showAdvanced) && !form.isDish && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Código de barras (opcional)
@@ -1202,7 +1285,7 @@ export default function Inventory() {
                 </div>
                 )}
 
-                {(!practical || showAdvanced) && (
+                {(!practical || showAdvanced) && !form.isDish && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Marca
@@ -1269,7 +1352,7 @@ export default function Inventory() {
                     />
                   </div>
 
-                  {!(practical && !editingProduct) && (
+                  {!(practical && !editingProduct) && !form.isDish && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Precio Compra (Bs)
@@ -1290,6 +1373,11 @@ export default function Inventory() {
                 </div>
 
                 {/* Stock y Unidad */}
+                {form.isDish ? (
+                  <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
+                    🍽️ Los platos no llevan stock: cada venta se registra y se imprime el ticket sin descontar inventario.
+                  </p>
+                ) : (
                 <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
                     {practical && !editingProduct ? (
@@ -1453,8 +1541,9 @@ export default function Inventory() {
                   </div>
                   )}
                 </div>
+                )}
 
-                {(!practical || showAdvanced) && (sectorConfig?.features?.configurablePresentations ? (
+                {(!practical || showAdvanced) && !form.isDish && (sectorConfig?.features?.configurablePresentations ? (
                   <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                     <div>
                       <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>
@@ -1665,7 +1754,7 @@ export default function Inventory() {
                 ))}
 
                 {/* Expiry Date */}
-                {expiryReplenishmentId && (
+                {expiryReplenishmentId && !form.isDish && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Fecha de Vencimiento
@@ -1680,7 +1769,7 @@ export default function Inventory() {
                 )}
 
                 {/* Min stock alert */}
-                {(!practical || showAdvanced) && (
+                {(!practical || showAdvanced) && !form.isDish && (
                 <div>
                   <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                     Alerta cuando queden (und.)

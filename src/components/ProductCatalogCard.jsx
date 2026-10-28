@@ -19,7 +19,15 @@ function CardImage({ imageData, name }) {
   );
 }
 
-export function StockLabel({ stock, minStock }) {
+export function StockLabel({ stock, minStock, isDish }) {
+  if (isDish) {
+    return (
+      <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent)] border-[var(--mg-accent-border)]">
+        🍽️ Plato
+      </span>
+    );
+  }
+
   const isOut = stock === 0;
   const isLow = stock > 0 && stock <= (minStock || 5);
 

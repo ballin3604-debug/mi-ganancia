@@ -160,7 +160,7 @@ export function ProductDetailModal({
             </div>
 
             {/* Stock por sede + traspasos (Fase 2, solo si hay varias sedes) */}
-            {branches.length > 1 && (
+            {branches.length > 1 && !product.isDish && (
               <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-[22px] border border-[var(--mg-border)] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
@@ -223,9 +223,13 @@ export function ProductDetailModal({
               <div className="bg-[var(--mg-accent-bg)] p-3 rounded-xl border border-[var(--mg-accent-border)] flex items-center justify-between text-xs">
                 <div>
                   <span className="font-extrabold text-[var(--mg-accent)] block">Valor Total en Ventas:</span>
-                  <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">({currentStock} unidades × {formatBs(price)})</span>
+                  {product.isDish ? (
+                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">🍽️ Plato: se vende sin inventario</span>
+                  ) : (
+                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">({currentStock} unidades × {formatBs(price)})</span>
+                  )}
                 </div>
-                <p className="text-base font-black text-[var(--mg-accent)]">{formatBs(totalSaleValue)}</p>
+                <p className="text-base font-black text-[var(--mg-accent)]">{formatBs(product.isDish ? 0 : totalSaleValue)}</p>
               </div>
             </div>
 

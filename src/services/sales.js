@@ -219,6 +219,9 @@ export async function registerSale(
       }
       validateSellSelection(prod, item);
       const baseQty = calculateBaseQuantity(qty, factor);
+      // Plato: se vende sin inventario. La línea de venta se guarda igual
+      // (ticket y reportes), pero no se toca el stock ni global ni por sede.
+      if (prod.is_dish) continue;
       const currentStock = Number(prod.stock || 0);
       if (currentStock < baseQty) {
         throw new Error(`Stock insuficiente de ${prod.name}: quedan ${currentStock} unidades base.`);

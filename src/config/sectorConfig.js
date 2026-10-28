@@ -15,6 +15,8 @@ export const SECTOR_FEATURES = {
   trackLots: false,
   // Presentaciones frías / a temperatura ambiente.
   coldVariants: false,
+  // Platos de cocina que se venden sin inventario (modo restaurante).
+  dishes: false,
 };
 
 export const SECTOR_CONFIG_DEFAULTS = {
@@ -29,6 +31,12 @@ export const SECTOR_CONFIG_DEFAULTS = {
     defaultUnit: 'Unidad',
     optionalFields: ['volume_ml', 'alcohol_degree', 'origin'],
     features: { ...SECTOR_FEATURES, configurablePresentations: true },
+  },
+  restaurante: {
+    unitLabels: ['Plato', 'Porción', 'Unidad'],
+    defaultUnit: 'Plato',
+    optionalFields: [],
+    features: { ...SECTOR_FEATURES, dishes: true },
   },
 };
 
