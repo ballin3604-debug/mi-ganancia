@@ -263,9 +263,15 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
                   <li key={s.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-[var(--mg-text-primary)] truncate">
-                        {s.sellerName || s.clientName || 'Venta'} <span className="font-semibold text-[var(--mg-text-muted)]">· {timeAgo(d)}</span>
+                        Venta <span className="font-semibold text-[var(--mg-text-muted)]">· {timeAgo(d)}</span>
                       </p>
                       <p className="text-[11px] text-[var(--mg-text-muted)] truncate">{items || '—'}</p>
+                      <p className="text-[10px] font-bold text-[var(--mg-text-secondary)] flex items-center gap-1 truncate">
+                        <AppIcon name="equipo" size={11} />
+                        <span className="truncate">
+                          {s.sellerName ? `Vendido por ${s.sellerName}` : 'Cajero no registrado'}
+                        </span>
+                      </p>
                     </div>
                     <span className="text-sm font-black text-[var(--mg-success-text)] tabular-nums shrink-0">+{formatBs(s.total)}</span>
                     {onReimprint && (

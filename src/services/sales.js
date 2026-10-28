@@ -10,6 +10,7 @@ function mapSale(s) {
   return {
     ...s,
     paymentMethod: s.payment_method,
+    sellerName: s.seller_name || s.sellerName || '',
     createdBy: s.created_by || s.createdBy || null,
     itemCount: s.item_count,
     montoEfectivo: s.monto_efectivo,
