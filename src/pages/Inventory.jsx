@@ -516,8 +516,8 @@ export default function Inventory() {
           await updateProduct(editingProduct.id, { ...data, stock: Number(formStockVal), expectedStock: globalCur });
         }
       } else if (targetBranchId) {
-        const created = await addProduct(businessId, { ...data, stock: 0 });
-        await setBranchStock(businessId, { ...created, stock: 0 }, targetBranchId, Number(formStockVal));
+        const created = await addProduct(businessId, { ...data, stock: Number(formStockVal) });
+        await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
       } else {
         await addProduct(businessId, { ...data, stock: Number(formStockVal) });
       }

@@ -1178,8 +1178,8 @@ export default function Sales() {
         setCustomers(await getCustomers(businessId));
       }
     } catch (err) {
-      console.error(err);
-      alert('Error al registrar la venta. Intenta de nuevo.');
+      console.error('Error al registrar la venta:', err);
+      alert(err?.message || 'Error al registrar la venta. Intenta de nuevo.');
     } finally {
       setRegistering(false);
       setShowQrConfirmModal(false);
