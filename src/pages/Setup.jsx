@@ -101,7 +101,7 @@ function ModeSelector({ onSelect }) {
 function JoinWithCode({ user, onBack }) {
   const { completeSetup } = useAuth();
   const [code, setCode] = useState('');
-  const initialName = (user?.displayName && !user.displayName.includes('@') ? user.displayName : '').split(' ');
+  const initialName = (user?.displayName && !user.displayName.includes('@') && !user.displayName.startsWith('+') ? user.displayName : '').split(' ');
   const [firstName, setFirstName] = useState(initialName[0] || '');
   const [lastName, setLastName] = useState(initialName.slice(1).join(' ') || '');
   const [birthdate, setBirthdate] = useState(user?.user_metadata?.birthdate || '');
@@ -168,7 +168,7 @@ function JoinWithCode({ user, onBack }) {
           )}
 
           <div className="rounded-xl border border-[#e7ece8] bg-[#f9faf9] px-4 py-2.5 text-xs text-[#747b76]">
-            Te unes como: <strong className="text-[#18201b]">{user?.email || 'tu cuenta'}</strong>
+            Te unes como: <strong className="text-[#18201b]">{user?.email || user?.phone || 'tu cuenta'}</strong>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

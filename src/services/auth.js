@@ -27,6 +27,57 @@ export async function signInWithPassword(email, password) {
   return data.user;
 }
 
+// Registro con celular. Supabase envía un código por SMS (Twilio) para
+// confirmar el número; la sesión se crea al verificar el código.
+export async function signUpWithPhone(phone, password, displayName) {
+  const { data, error } = await assertSupabase().auth.signUp({
+    phone,
+    password,
+    options: {
+      data: {
+        displayName: displayName || phone,
+        phone,
+      },
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function verifyPhoneCode(phone, token) {
+  const { data, error } = await assertSupabase().auth.verifyOtp({
+    phone,
+    token,
+    type: 'sms',
+  });
+  if (error) throw error;
+  return data.user;
+}
+
+export async function signInWithPhonePassword(phone, password) {
+  const { data, error } = await assertSupabase().auth.signInWithPassword({
+    phone,
+    password,
+  });
+  if (error) throw error;
+  return data.user;
+}
+
+// Acceso sin contraseña (también sirve para recuperar la cuenta si olvidó
+// la clave). Solo funciona si el celular ya tiene una cuenta.
+export async function sendPhoneLoginCode(phone) {
+  const { error } = await assertSupabase().auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: false },
+  });
+  if (error) throw error;
+}
+
+export async function resendPhoneCode(phone) {
+  const { error } = await assertSupabase().auth.resend({ type: 'sms', phone });
+  if (error) throw error;
+}
+
 // Login con Google (OAuth). redirectTo apunta al origen actual para que, tras
 // autenticarse, el usuario vuelva a esta misma app — funciona igual en local
 // (localhost) que en producción sin cambios.
@@ -125,7 +176,7 @@ export async function getUserData(userId) {
 
 export async function createUserAndBusiness(user, businessName, businessCategory = DEFAULT_CATEGORY_ID) {
   const category = getCategoryById(businessCategory);
-  const userName = user.user_metadata?.displayName || user.email || '';
+  const userName = user.user_metadata?.displayName || user.email || user.phone || '';
   const cleanName = businessName.trim();
   const client = assertSupabase();
 

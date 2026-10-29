@@ -145,7 +145,7 @@ export default function ReceiptView() {
           {logo ? (
             <img src={logo} alt="Logo" className="w-16 h-16 rounded-lg object-contain shrink-0" />
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-2xl shrink-0 font-sans">
+            <div className="w-16 h-16 rounded-lg bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] flex items-center justify-center font-black text-2xl shrink-0 font-sans">
               {(bizName || 'M').charAt(0).toUpperCase()}
             </div>
           )}

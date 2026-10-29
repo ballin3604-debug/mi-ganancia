@@ -70,11 +70,11 @@ export default function PresentationPicker({ product, cartCounts = {}, cartBaseU
                   </span>
                 </span>
                 {count > 0 ? (
-                  <span className="shrink-0 rounded-full bg-[var(--mg-brand)] px-3 py-1.5 text-xs font-black text-white">
+                  <span className="shrink-0 rounded-full bg-[var(--mg-brand)] px-3 py-1.5 text-xs font-black text-[var(--mg-brand-contrast)]">
                     x {count}
                   </span>
                 ) : (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] font-black text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] font-black text-[var(--mg-brand-contrast)]">
                     +
                   </span>
                 )}
@@ -95,7 +95,7 @@ export default function PresentationPicker({ product, cartCounts = {}, cartBaseU
             type="button"
             onClick={onGoCart}
             disabled={cartTotalItems === 0}
-            className="flex-1 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
+            className="flex-1 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-[var(--mg-brand-contrast)] shadow-sm transition-colors hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
           >
             Ver carrito ({cartTotalItems})
           </button>

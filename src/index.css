@@ -108,6 +108,32 @@ input[type="number"]::-webkit-outer-spin-button {
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  /* Bloque de cobro del carrito — colores por tema */
+  .mg-checkout-panel {
+    background: var(--mg-checkout-bg, var(--mg-brand));
+    border: 1px solid var(--mg-checkout-border, transparent);
+    color: var(--mg-checkout-text, #FFFFFF);
+  }
+
+  .mg-checkout-ghost {
+    background: var(--mg-checkout-ghost-bg, rgba(255, 255, 255, 0.10));
+    border-color: var(--mg-checkout-ghost-border, rgba(255, 255, 255, 0.15));
+    color: var(--mg-checkout-ghost-text, #FFFFFF);
+  }
+
+  .mg-checkout-ghost:hover {
+    filter: brightness(1.12);
+  }
+
+  .mg-checkout-cta {
+    background: var(--mg-checkout-cta-bg, #FFFFFF);
+    color: var(--mg-checkout-cta-text, var(--mg-brand-deep));
+  }
+
+  .mg-checkout-cta:hover {
+    filter: brightness(0.96);
+  }
+
   /* Sección con encabezado iOS Settings-style */
   .mg-section-title {
     @apply text-xs uppercase tracking-wider text-[var(--mg-text-muted)] font-semibold px-4 mb-2 mt-6;

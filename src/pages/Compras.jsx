@@ -351,8 +351,8 @@ export default function Compras() {
           {activeTab === 'comprar' && (
             <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-white">
-                  <AppIcon name="paquete" size={19} color="#fff" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]">
+                  <AppIcon name="paquete" size={19} />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Reposición</p>
@@ -387,9 +387,9 @@ export default function Compras() {
                   onClick={openScanner}
                   title="Escanear código de barras"
                   aria-label="Escanear código de barras"
-                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
+                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
                 >
-                  <AppIcon name="scan" size={23} color="#fff" />
+                  <AppIcon name="scan" size={23} />
                 </button>
               </div>
 
@@ -401,7 +401,7 @@ export default function Compras() {
                     onClick={() => setFilterCategory(cat)}
                     className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                       filterCategory === cat
-                        ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-white shadow-sm'
+                        ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
                         : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
                     }`}
                   >
@@ -439,7 +439,7 @@ export default function Compras() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectProduct(product)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-white shadow-sm active:scale-90"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-[var(--mg-brand-contrast)] shadow-sm active:scale-90"
                               >
                                 +
                               </button>

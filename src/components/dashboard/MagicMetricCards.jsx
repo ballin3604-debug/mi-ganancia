@@ -46,7 +46,7 @@ export function MagicMetricCards({
           const isMobile = window.matchMedia('(max-width: 1023px)').matches;
           onNavigate && onNavigate(isMobile ? '/ventas?tab=auditoria' : '/ventas?tab=reporte');
         }}
-        className="relative overflow-hidden rounded-3xl bg-[var(--mg-brand)] p-5 sm:p-6 text-white shadow-[var(--mg-shadow-md)] hover:shadow-[var(--mg-shadow-lg)] transition-shadow group cursor-pointer sm:col-span-2 xl:col-span-5"
+        className="relative overflow-hidden rounded-3xl bg-[var(--mg-brand)] p-5 sm:p-6 text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] hover:shadow-[var(--mg-shadow-lg)] transition-shadow group cursor-pointer sm:col-span-2 xl:col-span-5"
       >
         <span className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/5" />
         <span className="pointer-events-none absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-white/5" />
@@ -54,7 +54,7 @@ export function MagicMetricCards({
         <div className="relative">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-brand-contrast)] opacity-60">
                 Ventas de hoy
               </p>
               <p className="mt-2 text-3xl sm:text-4xl font-black tracking-tight tabular-nums">
@@ -62,18 +62,18 @@ export function MagicMetricCards({
               </p>
             </div>
             <span className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <AppIcon name="caja" size={20} color="#fff" />
+              <AppIcon name="caja" size={20} />
             </span>
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-3 text-[11px]">
-            <span className="font-bold text-white/90">
+            <span className="font-bold text-[var(--mg-brand-contrast)] opacity-90">
               {paidSalesCount} {paidSalesCount === 1 ? 'venta' : 'ventas'}
             </span>
-            <span className="flex items-center gap-2 font-semibold text-white/70">
-              <span className="flex items-center gap-1"><AppIcon name="cash" size={12} color="#fff" /> {formatBsShort(totalCash)}</span>
-              <span className="text-white/25">·</span>
-              <span className="flex items-center gap-1"><AppIcon name="qr" size={12} color="#fff" /> {formatBsShort(totalQr)}</span>
+            <span className="flex items-center gap-2 font-semibold text-[var(--mg-brand-contrast)] opacity-70">
+              <span className="flex items-center gap-1"><AppIcon name="cash" size={12} /> {formatBsShort(totalCash)}</span>
+              <span className="opacity-30">·</span>
+              <span className="flex items-center gap-1"><AppIcon name="qr" size={12} /> {formatBsShort(totalQr)}</span>
             </span>
           </div>
         </div>

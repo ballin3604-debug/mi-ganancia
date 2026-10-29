@@ -48,8 +48,8 @@ export function InventoryHeader({
       {/* Top Header Bar: Title & Primary Actions */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)]">
-            <AppIcon name="almacen" size={21} color="#fff" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)]">
+            <AppIcon name="almacen" size={21} />
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
@@ -99,10 +99,10 @@ export function InventoryHeader({
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={onOpenAddProduct}
-            className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white rounded-2xl px-4 py-2 font-black text-xs shadow-[var(--mg-shadow-md)] hover:shadow-[var(--mg-shadow-lg)] transition-all hidden md:flex items-center gap-2 min-h-[42px]"
+            className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] rounded-2xl px-4 py-2 font-black text-xs shadow-[var(--mg-shadow-md)] hover:shadow-[var(--mg-shadow-lg)] transition-all hidden md:flex items-center gap-2 min-h-[42px]"
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center leading-none">
-              <AppIcon name="nuevoProducto" size={14} color="#fff" />
+              <AppIcon name="nuevoProducto" size={14} />
             </span>
             <span>Nuevo Producto</span>
           </motion.button>
@@ -143,9 +143,9 @@ export function InventoryHeader({
                 onClick={onOpenScanner}
                 title="Escanear código de barras"
                 aria-label="Escanear código de barras"
-                className="w-10 h-10 shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white shadow-[var(--mg-shadow-md)] flex items-center justify-center active:scale-90 transition-all"
+                className="w-10 h-10 shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] flex items-center justify-center active:scale-90 transition-all"
               >
-                <AppIcon name="scan" size={20} color="#fff" />
+                <AppIcon name="scan" size={20} />
               </button>
             )}
             {onToggleFilters && (
@@ -157,7 +157,7 @@ export function InventoryHeader({
                 aria-expanded={showFilters}
                 className={`md:hidden w-9 h-9 shrink-0 rounded-xl border shadow-2xs flex items-center justify-center active:scale-90 transition-all relative ${
                   showFilters
-                    ? 'bg-[var(--mg-brand)] text-white border-[var(--mg-brand)]'
+                    ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] border-[var(--mg-brand)]'
                     : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] border-[var(--mg-border)]'
                 }`}
               >
@@ -273,14 +273,14 @@ export function InventoryHeader({
                     />
                   )}
 
-                  <span className={`relative z-10 transition-colors ${isActive ? 'text-white font-black' : 'text-[var(--mg-text-secondary)]'}`}>
+                  <span className={`relative z-10 transition-colors ${isActive ? 'text-[var(--mg-brand-contrast)] font-black' : 'text-[var(--mg-text-secondary)]'}`}>
                     {cat === 'Todas' && allLabel ? allLabel : cat}
                   </span>
 
                   <span
                     className={`relative z-10 text-[9px] font-black px-1.5 py-0.5 rounded-full transition-colors ${
                       isActive
-                        ? 'bg-white/20 text-white'
+                        ? 'bg-white/20 text-[var(--mg-brand-contrast)]'
                         : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] border border-[var(--mg-border)]'
                     }`}
                   >

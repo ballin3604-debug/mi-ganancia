@@ -6,17 +6,17 @@ import { getCategoryById, DEFAULT_CATEGORY_ID } from '../config/businessCategori
 // por compatibilidad con imports existentes.
 export { ADMIN_UID, isAdmin } from '../config/admin';
 
-// ── Planes por negocio (solo admin, 3 botones: free/pro/premium) ──
+// ── Planes por negocio (solo admin, 2 botones: Pro/Premium) ──
 export async function getBusinessPlans() {
   const { data, error } = await assertSupabase().from('subscriptions').select('business_id,plan_id,status');
   if (error) throw error;
   const map = {};
-  (data || []).forEach((s) => { map[s.business_id] = s.plan_id || 'free'; });
+  (data || []).forEach((s) => { map[s.business_id] = s.plan_id || 'pro'; });
   return map;
 }
 
 export async function setBusinessPlan(businessId, planId) {
-  if (!['free', 'pro', 'premium'].includes(planId)) throw new Error('Plan inválido.');
+  if (!['pro', 'premium'].includes(planId)) throw new Error('Plan inválido.');
   const { error } = await assertSupabase().from('subscriptions').upsert({
     business_id: businessId,
     plan_id: planId,
@@ -67,7 +67,7 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
     .from('profiles')
     .upsert({
       id: userId,
-      name: user.displayName || user.email,
+      name: user.displayName || user.email || user.phone,
       business_id: null,
       status: 'pending',
       role: 'owner',
@@ -81,8 +81,8 @@ export async function submitRequest(user, businessName, businessCategory = DEFAU
     .insert({
       id: requestId,
       user_id: userId,
-      email: user.email,
-      display_name: user.displayName || user.email,
+      email: user.email || user.phone || '',
+      display_name: user.displayName || user.email || user.phone,
       photo_url: user.photoURL || '',
       business_name: cleanName,
       business_category: businessCategory,

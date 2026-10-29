@@ -4,6 +4,7 @@ import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { usePlan } from '../hooks/usePlan';
 import { SyncErrorPanel } from './SyncErrorPanel';
 import { LogoutModal } from './LogoutModal';
 import Ayuda from './Ayuda';
@@ -164,6 +165,7 @@ export default function Layout() {
   // Restaurante: sin compras ni sucursales; sin reportes de inventario/compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const { online, pendingCount, errorCount } = useSyncStatus();
+  const { can } = usePlan();
   const location = useLocation();
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -229,6 +231,7 @@ export default function Layout() {
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || !isCashier)
     .filter((item) => !(isRestaurantMode && (item.key === 'purchases' || item.key === 'branches')))
+    .filter((item) => item.key !== 'branches' || can('branches'))
     .map((item) => (
       isRestaurantMode && item.children
         ? {
@@ -322,7 +325,7 @@ export default function Layout() {
                   className="flex items-center justify-center py-1 rounded-xl"
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
-                    isGroupActive ? 'bg-[var(--mg-brand)] text-white shadow-sm' : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
+                    isGroupActive ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm' : 'text-[var(--mg-text-muted)] hover:bg-[var(--mg-bg-elevated)] hover:text-[var(--mg-text-secondary)]'
                   }`}>
                     <span className="scale-[0.85] flex items-center justify-center">
                       <GroupIcon />
@@ -349,7 +352,7 @@ export default function Layout() {
                   }`}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
-                    isGroupActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
+                    isGroupActive ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]' : 'text-[var(--mg-text-muted)]'
                   }`}>
                     <span className="scale-[0.85] flex items-center justify-center">
                       <GroupIcon />
@@ -399,7 +402,7 @@ export default function Layout() {
             ) : (
               <span
                 title={sidebarOpen ? undefined : (user?.displayName || user?.email)}
-                className="w-9 h-9 rounded-full shrink-0 bg-[var(--mg-brand)] text-white flex items-center justify-center text-sm font-black"
+                className="w-9 h-9 rounded-full shrink-0 bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] flex items-center justify-center text-sm font-black"
               >
                 {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
               </span>
@@ -434,7 +437,7 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:h-screen lg:overflow-hidden">
 
         {/* Mobile header — compacto, con marca y estado */}
-        <header className="lg:hidden bg-[var(--mg-bg-base)]/95 backdrop-blur-xl px-3 pt-3 pb-2.5 sticky top-0 z-30 border-b border-[var(--mg-separator)]">
+        <header className="lg:hidden bg-[var(--mg-topbar)]/95 backdrop-blur-xl px-3 pt-3 pb-2.5 sticky top-0 z-30 border-b border-[var(--mg-separator)]">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <button
@@ -489,7 +492,7 @@ export default function Layout() {
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <span className="w-10 h-10 rounded-full shrink-0 bg-[var(--mg-brand)] text-white flex items-center justify-center text-sm font-black">
+              <span className="w-10 h-10 rounded-full shrink-0 bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] flex items-center justify-center text-sm font-black">
                 {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
               </span>
             )}
@@ -518,7 +521,7 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  isActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
+                  isActive ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]' : 'text-[var(--mg-text-muted)]'
                 }`}>
                   <HomeIcon />
                 </div>
@@ -539,7 +542,7 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  isActive ? 'bg-[var(--mg-brand)] text-white' : 'text-[var(--mg-text-muted)]'
+                  isActive ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]' : 'text-[var(--mg-text-muted)]'
                 }`}>
                   <CartIcon />
                 </div>
@@ -641,12 +644,12 @@ export default function Layout() {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : (
-                  <span className="w-10 h-10 rounded-full bg-[var(--mg-brand)] text-white flex items-center justify-center font-black text-lg shrink-0">
+                  <span className="w-10 h-10 rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] flex items-center justify-center font-black text-lg shrink-0">
                     {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
                   </span>
                 )}
                 <p className="flex-1 min-w-0 text-[13px] text-[var(--mg-text-muted)] font-medium truncate">
-                  {user?.email || ''}
+                  {user?.email || user?.phone || ''}
                 </p>
                 <button
                   type="button"

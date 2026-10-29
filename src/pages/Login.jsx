@@ -1,7 +1,17 @@
 import { useState } from 'react';
-import { signInWithPassword, signUp, signInWithGoogle } from '../services/auth';
+import {
+  signInWithPassword,
+  signUp,
+  signInWithGoogle,
+  signUpWithPhone,
+  signInWithPhonePassword,
+  verifyPhoneCode,
+  sendPhoneLoginCode,
+  resendPhoneCode,
+} from '../services/auth';
 import { supabase, isSupabaseConfigured, supabaseConfigError } from '../services/supabaseClient';
 import { AppIcon } from '../components/icons';
+import { normalizeBolivianPhone, formatPhoneDisplay } from '../utils/phone';
 
 function traducirError(message = '') {
   const msg = message.toLowerCase();
@@ -9,12 +19,26 @@ function traducirError(message = '') {
     return 'Correo o contraseña incorrectos. Verifica e intenta de nuevo.';
   if (msg.includes('email not confirmed'))
     return 'Debes confirmar tu correo antes de entrar. Revisa tu bandeja de entrada.';
-  if (msg.includes('user already registered') || msg.includes('already registered'))
+  if (msg.includes('phone not confirmed'))
+    return 'Debes confirmar tu celular antes de entrar. Pide un código SMS e ingrésalo.';
+  if (msg.includes('user already registered') || msg.includes('already registered') || msg.includes('already been registered') || msg.includes('phone_exists'))
     return 'Esa cuenta ya existe. Inicia sesión en lugar de registrarte.';
   if (msg.includes('password should be at least'))
     return 'La contraseña debe tener al menos 6 caracteres.';
   if (msg.includes('invalid email') || msg.includes('unable to validate email'))
     return 'Escribe un correo electrónico válido.';
+  if (msg.includes('invalid phone') || msg.includes('phone number is invalid') || msg.includes('unable to validate phone'))
+    return 'Escribe un número de celular válido (8 dígitos, ej. 70012345).';
+  if (msg.includes('token has expired') || msg.includes('invalid otp') || msg.includes('otp_expired') || msg.includes('invalid token'))
+    return 'El código no es válido o ya venció. Pide uno nuevo.';
+  if (msg.includes('sms') || msg.includes('twilio') || msg.includes('error sending'))
+    return 'No pudimos enviar el SMS. Revisa el número o regístrate con correo.';
+  if (msg.includes('phone provider') || msg.includes('provider is disabled'))
+    return 'El registro por SMS no está disponible. Regístrate con tu correo.';
+  if (msg.includes('signups not allowed for otp') || msg.includes('user not found'))
+    return 'Ese celular no tiene una cuenta. Regístrate primero.';
+  if (msg.includes('signups not allowed') || msg.includes('signup is disabled'))
+    return 'El registro está deshabilitado. Contacta al soporte.';
   if (msg.includes('too many requests') || msg.includes('rate limit'))
     return 'Demasiados intentos. Espera un minuto e intenta de nuevo.';
   if (msg.includes('network') || msg.includes('fetch'))
@@ -22,9 +46,31 @@ function traducirError(message = '') {
   return message || 'Ocurrió un error. Intenta de nuevo.';
 }
 
+function Feedback({ error, success }) {
+  return (
+    <>
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2.5">
+          <AppIcon name="alerta" size={16} color="var(--mg-danger)" className="mt-0.5" />
+          <p className="text-xs font-semibold leading-relaxed text-[var(--mg-danger)]">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div role="status" className="flex items-start gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3.5 py-2.5">
+          <AppIcon name="ok" size={16} color="var(--mg-success-text)" className="mt-0.5" />
+          <p className="text-xs font-semibold leading-relaxed text-[var(--mg-success-text)]">{success}</p>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Login({ onShowOnboarding } = {}) {
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
+  const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,15 +79,99 @@ export default function Login({ onShowOnboarding } = {}) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [imgError, setImgError] = useState(false);
+  const [otpMode, setOtpMode] = useState(null); // 'register' | 'login'
+  const [pendingPhone, setPendingPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const isRegister = mode === 'register';
   const isReset = mode === 'reset';
+  const isPhone = authMethod === 'phone' && !isReset;
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   function cambiarModo(nuevo) {
     setMode(nuevo);
     setError('');
     setSuccess('');
+    setOtpMode(null);
+    setOtpCode('');
+    if (nuevo === 'reset') setAuthMethod('email');
+  }
+
+  function cambiarMetodo(metodo) {
+    setAuthMethod(metodo);
+    setError('');
+    setSuccess('');
+  }
+
+  function volverAlFormulario() {
+    setOtpMode(null);
+    setOtpCode('');
+    setError('');
+    setSuccess('');
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    const token = otpCode.replace(/\D/g, '');
+    if (token.length < 6) {
+      setError('Escribe el código de 6 dígitos que llegó por SMS.');
+      return;
+    }
+    setOtpLoading(true);
+    setError('');
+    try {
+      await verifyPhoneCode(pendingPhone, token);
+      // AuthContext detecta la sesión y entra a la app.
+    } catch (err) {
+      console.error(err);
+      setError(traducirError(err.message));
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setError('');
+    setSuccess('');
+    try {
+      try {
+        await resendPhoneCode(pendingPhone);
+      } catch {
+        await sendPhoneLoginCode(pendingPhone);
+      }
+      setSuccess(`Te enviamos un nuevo código a ${formatPhoneDisplay(pendingPhone)}.`);
+    } catch (err) {
+      console.error(err);
+      setError(traducirError(err.message));
+    } finally {
+      setResending(false);
+    }
+  }
+
+  async function handleSendLoginCode() {
+    const normalized = normalizeBolivianPhone(phone);
+    if (!normalized) {
+      setError('Escribe un número de celular válido (8 dígitos, ej. 70012345).');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await sendPhoneLoginCode(normalized);
+      setPendingPhone(normalized);
+      setOtpMode('login');
+      setOtpCode('');
+      setSuccess(`Te enviamos un código a ${formatPhoneDisplay(normalized)}.`);
+    } catch (err) {
+      console.error(err);
+      setError(traducirError(err.message));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -50,6 +180,52 @@ export default function Login({ onShowOnboarding } = {}) {
       setError(supabaseConfigError || 'Falta VITE_SUPABASE_URL. Configura tu archivo .env para poder entrar.');
       return;
     }
+    if (isPhone) {
+      const normalized = normalizeBolivianPhone(phone);
+      if (!normalized) {
+        setError('Escribe un número de celular válido (8 dígitos, ej. 70012345).');
+        return;
+      }
+      if (!password) {
+        setError('Escribe tu contraseña.');
+        return;
+      }
+      if (isRegister && password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+      if (isRegister && !displayName.trim()) {
+        setError('Escribe tu nombre para crear tu cuenta.');
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+      setSuccess('');
+      try {
+        if (isRegister) {
+          const data = await signUpWithPhone(normalized, password, displayName.trim());
+          if (data?.session) {
+            // El número quedó confirmado al instante: AuthContext entra solo.
+            return;
+          }
+          setPendingPhone(normalized);
+          setOtpMode('register');
+          setOtpCode('');
+          setPassword('');
+          setSuccess(`Te enviamos un código por SMS a ${formatPhoneDisplay(normalized)}. Ingrésalo para confirmar tu cuenta.`);
+        } else {
+          await signInWithPhonePassword(normalized, password);
+        }
+      } catch (err) {
+        console.error(err);
+        setError(traducirError(err.message));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
       setError('Escribe tu correo electrónico.');
@@ -157,7 +333,86 @@ export default function Login({ onShowOnboarding } = {}) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {otpMode ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-5" noValidate>
+            <div className="rounded-2xl border border-[#d4dad6] bg-[#f8faf8] px-4 py-3.5">
+              <p className="text-sm font-bold text-[#18201b]">Confirma tu celular</p>
+              <p className="mt-1 text-[13px] leading-5 text-[#747b76]">
+                Enviamos un código de 6 dígitos a{' '}
+                <strong className="font-semibold text-[#252a27]">{formatPhoneDisplay(pendingPhone)}</strong>.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="codigo" className="mb-2 block text-sm font-semibold text-[#252a27]">Código SMS</label>
+              <input
+                id="codigo"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                maxLength={6}
+                className="h-[58px] w-full rounded-[15px] border border-[#d4dad6] bg-white px-4 text-center text-[22px] font-bold tracking-[0.35em] text-[#18201b] outline-none transition placeholder:tracking-[0.2em] placeholder:text-[#a3aaa5] focus:border-[#168266] focus:ring-4 focus:ring-[#168266]/10"
+              />
+            </div>
+
+            <Feedback error={error} success={success} />
+
+            <button type="submit" disabled={otpLoading} className="mt-2 flex min-h-[58px] w-full items-center justify-center rounded-full bg-[#113f32] px-5 text-[16px] font-bold text-white transition hover:bg-[#0c352a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60">
+              {otpLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Verificando…
+                </span>
+              ) : (
+                <span>Confirmar y entrar</span>
+              )}
+            </button>
+
+            <div className="flex flex-col gap-1">
+              <button type="button" onClick={handleResend} disabled={resending || otpLoading} className="flex min-h-[44px] w-full items-center justify-center border-0 bg-transparent text-sm font-semibold text-[#167457] hover:text-[#105a43] disabled:opacity-60">
+                {resending ? 'Reenviando…' : 'Reenviar código'}
+              </button>
+              <button type="button" onClick={volverAlFormulario} className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-0 bg-transparent text-sm font-semibold text-[#747b76] hover:text-[#252a27]">
+                <AppIcon name="volver" size={16} />
+                Volver
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {!isReset && (
+              <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-[#d4dad6] bg-[#f3f6f4] p-1" role="tablist" aria-label="Método de acceso">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!isPhone}
+                  onClick={() => cambiarMetodo('email')}
+                  className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all ${
+                    !isPhone ? 'bg-white text-[#103f32] shadow-sm' : 'text-[#747b76] hover:text-[#252a27]'
+                  }`}
+                >
+                  <AppIcon name="correo" size={16} />
+                  Correo
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isPhone}
+                  onClick={() => cambiarMetodo('phone')}
+                  className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all ${
+                    isPhone ? 'bg-white text-[#103f32] shadow-sm' : 'text-[#747b76] hover:text-[#252a27]'
+                  }`}
+                >
+                  <AppIcon name="celular" size={16} />
+                  Celular
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {isRegister && (
             <div>
               <label htmlFor="nombre" className="mb-2 block text-sm font-semibold text-[#252a27]">Tu nombre</label>
@@ -173,29 +428,58 @@ export default function Login({ onShowOnboarding } = {}) {
             </div>
           )}
 
-          <div>
-            <label htmlFor="correo" className="mb-2 block text-sm font-semibold text-[#252a27]">Correo electrónico</label>
-            <input
-              id="correo"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
-              autoComplete="email"
-              inputMode="email"
-              required
-              className="h-[58px] w-full rounded-[15px] border border-[#d4dad6] bg-white px-4 text-[16px] text-[#18201b] outline-none transition placeholder:text-[#a3aaa5] focus:border-[#168266] focus:ring-4 focus:ring-[#168266]/10"
-            />
-            <p className="mt-2 text-[13px] text-[#858b87]">
-              {isReset ? 'Te enviaremos un enlace de recuperación.' : 'Usaremos tu correo para cuidar el acceso a tu negocio.'}
-            </p>
-          </div>
+          {!isPhone && (
+            <div>
+              <label htmlFor="correo" className="mb-2 block text-sm font-semibold text-[#252a27]">Correo electrónico</label>
+              <input
+                id="correo"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@correo.com"
+                autoComplete="email"
+                inputMode="email"
+                required
+                className="h-[58px] w-full rounded-[15px] border border-[#d4dad6] bg-white px-4 text-[16px] text-[#18201b] outline-none transition placeholder:text-[#a3aaa5] focus:border-[#168266] focus:ring-4 focus:ring-[#168266]/10"
+              />
+              <p className="mt-2 text-[13px] text-[#858b87]">
+                {isReset ? 'Te enviaremos un enlace de recuperación.' : 'Usaremos tu correo para cuidar el acceso a tu negocio.'}
+              </p>
+            </div>
+          )}
+
+          {isPhone && (
+            <div>
+              <label htmlFor="celular" className="mb-2 block text-sm font-semibold text-[#252a27]">Número de celular</label>
+              <div className="flex h-[58px] w-full overflow-hidden rounded-[15px] border border-[#d4dad6] bg-white transition focus-within:border-[#168266] focus-within:ring-4 focus-within:ring-[#168266]/10">
+                <span className="flex items-center border-r border-[#e5e9e6] bg-[#f8faf8] px-3.5 text-[15px] font-semibold text-[#4b524d]">
+                  +591
+                </span>
+                <input
+                  id="celular"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="70012345"
+                  autoComplete="tel-national"
+                  inputMode="tel"
+                  required
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent px-4 text-[16px] text-[#18201b] outline-none placeholder:text-[#a3aaa5]"
+                />
+              </div>
+              <p className="mt-2 text-[13px] text-[#858b87]">
+                {isRegister
+                  ? 'Te enviaremos un código por SMS para confirmar tu número.'
+                  : 'Ingresa con tu celular y contraseña, o pide un código SMS.'}
+              </p>
+            </div>
+          )}
 
           {!isReset && (
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <label htmlFor="clave" className="text-sm font-semibold text-[#252a27]">Contraseña</label>
-                {!isRegister && (
+                {!isRegister && !isPhone && (
                   <button type="button" onClick={() => cambiarModo('reset')} className="border-0 bg-transparent p-0 text-[13px] font-semibold text-[#167457] hover:text-[#105a43]">
                     ¿La olvidaste?
                   </button>
@@ -235,19 +519,7 @@ export default function Login({ onShowOnboarding } = {}) {
             </div>
           )}
 
-          {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2.5">
-              <AppIcon name="alerta" size={16} color="var(--mg-danger)" className="mt-0.5" />
-              <p className="text-xs font-semibold leading-relaxed text-[var(--mg-danger)]">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div role="status" className="flex items-start gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3.5 py-2.5">
-              <AppIcon name="ok" size={16} color="var(--mg-success-text)" className="mt-0.5" />
-              <p className="text-xs font-semibold leading-relaxed text-[var(--mg-success-text)]">{success}</p>
-            </div>
-          )}
+          <Feedback error={error} success={success} />
 
           <button type="submit" disabled={loading} className="mt-2 flex min-h-[58px] w-full items-center justify-center rounded-full bg-[#113f32] px-5 text-[16px] font-bold text-white transition hover:bg-[#0c352a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60">
             {loading ? (
@@ -260,6 +532,12 @@ export default function Login({ onShowOnboarding } = {}) {
             )}
           </button>
 
+          {isPhone && !isRegister && (
+            <button type="button" onClick={handleSendLoginCode} disabled={loading} className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-0 bg-transparent text-sm font-semibold text-[#167457] hover:text-[#105a43] disabled:opacity-60">
+              Entrar con código SMS
+            </button>
+          )}
+
           {isReset && (
             <button type="button" onClick={() => cambiarModo('login')} className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-0 bg-transparent pt-1 text-sm font-semibold text-[#167457]">
               <AppIcon name="volver" size={16} color="#167457" />
@@ -267,8 +545,10 @@ export default function Login({ onShowOnboarding } = {}) {
             </button>
           )}
         </form>
+          </>
+        )}
 
-        {!isReset && (
+        {!isReset && !otpMode && (
           <>
             <div className="my-7 flex items-center gap-4" aria-hidden="true">
               <div className="h-px flex-1 bg-[#e5e9e6]" />

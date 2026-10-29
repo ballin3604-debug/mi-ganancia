@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
       const userObj = {
         ...supabaseUser,
         uid: supabaseUser.id,
-        displayName: supabaseUser.user_metadata?.displayName || supabaseUser.email,
+        displayName: supabaseUser.user_metadata?.displayName || supabaseUser.email || supabaseUser.phone,
       };
       try {
         const userData = await getUserData(supabaseUser.id);
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
             const invite = await findInviteForEmail(supabaseUser.email);
             if (invite) {
               if (thisSessionId !== activeSessionIdRef.current) return;
-              const displayName = supabaseUser.user_metadata?.displayName || supabaseUser.email;
+              const displayName = supabaseUser.user_metadata?.displayName || supabaseUser.email || supabaseUser.phone;
               await joinBusinessWithCode(supabaseUser, invite.code, displayName, {});
               const fresh = await getUserData(supabaseUser.id);
               if (fresh) {

@@ -530,18 +530,18 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-[var(--mg-bg-elevated)]">
       {/* Header */}
-      <div className="bg-[var(--mg-brand)] text-white px-4 py-4 sticky top-0 z-30">
+      <div className="bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] px-4 py-4 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black">Panel Admin</h1>
-            <p className="text-white/80 text-xs">Mi Ganancia — Control SaaS</p>
+            <p className="text-[var(--mg-brand-contrast)] opacity-80 text-xs">Mi Ganancia — Control SaaS</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/')}
-              className="text-white/80 text-sm font-semibold">
+              className="text-[var(--mg-brand-contrast)] opacity-80 text-sm font-semibold">
               ← Mi app
             </button>
-            <button onClick={signOut} className="text-white/80 text-sm font-semibold">
+            <button onClick={signOut} className="text-[var(--mg-brand-contrast)] opacity-80 text-sm font-semibold">
               Salir
             </button>
           </div>
@@ -737,15 +737,14 @@ export default function AdminPanel() {
                       </div>
                     </div>
 
-                    {/* Plan del negocio: 3 botones */}
+                    {/* Plan del negocio: 2 botones */}
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Plan:</span>
                       {[
-                        { id: 'free', label: 'Free' },
                         { id: 'pro', label: 'Pro' },
                         { id: 'premium', label: 'Premium' },
                       ].map((p) => {
-                        const active = (bizPlans[biz.id] || 'free') === p.id;
+                        const active = (bizPlans[biz.id] || 'pro') === p.id;
                         return (
                           <button
                             key={p.id}

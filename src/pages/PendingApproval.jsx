@@ -213,7 +213,7 @@ export default function PendingApproval({ status }) {
                 {user?.displayName || 'Usuario'}
               </p>
               <p className="truncate text-xs text-[#747b76]">
-                {user?.email}
+                {user?.email || user?.phone}
               </p>
             </div>
           </div>

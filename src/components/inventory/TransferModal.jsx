@@ -102,7 +102,7 @@ export function TransferModal({ businessId, product, branches, fromBranchId, bra
 
           <button
             type="submit" disabled={!valid || saving}
-            className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold py-3 rounded-2xl text-sm shadow-[var(--mg-shadow-md)] active:scale-95 disabled:opacity-50"
+            className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold py-3 rounded-2xl text-sm shadow-[var(--mg-shadow-md)] active:scale-95 disabled:opacity-50"
           >
             {saving ? 'Traspasando…' : `Traspasar ${qtyVal > 0 ? qtyVal : ''} und.`}
           </button>

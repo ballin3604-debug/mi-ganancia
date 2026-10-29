@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { effectivePlan, daysLeft, getPlan } from '../config/plans';
 
 // Lee la suscripción del negocio y expone plan efectivo + helpers de gating.
-// Sin fila o vencida => Free (los datos nunca se bloquean, solo las funciones).
+// Sin fila o vencida => Pro (los datos nunca se bloquean, solo las funciones).
 // billingReady=false si las tablas aún no existen (SQL sin correr): en ese
 // modo legacy TODO queda abierto como antes, para no bloquear de golpe.
 export function usePlan() {

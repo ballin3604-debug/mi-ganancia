@@ -11,6 +11,8 @@ import { getReceiptFormat, setReceiptFormat, RECEIPT_FORMATS } from '../utils/re
 import { AppIcon } from '../components/icons';
 import { TicketPreview } from '../components/settings/TicketPreview';
 import { ThemePicker } from '../components/settings/ThemePicker';
+import { UpgradeModal } from '../components/UpgradeScreen';
+import { usePlan } from '../hooks/usePlan';
 
 /* ─────────────────────────────────────────────
    Ajustes · formato lista (liviano, estilo iOS)
@@ -20,16 +22,24 @@ import { ThemePicker } from '../components/settings/ThemePicker';
 
 function Chevron() {
   return (
-    <svg className="w-4 h-4 text-[var(--mg-text-faint)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <svg className="w-[18px] h-[18px] text-[var(--mg-text-faint)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg className="w-[18px] h-[18px] text-[var(--mg-text-faint)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
     </svg>
   );
 }
 
 function IconBox({ icon, tint }) {
   return (
-    <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
-      <AppIcon name={icon} size={15} color="currentColor" />
+    <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${tint}`}>
+      <AppIcon name={icon} size={20} color="currentColor" />
     </span>
   );
 }
@@ -41,10 +51,32 @@ function Toggle({ on, onChange }) {
       role="switch"
       aria-checked={on}
       onClick={(e) => { e.stopPropagation(); onChange(!on); }}
-      className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors ${on ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-border-hover)]'}`}
+      className={`h-7 w-[52px] shrink-0 rounded-full p-0.5 transition-colors ${on ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-border-hover)]'}`}
     >
-      <span className={`block h-5 w-5 rounded-full bg-[var(--mg-bg-surface)] shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
+      <span className={`block h-6 w-6 rounded-full bg-[var(--mg-bg-surface)] shadow transition-transform ${on ? 'translate-x-[24px]' : 'translate-x-0'}`} />
     </button>
+  );
+}
+
+function SectionCard({ icon, title, description, badge, children }) {
+  return (
+    <section className="bg-[var(--mg-bg-surface)] rounded-[26px] border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] overflow-hidden">
+      <div className="flex items-start gap-3 px-4 sm:px-5 py-4 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)]/35">
+        <span className="w-10 h-10 rounded-2xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
+          <AppIcon name={icon} size={19} color="currentColor" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-black tracking-tight text-[var(--mg-text-primary)]">{title}</h2>
+            {badge}
+          </div>
+          {description && (
+            <p className="text-[11px] font-medium leading-snug text-[var(--mg-text-muted)] mt-0.5">{description}</p>
+          )}
+        </div>
+      </div>
+      <div className="divide-y divide-[var(--mg-separator)]">{children}</div>
+    </section>
   );
 }
 
@@ -53,6 +85,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { business, settings, refreshSettings, refreshBusiness } = useBusiness();
   const { pickImage, pickLogo, pickQR } = useImageUpload();
+  const { plan, planId, loading: planLoading } = usePlan();
 
   // ── Valores guardados ──
   const savedSlogan = settings?.slogan || '';
@@ -85,6 +118,7 @@ export default function Settings() {
   const [query, setQuery] = useState('');
   const [showRubroModal, setShowRubroModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPlans, setShowPlans] = useState(false);
 
   // Nombre (guardado inmediato, no va al bulk-save)
   const [nameDraft, setNameDraft] = useState('');
@@ -169,7 +203,7 @@ export default function Settings() {
     vista: 'vista previa ejemplo probar imprimir test',
     respaldo: 'respaldo copia seguridad exportar descargar json backup',
     admin: 'admin panel administracion',
-    tema: 'tema apariencia colores oscuro claro gourmet clasico diseno diseño estilo',
+    tema: 'tema apariencia colores oscuro claro gourmet clasico yuzen pastel rosa azul diseno diseño estilo',
   };
   const q = query.trim().toLowerCase();
   function visible(id) {
@@ -285,22 +319,37 @@ export default function Settings() {
   const inputCls = 'mg-input text-sm font-medium !py-2 !rounded-lg';
   const hintCls = 'text-[11px] text-[var(--mg-text-muted)] leading-snug';
 
-  function Row({ id, icon, tint, title, value, right, onOpen }) {
+  function Row({ id, icon, tint, title, value, right, onOpen, disabled = false, badge }) {
     if (!visible(id)) return null;
-    const isOpen = openId === id && !onOpen;
+    const isOpen = !disabled && openId === id && !onOpen;
     return (
       <div>
         <button
           type="button"
-          onClick={() => (onOpen ? onOpen() : toggle(id))}
-          className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)] transition-colors"
+          disabled={disabled}
+          aria-disabled={disabled}
+          onClick={() => {
+            if (disabled) return;
+            if (onOpen) onOpen();
+            else toggle(id);
+          }}
+          className={`w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3 text-left transition-colors ${
+            disabled ? 'cursor-default opacity-75' : 'active:bg-[var(--mg-bg-elevated)]'
+          }`}
         >
           <IconBox icon={icon} tint={tint} />
           <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-semibold text-[var(--mg-text-primary)] leading-tight">{title}</span>
-            <span className="block text-xs text-[var(--mg-text-muted)] truncate font-medium">{value}</span>
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="block text-sm font-bold text-[var(--mg-text-primary)] leading-tight">{title}</span>
+              {badge && (
+                <span className="rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--mg-gold-text)]">
+                  {badge}
+                </span>
+              )}
+            </span>
+            <span className="block text-xs text-[var(--mg-text-muted)] truncate font-medium mt-0.5">{value}</span>
           </span>
-          {right || <Chevron />}
+          {right || (disabled ? <LockIcon /> : <Chevron />)}
         </button>
         {isOpen && <Editor id={id} />}
       </div>
@@ -446,9 +495,9 @@ export default function Settings() {
   }
 
   const showNegocio = ['nombre', 'rubro', 'logo', 'slogan', 'telefono', 'qr'].some(visible);
-  const showFiscal = ['legal', 'nit', 'ciudad', 'direccion', 'pie'].some(visible);
+  const showFiscal = ['legal', 'nit', 'ciudad', 'direccion'].some(visible);
   const showTicket = isSearching
-    ? ['formato', 'verqr', 'vista'].some(visible)
+    ? ['formato', 'verqr', 'vista', 'pie'].some(visible)
     : true;
   const showDatos = isSearching
     ? ['respaldo', 'admin'].some(visible)
@@ -456,45 +505,95 @@ export default function Settings() {
   const showApariencia = visible('tema');
 
   return (
-    <div className="max-w-xl mx-auto px-4 pt-4 pb-32">
-      {/* Encabezado liviano */}
-      <h1 className="text-[22px] font-extrabold tracking-tight text-[var(--mg-text-primary)] leading-none">Ajustes</h1>
-      <p className="text-xs text-[var(--mg-text-muted)] mt-1 font-medium truncate">
-        {business?.name || 'Mi negocio'} · {role === 'cashier' ? 'Cajero' : 'Dueño'}
-        {hasChanges && <span className="font-bold text-[var(--mg-gold-text)]"> · {changedFields.length} sin guardar</span>}
-        {saved && <span className="font-bold text-[var(--mg-success-text)]"> · Guardado ✓</span>}
-      </p>
+    <div className="max-w-5xl mx-auto px-4 pt-4 pb-32">
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden rounded-[30px] border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-[var(--mg-brand-bg)] blur-2xl" />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-44 w-44 rounded-full bg-[var(--mg-accent-bg)] blur-2xl" />
+        <div className="relative p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 sm:w-[76px] sm:h-[76px] rounded-[24px] overflow-hidden border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] flex items-center justify-center shrink-0 shadow-sm">
+              {logoData ? (
+                <img src={logoData} alt={`Logo de ${business?.name || 'Mi negocio'}`} className="w-full h-full object-contain p-1.5" />
+              ) : (
+                <span className="w-12 h-12 rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] flex items-center justify-center">
+                  <AppIcon name="tienda" size={25} />
+                </span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
+                Ajustes del negocio
+              </p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-[var(--mg-text-primary)] leading-tight truncate">
+                {business?.name || 'Mi negocio'}
+              </h1>
+              <p className="mt-1 text-xs font-semibold text-[var(--mg-text-muted)] truncate">
+                {currentCat.emoji} {currentCat.name} · {role === 'cashier' ? 'Cajero' : 'Dueño'}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--mg-accent-text)]">
+                  <AppIcon name="plan" size={12} /> Plan {plan.name}
+                </span>
+                {hasChanges && (
+                  <span className="rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--mg-gold-text)]">
+                    {changedFields.length} sin guardar
+                  </span>
+                )}
+                {saved && (
+                  <span className="rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--mg-success-text)]">
+                    Guardado ✓
+                  </span>
+                )}
+              </div>
+            </div>
+            {!planLoading && planId !== 'premium' && (
+              <button
+                type="button"
+                onClick={() => setShowPlans(true)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 py-2 text-[11px] font-black text-[var(--mg-accent-text)] active:scale-95 transition-all"
+              >
+                <AppIcon name="plan" size={14} />
+                <span className="hidden sm:inline">Mejorar plan</span>
+              </button>
+            )}
+          </div>
 
-      {/* Buscador */}
-      <div className="relative mt-3">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
-          <AppIcon name="search" size={15} />
-        </span>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar ajuste… (QR, NIT, recibo…)"
-          className="mg-input !py-2 !pl-9 text-sm !rounded-xl"
-        />
-        {query && (
-          <button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda" className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--mg-bg-section)] text-xs font-bold text-[var(--mg-text-muted)]">✕</button>
-        )}
-      </div>
+          {/* Buscador */}
+          <div className="relative mt-5">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
+              <AppIcon name="search" size={17} />
+            </span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar ajuste… (QR, NIT, recibo…)"
+              className="mg-input !py-3 !pl-11 !pr-10 text-sm font-medium !rounded-2xl"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda" className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[var(--mg-bg-section)] text-xs font-bold text-[var(--mg-text-muted)]">✕</button>
+            )}
+          </div>
+        </div>
+      </section>
 
       <input ref={logoRef} type="file" accept="image/*" aria-label="Seleccionar logo" className="hidden" onChange={(e) => handleImagePick(e, setLogoData, 250)} />
       <input ref={qrRef} type="file" accept="image/*" aria-label="Seleccionar QR" className="hidden" onChange={handleQRPick} />
 
-      {/* ── MI NEGOCIO ── */}
-      {showNegocio && (
-        <>
-          <p className="mg-section-title !mt-5 !px-1">Mi negocio</p>
-          <div className="mg-list !rounded-2xl shadow-xs">
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        {/* ── MI NEGOCIO ── */}
+        {showNegocio && (
+          <SectionCard
+            icon="tienda"
+            title="Mi negocio"
+            description="Identidad, contacto y marca que ve tu equipo."
+          >
             <Row id="nombre" icon="tienda" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Nombre" value={business?.name || 'Sin nombre'} />
             <Row id="rubro" icon="etiqueta" tint="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]" title="Rubro" value={`${currentCat.emoji} ${currentCat.name}`} />
             <Row
               id="logo" icon="galeria" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" title="Logo" value={logoData ? 'Agregado · visible en la app' : 'Sin logo'}
               right={logoData
-                ? <img src={logoData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)]" />
+                ? <img src={logoData} alt="" className="w-10 h-10 rounded-xl object-contain border border-[var(--mg-border)]" />
                 : <Chevron />}
             />
             <Row id="slogan" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Slogan" value={slogan || 'Añadir frase del recibo…'} />
@@ -502,40 +601,27 @@ export default function Settings() {
             <Row
               id="qr" icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" title="QR de cobro" value={qrData ? 'Agregado' : 'Sin QR · Tigo, BCP, BNB…'}
               right={qrData
-                ? <img src={qrData} alt="" className="w-8 h-8 rounded-lg object-contain border border-[var(--mg-border)] bg-white" />
+                ? <img src={qrData} alt="" className="w-10 h-10 rounded-xl object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
             />
-          </div>
-        </>
-      )}
+          </SectionCard>
+        )}
 
-      {/* ── FACTURACIÓN ── */}
-      {showFiscal && (
-        <>
-          <p className="mg-section-title !mt-5 !px-1">Facturación y dirección</p>
-          <div className="mg-list !rounded-2xl shadow-xs">
-            <Row id="legal" icon="carnet" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Razón social" value={legalName || 'Sin registrar'} />
-            <Row id="nit" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="NIT" value={nit || 'Sin registrar'} />
-            <Row id="ciudad" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Ciudad" value={city || 'Sin registrar'} />
-            <Row id="direccion" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Dirección" value={address || 'Sin registrar'} />
-            <Row id="pie" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Mensaje final del ticket" value={footerMessage || '¡Gracias por su compra!'} />
-          </div>
-        </>
-      )}
-
-      {/* ── TICKET ── */}
-      {showTicket && (
-        <>
-          <p className="mg-section-title !mt-5 !px-1">Ticket</p>
-          <div className="mg-list !rounded-2xl shadow-xs">
+        {/* ── TICKET ── */}
+        {showTicket && (
+          <SectionCard
+            icon="recibo"
+            title="Ticket y recibos"
+            description="Formato de impresión y mensaje de despedida."
+          >
             <Row id="formato" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Formato del recibo" value={receiptFormat === 'sheet' ? 'Hoja A4' : 'Térmico 80mm'} />
             {visible('verqr') && (
               <div>
-                <div className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2">
+                <div className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3">
                   <IconBox icon="qr" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-semibold leading-tight">QR al final del ticket</span>
-                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium">{qrData ? 'Se imprime si está activado' : 'Primero subí un QR'}</span>
+                    <span className="block text-sm font-bold leading-tight">QR al final del ticket</span>
+                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">{qrData ? 'Se imprime si está activado' : 'Primero subí un QR'}</span>
                   </span>
                   <Toggle on={showQrOnTicket} onChange={setShowQrOnTicket} />
                 </div>
@@ -543,58 +629,94 @@ export default function Settings() {
             )}
             {visible('vista') && (
               <div>
-                <button type="button" onClick={() => setShowPreview(true)} className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)]">
+                <button type="button" onClick={() => setShowPreview(true)} className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3 text-left active:bg-[var(--mg-bg-elevated)]">
                   <IconBox icon="detalle" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-semibold leading-tight">Vista previa</span>
-                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium">Ver ejemplo e imprimir prueba</span>
+                    <span className="block text-sm font-bold leading-tight">Vista previa</span>
+                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">Ver ejemplo e imprimir prueba</span>
                   </span>
                   <Chevron />
                 </button>
               </div>
             )}
-          </div>
-          <p className="text-[11px] text-[var(--mg-text-muted)] px-1 mt-1.5">El formato se guarda solo en este dispositivo.</p>
-        </>
-      )}
+            <Row id="pie" icon="texto" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Mensaje final del ticket" value={footerMessage || '¡Gracias por su compra!'} />
+            <p className="px-4 sm:px-5 py-3 text-[11px] font-medium text-[var(--mg-text-muted)]">
+              El formato se guarda solo en este dispositivo.
+            </p>
+          </SectionCard>
+        )}
 
-      {/* ── APARIENCIA ── */}
-      {showApariencia && (
-        <>
-          <p className="mg-section-title !mt-5 !px-1">Apariencia</p>
-          <ThemePicker />
-        </>
-      )}
+        {/* ── FACTURACIÓN (PRÓXIMAMENTE) ── */}
+        {showFiscal && (
+          <SectionCard
+            icon="carnet"
+            title="Facturación y dirección"
+            description="Datos fiscales para facturas y reportes."
+            badge={(
+              <span className="rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--mg-gold-text)]">
+                ¡Próximamente!
+              </span>
+            )}
+          >
+            <Row id="legal" icon="carnet" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="Razón social" value="Disponible muy pronto" disabled badge="Próximamente" />
+            <Row id="nit" icon="recibo" tint="bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]" title="NIT" value="Disponible muy pronto" disabled badge="Próximamente" />
+            <Row id="ciudad" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Ciudad" value="Disponible muy pronto" disabled badge="Próximamente" />
+            <Row id="direccion" icon="sucursales" tint="bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]" title="Dirección" value="Disponible muy pronto" disabled badge="Próximamente" />
+            <div className="px-4 sm:px-5 py-3 bg-[var(--mg-gold-bg)]/30">
+              <p className="text-[11px] font-medium leading-snug text-[var(--mg-gold-text)]">
+                Estamos preparando la facturación con NIT y dirección fiscal. Muy pronto vas a poder completar estos datos desde aquí.
+              </p>
+            </div>
+          </SectionCard>
+        )}
 
-      {/* ── DATOS ── */}
-      {showDatos && (
-        <>
-          <p className="mg-section-title !mt-5 !px-1">Datos</p>
-          <div className="mg-list !rounded-2xl shadow-xs">
+        {/* ── DATOS ── */}
+        {showDatos && (
+          <SectionCard
+            icon="respaldo"
+            title="Datos y respaldo"
+            description="Tu información, siempre bajo tu control."
+          >
             <Row id="respaldo" icon="respaldo" tint="bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]" title="Respaldo" value="Exportar .JSON" />
             {admin && visible('admin') && (
               <div>
-                <button type="button" onClick={() => navigate('/admin')} className="w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left active:bg-[var(--mg-bg-elevated)]">
+                <button type="button" onClick={() => navigate('/admin')} className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3 text-left active:bg-[var(--mg-bg-elevated)]">
                   <IconBox icon="plan" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-semibold leading-tight">Panel de administración</span>
-                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium">Planes, pagos y control</span>
+                    <span className="block text-sm font-bold leading-tight">Panel de administración</span>
+                    <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">Planes, pagos y control</span>
                   </span>
                   <Chevron />
                 </button>
               </div>
             )}
-          </div>
-        </>
+            <div className="px-4 sm:px-5 py-3">
+              <p className="text-[11px] font-medium text-[var(--mg-text-muted)] truncate">
+                Sesión: {user?.displayName || user?.email || 'Usuario'}
+              </p>
+            </div>
+          </SectionCard>
+        )}
+      </div>
+
+      {/* ── APARIENCIA ── */}
+      {showApariencia && (
+        <div className="mt-5">
+          <SectionCard
+            icon="galeria"
+            title="Apariencia"
+            description="Elegí el look de tu app. Se aplica al instante en este dispositivo."
+          >
+            <div className="p-4 sm:p-5">
+              <ThemePicker bare />
+            </div>
+          </SectionCard>
+        </div>
       )}
 
       {isSearching && !showNegocio && !showFiscal && !showTicket && !showDatos && !showApariencia && (
         <p className="text-center text-sm text-[var(--mg-text-muted)] mt-10">Sin resultados para “{query}”.</p>
       )}
-
-      <p className="text-center text-[11px] text-[var(--mg-text-faint)] mt-8">
-        Sesión: {user?.displayName || user?.email || 'Usuario'}
-      </p>
 
       {/* ── Barra de guardado liviana ── */}
       <AnimatePresence>
@@ -661,6 +783,15 @@ export default function Settings() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Planes ── */}
+      {showPlans && (
+        <UpgradeModal
+          title="Mejorá tu plan"
+          feature={null}
+          onClose={() => setShowPlans(false)}
+        />
+      )}
 
       {/* ── Vista previa (sheet) ── */}
       <AnimatePresence>

@@ -12,6 +12,7 @@ export function saveLastAuthUser(user) {
     const snapshot = {
       id: user.id,
       email: user.email || '',
+      phone: user.phone || '',
       user_metadata: {
         displayName: user.user_metadata?.displayName || user.displayName || '',
       },

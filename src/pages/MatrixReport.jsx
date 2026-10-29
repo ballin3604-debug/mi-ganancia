@@ -17,6 +17,7 @@ import MetricCard from '../components/ui/MetricCard';
 import EmptyState from '../components/ui/EmptyState';
 import SectionCard from '../components/ui/SectionCard';
 import { useBranches } from '../context/BranchContext';
+import { usePlan } from '../hooks/usePlan';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
 
@@ -52,6 +53,8 @@ export default function MatrixReport() {
     const [allExpenses, setExpenses] = useState([]);
     const [reportBranch, setReportBranch] = useState('all');
     const { branches } = useBranches();
+    const { can } = usePlan();
+    const canBranches = can('branches');
     const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
     const branchOfSale = (s) => s.branchId || s.branch_id || mainBranchId;
     const branchOfExpense = (e) => e.branch_id || mainBranchId;
@@ -752,7 +755,7 @@ export default function MatrixReport() {
                 onExport={handleExport}
                 exportLabel="Exportar PDF"
                 exportDisabled={!currentReportHasData}
-                branchSelector={
+                branchSelector={canBranches ? (
                     <BranchSelect
                         branches={branches}
                         value={reportBranch}
@@ -760,7 +763,7 @@ export default function MatrixReport() {
                         label="Sede"
                         allLabel="Todas"
                     />
-                }
+                ) : null}
             />
 
             <div className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 shadow-[var(--mg-shadow-sm)] sm:p-6 lg:p-8">

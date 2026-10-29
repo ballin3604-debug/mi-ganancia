@@ -961,9 +961,9 @@ export default function Inventory() {
             whileTap={{ scale: 0.96 }}
             type="button"
             onClick={() => openAdd()}
-            className="mt-4 bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold px-4 py-2.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all inline-flex items-center gap-1.5"
+            className="mt-4 bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold px-4 py-2.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all inline-flex items-center gap-1.5"
           >
-            <AppIcon name="agregar" size={14} color="#fff" />
+            <AppIcon name="agregar" size={14} />
             <span>Nuevo Producto</span>
           </motion.button>
         </motion.div>
@@ -1041,9 +1041,9 @@ export default function Inventory() {
         onClick={() => openAdd()}
         title="Nuevo Producto"
         aria-label="Nuevo Producto"
-        className="md:hidden fixed bottom-24 right-4 z-30 w-14 h-14 rounded-2xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white shadow-[var(--mg-shadow-lg)] flex items-center justify-center active:scale-90 transition-all"
+        className="md:hidden fixed bottom-24 right-4 z-30 w-14 h-14 rounded-2xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-lg)] flex items-center justify-center active:scale-90 transition-all"
       >
-        <AppIcon name="agregar" size={26} color="#fff" />
+        <AppIcon name="agregar" size={26} />
       </button>
 
       {/* === MODAL: Ficha Completa de Producto (Bottom Sheet / Modal) === */}
@@ -1157,7 +1157,7 @@ export default function Inventory() {
                     <button
                       type="button"
                       onClick={() => { setScannerMode(null); setScanMsg(''); openAdd(); }}
-                      className="w-full shrink-0 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-white shadow-[var(--mg-shadow-md)] active:scale-95"
+                      className="w-full shrink-0 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] active:scale-95"
                     >
                       + Crear producto con este código
                     </button>
@@ -1356,7 +1356,7 @@ export default function Inventory() {
                       type="button"
                       onClick={() => openScanner('assign')}
                       title="Escanear código"
-                      className="w-[46px] shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white flex items-center justify-center active:scale-95"
+                      className="w-[46px] shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] flex items-center justify-center active:scale-95"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
@@ -1891,7 +1891,7 @@ export default function Inventory() {
                   whileTap={{ scale: 0.97 }}
                   type="submit"
                   disabled={saving}
-                  className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold py-3.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 disabled:opacity-50 min-h-[44px]"
+                  className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold py-3.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 disabled:opacity-50 min-h-[44px]"
                 >
                   {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : practical ? 'Guardar producto' : 'Nuevo Producto'}
                 </motion.button>
@@ -2001,9 +2001,9 @@ export default function Inventory() {
                   <button
                     type="submit"
                     disabled={!newCatName.trim() || savingCat}
-                    className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold px-4 rounded-xl text-xs active:scale-95 transition-all disabled:opacity-50 min-h-[42px] shrink-0"
+                    className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold px-4 rounded-xl text-xs active:scale-95 transition-all disabled:opacity-50 min-h-[42px] shrink-0"
                   >
-                    {savingCat ? '...' : <span className="flex items-center gap-1"><AppIcon name="agregar" size={13} color="#fff" /> Agregar</span>}
+                    {savingCat ? '...' : <span className="flex items-center gap-1"><AppIcon name="agregar" size={13} /> Agregar</span>}
                   </button>
                 </form>
 
@@ -2046,7 +2046,7 @@ export default function Inventory() {
                           <button
                             type="submit"
                             disabled={savingRename || !editCatValue.trim()}
-                            className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white text-[11px] font-bold px-3 py-1 rounded-lg active:scale-95 disabled:opacity-50 shrink-0"
+                            className="bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] text-[11px] font-bold px-3 py-1 rounded-lg active:scale-95 disabled:opacity-50 shrink-0"
                           >
                             {savingRename ? '...' : 'Guardar'}
                           </button>

@@ -408,7 +408,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <button
               type="button"
               onClick={handleContinue}
-              className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
+              className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
             >
               Continuar
             </button>
@@ -896,7 +896,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             <button
               type="submit"
               disabled={saving || !salePrice || qtyVal <= 0}
-              className="mt-2 w-full rounded-2xl bg-[var(--mg-brand)] py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
+              className="mt-2 w-full rounded-2xl bg-[var(--mg-brand)] py-3.5 text-sm font-bold text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
             >
               {saving ? 'Guardando...' : 'Confirmar compra'}
             </button>

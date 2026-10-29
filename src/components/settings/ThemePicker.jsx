@@ -1,21 +1,23 @@
 import { useAppTheme } from '../../context/ThemeContext';
 
 function ThemePreview({ theme }) {
-  const bg = theme.dark ? '#0E0E0E' : '#F4F6FA';
-  const surface = theme.dark ? '#161616' : '#FFFFFF';
-  const line = theme.dark ? '#2E2E2E' : '#E4EAF1';
-  const soft = theme.dark ? '#3A3A3A' : '#D8E0E8';
-  const accent = theme.dark ? '#FF9800' : '#10B981';
-  const brand = theme.dark ? '#E65100' : '#064E3B';
+  const p = theme.preview || {};
+  const bg = p.bg || (theme.dark ? '#0E0E0E' : '#F4F6FA');
+  const surface = p.surface || (theme.dark ? '#161616' : '#FFFFFF');
+  const line = p.line || (theme.dark ? '#2E2E2E' : '#E4EAF1');
+  const soft = p.soft || (theme.dark ? '#3A3A3A' : '#D8E0E8');
+  const accent = p.accent || (theme.dark ? '#FF9800' : '#10B981');
+  const brand = p.brand || (theme.dark ? '#E65100' : '#064E3B');
+  const dot = p.dot || '#FFFFFF';
 
   return (
     <span className="block h-20 rounded-xl border border-[var(--mg-border)] p-2" style={{ background: bg }}>
       <span className="flex h-full gap-2">
         <span className="flex w-5 shrink-0 flex-col items-center gap-1 rounded-lg p-1" style={{ background: brand }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#FFFFFF' }} />
-          <span className="h-1 w-2.5 rounded-full bg-white/50" />
-          <span className="h-1 w-2.5 rounded-full bg-white/30" />
-          <span className="mt-auto h-1 w-2.5 rounded-full bg-white/30" />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: dot }} />
+          <span className="h-1 w-2.5 rounded-full" style={{ background: dot, opacity: 0.5 }} />
+          <span className="h-1 w-2.5 rounded-full" style={{ background: dot, opacity: 0.3 }} />
+          <span className="mt-auto h-1 w-2.5 rounded-full" style={{ background: dot, opacity: 0.3 }} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-1.5">
           <span className="flex items-center justify-between">
@@ -38,11 +40,15 @@ function ThemePreview({ theme }) {
   );
 }
 
-export function ThemePicker() {
+export function ThemePicker({ bare = false }) {
   const { themeId, setThemeId, themes } = useAppTheme();
 
   return (
-    <div className="mg-list !rounded-2xl shadow-xs p-3" role="radiogroup" aria-label="Tema del negocio">
+    <div
+      className={bare ? 'p-0' : 'mg-list !rounded-2xl shadow-xs p-3'}
+      role="radiogroup"
+      aria-label="Tema del negocio"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {themes.map((theme) => {
           const active = theme.id === themeId;

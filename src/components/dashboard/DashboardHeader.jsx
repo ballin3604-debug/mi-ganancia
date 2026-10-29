@@ -58,7 +58,7 @@ export function DashboardHeader({ today, businessName, settings, onShowQr, onNav
           <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center shrink-0 overflow-hidden border ${
             showLogo
               ? 'bg-transparent border-[var(--mg-border)]'
-              : 'bg-[var(--mg-brand)] text-white border-[var(--mg-brand-border)]'
+              : 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] border-[var(--mg-brand-border)]'
           }`}>
             {showLogo ? (
               <img

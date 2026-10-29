@@ -24,14 +24,24 @@
         background: #0E0E0E;
         color-scheme: dark;
       }
+      html[data-theme="yuzen"], html[data-theme="yuzen"] body, html[data-theme="yuzen"] #root {
+        background: #070B19;
+        color-scheme: dark;
+      }
+      html[data-theme="pastel"], html[data-theme="pastel"] body, html[data-theme="pastel"] #root {
+        background: #FAFAFA;
+        color-scheme: light;
+      }
     </style>
     <script>
       (function () {
         try {
-          if (localStorage.getItem('mg-theme') === 'gourmet') {
-            document.documentElement.setAttribute('data-theme', 'gourmet');
+          var themeColors = { gourmet: '#0E0E0E', yuzen: '#070B19', pastel: '#FAFAFA' };
+          var stored = localStorage.getItem('mg-theme');
+          if (stored && themeColors[stored]) {
+            document.documentElement.setAttribute('data-theme', stored);
             var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', '#0E0E0E');
+            if (meta) meta.setAttribute('content', themeColors[stored]);
           }
         } catch (e) { /* nunca romper el arranque */ }
       })();

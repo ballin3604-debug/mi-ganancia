@@ -18,10 +18,12 @@ import {
 } from '../services/cashier';
 import { TeamSection } from '../components/settings/TeamSection';
 import PageHeader from '../components/ui/PageHeader';
+import { usePlan } from '../hooks/usePlan';
 
 export default function Team() {
   const { businessId, user, updateOwnRole } = useAuth();
   const { business } = useBusiness();
+  const { planId, plan } = usePlan();
 
   const [joinCode, setJoinCode] = useState(business?.joinCode || '');
   const [ownerCode, setOwnerCode] = useState(business?.ownerCode || '');
@@ -237,6 +239,9 @@ export default function Team() {
         onSavePermissions={handleSavePermissions}
         onRenameMember={handleRenameMember}
         businessName={business?.name || ''}
+        planId={planId}
+        planName={plan.name}
+        maxMembers={plan.maxUsers}
       />
     </div>
   );

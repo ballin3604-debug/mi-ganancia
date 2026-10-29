@@ -193,7 +193,7 @@ export default function BarcodeScanner({ onScan, autoResumeMs = 1800, fullScreen
         <button
           type="submit"
           disabled={!manual.trim()}
-          className="shrink-0 rounded-xl bg-[var(--mg-brand)] px-4 text-sm font-bold text-white transition-colors hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-40"
+          className="shrink-0 rounded-xl bg-[var(--mg-brand)] px-4 text-sm font-bold text-[var(--mg-brand-contrast)] transition-colors hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-40"
         >
           Buscar
         </button>

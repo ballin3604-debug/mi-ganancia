@@ -22,6 +22,7 @@ import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
 import { OwnerPulse } from '../components/OwnerPulse';
 import { useBranches } from '../context/BranchContext';
+import { usePlan } from '../hooks/usePlan';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
 import { palette } from '../design/tokens.js';
@@ -104,6 +105,8 @@ export default function Dashboard() {
 
   // Sede del Inicio: filtra todo el día (resumen, análisis, en vivo).
   const { branches } = useBranches();
+  const { can } = usePlan();
+  const canBranches = can('branches');
   const [homeBranch, setHomeBranch] = useState('all');
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const saleBranchId = (s) => s.branchId || s.branch_id || mainBranchId;
@@ -470,7 +473,7 @@ export default function Dashboard() {
         lowStock={lowStock}
         branchId={homeBranch}
         mainBranchId={mainBranchId}
-        showBranches={!isRestaurantMode}
+        showBranches={!isRestaurantMode && canBranches}
         reorderPath={isRestaurantMode ? '/inventario' : '/compras'}
         branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
         onNavigate={(path, opts) => navigate(path, opts)}

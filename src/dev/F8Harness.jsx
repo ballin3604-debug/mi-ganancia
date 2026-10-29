@@ -29,7 +29,7 @@ function View() {
 createRoot(document.getElementById('f8-root')).render(
   <MemoryRouter initialEntries={[view === 'receipt' ? '/recibo/sale-f8-demo-0001' : '/']}>
     <div className="min-h-screen bg-[var(--mg-bg-base)] pt-7">
-      <div className="fixed inset-x-0 top-0 z-[100] flex h-7 items-center justify-center bg-[var(--mg-brand)] text-[10px] font-bold tracking-wide text-white">
+      <div className="fixed inset-x-0 top-0 z-[100] flex h-7 items-center justify-center bg-[var(--mg-brand)] text-[10px] font-bold tracking-wide text-[var(--mg-brand-contrast)]">
         DEV · Datos simulados · Rediseño F8 · Solo revisión de diseño
       </div>
       <Routes>

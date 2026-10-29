@@ -173,7 +173,7 @@ export function ProductDetailModal({
                   <button
                     type="button"
                     onClick={() => setShowTransfer(true)}
-                    className="text-[11px] font-black px-3 py-1.5 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white shadow-[var(--mg-shadow-sm)] active:scale-95"
+                    className="text-[11px] font-black px-3 py-1.5 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-sm)] active:scale-95"
                   >
                     🔀 Traspasar
                   </button>
@@ -307,9 +307,9 @@ export function ProductDetailModal({
                 onClose();
                 onEdit(product);
               }}
-              className="flex-1 py-3 px-4 bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-white font-extrabold rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+              className="flex-1 py-3 px-4 bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
             >
-              <AppIcon name="editar" size={14} color="#fff" />
+              <AppIcon name="editar" size={14} />
               <span>Editar Producto</span>
             </button>
           </div>

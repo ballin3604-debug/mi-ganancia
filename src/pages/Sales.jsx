@@ -127,7 +127,7 @@ function CartItemRow({ line, product, onUpdate, stacked = false, siblingBaseUsed
             onClick={() => handleApply(quantity + 1)}
             disabled={quantity >= maxQty}
             aria-label="Agregar uno"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black text-white active:scale-90 disabled:opacity-40"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black text-[var(--mg-brand-contrast)] active:scale-90 disabled:opacity-40"
       >
         +
       </button>
@@ -1379,11 +1379,11 @@ export default function Sales() {
                   onClick={() => setPaymentMethod(m.id)}
                   className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-bold transition-all ${
                     paymentMethod === m.id
-                      ? 'bg-[var(--mg-brand)] text-white shadow-sm'
+                      ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
                       : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-surface)]'
                   }`}
                 >
-                  <AppIcon name={m.icon} size={14} color={paymentMethod === m.id ? '#fff' : undefined} />
+                  <AppIcon name={m.icon} size={14} color={paymentMethod === m.id ? 'var(--mg-brand-contrast)' : undefined} />
                   {m.label}
                 </button>
               ))}
@@ -1524,14 +1524,14 @@ export default function Sales() {
 
           {/* Acciones principales */}
           <div className="pt-2">
-            <div className="rounded-2xl bg-[var(--mg-brand)] p-4 text-white shadow-[var(--mg-shadow-md)]">
+            <div className="mg-checkout-panel rounded-2xl p-4 shadow-[var(--mg-shadow-md)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Total a cobrar</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-60">Total a cobrar</p>
                   <p className="mt-1 text-3xl font-black tracking-tight tabular-nums">{formatBs(total)}</p>
                 </div>
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                  <AppIcon name="caja" size={19} color="#fff" />
+                <span className="mg-checkout-ghost flex h-10 w-10 items-center justify-center rounded-xl">
+                  <AppIcon name="caja" size={19} />
                 </span>
               </div>
               <div className="mt-4 flex gap-2">
@@ -1552,7 +1552,7 @@ export default function Sales() {
                       clearCartDraft(businessId, user.uid);
                     }
                   }}
-                  className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-white/15 active:scale-95"
+                  className="mg-checkout-ghost shrink-0 rounded-xl border px-4 py-3 text-sm font-bold transition-all active:scale-95"
                 >
                   Vaciar
                 </button>
@@ -1562,13 +1562,13 @@ export default function Sales() {
                     (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) ||
                     (paymentMethod === 'mixto' && (Number(mixedCash || 0) + Number(mixedQr || 0)) < total)
                   }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-[var(--mg-brand-deep)] transition-all hover:bg-white/90 active:scale-95 disabled:opacity-60"
+                  className="mg-checkout-cta flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition-all active:scale-95 disabled:opacity-60"
                 >
                   {registering ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
                     <>
-                      <AppIcon name="check" size={16} color="var(--mg-brand-deep)" />
+                      <AppIcon name="check" size={16} />
                       Cobrar
                     </>
                   )}
@@ -1590,8 +1590,8 @@ export default function Sales() {
           {activeTab === 'venta' && (
             <div className="shrink-0 flex items-center justify-between gap-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-white">
-                  <AppIcon name="carrito" size={19} color="#fff" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]">
+                  <AppIcon name="carrito" size={19} />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Punto de venta</p>
@@ -1742,7 +1742,7 @@ export default function Sales() {
                       onClick={() => setReportCashier(name)}
                       className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                         reportCashier === name
-                          ? 'bg-[var(--mg-brand)] text-white shadow-sm'
+                          ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
                           : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
                       }`}
                     >
@@ -1869,9 +1869,9 @@ export default function Sales() {
                 onClick={openScanner}
                 title="Escanear código de barras"
                 aria-label="Escanear código de barras"
-                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-white shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
+                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
               >
-                <AppIcon name="scan" size={23} color="#fff" />
+                <AppIcon name="scan" size={23} />
               </button>
             )}
           </div>
@@ -1884,7 +1884,7 @@ export default function Sales() {
                 onClick={() => setFilterCategory(cat)}
                 className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                   filterCategory === cat
-                    ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-white shadow-sm'
+                    ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
                     : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
                 }`}
               >
@@ -1922,16 +1922,16 @@ export default function Sales() {
                       <button
                         type="button"
                         onClick={() => removeFromCart(product.id)}
-                        className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90"
+                        className="w-5 h-5 rounded-full bg-white/20 text-[var(--mg-brand-contrast)] font-black text-xs flex items-center justify-center active:scale-90"
                       >
                         −
                       </button>
-                      <span className="text-white font-black text-xs w-3 text-center">{inCart}</span>
+                      <span className="text-[var(--mg-brand-contrast)] font-black text-xs w-3 text-center">{inCart}</span>
                       <button
                         type="button"
                         onClick={() => addToCart(product)}
                         disabled={maxed}
-                        className="w-5 h-5 rounded-full bg-white/20 text-white font-black text-xs flex items-center justify-center active:scale-90 disabled:opacity-40"
+                        className="w-5 h-5 rounded-full bg-white/20 text-[var(--mg-brand-contrast)] font-black text-xs flex items-center justify-center active:scale-90 disabled:opacity-40"
                       >
                         +
                       </button>
@@ -1968,7 +1968,7 @@ export default function Sales() {
                               <button
                                 type="button"
                                 onClick={() => handleProductTap(product)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-white shadow-sm active:scale-90"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-[var(--mg-brand-contrast)] shadow-sm active:scale-90"
                               >
                                 +
                               </button>
@@ -2038,16 +2038,16 @@ export default function Sales() {
       {activeTab === 'venta' && totalBaseUnits > 0 && !showCartModal && (
         <button
           onClick={() => setShowCartModal(true)}
-          className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-2xl bg-[var(--mg-brand)] px-5 py-3.5 font-bold text-white shadow-2xl transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 lg:hidden"
+          className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-2xl bg-[var(--mg-brand)] px-5 py-3.5 font-bold text-[var(--mg-brand-contrast)] shadow-2xl transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 lg:hidden"
         >
           <div className="relative flex items-center">
-            <AppIcon name="carrito" size={20} color="#fff" />
+            <AppIcon name="carrito" size={20} />
             <span className="absolute -right-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--mg-brand-deep)] shadow-md">
               {totalBaseUnits}
             </span>
           </div>
           <div className="text-left border-l border-white/20 pl-3">
-            <p className="text-[10px] uppercase tracking-wider text-white/70 font-semibold leading-none">Ver Carrito</p>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--mg-brand-contrast)] opacity-70 font-semibold leading-none">Ver Carrito</p>
             <p className="text-sm font-black leading-tight mt-0.5">{formatBs(total)}</p>
           </div>
         </button>
@@ -2158,7 +2158,7 @@ export default function Sales() {
               <button
                 type="button"
                 onClick={closeSuccessModal}
-                className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-white shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
+                className="w-full rounded-xl bg-[var(--mg-brand)] py-3 text-xs font-bold text-[var(--mg-brand-contrast)] shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
               >
                 Continuar
               </button>
@@ -2234,7 +2234,7 @@ export default function Sales() {
                 type="button"
                 onClick={() => handleRegister(true)}
                 disabled={registering}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[var(--mg-brand)] py-3.5 text-xs font-bold text-white shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[var(--mg-brand)] py-3.5 text-xs font-bold text-[var(--mg-brand-contrast)] shadow-md transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
               >
                 {registering ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -2344,7 +2344,7 @@ export default function Sales() {
                 type="button"
                 onClick={() => { setShowScanner(false); setShowCartModal(true); }}
                 disabled={totalBaseUnits === 0}
-                className="flex-1 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-[var(--mg-brand)] py-3 text-sm font-bold text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
               >
                 Ver carrito ({totalBaseUnits})
               </button>

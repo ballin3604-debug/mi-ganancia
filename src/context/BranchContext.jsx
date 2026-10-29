@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { getBranches } from '../services/branches';
 
 const BranchContext = createContext(null);
@@ -19,6 +20,7 @@ function lsSet(v) {
 // Fase 1: organiza las VENTAS por sede (stock global). Fase 2: stock por sede.
 export function BranchProvider({ children }) {
   const { businessId, role, memberBranches } = useAuth();
+  const { can } = usePlan();
   const [branches, setBranches] = useState([]);
   const [activeBranchId, setActiveBranchId] = useState(() => lsGet());
   const [loading, setLoading] = useState(true);
@@ -55,9 +57,18 @@ export function BranchProvider({ children }) {
 
   // El cajero solo ve sus sedes asignadas (lista del dueño).
   // Sin lista = todas (comportamiento de siempre). El dueño ve todo.
-  const visibleBranches = (role === 'cashier' && Array.isArray(memberBranches) && memberBranches.length > 0)
+  const assignedBranches = (role === 'cashier' && Array.isArray(memberBranches) && memberBranches.length > 0)
     ? branches.filter((b) => memberBranches.includes(b.id))
     : branches;
+
+  // Sucursales y almacenes son Premium. En Pro se opera solo con la sede
+  // principal, aunque el negocio tenga sedes viejas creadas antes del cambio.
+  const visibleBranches = can('branches')
+    ? assignedBranches
+    : (() => {
+      const main = branches.find((b) => b.isMain) || branches[0];
+      return main ? [main] : [];
+    })();
 
   // Si la sede guardada ya no existe (o ya no está asignada), caer a la principal
   useEffect(() => {

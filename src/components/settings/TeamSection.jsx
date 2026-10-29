@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { AppIcon } from '../icons';
 import { useBranches } from '../../context/BranchContext';
-import { MAX_MEMBERS, MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS } from '../../services/cashier';
+import { MEMBER_PERMISSIONS, DEFAULT_CASHIER_PERMISSIONS, maxMembersForPlan } from '../../services/cashier';
 import { ConfirmModal } from './ConfirmModal';
 
 function PermissionsModal({ member, branches = [], busy, onClose, onSave }) {
@@ -169,6 +169,9 @@ export function TeamSection({
   onSavePermissions,
   onRenameMember,
   businessName = 'Mi Ganancia',
+  planId = 'pro',
+  planName = 'Pro',
+  maxMembers = maxMembersForPlan(planId),
 }) {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, type: null, data: null, title: '', message: '', danger: false,
@@ -189,7 +192,8 @@ export function TeamSection({
   const activeCount = members.filter((m) => m.status !== 'suspended').length;
   const emailInvites = invites.filter((i) => i.email);
   const activeCodes = (joinCode ? 1 : 0) + (ownerCode ? 1 : 0) + emailInvites.length;
-  const usagePct = Math.min(100, Math.round((members.length / MAX_MEMBERS) * 100));
+  const usagePct = Math.min(100, Math.round((members.length / maxMembers) * 100));
+  const atLimit = members.length >= maxMembers;
 
   const filtered = members.filter((m) => {
     const q = search.toLowerCase().trim();
@@ -203,10 +207,10 @@ export function TeamSection({
 
   const handleInviteSubmit = async (e) => {
     e.preventDefault();
-    if (!inviteEmail.trim() || memberBusy === 'invite') return;
+    if (!inviteEmail.trim() || memberBusy === 'invite' || atLimit) return;
     const invite = await onInvite(inviteEmail.trim(), inviteRole);
     if (invite) {
-      setToast({ email: invite.email, active: members.length, max: MAX_MEMBERS });
+      setToast({ email: invite.email, active: members.length, max: maxMembers });
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setToast(null), 4500);
       setInviteEmail('');
@@ -270,8 +274,10 @@ export function TeamSection({
             </p>
           </div>
           <p className="mt-2 text-2xl font-black text-[var(--mg-text-primary)] tabular-nums">
-            {members.length}/{MAX_MEMBERS}
-            <span className="text-[11px] font-bold text-[var(--mg-text-muted)] ml-2">({MAX_MEMBERS - members.length} disponibles)</span>
+            {members.length}/{maxMembers}
+            <span className="text-[11px] font-bold text-[var(--mg-text-muted)] ml-2">
+              ({Math.max(0, maxMembers - members.length)} disponibles · {planName})
+            </span>
           </p>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--mg-bg-elevated)]">
             <div className={`h-full rounded-full ${usagePct > 80 ? 'bg-[var(--mg-gold)]' : 'bg-[var(--mg-accent)]'}`} style={{ width: `${usagePct}%` }} />
@@ -307,6 +313,19 @@ export function TeamSection({
         </div>
       </div>
 
+      {atLimit && (
+        <div className="rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-4 py-3">
+          <p className="text-xs font-black text-[var(--mg-gold-text)]">
+            Límite de usuarios alcanzado ({members.length}/{maxMembers}).
+          </p>
+          <p className="text-[11px] font-semibold text-[var(--mg-gold-text)] mt-0.5">
+            {planId === 'premium'
+              ? 'Libera un puesto eliminando a un colaborador para invitar a otra persona.'
+              : 'Pasa a Premium para trabajar con hasta 10 usuarios.'}
+          </p>
+        </div>
+      )}
+
       {/* Miembros */}
       <div className="bg-[var(--mg-bg-surface)] rounded-[22px] border border-[var(--mg-border)] overflow-hidden shadow-xs">
         <div className="p-4 border-b border-[var(--mg-separator)]">
@@ -336,7 +355,7 @@ export function TeamSection({
             ].map((f) => (
               <button
                 key={f.id} type="button" onClick={() => setRoleFilter(f.id)}
-                className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${roleFilter === f.id ? 'bg-[var(--mg-brand)] text-white' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)]'}`}
+                className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${roleFilter === f.id ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-primary)]'}`}
               >
                 {f.label}
               </button>
@@ -395,20 +414,21 @@ export function TeamSection({
             <label className="text-[11px] font-bold text-[var(--mg-text-secondary)] block mb-1">Correo (Gmail o Workspace)</label>
             <input
               type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="colaborador@correo.com" maxLength={120}
-              className="mg-input text-xs font-semibold"
+              placeholder={atLimit ? `Límite de ${maxMembers} usuarios alcanzado` : 'colaborador@correo.com'}
+              maxLength={120} disabled={atLimit}
+              className="mg-input text-xs font-semibold disabled:opacity-60"
             />
           </div>
           <div className="md:col-span-3">
             <label className="text-[11px] font-bold text-[var(--mg-text-secondary)] block mb-1">Rol a otorgar</label>
-            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="mg-input text-xs font-bold">
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} disabled={atLimit} className="mg-input text-xs font-bold disabled:opacity-60">
               <option value="cashier">Cajero (ventas y cobros)</option>
               <option value="owner">Dueño / Socio (total)</option>
             </select>
           </div>
           <div className="md:col-span-3 flex items-end">
-            <button type="submit" disabled={!inviteEmail.trim() || memberBusy === 'invite'} className="w-full py-2.5 rounded-xl bg-[var(--mg-accent)] text-white font-black text-xs disabled:opacity-50">
-              {memberBusy === 'invite' ? '…' : 'Enviar Invitación'}
+            <button type="submit" disabled={!inviteEmail.trim() || memberBusy === 'invite' || atLimit} className="w-full py-2.5 rounded-xl bg-[var(--mg-accent)] text-[var(--mg-brand-contrast)] font-black text-xs disabled:opacity-50">
+              {memberBusy === 'invite' ? '…' : atLimit ? 'Límite alcanzado' : 'Enviar Invitación'}
             </button>
           </div>
         </form>
@@ -452,7 +472,7 @@ function TableRow({ m, isCurrentUser, isSuspended, busy, onPerms, onEdit, onRole
     <tr className={isSuspended ? 'opacity-70' : ''}>
       <td className="overflow-hidden px-3 py-3 sm:px-4">
         <div className="flex items-center gap-2.5">
-          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-xs font-black text-white">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mg-brand)] text-xs font-black text-[var(--mg-brand-contrast)]">
             {m.displayName?.charAt(0)?.toUpperCase() || 'U'}
             {m.status === 'active' && (
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--mg-bg-surface)] bg-[var(--mg-success)]" />

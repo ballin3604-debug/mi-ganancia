@@ -9,7 +9,12 @@ function generateCode() {
   ).join('');
 }
 
-export const MAX_MEMBERS = 5;
+export const PLAN_MAX_MEMBERS = { pro: 3, premium: 10 };
+export function maxMembersForPlan(planId) {
+  return PLAN_MAX_MEMBERS[planId] || PLAN_MAX_MEMBERS.pro;
+}
+// Compatibilidad con imports existentes; el límite real se toma del plan.
+export const MAX_MEMBERS = PLAN_MAX_MEMBERS.pro;
 
 // ── Permisos por miembro (matriz real, no decorativa) ──────────
 // El dueño siempre tiene todo. El cajero usa sus custom_permissions
@@ -183,7 +188,7 @@ export async function joinBusinessWithCode(user, rawCode, cashierName = '', extr
   if (biz.expiresAt && new Date(biz.expiresAt).getTime() <= Date.now()) {
     throw new Error('Este código venció. Pide uno nuevo al dueño.');
   }
-  const displayName = cashierName || user.user_metadata?.displayName || user.email;
+  const displayName = cashierName || user.user_metadata?.displayName || user.email || user.phone;
   const birthdate = (extra.birthdate || '').trim() || null;
 
   // La identidad es la cuenta logueada (Google/correo): el perfil se crea

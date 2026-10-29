@@ -48,23 +48,30 @@ const FEATURE_NAMES = {
 
 const PLAN_CARDS = [
   {
-    id: 'free',
-    badge: null,
-    tagline: 'Para empezar y probar la app.',
-    features: ['Hasta 100 productos', '1 usuario', 'Ventas e inventario', 'Compras y gastos del día'],
-    selectable: false,
-  },
-  {
     id: 'pro',
     badge: 'El más pedido',
     tagline: 'Todo lo operativo de tu tienda en 1 sede.',
-    features: ['Escáner de códigos', 'Productos ilimitados', 'Reportes avanzados + PDF', 'Equipo hasta 5 (multi-caja)', 'Compras, gastos y kardex'],
+    features: [
+      'Escáner de códigos',
+      'Productos ilimitados',
+      'Reportes avanzados + PDF',
+      'Equipo hasta 3 (multi-caja)',
+      'Sin anuncios',
+      'Compras, gastos y kardex',
+    ],
   },
   {
     id: 'premium',
     badge: null,
     tagline: 'Para crecer: más sedes y control de dueño.',
-    features: ['Todo lo Pro', 'Hasta 3 sucursales', 'Stock por sede + traspasos', 'Panel del dueño en vivo', 'Hasta 15 usuarios'],
+    features: [
+      'Todo lo Pro',
+      'Sucursales y almacenes',
+      'Stock por sede + traspasos',
+      'Desempeño por sucursal',
+      'Panel del dueño en vivo',
+      'Equipo hasta 10 usuarios',
+    ],
   },
 ];
 
@@ -81,14 +88,12 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
     getMyPayments(businessId).then(setMyPayments).catch(() => setMyPayments([]));
   }, [businessId, sent]);
 
-  const priceOf = (id) => {
-    if (id === 'free') return 0;
-    return cycle === 'yearly' ? PLANS[id].priceYearly : PLANS[id].priceMonthly;
-  };
-  const cycleSuffix = (id) => {
-    if (id === 'free') return 'para siempre';
-    return cycle === 'yearly' ? 'año (2 meses gratis)' : 'mes';
-  };
+  const priceOf = (id) => (
+    cycle === 'yearly' ? PLANS[id].priceYearly : PLANS[id].priceMonthly
+  );
+  const cycleSuffix = () => (
+    cycle === 'yearly' ? 'año (2 meses gratis)' : 'mes'
+  );
 
   return (
     <div className={`mg-fade-in w-full mx-auto max-w-4xl ${compact ? '' : 'p-4 sm:p-6 pb-24'}`}>
@@ -161,7 +166,7 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
         {PLAN_CARDS.map((card) => {
           const mine = planId === card.id;
           return (
@@ -186,10 +191,10 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
               </p>
               <p className="text-center mt-2">
                 <span className="text-3xl font-black text-[var(--mg-text-primary)]">
-                  {card.id === 'free' ? 'Gratis' : `Bs ${priceOf(card.id)}`}
+                  Bs {priceOf(card.id)}
                 </span>
                 <span className="block text-[11px] font-bold text-[var(--mg-text-muted)]">
-                  /{cycleSuffix(card.id)}
+                  /{cycleSuffix()}
                 </span>
               </p>
               <ul className="mt-3 mb-4 space-y-1.5 flex-1">
@@ -203,9 +208,9 @@ export default function UpgradeScreen({ feature, title, compact = false }) {
                 <p className="text-center text-xs font-black text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] border border-[var(--mg-accent-border)] rounded-xl py-2.5">
                   Tu plan actual
                 </p>
-              ) : card.selectable === false || planId === 'premium' ? (
+              ) : planId === 'premium' ? (
                 <p className="text-center text-[11px] font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl py-2.5">
-                  {card.selectable === false ? 'Plan base, sin pago' : 'Incluido en tu plan'}
+                  Incluido en tu plan
                 </p>
               ) : (
                 <button

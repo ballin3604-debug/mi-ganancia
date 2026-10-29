@@ -14,7 +14,7 @@ export function RowAddButton({ onAdd, disabled, title = 'Agregar' }) {
       disabled={disabled}
       title={title}
       aria-label={title}
-      className="flex h-11 min-w-[44px] w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-2xl font-black leading-none text-white shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90 disabled:opacity-40"
+      className="flex h-11 min-w-[44px] w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--mg-brand)] text-2xl font-black leading-none text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90 disabled:opacity-40"
     >
       +
     </button>
