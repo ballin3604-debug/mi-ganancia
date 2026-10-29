@@ -995,6 +995,45 @@ async function processOperation(op, businessId) {
       }
       break;
     }
+    case 'UPDATE_SALE': {
+      const { error } = await assertSupabase().rpc('editar_venta', {
+        p_sale_id: payload.sale_id,
+        p_business_id: businessId,
+        p_items: payload.items || [],
+        p_events: payload.events || [],
+        p_reason: payload.reason || null,
+        p_actor: payload.actor || null,
+      });
+      if (error) throw error;
+      try {
+        await db.sales.update(payload.sale_id, { sync_status: 'confirmed' });
+        const eventIds = (payload.events || []).map((event) => event.id).filter(Boolean);
+        if (eventIds.length > 0) {
+          await db.sale_changes.where('id').anyOf(eventIds).modify({ sync_status: 'confirmed' });
+        }
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar el pedido editado como confirmado:', confirmErr);
+      }
+      break;
+    }
+    case 'CANCEL_SALE': {
+      const { error } = await assertSupabase().rpc('cancelar_venta', {
+        p_sale_id: payload.sale_id,
+        p_business_id: businessId,
+        p_event: payload.event || null,
+        p_reason: payload.reason || null,
+      });
+      if (error) throw error;
+      try {
+        await db.sales.update(payload.sale_id, { sync_status: 'confirmed' });
+        if (payload.event?.id) {
+          await db.sale_changes.update(payload.event.id, { sync_status: 'confirmed' });
+        }
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar el pedido cancelado como confirmado:', confirmErr);
+      }
+      break;
+    }
     case 'ADD_EXPENSE': {
       // Recorte previo por capacidades (un intento); si el schema cambió a
       // mitad de sesión se refresca caps y se reintenta una vez.
@@ -1250,6 +1289,31 @@ export async function syncCacheFromServer(businessId) {
             });
           }
           break;
+        case 'UPDATE_SALE':
+        case 'CANCEL_SALE':
+          if (op.payload.sale_id) pendingIds.add(op.payload.sale_id);
+          if (Array.isArray(op.payload.items)) {
+            op.payload.items.forEach(item => {
+              if (item.product_id) pendingIds.add(item.product_id);
+            });
+          }
+          // Los productos retirados del pedido ya no están en `items`, pero su
+          // stock local también cambió y no debe pisarse con la caché vieja.
+          if (Array.isArray(op.payload.affected_product_ids)) {
+            op.payload.affected_product_ids.forEach(productId => {
+              if (productId) pendingIds.add(productId);
+            });
+          }
+          if (op.payload.branch_id) {
+            const branchProductIds = [
+              ...(Array.isArray(op.payload.items) ? op.payload.items.map(item => item.product_id) : []),
+              ...(Array.isArray(op.payload.affected_product_ids) ? op.payload.affected_product_ids : []),
+            ];
+            branchProductIds.forEach(productId => {
+              if (productId) pendingIds.add(`${op.payload.branch_id}:${productId}`);
+            });
+          }
+          break;
         case 'ADD_REPLENISHMENT':
         case 'UPDATE_REPLENISHMENT':
           if (op.payload.id) pendingIds.add(op.payload.id);
@@ -1435,6 +1499,23 @@ export async function syncCacheFromServer(businessId) {
       }
     } catch (err) {
       console.warn('syncEngine: no se pudo sincronizar sales:', err);
+    }
+
+    // ── BITÁCORA DE PEDIDOS: cambios de los últimos 12 meses. Se hace
+    // upsert sin borrado porque la bitácora es acumulativa. ──
+    try {
+      const since = new Date();
+      since.setDate(since.getDate() - 365);
+      const changes = await fetchAll((from, to) => assertSupabase()
+        .from('sale_changes').select('*').eq('business_id', businessId)
+        .gte('created_at', since.toISOString())
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to));
+      const normalized = changes.map((change) => ({ ...change, sync_status: 'confirmed' }));
+      await upsertRows(db.sale_changes, normalized);
+    } catch (err) {
+      console.warn('syncEngine: no se pudo sincronizar la bitácora de pedidos:', err);
     }
 
     // Sync business settings

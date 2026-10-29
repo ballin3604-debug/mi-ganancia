@@ -215,6 +215,35 @@ db.version(12).stores({
   businesses: 'id, name'
 });
 
+// Version 13: edición y cancelación de pedidos. `sales.status` distingue los
+// pedidos vigentes de los cancelados y `sale_changes` guarda la bitácora de
+// cada producto añadido, retirado o con cantidad ajustada.
+db.version(13).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id, sync_status, status',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id, created_by, branch_id, device_id, [status+business_id]',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id',
+  branch_stock: 'id, business_id, branch_id, product_id',
+  transfers: 'id, business_id, product_id, created_at',
+  sync_state: 'business_id',
+  branches: 'id, business_id, is_main, name',
+  businesses: 'id, name',
+  sale_changes: 'id, business_id, sale_id, event_type, created_at, [business_id+created_at]'
+}).upgrade(async (tx) => {
+  await tx.table('sales').toCollection().modify((sale) => {
+    if (!sale.status) sale.status = 'completed';
+    if (!sale.updated_at) sale.updated_at = sale.created_at || new Date().toISOString();
+  });
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

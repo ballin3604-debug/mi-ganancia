@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { subscribeToTodaySales, getSaleItems, exportDetailedCSV } from '../services/sales';
+import { subscribeToTodaySales, subscribeToSaleChanges, getSaleItems, exportDetailedCSV } from '../services/sales';
 import { getProducts, subscribeToProducts, subscribeToReplenishments } from '../services/products';
 import { subscribeToExpenses } from '../services/expenses';
 import { ExpiryAlert } from '../components/dashboard/ExpiryAlert';
@@ -18,6 +18,7 @@ import { MagicMetricCards } from '../components/dashboard/MagicMetricCards';
 import { DashboardCharts } from '../components/dashboard/DashboardCharts';
 
 import { QrModal } from '../components/dashboard/QrModal';
+import OrderChangesCard from '../components/OrderChangesCard';
 import { AppIcon } from '../components/icons';
 import { CashierHome } from '../components/CashierHome';
 import { OwnerPulse } from '../components/OwnerPulse';
@@ -47,6 +48,7 @@ export default function Dashboard() {
 
   // Estados
   const [todaySales, setTodaySales] = useState([]);
+  const [orderChanges, setOrderChanges] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -64,6 +66,7 @@ export default function Dashboard() {
     const unsubSales = subscribeToTodaySales(businessId, (sales) => {
       setTodaySales(sales);
     });
+    const unsubOrderChanges = subscribeToSaleChanges(businessId, setOrderChanges);
 
     Promise.allSettled([
       getProducts(businessId),
@@ -75,6 +78,7 @@ export default function Dashboard() {
 
     return () => {
       unsubSales();
+      unsubOrderChanges();
     };
   }, [businessId]);
 
@@ -98,10 +102,30 @@ export default function Dashboard() {
     };
   }, [businessId]);
 
+  // Ventas vigentes: las canceladas no cuentan en totales, gráficos ni reportes.
+  const activeTodaySales = useMemo(
+    () => todaySales.filter((s) => s.status !== 'cancelled'),
+    [todaySales]
+  );
+
   // Ventas visibles según rol (dueño ve todas, cajero solo las suyas)
   const visibleSales = useMemo(() => (
-    isOwner ? todaySales : todaySales.filter((s) => s.createdBy === user?.uid)
-  ), [isOwner, todaySales, user?.uid]);
+    isOwner ? activeTodaySales : activeTodaySales.filter((s) => s.createdBy === user?.uid)
+  ), [isOwner, activeTodaySales, user?.uid]);
+
+  const todayOrderChanges = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return orderChanges.filter((change) => {
+      const d = change.createdAt?.toDate ? change.createdAt.toDate() : new Date(change.createdAt);
+      return d >= start;
+    });
+  }, [orderChanges]);
+
+  const todaySalesById = useMemo(
+    () => Object.fromEntries(todaySales.map((sale) => [sale.id, sale])),
+    [todaySales]
+  );
 
   // Sede del Inicio: filtra todo el día (resumen, análisis, en vivo).
   const { branches } = useBranches();
@@ -115,6 +139,16 @@ export default function Dashboard() {
     return visibleSales.filter((s) => saleBranchId(s) === homeBranch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleSales, homeBranch, mainBranchId, isOwner]);
+
+  // Bitácora de pedidos del inicio: mismas ventas visibles y misma sede.
+  const homeOrderChanges = useMemo(() => {
+    if (!isRestaurantMode) return [];
+    const scopedSales = (isOwner ? todaySales : todaySales.filter((s) => s.createdBy === user?.uid))
+      .filter((s) => !isOwner || homeBranch === 'all' || saleBranchId(s) === homeBranch);
+    const ids = new Set(scopedSales.map((s) => s.id));
+    return todayOrderChanges.filter((change) => ids.has(change.saleId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRestaurantMode, isOwner, todaySales, user?.uid, homeBranch, mainBranchId, todayOrderChanges]);
 
   // Ítems solo de las ventas del día/sede visible
   const scopedItemsMap = useMemo(() => {
@@ -411,6 +445,9 @@ export default function Dashboard() {
           onSelectSale={(sale) => navigate(`/recibo/${sale.id}`)}
           onReimprint={handleReimprint}
           printingSaleId={printingSaleId}
+          orderChanges={homeOrderChanges}
+          salesById={todaySalesById}
+          showOrderChanges={isRestaurantMode}
         />
       </>
     );
@@ -464,6 +501,14 @@ export default function Dashboard() {
           />
         )}
       </div>
+
+      {isRestaurantMode && (
+        <OrderChangesCard
+          changes={homeOrderChanges}
+          salesById={todaySalesById}
+          onOpen={() => navigate('/ventas?tab=bitacora')}
+        />
+      )}
 
       {/* PULSO DEL NEGOCIO: mensual, stock, sucursales y en vivo */}
       <OwnerPulse

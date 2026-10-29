@@ -38,7 +38,7 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
           getAllExpenses(businessId).catch(() => []),
         ]);
         if (!alive) return;
-        setSales(Array.isArray(s) ? s : []);
+        setSales((Array.isArray(s) ? s : []).filter((sale) => sale.status !== 'cancelled'));
         setItems(Array.isArray(it) ? it : []);
         setExpenses(Array.isArray(ex) ? ex : []);
       } finally {

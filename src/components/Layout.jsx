@@ -86,8 +86,10 @@ const NAV_ITEMS = [
     label: 'Ventas', Icon: CartIcon, ownerOnly: false, key: 'sales', basePath: '/ventas',
     children: [
       { to: '/ventas?tab=venta', label: 'Nueva Venta', key: 'sales-new' },
+      { to: '/ventas?tab=pedidos', label: 'Pedidos', key: 'sales-orders', restaurantOnly: true },
       { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'sales-report' },
       { to: '/ventas?tab=cajeros', label: 'Por Cajero', key: 'sales-cashier', ownerOnly: true },
+      { to: '/ventas?tab=bitacora', label: 'Bitácora de pedidos', key: 'sales-order-log', restaurantOnly: true },
     ],
   },
   {
@@ -130,6 +132,7 @@ const NAV_ITEMS = [
       { to: '/reportes?type=costoVendido', label: 'Costo de lo Vendido', key: 'reports-costo' },
       { to: '/ventas?tab=reporte', label: 'Reporte de Ventas', key: 'reports-sales' },
       { to: '/ventas?tab=cajeros', label: 'Reporte por Cajero', key: 'reports-cashier' },
+      { to: '/ventas?tab=bitacora', label: 'Bitácora de pedidos', key: 'reports-order-log', restaurantOnly: true },
       { to: '/compras?tab=historial', label: 'Reporte de Compras', key: 'reports-purchases' },
       { to: '/reportes?type=ranking', label: 'Ranking de Productos', key: 'reports-ranking' },
       { to: '/reportes?type=expenses', label: 'Reporte de Egresos', key: 'reports-expenses' },
@@ -233,13 +236,18 @@ export default function Layout() {
     .filter((item) => !(isRestaurantMode && (item.key === 'purchases' || item.key === 'branches')))
     .filter((item) => item.key !== 'branches' || can('branches'))
     .map((item) => (
-      isRestaurantMode && item.children
+      item.children
         ? {
           ...item,
-          children: item.children.filter((child) => !(
-            isRestaurantMode
-            && (child.key === 'inventory-report' || child.key === 'reports-purchases' || child.key === 'reports-inventory')
-          )),
+          children: item.children.filter((child) => {
+            if (child.restaurantOnly && !isRestaurantMode) return false;
+            if (isRestaurantMode && (
+              child.key === 'inventory-report'
+              || child.key === 'reports-purchases'
+              || child.key === 'reports-inventory'
+            )) return false;
+            return true;
+          }),
         }
         : item
     ));

@@ -6,7 +6,10 @@ import { getProducts, subscribeToProducts } from '../services/products';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
 import ProductListRow, { RowAddButton } from '../components/ProductListRow';
 import { AuditSalesList } from '../components/AuditSalesList';
-import { registerSale, subscribeToSales, subscribeToSaleItems } from '../services/sales';
+import {
+  registerSale, subscribeToSales, subscribeToSaleItems,
+  subscribeToSaleChanges, getSaleItems, updateSale, cancelSale,
+} from '../services/sales';
 import { getBusinessMembers } from '../services/cashier';
 import { getCustomers, addCustomer } from '../services/customers';
 import { subscribeToCategories } from '../services/categories';
@@ -28,6 +31,8 @@ import { BranchSelect } from '../components/BranchSelect';
 import MetricCard from '../components/ui/MetricCard';
 import EmptyState from '../components/ui/EmptyState';
 import SectionCard from '../components/ui/SectionCard';
+import OrderEditModal from '../components/OrderEditModal';
+import { OrderChangeBadge, getOrderChangeMeta } from '../components/OrderChangeBadge';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -231,11 +236,26 @@ export default function Sales() {
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
     : searchParams.get('tab') === 'cajeros' ? 'cajeros'
-    : searchParams.get('tab') === 'auditoria' ? 'auditoria' : 'venta';
+    : searchParams.get('tab') === 'auditoria' ? 'auditoria'
+    : searchParams.get('tab') === 'pedidos' ? 'pedidos'
+    : searchParams.get('tab') === 'bitacora' ? 'bitacora' : 'venta';
   // El cajero no tiene Por Cajero: cae a su reporte propio.
-  const activeTab = (!isOwner && requestedTab === 'cajeros') ? 'reporte' : requestedTab;
+  // Pedidos y bitácora son exclusivos del modo restaurante.
+  const activeTab = (!isOwner && requestedTab === 'cajeros') ? 'reporte'
+    : ((requestedTab === 'pedidos' || requestedTab === 'bitacora') && !isRestaurantMode) ? 'venta'
+    : requestedTab;
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
+  const [orderChanges, setOrderChanges] = useState([]);
+  const [ordersFilter, setOrdersFilter] = useState('todos');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [editingItems, setEditingItems] = useState([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editCancelMode, setEditCancelMode] = useState(false);
+  const [orderFlash, setOrderFlash] = useState(null);
   const navigate = useNavigate();
   // Si se llega acá desde otro reporte (p.ej. "Total Vendido" en Ganancias
   // Diarias) con ?start=&end=, se respeta ese rango en vez del default de
@@ -469,6 +489,12 @@ export default function Sales() {
     return unsub;
   }, [businessId]);
 
+  useEffect(() => {
+    if (!businessId || !isRestaurantMode) return;
+    const unsub = subscribeToSaleChanges(businessId, setOrderChanges);
+    return unsub;
+  }, [businessId, isRestaurantMode]);
+
   // Miembros (para saber qué cajeros pertenecen a cada sede)
   const [teamMembers, setTeamMembers] = useState([]);
   useEffect(() => {
@@ -484,6 +510,7 @@ export default function Sales() {
   const reportEnd = useMemo(() => new Date(`${reportEndDate}T23:59:59.999`), [reportEndDate]);
 
   const filteredSalesReport = useMemo(() => salesList
+    .filter((s) => s.status !== 'cancelled')
     .filter((s) => {
       const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
       return d >= reportStart && d <= reportEnd;
@@ -544,6 +571,127 @@ export default function Sales() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredSalesReport, reportBranch, mainBranchId, isOwner, user?.uid, teamMembers]);
+
+  const salesById = useMemo(
+    () => Object.fromEntries(salesList.map((s) => [s.id, s])),
+    [salesList]
+  );
+
+  const todayOrders = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return salesList
+      .filter((s) => {
+        if (!isOwner && user?.uid && (s.createdBy || s.created_by) !== user.uid) return false;
+        const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+        return d >= start;
+      })
+      .sort((a, b) => {
+        const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return db - da;
+      });
+  }, [salesList, isOwner, user?.uid]);
+
+  const todayOrderStats = useMemo(() => ({
+    total: todayOrders.length,
+    active: todayOrders.filter((s) => s.status !== 'cancelled').length,
+    cancelled: todayOrders.filter((s) => s.status === 'cancelled').length,
+  }), [todayOrders]);
+
+  // La lista de pedidos no se filtra por sede: si hay varias, se avisa que
+  // se están viendo todas para no confundir con la sede operativa.
+  const ordersBranchLabel = branches.length > 1 ? 'Todas las sedes' : (activeBranch?.name || '');
+
+  const filteredTodayOrders = useMemo(() => {
+    const query = orderSearch.trim().toLowerCase();
+    return todayOrders.filter((sale) => {
+      if (ordersFilter === 'activos' && sale.status === 'cancelled') return false;
+      if (ordersFilter === 'cancelados' && sale.status !== 'cancelled') return false;
+      if (!query) return true;
+      const number = `#${String(saleNumberById[sale.id] || 0).padStart(4, '0')}`;
+      const items = itemsBySaleId[sale.id] || [];
+      const haystack = [
+        number,
+        sale.seller_name,
+        sale.client_name,
+        ...items.map((item) => item.productName),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [todayOrders, ordersFilter, orderSearch, saleNumberById, itemsBySaleId]);
+
+  const todayOrderIds = useMemo(() => new Set(todayOrders.map((s) => s.id)), [todayOrders]);
+
+  const todayOrderChanges = useMemo(
+    () => orderChanges.filter((change) => todayOrderIds.has(change.saleId)),
+    [orderChanges, todayOrderIds]
+  );
+
+  const bitacoraChanges = useMemo(() => {
+    return orderChanges.filter((change) => {
+      const d = change.createdAt?.toDate ? change.createdAt.toDate() : new Date(change.createdAt);
+      if (!(d >= reportStart && d <= reportEnd)) return false;
+      const sale = salesById[change.saleId];
+      if (!isOwner && user?.uid) {
+        const creator = sale?.createdBy || sale?.created_by;
+        if (creator !== user.uid) return false;
+      }
+      if (reportBranch !== 'all') {
+        const branch = change.branchId || sale?.branchId || sale?.branch_id || mainBranchId;
+        if (branch !== reportBranch) return false;
+      }
+      return true;
+    });
+  }, [orderChanges, reportStart, reportEnd, reportBranch, salesById, mainBranchId, isOwner, user?.uid]);
+
+  const memberNameById = useMemo(() => {
+    const map = Object.fromEntries(teamMembers.map((m) => [m.id, m.displayName || m.email || '']));
+    if (user?.uid) map[user.uid] = user.displayName || user.email || sellerName || 'Tú';
+    return map;
+  }, [teamMembers, user?.uid, user?.displayName, user?.email, sellerName]);
+
+  const branchNameById = useMemo(
+    () => Object.fromEntries(branches.map((b) => [b.id, b.name])),
+    [branches]
+  );
+
+  const bitacoraRows = useMemo(() => bitacoraChanges.map((change) => {
+    const sale = salesById[change.saleId];
+    const number = saleNumberById[change.saleId];
+    const meta = getOrderChangeMeta(change.eventType);
+    const before = change.quantityBefore;
+    const after = change.quantityAfter;
+    let detail = '—';
+    if (change.eventType === 'sale_cancelled') detail = 'Se anuló el pedido completo';
+    else if (change.eventType === 'item_added') detail = `Se agregó ${after ?? 1}`;
+    else if (change.eventType === 'item_removed') detail = `Se retiró ${before ?? 1}`;
+    else if (change.eventType === 'qty_increased' || change.eventType === 'qty_decreased') {
+      detail = `${before ?? 0} → ${after ?? 0}`;
+    }
+    return {
+      rowKey: change.id,
+      createdAt: change.createdAt,
+      saleNumber: number ? `#${String(number).padStart(4, '0')}` : '—',
+      saleId: change.saleId,
+      eventType: change.eventType,
+      eventLabel: meta.label,
+      productName: change.productName || (change.eventType === 'sale_cancelled' ? 'Pedido completo' : '—'),
+      detail,
+      amountDelta: Number(change.amountDelta || 0),
+      reason: change.reason || '',
+      actorName: memberNameById[change.createdBy] || sale?.sellerName || sale?.seller_name || '—',
+      branchName: branchNameById[change.branchId || sale?.branchId || sale?.branch_id || mainBranchId] || '—',
+    };
+  }), [bitacoraChanges, salesById, saleNumberById, memberNameById, branchNameById, mainBranchId]);
+
+  const bitacoraStats = useMemo(() => ({
+    cancelled: bitacoraChanges.filter((c) => c.eventType === 'sale_cancelled').length,
+    added: bitacoraChanges.filter((c) => c.eventType === 'item_added').length,
+    removed: bitacoraChanges.filter((c) => c.eventType === 'item_removed').length,
+    adjusted: bitacoraChanges.filter((c) => c.eventType === 'qty_increased' || c.eventType === 'qty_decreased').length,
+    net: bitacoraChanges.reduce((sum, c) => sum + Number(c.amountDelta || 0), 0),
+  }), [bitacoraChanges]);
 
   const salesReportRows = useMemo(() => scopedSalesReport.flatMap((s) =>
     (itemsBySaleId[s.id] || []).map((item) => {
@@ -632,7 +780,7 @@ export default function Sales() {
     const list = (!isOwner && user?.uid
       ? salesList.filter((s) => (s.createdBy || s.created_by) === user.uid)
       : salesList.slice()
-    ).sort((a, b) => {
+    ).filter((s) => s.status !== 'cancelled').sort((a, b) => {
       const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
       const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
       return db - da;
@@ -859,6 +1007,55 @@ export default function Sales() {
     });
   }
 
+  function handleExportBitacora() {
+    const columns = [
+      { label: 'Fecha y hora' },
+      { label: 'Pedido', align: 'center' },
+      { label: 'Cambio' },
+      { label: 'Producto' },
+      { label: 'Detalle' },
+      { label: 'Monto', align: 'right' },
+      { label: 'Motivo' },
+      { label: 'Responsable' },
+      { label: 'Sede' },
+    ];
+    const rows = bitacoraRows.map((row) => {
+      const d = row.createdAt?.toDate ? row.createdAt.toDate() : new Date(row.createdAt);
+      const amount = Number(row.amountDelta || 0);
+      return [
+        `${d.toLocaleDateString('es-BO')} ${d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}`,
+        row.saleNumber,
+        row.eventLabel,
+        row.productName,
+        row.detail,
+        amount === 0 ? '—' : `${amount > 0 ? '+' : '−'}${formatBs(Math.abs(amount))}`,
+        row.reason || '—',
+        row.actorName,
+        row.branchName,
+      ];
+    });
+    const formattedStart = reportStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formattedEnd = reportEnd.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
+    const branchLabel = reportBranch === 'all'
+      ? 'Todas las sedes'
+      : (branchNameById[reportBranch] || 'Sede seleccionada');
+    exportReportToPDF({
+      businessName: settings?.businessName,
+      title: 'Bitácora de pedidos',
+      subtitle: 'Cancelaciones, productos añadidos, retirados y cantidades ajustadas.',
+      periodLabel: `Periodo: ${formattedStart} hasta ${formattedEnd} · ${branchLabel}`,
+      columns,
+      rows,
+      summary: [
+        { label: 'Pedidos cancelados', value: String(bitacoraStats.cancelled) },
+        { label: 'Productos añadidos', value: String(bitacoraStats.added) },
+        { label: 'Productos retirados', value: String(bitacoraStats.removed) },
+        { label: 'Cantidades ajustadas', value: String(bitacoraStats.adjusted) },
+        { label: 'Cambios registrados', value: String(bitacoraRows.length), emphasis: true },
+      ],
+    });
+  }
+
   // Fase 2: stock por sede operativa (con backfill local una vez)
   const stockRows = useBranchStocks(businessId, mainBranchId);
   const stockMap = useMemo(() => toStockMap(stockRows), [stockRows]);
@@ -876,11 +1073,89 @@ export default function Sales() {
     return productsWithStock.filter((p) => p.stock > 0 && !(p.isDish && p.isAvailable === false));
   }, [productsWithStock]);
 
+  const editingBranchId = editingOrder
+    ? (editingOrder.branchId || editingOrder.branch_id || null)
+    : activeBranchId;
+  const editProducts = useMemo(() => {
+    const base = editingBranchId && hasBranchRows
+      ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${editingBranchId}:${p.id}`) ?? 0) }))
+      : products;
+    return base.map((p) => (p.isDish ? { ...p, stock: 9999 } : p));
+  }, [products, stockMap, editingBranchId, hasBranchRows]);
+
+  async function openOrderEditor(sale, { cancel = false } = {}) {
+    setOrderFlash(null);
+    setEditError('');
+    setEditCancelMode(!!cancel);
+    setEditingOrder(sale);
+    setEditingItems([]);
+    setEditLoading(true);
+    try {
+      const items = await getSaleItems(businessId, sale.id);
+      setEditingItems(items);
+    } catch (err) {
+      console.error(err);
+      setEditError('No se pudieron cargar los productos del pedido. Intenta de nuevo.');
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  function closeOrderEditor() {
+    if (editSaving) return;
+    setEditingOrder(null);
+    setEditingItems([]);
+    setEditError('');
+    setEditCancelMode(false);
+  }
+
+  async function handleSaveOrder(lines, reason) {
+    if (!editingOrder) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const result = await updateSale(businessId, user?.uid, editingOrder.id, lines, { reason });
+      const number = saleNumberById[editingOrder.id];
+      setOrderFlash({
+        tone: 'success',
+        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''} actualizado. Nuevo total: ${formatBs(result.totalAfter)}.`,
+      });
+      setEditingOrder(null);
+      setEditingItems([]);
+    } catch (err) {
+      console.error(err);
+      setEditError(err.message || 'No se pudo guardar el cambio del pedido.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleCancelOrder(reason) {
+    if (!editingOrder) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const result = await cancelSale(businessId, user?.uid, editingOrder.id, { reason });
+      const number = saleNumberById[editingOrder.id];
+      setOrderFlash({
+        tone: 'danger',
+        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''} cancelado. Los productos volvieron al inventario y ya no cuenta como venta.`,
+      });
+      setEditingOrder(null);
+      setEditingItems([]);
+    } catch (err) {
+      console.error(err);
+      setEditError(err.message || 'No se pudo cancelar el pedido.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   // Productos vendidos recientemente (últimos 20, más reciente primero) —
   // para encontrar rápido lo que más se repite sin buscar por categoría.
   const recentProductIds = useMemo(() => {
     const saleDateById = {};
-    salesList.forEach((s) => {
+    salesList.filter((s) => s.status !== 'cancelled').forEach((s) => {
       saleDateById[s.id] = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
     });
     const seen = new Set();
@@ -1630,7 +1905,307 @@ export default function Sales() {
             </div>
           )}
 
-          {activeTab === 'reporte' ? (
+          {activeTab === 'pedidos' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
+              <div className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
+                      <AppIcon name="historial" size={21} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Restaurante</p>
+                      <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand-text)]">Pedidos de hoy</h2>
+                      <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                        {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {ordersBranchLabel ? ` · ${ordersBranchLabel}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/ventas?tab=bitacora')}
+                      className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 py-2 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                    >
+                      <AppIcon name="reportes" size={14} /> Bitácora
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/ventas?tab=venta')}
+                      className="flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 py-2 text-[11px] font-black text-[var(--mg-brand-contrast)] shadow-sm active:scale-95"
+                    >
+                      <AppIcon name="agregar" size={14} /> Nueva venta
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {orderFlash ? (
+                <div className={`flex items-start justify-between gap-3 rounded-2xl border px-3.5 py-3 ${
+                  orderFlash.tone === 'danger'
+                    ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
+                    : 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
+                }`}>
+                  <p className="text-xs font-bold leading-relaxed">{orderFlash.text}</p>
+                  <button type="button" onClick={() => setOrderFlash(null)} aria-label="Cerrar aviso" className="shrink-0 opacity-70 hover:opacity-100">
+                    <AppIcon name="cerrar" size={14} />
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricCard label="Pedidos de hoy" value={todayOrderStats.total} hint="Incluye cancelados" icon="recibo" tone="brand" />
+                <MetricCard label="En curso" value={todayOrderStats.active} hint="Pedidos vigentes" icon="check" tone="success" />
+                <MetricCard label="Cancelados" value={todayOrderStats.cancelled} hint="Anulados hoy" icon="cancelar" tone="danger" />
+                <MetricCard label="Con cambios" value={todayOrderChanges.length} hint="Ajustes registrados" icon="editar" tone="warning" />
+              </div>
+
+              <SectionCard
+                title={`Pedidos (${filteredTodayOrders.length})`}
+                subtitle="Edita productos, ajusta cantidades o cancela un pedido."
+                bodyClassName="p-4 space-y-3"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="relative min-w-0 flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
+                      <AppIcon name="search" size={16} />
+                    </span>
+                    <input
+                      type="text"
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      placeholder="Buscar por pedido, producto o cajero..."
+                      className="mg-input min-h-[44px] pl-9 text-sm"
+                    />
+                  </div>
+                  <div className="flex shrink-0 gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                    {[
+                      { id: 'todos', label: 'Todos' },
+                      { id: 'activos', label: 'En curso' },
+                      { id: 'cancelados', label: 'Cancelados' },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setOrdersFilter(option.id)}
+                        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-black transition-colors ${
+                          ordersFilter === option.id
+                            ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]'
+                            : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {filteredTodayOrders.length === 0 ? (
+                  <EmptyState
+                    icon="recibo"
+                    title={todayOrders.length === 0 ? 'Todavía no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
+                    description={todayOrders.length === 0
+                      ? 'Los pedidos que cobres hoy aparecerán aquí para editarlos o cancelarlos.'
+                      : 'Prueba con otra búsqueda o cambia el estado.'}
+                    className="border-0 bg-[var(--mg-bg-elevated)] px-4 py-6 shadow-none"
+                  />
+                ) : (
+                  <ul className="space-y-2">
+                    {filteredTodayOrders.map((sale) => {
+                      const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+                      const validDate = d instanceof Date && !Number.isNaN(d.getTime());
+                      const time = validDate ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
+                      const number = saleNumberById[sale.id];
+                      const items = itemsBySaleId[sale.id] || [];
+                      const cancelled = sale.status === 'cancelled';
+                      const summary = items.length > 0
+                        ? `${items.slice(0, 3).map((item) => `${item.quantity}× ${item.productName}`).join(' · ')}${items.length > 3 ? ` +${items.length - 3}` : ''}`
+                        : 'Cargando detalle...';
+                      const methodLabel = METHOD_META[sale.paymentMethod]?.label || 'Efectivo';
+                      return (
+                        <li
+                          key={sale.id}
+                          className={`overflow-hidden rounded-2xl border ${
+                            cancelled
+                              ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'
+                              : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 p-3">
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                              cancelled
+                                ? 'border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-danger)]'
+                                : 'border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-brand-text)]'
+                            }`}>
+                              <AppIcon name={cancelled ? 'cancelar' : 'recibo'} size={18} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-sm font-black text-[var(--mg-text-primary)]">
+                                  Pedido {number ? `#${String(number).padStart(4, '0')}` : ''}
+                                </p>
+                                {cancelled ? (
+                                  <span className="rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
+                                    Cancelado
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
+                                    En curso
+                                  </span>
+                                )}
+                                {time ? <span className="text-[10px] font-bold text-[var(--mg-text-muted)]">{time}</span> : null}
+                              </div>
+                              <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                                {sale.seller_name || sale.sellerName || 'Cajero'} · {methodLabel} · {sale.item_count ?? items.length} unidades
+                              </p>
+                              <p className="mt-1 line-clamp-2 text-xs font-semibold text-[var(--mg-text-secondary)]">{summary}</p>
+                              {cancelled && sale.cancellationReason ? (
+                                <p className="mt-1 text-[11px] font-bold text-[var(--mg-danger)]">Motivo: {sale.cancellationReason}</p>
+                              ) : null}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className={`text-sm font-black tabular-nums ${cancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
+                                {formatBs(sale.total)}
+                              </p>
+                              <p className="mt-0.5 text-[10px] font-bold text-[var(--mg-text-muted)]">
+                                {items.length} {items.length === 1 ? 'producto' : 'productos'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 border-t border-[var(--mg-separator)] px-3 py-2.5">
+                            <button
+                              type="button"
+                              onClick={() => openOrderEditor(sale)}
+                              disabled={cancelled}
+                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-brand-text)] transition-colors hover:bg-[var(--mg-brand-bg)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <AppIcon name="editar" size={13} /> Editar pedido
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openOrderEditor(sale, { cancel: true })}
+                              disabled={cancelled}
+                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-danger)] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <AppIcon name="cancelar" size={13} /> Cancelar pedido
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/recibo/${sale.id}`, { state: { saleNumber: number } })}
+                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors active:scale-95"
+                            >
+                              <AppIcon name="recibo" size={13} /> Ver recibo
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </SectionCard>
+            </div>
+          ) : activeTab === 'bitacora' ? (
+            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
+              <ReportHeader
+                icon={<AppIcon name="historial" size={21} />}
+                title="Bitácora de pedidos"
+                subtitle="Cancelaciones, productos añadidos, retirados y cantidades ajustadas."
+                startDate={reportStartDate}
+                endDate={reportEndDate}
+                onStartDateChange={setReportStartDate}
+                onEndDateChange={setReportEndDate}
+                onExport={canExport ? handleExportBitacora : undefined}
+                exportDisabled={bitacoraRows.length === 0}
+                branchSelector={renderBranchPills()}
+              />
+
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricCard label="Pedidos cancelados" value={bitacoraStats.cancelled} hint="Anulados en el período" icon="cancelar" tone="danger" />
+                <MetricCard label="Productos añadidos" value={bitacoraStats.added} hint="Agregados al pedido" icon="agregar" tone="success" />
+                <MetricCard label="Productos retirados" value={bitacoraStats.removed} hint="Quitados del pedido" icon="eliminar" tone="warning" />
+                <MetricCard label="Cantidades ajustadas" value={bitacoraStats.adjusted} hint="Subieron o bajaron" icon="editar" tone="brand" />
+              </div>
+
+              <SectionCard
+                title="Cambios registrados"
+                subtitle={`${bitacoraRows.length} ${bitacoraRows.length === 1 ? 'cambio' : 'cambios'} en el período`}
+                bodyClassName="p-4"
+              >
+                <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                  {['sale_cancelled', 'item_added', 'item_removed', 'qty_increased', 'qty_decreased'].map((type) => (
+                    <OrderChangeBadge key={type} type={type} compact />
+                  ))}
+                  <span className="ml-auto text-[11px] font-bold text-[var(--mg-text-muted)]">
+                    Impacto neto: {formatBs(bitacoraStats.net)}
+                  </span>
+                </div>
+                <DataTable
+                  storageKey="mg-bitacora-pedidos-columns"
+                  getRowKey={(row) => row.rowKey}
+                  emptyMessage="No hay cambios de pedidos en el rango de fechas seleccionado."
+                  rows={bitacoraRows}
+                  columns={[
+                    {
+                      key: 'fecha', label: 'Fecha y hora', width: 'w-32',
+                      render: (row) => {
+                        const d = row.createdAt?.toDate ? row.createdAt.toDate() : new Date(row.createdAt);
+                        return (
+                          <span className="whitespace-nowrap font-mono text-[11px]">
+                            {d.toLocaleDateString('es-BO')} · {d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      key: 'pedido', label: 'Pedido', align: 'center', width: 'w-24',
+                      render: (row) => <span className="whitespace-nowrap font-mono text-xs font-bold">{row.saleNumber}</span>,
+                    },
+                    {
+                      key: 'cambio', label: 'Cambio', width: 'w-40',
+                      render: (row) => <OrderChangeBadge type={row.eventType} />,
+                    },
+                    {
+                      key: 'producto', label: 'Producto',
+                      render: (row) => <span className="block max-w-[180px] truncate font-semibold">{row.productName}</span>,
+                    },
+                    {
+                      key: 'detalle', label: 'Detalle', align: 'center', width: 'w-28',
+                      render: (row) => <span className="whitespace-nowrap tabular-nums">{row.detail}</span>,
+                    },
+                    {
+                      key: 'monto', label: 'Monto', align: 'right', width: 'w-28',
+                      render: (row) => (
+                        <span className={`whitespace-nowrap font-black tabular-nums ${
+                          row.amountDelta > 0
+                            ? 'text-[var(--mg-success-text)]'
+                            : row.amountDelta < 0
+                              ? 'text-[var(--mg-danger)]'
+                              : 'text-[var(--mg-text-muted)]'
+                        }`}>
+                          {row.amountDelta === 0 ? '—' : `${row.amountDelta > 0 ? '+' : '−'}${formatBs(Math.abs(row.amountDelta))}`}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'motivo', label: 'Motivo',
+                      render: (row) => row.reason
+                        ? <span className="block max-w-[180px] truncate">{row.reason}</span>
+                        : <span className="text-[var(--mg-text-faint)]">—</span>,
+                    },
+                    {
+                      key: 'responsable', label: 'Responsable', width: 'w-32',
+                      render: (row) => <span className="block max-w-[140px] truncate font-semibold">{row.actorName}</span>,
+                    },
+                    {
+                      key: 'sede', label: 'Sede', width: 'w-32',
+                      render: (row) => <span className="block max-w-[140px] truncate">{row.branchName}</span>,
+                    },
+                  ]}
+                />
+              </SectionCard>
+            </div>
+          ) : activeTab === 'reporte' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
               <ReportHeader
                 icon={<AppIcon name="carrito" size={21} />}
@@ -2066,6 +2641,23 @@ export default function Sales() {
         </div>
       )}
       </>
+      )}
+
+      {/* MODAL DE EDICIÓN / CANCELACIÓN DE PEDIDO */}
+      {editingOrder && (
+        <OrderEditModal
+          sale={editingOrder}
+          saleNumber={saleNumberById[editingOrder.id]}
+          items={editingItems}
+          products={editProducts}
+          loading={editLoading}
+          saving={editSaving}
+          error={editError}
+          initialCancel={editCancelMode}
+          onClose={closeOrderEditor}
+          onSave={handleSaveOrder}
+          onCancelOrder={handleCancelOrder}
+        />
       )}
 
       {/* MODAL DE CONFIRMACIÓN DE ÉXITO */}

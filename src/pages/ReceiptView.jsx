@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { getSaleById, getSaleItems } from '../services/sales';
+import { getSaleById, getSaleItems, isSaleCancelled } from '../services/sales';
 import { formatBs } from '../utils/currency';
 import { printReceipt } from '../components/Receipt';
 import { AppIcon } from '../components/icons';
@@ -138,6 +138,30 @@ export default function ReceiptView() {
           <AppIcon name="recibo" size={14} color="#fff" /> Imprimir
         </button>
       </div>
+
+      {isSaleCancelled(sale) ? (
+        <div className="mx-4 rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-4 sm:mx-0">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-danger)]">
+              <AppIcon name="cancelar" size={19} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-black text-[var(--mg-danger)]">Pedido cancelado</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                Este pedido fue anulado y no cuenta como venta. Los productos volvieron al inventario.
+              </p>
+              {sale.cancellationReason ? (
+                <p className="mt-1.5 text-[11px] font-bold text-[var(--mg-danger)]">Motivo: {sale.cancellationReason}</p>
+              ) : null}
+              {sale.cancelledAt ? (
+                <p className="mt-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                  Cancelado el {new Date(sale.cancelledAt).toLocaleDateString('es-BO')} a las {new Date(sale.cancelledAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Ticket térmico 80mm: pantalla completa en celular */}
       <div className="border-y border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-5 py-5 font-mono text-[13px] leading-snug text-[var(--mg-text-primary)] shadow-xs sm:rounded-lg sm:border">

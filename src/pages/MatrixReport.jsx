@@ -60,10 +60,12 @@ export default function MatrixReport() {
     const branchOfExpense = (e) => e.branch_id || mainBranchId;
 
     // Todo el reporte respeta la sede elegida (ventas, ítems y gastos).
-    const sales = useMemo(() => (
-      reportBranch === 'all' ? allSales : allSales.filter((s) => branchOfSale(s) === reportBranch)
+    // Los pedidos cancelados no cuentan como venta en ningún reporte.
+    const sales = useMemo(() => {
+      const active = allSales.filter((s) => s.status !== 'cancelled');
+      return reportBranch === 'all' ? active : active.filter((s) => branchOfSale(s) === reportBranch);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    ), [allSales, reportBranch, mainBranchId]);
+    }, [allSales, reportBranch, mainBranchId]);
     const saleItems = useMemo(() => {
       if (reportBranch === 'all') return allSaleItems;
       const ids = new Set(sales.map((s) => s.id));

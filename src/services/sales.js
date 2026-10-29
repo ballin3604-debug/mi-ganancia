@@ -16,8 +16,17 @@ function mapSale(s) {
     montoEfectivo: s.monto_efectivo,
     montoQR: s.monto_qr,
     branchId: s.branch_id || null,
+    status: s.status || 'completed',
+    cancelledAt: s.cancelled_at || null,
+    cancelledBy: s.cancelled_by || null,
+    cancellationReason: s.cancellation_reason || '',
+    updatedAt: s.updated_at || null,
     createdAt: s.created_at ? { toDate: () => new Date(s.created_at) } : null,
   };
+}
+
+export function isSaleCancelled(sale) {
+  return sale?.status === 'cancelled';
 }
 
 function mapSaleItem(item) {
@@ -32,12 +41,38 @@ function mapSaleItem(item) {
     presentationId: item.presentation_id || item.presentationId || null,
     presentationFactor: Number(item.presentation_factor || 1),
     variant: item.variant || '',
+    supplierPrice: item.supplier_price ?? item.supplierPrice ?? null,
+    imageUrl: item.image_url || item.imageUrl || '',
+  };
+}
+
+function mapSaleChange(change) {
+  if (!change) return change;
+  return {
+    ...change,
+    saleId: change.sale_id,
+    eventType: change.event_type,
+    productId: change.product_id,
+    productName: change.product_name || '',
+    quantityBefore: change.quantity_before === null || change.quantity_before === undefined
+      ? null
+      : Number(change.quantity_before),
+    quantityAfter: change.quantity_after === null || change.quantity_after === undefined
+      ? null
+      : Number(change.quantity_after),
+    amountDelta: Number(change.amount_delta || 0),
+    totalBefore: Number(change.total_before || 0),
+    totalAfter: Number(change.total_after || 0),
+    createdBy: change.created_by || null,
+    branchId: change.branch_id || null,
+    createdAt: change.created_at ? { toDate: () => new Date(change.created_at) } : null,
   };
 }
 
 const todaySalesListeners = new Set();
 const allSalesListeners = new Set();
 const saleItemsListeners = new Set();
+const saleChangesListeners = new Set();
 
 function notifyTodaySales(businessId) {
   getTodaySales(businessId).then((sales) => {
@@ -57,10 +92,17 @@ function notifySaleItems(businessId) {
   });
 }
 
+function notifyOrderChanges(businessId) {
+  getSaleChangesAll(businessId).then((changes) => {
+    saleChangesListeners.forEach((callback) => callback(changes));
+  });
+}
+
 export function notifySaleChanges(businessId) {
   notifyTodaySales(businessId);
   notifyAllSales(businessId);
   notifySaleItems(businessId);
+  notifyOrderChanges(businessId);
 }
 
 export async function registerSale(
@@ -109,6 +151,8 @@ export async function registerSale(
     client_generated_id: saleId,
     monto_efectivo: extraFields.montoEfectivo !== undefined ? Number(extraFields.montoEfectivo) : null,
     monto_qr: extraFields.montoQR !== undefined ? Number(extraFields.montoQR) : null,
+    status: 'completed',
+    updated_at: now,
     sync_status: 'local',
   };
 
@@ -266,6 +310,388 @@ export async function registerSale(
   return saleId;
 }
 
+function normalizeEditLine(line) {
+  const quantity = Number(line?.quantity);
+  const price = Number(line?.price);
+  const factor = Math.max(1, Number(line?.presentationFactor || 1));
+  if (!line?.id || !line?.productId || !Number.isFinite(quantity) || quantity <= 0
+      || !Number.isFinite(price) || price < 0 || !Number.isFinite(factor)) {
+    throw new Error('Hay una línea del pedido con cantidad o precio inválido.');
+  }
+  return {
+    id: line.id,
+    productId: line.productId,
+    productName: line.productName || 'Producto',
+    productBrand: line.productBrand || '',
+    category: line.category || 'Otros',
+    imageUrl: line.imageUrl || '',
+    quantity,
+    price,
+    supplierPrice: line.supplierPrice ?? line.supplier_price ?? null,
+    presentation: line.presentation || '',
+    presentationId: line.presentationId || null,
+    presentationFactor: factor,
+    variant: line.variant || '',
+  };
+}
+
+function lineBaseQty(line) {
+  return Number(line.quantity || 0) * Math.max(1, Number(line.presentationFactor || 1));
+}
+
+function toServerOrderItem(line) {
+  return {
+    id: line.id,
+    product_id: line.productId,
+    product_name: line.productName,
+    product_brand: line.productBrand || '',
+    category: line.category || 'Otros',
+    quantity: line.quantity,
+    price: line.price,
+    supplier_price: line.supplierPrice,
+    presentation: line.presentation || '',
+    presentation_id: line.presentationId || null,
+    presentation_factor: line.presentationFactor,
+    variant: line.variant || '',
+  };
+}
+
+function toServerChangeEvent(event) {
+  const { sync_status, ...rest } = event;
+  return rest;
+}
+
+function buildOrderChange({
+  businessId, saleId, eventType, line = null, quantityBefore = null,
+  quantityAfter = null, amountDelta = 0, totalBefore, totalAfter,
+  reason = '', userId, branchId, now,
+}) {
+  return {
+    id: generateUUID(),
+    business_id: businessId,
+    sale_id: saleId,
+    event_type: eventType,
+    product_id: line?.productId || null,
+    product_name: line?.productName || null,
+    quantity_before: quantityBefore,
+    quantity_after: quantityAfter,
+    amount_delta: Number(amountDelta || 0),
+    total_before: Number(totalBefore || 0),
+    total_after: Number(totalAfter || 0),
+    reason: reason || null,
+    created_by: userId || null,
+    branch_id: branchId || null,
+    created_at: now,
+    sync_status: 'local',
+  };
+}
+
+export async function updateSale(businessId, userId, saleId, lines, options = {}) {
+  if (!businessId || !saleId || !Array.isArray(lines) || lines.length === 0) {
+    throw new Error('El pedido necesita al menos un producto.');
+  }
+  const reason = (options.reason || '').trim();
+  const now = new Date().toISOString();
+  const normalized = lines.map(normalizeEditLine);
+  const uniqueIds = new Set(normalized.map((line) => line.id));
+  if (uniqueIds.size !== normalized.length) {
+    throw new Error('Hay productos repetidos en el pedido.');
+  }
+
+  let result;
+  await db.transaction('rw', db.sales, db.sale_items, db.products, db.branch_stock, db.pending_operations, db.sale_changes, async () => {
+    const sale = await db.sales.get(saleId);
+    if (!sale || sale.business_id !== businessId) {
+      throw new Error('El pedido ya no está disponible en este negocio.');
+    }
+    if (sale.status === 'cancelled') {
+      throw new Error('Este pedido ya fue cancelado.');
+    }
+
+    const existing = await db.sale_items.where('sale_id').equals(saleId).toArray();
+    const existingById = new Map(existing.map((item) => [item.id, item]));
+    const oldBaseByProduct = new Map();
+    existing.forEach((item) => {
+      if (!item.product_id) return;
+      oldBaseByProduct.set(
+        item.product_id,
+        (oldBaseByProduct.get(item.product_id) || 0) + lineBaseQty(item)
+      );
+    });
+    const newBaseByProduct = new Map();
+    normalized.forEach((line) => {
+      newBaseByProduct.set(
+        line.productId,
+        (newBaseByProduct.get(line.productId) || 0) + lineBaseQty(line)
+      );
+    });
+
+    const productIds = new Set([...oldBaseByProduct.keys(), ...newBaseByProduct.keys()]);
+    const productsById = {};
+    for (const productId of productIds) {
+      productsById[productId] = await db.products.get(productId);
+    }
+
+    const saleBranchId = sale.branch_id || null;
+    const hasBranchRows = saleBranchId
+      ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
+      : false;
+
+    for (const [productId, newBase] of newBaseByProduct.entries()) {
+      const product = productsById[productId];
+      if (!product || product.business_id !== businessId) {
+        throw new Error('El producto ya no está disponible en este negocio.');
+      }
+      if (product.is_dish) continue;
+      const oldBase = oldBaseByProduct.get(productId) || 0;
+      const available = Number(product.stock || 0) + oldBase;
+      if (newBase > available + 0.0001) {
+        throw new Error(`Stock insuficiente de ${product.name}: quedan ${Math.max(0, available)} unidades base.`);
+      }
+      if (saleBranchId && hasBranchRows) {
+        const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
+        if (!row || row.business_id !== businessId || row.branch_id !== saleBranchId) {
+          throw new Error('No hay stock registrado para el producto en esta sucursal.');
+        }
+        const branchAvailable = Number(row.stock || 0) + oldBase;
+        if (newBase > branchAvailable + 0.0001) {
+          throw new Error(`Stock insuficiente en la sucursal: quedan ${Math.max(0, branchAvailable)} unidades base.`);
+        }
+      }
+    }
+
+    const allProductIds = new Set([...oldBaseByProduct.keys(), ...newBaseByProduct.keys()]);
+    for (const productId of allProductIds) {
+      const product = productsById[productId];
+      if (!product || product.is_dish) continue;
+      const oldBase = oldBaseByProduct.get(productId) || 0;
+      const newBase = newBaseByProduct.get(productId) || 0;
+      const delta = newBase - oldBase;
+      if (Math.abs(delta) < 0.0001) continue;
+      await db.products.update(productId, {
+        stock: Number(product.stock || 0) - delta,
+        updated_at: now,
+      });
+      if (saleBranchId && hasBranchRows) {
+        const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
+        if (row) {
+          await db.branch_stock.put({
+            ...row,
+            stock: Number(row.stock || 0) - delta,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    const keepIds = new Set(normalized.map((line) => line.id));
+    for (const oldItem of existing) {
+      if (!keepIds.has(oldItem.id)) {
+        await db.sale_items.delete(oldItem.id);
+      }
+    }
+
+    const totalBefore = Number(sale.total || 0);
+    const totalAfter = normalized.reduce((sum, line) => sum + line.quantity * line.price, 0);
+    const itemCount = normalized.reduce((sum, line) => sum + lineBaseQty(line), 0);
+    const changes = [];
+
+    for (const oldItem of existing) {
+      if (keepIds.has(oldItem.id)) continue;
+      changes.push(buildOrderChange({
+        businessId, saleId, eventType: 'item_removed',
+        line: {
+          productId: oldItem.product_id,
+          productName: oldItem.product_name,
+        },
+        quantityBefore: Number(oldItem.quantity || 0),
+        quantityAfter: 0,
+        amountDelta: -Number(oldItem.subtotal || 0),
+        totalBefore, totalAfter, reason, userId, branchId: saleBranchId, now,
+      }));
+    }
+
+    for (const line of normalized) {
+      const oldItem = existingById.get(line.id);
+      const item = {
+        id: line.id,
+        business_id: businessId,
+        sale_id: saleId,
+        product_id: line.productId,
+        product_name: line.productName,
+        product_brand: line.productBrand,
+        category: line.category,
+        image_url: line.imageUrl || oldItem?.image_url || '',
+        quantity: line.quantity,
+        price: line.price,
+        subtotal: line.quantity * line.price,
+        supplier_price: line.supplierPrice,
+        presentation: line.presentation,
+        presentation_id: line.presentationId,
+        presentation_factor: line.presentationFactor,
+        variant: line.variant,
+      };
+      await db.sale_items.put(item);
+
+      if (!oldItem) {
+        changes.push(buildOrderChange({
+          businessId, saleId, eventType: 'item_added', line,
+          quantityBefore: 0,
+          quantityAfter: line.quantity,
+          amountDelta: item.subtotal,
+          totalBefore, totalAfter, reason, userId, branchId: saleBranchId, now,
+        }));
+      } else if (Number(oldItem.quantity) !== line.quantity) {
+        const increased = line.quantity > Number(oldItem.quantity);
+        changes.push(buildOrderChange({
+          businessId, saleId,
+          eventType: increased ? 'qty_increased' : 'qty_decreased',
+          line,
+          quantityBefore: Number(oldItem.quantity),
+          quantityAfter: line.quantity,
+          amountDelta: item.subtotal - Number(oldItem.subtotal || 0),
+          totalBefore, totalAfter, reason, userId, branchId: saleBranchId, now,
+        }));
+      }
+    }
+
+    if (changes.length === 0) {
+      throw new Error('No hiciste ningún cambio en el pedido.');
+    }
+
+    await db.sales.update(saleId, {
+      total: totalAfter,
+      item_count: Math.round(itemCount),
+      status: 'completed',
+      updated_at: now,
+    });
+
+    for (const change of changes) {
+      await db.sale_changes.put(change);
+    }
+
+    const outboxOp = buildOutboxOp('UPDATE_SALE', {
+      sale_id: saleId,
+      business_id: businessId,
+      items: normalized.map(toServerOrderItem),
+      events: changes.map(toServerChangeEvent),
+      total: totalAfter,
+      item_count: Math.round(itemCount),
+      reason,
+      actor: userId || null,
+      branch_id: saleBranchId,
+      affected_product_ids: [...allProductIds],
+    }, businessId, { userId, branchId: saleBranchId, origin: 'offline' });
+    await db.pending_operations.add(outboxOp);
+
+    result = { totalBefore, totalAfter, changes };
+  });
+
+  notifySaleChanges(businessId);
+  forceProductRefresh(businessId);
+  notifyBranchStock(businessId);
+  try {
+    notifyIncomeChanges(businessId);
+  } catch (err) {
+    console.error('Error refreshing income local views:', err);
+  }
+  await refreshOutboxState(businessId);
+  return result;
+}
+
+export async function cancelSale(businessId, userId, saleId, options = {}) {
+  if (!businessId || !saleId) {
+    throw new Error('No se indicó qué pedido cancelar.');
+  }
+  const reason = (options.reason || '').trim();
+  const now = new Date().toISOString();
+  let result;
+  await db.transaction('rw', db.sales, db.sale_items, db.products, db.branch_stock, db.pending_operations, db.sale_changes, async () => {
+    const sale = await db.sales.get(saleId);
+    if (!sale || sale.business_id !== businessId) {
+      throw new Error('El pedido ya no está disponible en este negocio.');
+    }
+    if (sale.status === 'cancelled') {
+      throw new Error('Este pedido ya fue cancelado.');
+    }
+
+    const items = await db.sale_items.where('sale_id').equals(saleId).toArray();
+    const baseByProduct = new Map();
+    items.forEach((item) => {
+      if (!item.product_id) return;
+      baseByProduct.set(
+        item.product_id,
+        (baseByProduct.get(item.product_id) || 0) + lineBaseQty(item)
+      );
+    });
+
+    const saleBranchId = sale.branch_id || null;
+    const hasBranchRows = saleBranchId
+      ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
+      : false;
+
+    for (const [productId, baseQty] of baseByProduct.entries()) {
+      const product = await db.products.get(productId);
+      if (!product || product.business_id !== businessId || product.is_dish) continue;
+      await db.products.update(productId, {
+        stock: Number(product.stock || 0) + baseQty,
+        updated_at: now,
+      });
+      if (saleBranchId && hasBranchRows) {
+        const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
+        if (row) {
+          await db.branch_stock.put({
+            ...row,
+            stock: Number(row.stock || 0) + baseQty,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    const totalBefore = Number(sale.total || 0);
+    const change = buildOrderChange({
+      businessId, saleId, eventType: 'sale_cancelled',
+      amountDelta: -totalBefore,
+      totalBefore, totalAfter: 0,
+      reason, userId, branchId: saleBranchId, now,
+    });
+
+    await db.sales.update(saleId, {
+      status: 'cancelled',
+      cancelled_at: now,
+      cancelled_by: userId || null,
+      cancellation_reason: reason || null,
+      updated_at: now,
+    });
+    await db.sale_changes.put(change);
+
+    const outboxOp = buildOutboxOp('CANCEL_SALE', {
+      sale_id: saleId,
+      business_id: businessId,
+      event: toServerChangeEvent(change),
+      items: items.map((item) => ({ product_id: item.product_id })),
+      reason,
+      actor: userId || null,
+      branch_id: saleBranchId,
+    }, businessId, { userId, branchId: saleBranchId, origin: 'offline' });
+    await db.pending_operations.add(outboxOp);
+
+    result = { totalBefore, change };
+  });
+
+  notifySaleChanges(businessId);
+  forceProductRefresh(businessId);
+  notifyBranchStock(businessId);
+  try {
+    notifyIncomeChanges(businessId);
+  } catch (err) {
+    console.error('Error refreshing income local views:', err);
+  }
+  await refreshOutboxState(businessId);
+  return result;
+}
+
 export async function getTodaySales(businessId) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -325,8 +751,34 @@ export async function getSaleById(businessId, saleId) {
   return mapSale(sale);
 }
 
+export async function getSaleChangesAll(businessId) {
+  if (!businessId || !db.sale_changes) return [];
+  const changes = await db.sale_changes.where('business_id').equals(businessId).toArray();
+  return changes
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .map(mapSaleChange);
+}
+
+export async function getTodaySaleChanges(businessId) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const changes = await getSaleChangesAll(businessId);
+  return changes.filter((change) => {
+    const d = change.createdAt?.toDate ? change.createdAt.toDate() : new Date(change.created_at);
+    return d >= today;
+  });
+}
+
+export function subscribeToSaleChanges(businessId, callback) {
+  getSaleChangesAll(businessId).then(callback).catch(console.error);
+  saleChangesListeners.add(callback);
+  return () => {
+    saleChangesListeners.delete(callback);
+  };
+}
+
 export async function exportDetailedCSV(businessId) {
-  const sales = await getSales(businessId);
+  const sales = (await getSales(businessId)).filter((sale) => sale.status !== 'cancelled');
   const items = await getSaleItemsAll(businessId);
 
   const itemsBySale = {};

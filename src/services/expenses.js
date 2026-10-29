@@ -172,7 +172,7 @@ export async function getThisMonthIncome(businessId) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const sales = await db.sales.where('business_id').equals(businessId).toArray();
-  const monthSales = sales.filter((s) => new Date(s.created_at) >= startOfMonth);
+  const monthSales = sales.filter((s) => s.status !== 'cancelled' && new Date(s.created_at) >= startOfMonth);
   return monthSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 }
 

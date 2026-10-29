@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useBranches } from '../context/BranchContext';
 import { AppIcon } from './icons';
 import { SyncStatusBadge } from './SyncStatusBadge';
+import OrderChangesCard from './OrderChangesCard';
 
 function prettyName(raw) {
   const name = (raw || '').trim();
@@ -96,6 +97,10 @@ export function CashierHome({
   onSelectSale,
   onReimprint,
   printingSaleId,
+  orderChanges = [],
+  salesById = {},
+  saleNumberById = {},
+  showOrderChanges = false,
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [editingName, setEditingName] = useState(false);
@@ -298,6 +303,16 @@ export function CashierHome({
           </ul>
         </section>
       )}
+
+      {showOrderChanges ? (
+        <OrderChangesCard
+          changes={orderChanges}
+          salesById={salesById}
+          saleNumberById={saleNumberById}
+          onOpen={() => onNavigate('/ventas?tab=bitacora')}
+          compact
+        />
+      ) : null}
 
       {/* Aviso de stock (sin precios ni edición) */}
       {lowStock.length > 0 && (
