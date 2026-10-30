@@ -483,13 +483,13 @@ async function getServerCaps() {
   // recortar ANTES del upsert en vez de reintentar a ciegas.
   try {
     serverCaps.businessSettings = await probeOptionalColumns('business_settings',
-      ['legal_name', 'nit', 'city', 'address', 'footer_message', 'show_qr']);
+      ['legal_name', 'nit', 'city', 'address', 'footer_message', 'show_qr', 'sector_config']);
   } catch {
     serverCaps.businessSettings = null;
   }
   try {
     const cols = await probeOptionalColumns('expenses',
-      ['payment_method', 'invoice_number', 'notes']);
+      ['payment_method', 'invoice_number', 'notes', 'alert_enabled', 'alert_date', 'alert_days_before']);
     serverCaps.expenseExtra = cols;
   } catch {
     serverCaps.expenseExtra = null;

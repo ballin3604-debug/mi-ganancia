@@ -147,7 +147,7 @@ export default function Inventory() {
     (filterCategory !== 'Todas' ? 1 : 0) +
     (filterExpiry !== 'todos' ? 1 : 0) +
     (filterRecent ? 1 : 0) +
-    (filterLowStock ? 1 : 0);
+    (showStock && filterLowStock ? 1 : 0);
   function clearAllFilters() {
     setFilterCategory('Todas');
     setFilterExpiry('todos');
@@ -157,6 +157,7 @@ export default function Inventory() {
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   // Restaurante: sin vencimiento, sin código de barras, sin compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  const showStock = sectorConfig?.features?.stock !== false;
   const showExpiryFilters = !isRestaurantMode;
   const showBarcode = !isRestaurantMode;
   const stockRows = useBranchStocks(businessId, mainBranchId);
@@ -168,6 +169,10 @@ export default function Inventory() {
       ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${invBranch}:${p.id}`) ?? 0) }))
       : products
   ), [products, stockMap, invBranch, hasBranchRows]);
+
+  useEffect(() => {
+    if (!showStock) setFilterLowStock(false);
+  }, [showStock]);
 
   // Selection / Modal states
   const [selectedDetailProduct, setSelectedDetailProduct] = useState(null);
@@ -815,12 +820,14 @@ export default function Inventory() {
         return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
       })
       .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id))
-      .filter((p) => !filterLowStock || (!p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)));
-  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters]);
+      .filter((p) => !filterLowStock || !showStock || (!p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)));
+  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters, showStock]);
 
   const lowStockCount = useMemo(() => (
-    viewProducts.filter((p) => !p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
-  ), [viewProducts]);
+    showStock
+      ? viewProducts.filter((p) => !p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
+      : 0
+  ), [viewProducts, showStock]);
 
   const visibleProducts = useMemo(
     () => filtered.slice(0, visibleCount),
@@ -912,6 +919,7 @@ export default function Inventory() {
         searchPlaceholder={isRestaurantMode ? 'Buscar plato o producto...' : undefined}
         allLabel={isRestaurantMode ? 'Todo el menú' : undefined}
         showRecentFilter={!isRestaurantMode}
+        showStock={showStock}
         expiryCounts={expiryCounts}
         showExpiryFilters={showExpiryFilters}
         branches={branches}
@@ -921,7 +929,7 @@ export default function Inventory() {
 
       {/* Acceso al reporte de inventario (valorización y kardex): no aplica
           a restaurante, donde los platos no tienen stock que valorizar. */}
-      {!isRestaurantMode && (
+      {!isRestaurantMode && showStock && (
       <button
         type="button"
         onClick={() => navigate('/reportes?type=inventory')}
@@ -954,7 +962,9 @@ export default function Inventory() {
           <p className="text-xs text-[var(--mg-text-muted)] mt-1 max-w-xs mx-auto font-medium">
             {search
               ? 'Intenta borrar la búsqueda o seleccionar otra categoría.'
-              : 'Añade tu primer producto y empieza a vender. Lo esencial: nombre, precio y stock.'}
+              : showStock
+                ? 'Añade tu primer producto y empieza a vender. Lo esencial: nombre, precio y stock.'
+                : 'Añade tu primer producto y empieza a vender. Lo esencial: nombre y precio.'}
           </p>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -983,7 +993,7 @@ export default function Inventory() {
                       priceLabel={formatBs(Number(prod.price || 0))}
                       meta={
                         <span className="flex items-center gap-1.5 flex-wrap mt-1">
-                          <StockLabel stock={prod.stock} minStock={prod.minStock} />
+                          {showStock && <StockLabel stock={prod.stock} minStock={prod.minStock} />}
                           {hasPack && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
                               📦 {(prod.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}

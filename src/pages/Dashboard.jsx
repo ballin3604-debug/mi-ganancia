@@ -5,8 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { subscribeToTodaySales, subscribeToSaleChanges, getSaleItems, exportDetailedCSV } from '../services/sales';
 import { getProducts, subscribeToProducts, subscribeToReplenishments } from '../services/products';
-import { subscribeToExpenses } from '../services/expenses';
+import { subscribeToExpenses, snoozeExpenseAlert, dismissExpenseAlert } from '../services/expenses';
+import { buildFixedExpenseAlerts } from '../services/expenseAlerts';
 import { ExpiryAlert } from '../components/dashboard/ExpiryAlert';
+import { FixedExpenseAlerts } from '../components/dashboard/FixedExpenseAlerts';
+import { LowStockAlert } from '../components/dashboard/LowStockAlert';
 import { TopProductsCard } from '../components/dashboard/TopProductsCard';
 import { printReceipt } from '../components/Receipt';
 
@@ -43,6 +46,8 @@ export default function Dashboard() {
   const { business, settings, sectorConfig } = useBusiness();
   // Restaurante: sin compras ni vencimientos en el inicio.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
+  const showStock = sectorConfig?.features?.stock !== false;
   const navigate = useNavigate();
   // Todo el contenido del inicio siempre visible: sin anuncios de planes.
 
@@ -58,6 +63,7 @@ export default function Dashboard() {
   const [printingSaleId, setPrintingSaleId] = useState(null);
   const [replenishments, setReplenishments] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [alertBusyId, setAlertBusyId] = useState(null);
 
   // Carga de datos iniciales y suscripciones en tiempo real
   useEffect(() => {
@@ -281,6 +287,14 @@ export default function Dashboard() {
     return products.filter((p) => !p.isDish && p.stock <= (p.minStock || 5));
   }, [products, homeBranch, branchStockRows, isOwner]);
 
+  // Pagos fijos con aviso activo, según la sede elegida en Inicio.
+  const fixedAlerts = useMemo(() => {
+    const scoped = !isOwner || homeBranch === 'all'
+      ? expenses
+      : expenses.filter((e) => (e.branch_id || mainBranchId) === homeBranch);
+    return buildFixedExpenseAlerts(scoped);
+  }, [expenses, isOwner, homeBranch, mainBranchId]);
+
   // Totales por método de pago (con soporte para mixtos)
   const totalQr = daySales.reduce((sum, s) => {
     if (s.paymentMethod === 'qr') return sum + (s.total || 0);
@@ -417,6 +431,28 @@ export default function Dashboard() {
     }
   }
 
+  async function handleSnoozeAlert(item) {
+    setAlertBusyId(item.id);
+    try {
+      await snoozeExpenseAlert(item.id, 7);
+    } catch {
+      window.alert('No se pudo posponer el aviso. Intentá de nuevo.');
+    } finally {
+      setAlertBusyId(null);
+    }
+  }
+
+  async function handleDismissAlert(item) {
+    setAlertBusyId(item.id);
+    try {
+      await dismissExpenseAlert(item.id);
+    } catch {
+      window.alert('No se pudo marcar el pago como listo. Intentá de nuevo.');
+    } finally {
+      setAlertBusyId(null);
+    }
+  }
+
   const todayStr = new Date().toLocaleDateString('es-BO', {
     weekday: 'long',
     day: 'numeric',
@@ -437,7 +473,7 @@ export default function Dashboard() {
           todayStr={todayStr}
           sales={visibleSales}
           salesItemsMap={scopedItemsMap}
-          lowStock={lowStock}
+          lowStock={showStock ? lowStock : []}
           totalCobrado={totalHoy}
           totalCash={totalCash}
           totalQr={totalQr}
@@ -472,7 +508,46 @@ export default function Dashboard() {
         onBranchChange={setHomeBranch}
       />
 
-      {/* SECCIÓN 1 — RESUMEN DEL DÍA (siempre visible, aunque sea 0) */}
+      {/* 1 — PAGOS FIJOS: lo primero que el dueño necesita resolver */}
+      <FixedExpenseAlerts
+        alerts={fixedAlerts}
+        onOpen={() => navigate('/egresos?tipo=fixed')}
+        onSnooze={handleSnoozeAlert}
+        onDismiss={handleDismissAlert}
+        busyId={alertBusyId}
+      />
+
+      {/* 2 — PEDIDOS CON CAMBIOS (solo restaurante) */}
+      {isRestaurantMode && (
+        <OrderChangesCard
+          changes={homeOrderChanges}
+          salesById={todaySalesById}
+          onOpen={() => navigate('/ventas?tab=bitacora')}
+        />
+      )}
+
+      {/* 3 — ALERTAS OPERATIVAS: stock y vencimientos */}
+      {((showStock && lowStock.length > 0) || !isRestaurantMode) && (
+        <div className="mg-grid-auto">
+          {showStock && (
+            <LowStockAlert
+              items={lowStock}
+              onNavigate={(path, opts) => navigate(path, opts)}
+              reorderPath={isRestaurantMode ? '/inventario' : '/compras'}
+            />
+          )}
+          {!isRestaurantMode && (
+            <ExpiryAlert
+              expiredCount={expirySummary.expired}
+              soonCount={expirySummary.soon}
+              items={expirySummary.items}
+              onNavigate={(path) => navigate(path)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* 4 — RESUMEN DEL DÍA (siempre visible, aunque sea 0) */}
       <section>
         <SectionHeader title={homeBranch !== 'all' ? `Resumen del día · ${(branches.find((b) => b.id === homeBranch)?.name) || 'Sucursal'}` : 'Resumen del día'} />
         <MagicMetricCards
@@ -489,44 +564,21 @@ export default function Dashboard() {
         />
       </section>
 
-      {/* Productos top + vencimientos en una fila (vencimientos fuera en restaurante) */}
-      <div className="mg-grid-auto">
-        <TopProductsCard data={topProductsChartData} />
-        {!isRestaurantMode && (
-          <ExpiryAlert
-            expiredCount={expirySummary.expired}
-            soonCount={expirySummary.soon}
-            items={expirySummary.items}
-            onNavigate={(path) => navigate(path)}
-          />
-        )}
-      </div>
-
-      {isRestaurantMode && (
-        <OrderChangesCard
-          changes={homeOrderChanges}
-          salesById={todaySalesById}
-          onOpen={() => navigate('/ventas?tab=bitacora')}
-        />
-      )}
-
-      {/* PULSO DEL NEGOCIO: mensual, stock, sucursales y en vivo */}
+      {/* 5 — PULSO DEL NEGOCIO: rendimiento mensual, sucursales y en vivo */}
       <OwnerPulse
         businessId={businessId}
         liveSales={daySales}
         salesItemsMap={scopedItemsMap}
-        lowStock={lowStock}
         branchId={homeBranch}
         mainBranchId={mainBranchId}
         showBranches={!isRestaurantMode && canBranches}
-        reorderPath={isRestaurantMode ? '/inventario' : '/compras'}
         branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
         onNavigate={(path, opts) => navigate(path, opts)}
         onReimprint={handleReimprint}
         printingSaleId={printingSaleId}
       />
 
-      {/* SECCIÓN 2 — ANÁLISIS DETALLADO (siempre visible) */}
+      {/* 6 — ANÁLISIS DETALLADO (siempre visible) */}
       <section className="bg-[var(--mg-bg-surface)] rounded-3xl p-4 sm:p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--mg-separator)] pb-3 gap-3 flex-wrap">
             <div>
@@ -541,6 +593,10 @@ export default function Dashboard() {
             >
               {exporting ? 'Exportando...' : <><AppIcon name="csv" size={14} /> Exportar CSV</>}
             </button>
+          </div>
+
+          <div className="mg-grid-auto">
+            <TopProductsCard data={topProductsChartData} />
           </div>
 
           <DashboardCharts

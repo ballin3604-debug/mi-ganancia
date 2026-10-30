@@ -9,10 +9,24 @@ function formatDate(ts) {
   return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatAlertDate(value) {
+  if (!value) return '';
+  const raw = String(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  const d = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 export function ExpenseDetailModal({ expense, isOpen, onClose, onEdit, onDelete }) {
   if (!isOpen || !expense) return null;
   const isFixed = (expense.expense_type || expense.expenseType) === 'fixed';
   const payLabel = EXPENSE_PAYMENT_LABELS[expense.payment_method] || 'Efectivo (Caja)';
+  const alertEnabled = !!(expense.alert_enabled ?? expense.alertEnabled);
+  const alertDate = expense.alert_date || expense.alertDate;
+  const alertDaysBefore = Number(expense.alert_days_before ?? expense.alertDaysBefore ?? 3);
 
   return (
     <AnimatePresence>
@@ -91,6 +105,14 @@ export function ExpenseDetailModal({ expense, isOpen, onClose, onEdit, onDelete 
                 <span className="text-[var(--mg-text-muted)] font-semibold">Fecha:</span>
                 <span className="font-bold text-[var(--mg-text-primary)] text-right">{formatDate(expense.createdAt)}</span>
               </div>
+              {isFixed && alertEnabled && alertDate && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--mg-text-muted)] font-semibold">Aviso en Inicio:</span>
+                  <span className="font-bold text-[var(--mg-accent-text)] text-right">
+                    {formatAlertDate(alertDate)} · {alertDaysBefore} día{alertDaysBefore === 1 ? '' : 's'} antes
+                  </span>
+                </div>
+              )}
             </div>
 
             {expense.notes && (

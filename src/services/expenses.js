@@ -20,11 +20,27 @@ export const EXPENSE_PAYMENT_LABELS = {
   tarjeta: 'Tarjeta',
 };
 
+function normalizeAlertDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+}
+
+function normalizeAlertDays(value) {
+  const days = Number(value);
+  if (!Number.isFinite(days)) return 3;
+  return Math.min(30, Math.max(0, Math.round(days)));
+}
+
 function mapExpense(e) {
   if (!e) return e;
   return {
     ...e,
     expenseType: e.expense_type,
+    alertEnabled: !!e.alert_enabled,
+    alertDate: e.alert_date || '',
+    alertDaysBefore: normalizeAlertDays(e.alert_days_before),
     createdAt: e.created_at ? { toDate: () => new Date(e.created_at) } : null,
   };
 }
@@ -47,6 +63,9 @@ export function notifyIncomeChanges(businessId) {
 export async function addExpense(businessId, data) {
   const id = generateUUID();
   const now = new Date().toISOString();
+  const expenseType = data.expenseType || data.expense_type || 'daily';
+  const alertEnabled = expenseType === 'fixed' && !!(data.alertEnabled ?? data.alert_enabled);
+  const alertDate = alertEnabled ? normalizeAlertDate(data.alertDate ?? data.alert_date) : null;
 
   const localExpense = {
     id,
@@ -55,10 +74,13 @@ export async function addExpense(businessId, data) {
     supplier: (data.supplier || '').trim(),
     amount: Number(data.amount),
     category: data.category || 'Otros',
-    expense_type: data.expenseType || data.expense_type || 'daily',
+    expense_type: expenseType,
     payment_method: data.paymentMethod || data.payment_method || 'efectivo',
     invoice_number: (data.invoiceNumber || data.invoice_number || '').trim(),
     notes: (data.notes || '').trim(),
+    alert_enabled: alertEnabled,
+    alert_date: alertDate,
+    alert_days_before: normalizeAlertDays(data.alertDaysBefore ?? data.alert_days_before),
     created_at: now,
   };
 
@@ -90,7 +112,17 @@ export async function updateExpense(expenseId, patch) {
     ...(patch.invoiceNumber !== undefined || patch.invoice_number !== undefined
       ? { invoice_number: String(patch.invoiceNumber ?? patch.invoice_number ?? '').trim().slice(0, 40) } : {}),
     ...(patch.notes !== undefined ? { notes: String(patch.notes).trim().slice(0, 200) } : {}),
+    ...(patch.alertEnabled !== undefined || patch.alert_enabled !== undefined
+      ? { alert_enabled: !!(patch.alertEnabled ?? patch.alert_enabled) } : {}),
+    ...(patch.alertDate !== undefined || patch.alert_date !== undefined
+      ? { alert_date: normalizeAlertDate(patch.alertDate ?? patch.alert_date) } : {}),
+    ...(patch.alertDaysBefore !== undefined || patch.alert_days_before !== undefined
+      ? { alert_days_before: normalizeAlertDays(patch.alertDaysBefore ?? patch.alert_days_before) } : {}),
   };
+
+  if (next.expense_type !== 'fixed') {
+    next.alert_enabled = false;
+  }
 
   if (!next.description || !(Number(next.amount) > 0)) {
     throw new Error('Completa la descripción y un monto mayor a 0.');
@@ -105,6 +137,31 @@ export async function updateExpense(expenseId, patch) {
   await refreshOutboxState(existing.business_id);
 
   return mapExpense(next);
+}
+
+function localDateValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export async function snoozeExpenseAlert(expenseId, days = 7) {
+  const existing = await db.expenses.get(expenseId);
+  if (!existing) throw new Error('Egreso no encontrado.');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rawDate = existing.alert_date || existing.alertDate;
+  const due = rawDate ? new Date(`${String(rawDate).slice(0, 10)}T00:00:00`) : null;
+  const base = due && !Number.isNaN(due.getTime()) && due > today ? due : today;
+  base.setDate(base.getDate() + Math.max(1, Number(days) || 7));
+
+  return updateExpense(expenseId, {
+    alertEnabled: true,
+    alertDate: localDateValue(base),
+  });
+}
+
+export async function dismissExpenseAlert(expenseId) {
+  return updateExpense(expenseId, { alertEnabled: false });
 }
 
 export function exportExpensesCsv(expenses, businessName = 'MiNegocio') {

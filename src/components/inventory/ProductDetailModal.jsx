@@ -28,6 +28,7 @@ export function ProductDetailModal({
 }) {
   const { sectorConfig } = useBusiness();
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  const showStock = sectorConfig?.features?.stock !== false;
   const [updatingStock, setUpdatingStock] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
 
@@ -164,7 +165,7 @@ export function ProductDetailModal({
             </div>
 
             {/* Stock por sede + traspasos (Fase 2, solo si hay varias sedes) */}
-            {branches.length > 1 && !product.isDish && (
+            {showStock && branches.length > 1 && !product.isDish && (
               <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-[22px] border border-[var(--mg-border)] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
@@ -248,7 +249,7 @@ export function ProductDetailModal({
                     </button>
                   )}
                 </div>
-              ) : (
+              ) : showStock ? (
                 <div className="bg-[var(--mg-accent-bg)] p-3 rounded-xl border border-[var(--mg-accent-border)] flex items-center justify-between text-xs">
                   <div>
                     <span className="font-extrabold text-[var(--mg-accent-text)] block">Valor Total en Ventas:</span>
@@ -256,7 +257,7 @@ export function ProductDetailModal({
                   </div>
                   <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(totalSaleValue)}</p>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Dates & Expiry Section */}

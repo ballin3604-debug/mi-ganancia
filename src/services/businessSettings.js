@@ -63,6 +63,7 @@ export async function saveBusinessSettings(businessId, data) {
   const address = pickStr(data.address, 200);
   const footerMessage = pickStr(data.footer_message ?? data.footerMessage, 160);
   const showQr = data.show_qr ?? data.showQrOnTicket ?? data.showQr;
+  const sectorConfig = data.sector_config ?? data.sectorConfig;
 
   const full = { ...base };
   if (legalName !== undefined) full.legal_name = legalName;
@@ -71,6 +72,11 @@ export async function saveBusinessSettings(businessId, data) {
   if (address !== undefined && address !== '') full.address = address;
   if (footerMessage !== undefined) full.footer_message = footerMessage;
   if (showQr !== undefined) full.show_qr = !!showQr;
+  if (sectorConfig !== undefined) {
+    full.sector_config = sectorConfig && typeof sectorConfig === 'object' && !Array.isArray(sectorConfig)
+      ? sectorConfig
+      : {};
+  }
 
   // Optimistic local update with partial merge
   const existing = await db.business_settings.get(businessId);

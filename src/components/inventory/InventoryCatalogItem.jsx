@@ -18,6 +18,7 @@ function expiryInfo(nearestExpiry) {
 export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, onSelect }) {
   const { sectorConfig } = useBusiness();
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  const showStock = sectorConfig?.features?.stock !== false;
   const price = Number(product.price || 0);
   const supplierPrice = Number(product.supplierPrice || 0);
   const profit = supplierPrice > 0 ? price - supplierPrice : null;
@@ -37,7 +38,9 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
         priceLabel={formatBs(price)}
         metaLabel={
           <span className="flex items-center gap-1.5 flex-wrap">
-            <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} />
+            {showStock && (
+              <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} />
+            )}
             {hasPack && (
               <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
                 📦 {(product.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
@@ -92,15 +95,19 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
               <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(price)}</p>
             </div>
             <div className="text-right">
-              <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
-                Stock Disponible
-              </span>
-              {product.isDish ? (
-                <p className="text-sm font-black text-[var(--mg-text-muted)]">🍽️ Sin inventario</p>
-              ) : (
-                <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
-                  {product.stock} {product.unitLabel || 'und'}
-                </p>
+              {showStock && (
+                <>
+                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
+                    Stock Disponible
+                  </span>
+                  {product.isDish ? (
+                    <p className="text-sm font-black text-[var(--mg-text-muted)]">🍽️ Sin inventario</p>
+                  ) : (
+                    <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
+                      {product.stock} {product.unitLabel || 'und'}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

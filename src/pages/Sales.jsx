@@ -230,6 +230,7 @@ export default function Sales() {
   const { business, settings, sectorConfig } = useBusiness();
   // Restaurante: tickets sin cliente ni código de barras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  const showStock = sectorConfig?.features?.stock !== false;
   const { branches, activeBranchId, activeBranch, selectBranch } = useBranches();
   // Un almacén custodia y distribuye: no vende al público en ningún caso.
   const sellingBlocked = activeBranch?.type === 'almacen';
@@ -2522,7 +2523,7 @@ export default function Sales() {
                           product={product}
                           subtitle={product.unitLabel || 'Unidad'}
                           priceLabel={priceLabel}
-                          meta={<StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} />}
+                          meta={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} /> : null}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}
@@ -2534,7 +2535,7 @@ export default function Sales() {
                         <ProductCatalogCard
                           product={product}
                           priceLabel={priceLabel}
-                          metaLabel={<StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} />}
+                          metaLabel={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} /> : null}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}

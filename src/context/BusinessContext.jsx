@@ -26,6 +26,7 @@ function normalizeSettings(raw) {
   // Por defecto el QR sí se imprime al final del ticket (comportamiento actual).
   const showQrRaw = raw.show_qr ?? raw.showQrOnTicket ?? raw.showQr;
   const showQrOnTicket = showQrRaw === undefined || showQrRaw === null ? true : !!showQrRaw;
+  const sectorConfig = raw.sector_config ?? raw.sectorConfig ?? {};
 
   return {
     ...raw,
@@ -45,6 +46,8 @@ function normalizeSettings(raw) {
     show_qr: showQrOnTicket,
     showQrOnTicket,
     showQr: showQrOnTicket,
+    sector_config: sectorConfig,
+    sectorConfig,
     defaultFooterMessage: DEFAULT_FOOTER,
   };
 }

@@ -33,6 +33,7 @@ export function InventoryHeader({
   expiryCounts = { porVencer: 0, vencidos: 0 },
   showExpiryFilters = true,
   showRecentFilter = true,
+  showStock = true,
   searchPlaceholder = 'Buscar nombre, marca o código...',
   allLabel,
   showFilters = true,
@@ -61,13 +62,13 @@ export function InventoryHeader({
               </span>
             </div>
             <p className="text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
-              Gestión visual de existencias, precios y categorías
+              {showStock ? 'Gestión visual de existencias, precios y categorías' : 'Gestión visual de precios y categorías'}
             </p>
           </div>
         </div>
 
         {/* Selector de sede: solo cambia la vista del stock (no es filtro) */}
-        {branches.length > 1 && onBranchChange && (
+        {showStock && branches.length > 1 && onBranchChange && (
           <div className="min-w-0 lg:flex-1 lg:px-4">
             <BranchSelect
               branches={branches}
@@ -176,6 +177,7 @@ export function InventoryHeader({
 
           {/* Quick Filter Status Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
+            {showStock && (
             <button
               type="button"
               onClick={onLowStockFilterToggle}
@@ -193,6 +195,7 @@ export function InventoryHeader({
                 </span>
               )}
             </button>
+            )}
             {showExpiryFilters && (
             <button
               type="button"

@@ -17,6 +17,8 @@ export const SECTOR_FEATURES = {
   coldVariants: false,
   // Platos de cocina que se venden sin inventario (modo restaurante).
   dishes: false,
+  // Mostrar existencias y alertas de stock (el dueño puede ocultarlas).
+  stock: true,
 };
 
 export const SECTOR_CONFIG_DEFAULTS = {

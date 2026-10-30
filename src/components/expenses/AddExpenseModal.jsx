@@ -21,6 +21,12 @@ const PAYMENT_OPTIONS = [
   { id: 'tarjeta', label: 'Tarjeta', icon: 'tarjeta' },
 ];
 
+function defaultAlertDate() {
+  const date = new Date();
+  date.setMonth(date.getMonth() + 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingExpense = null }) {
   const [description, setDescription] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -30,6 +36,9 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [notes, setNotes] = useState('');
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const [alertDate, setAlertDate] = useState('');
+  const [alertDaysBefore, setAlertDaysBefore] = useState(3);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,6 +55,9 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
       setPaymentMethod(editingExpense.payment_method || 'efectivo');
       setInvoiceNumber(editingExpense.invoice_number || '');
       setNotes(editingExpense.notes || '');
+      setAlertEnabled(!!(editingExpense.alert_enabled ?? editingExpense.alertEnabled));
+      setAlertDate(editingExpense.alert_date || editingExpense.alertDate || '');
+      setAlertDaysBefore(Number(editingExpense.alert_days_before ?? editingExpense.alertDaysBefore ?? 3));
       setError('');
     } else if (isOpen && !editingExpense) {
       setDescription('');
@@ -56,6 +68,9 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
       setPaymentMethod('efectivo');
       setInvoiceNumber('');
       setNotes('');
+      setAlertEnabled(false);
+      setAlertDate('');
+      setAlertDaysBefore(3);
       setError('');
     }
   }, [isOpen, editingExpense]);
@@ -68,12 +83,19 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
       setError('Completa la descripción y un monto mayor a 0.');
       return;
     }
+    if (expenseType === 'fixed' && alertEnabled && !alertDate) {
+      setError('Elige la fecha del aviso para el pago fijo.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const payload = {
         description, supplier, amount, category,
         expenseType, paymentMethod, invoiceNumber, notes,
+        alertEnabled: expenseType === 'fixed' && alertEnabled,
+        alertDate: expenseType === 'fixed' && alertEnabled ? alertDate : null,
+        alertDaysBefore,
       };
       if (isEditing) {
         await updateExpense(editingExpense.id, payload);
@@ -164,6 +186,81 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
                 </button>
               </div>
             </div>
+
+            {expenseType === 'fixed' && (
+              <div className="rounded-2xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] p-3.5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-[var(--mg-text-primary)]">Avisar en Inicio</p>
+                    <p className="text-[11px] font-semibold leading-snug text-[var(--mg-text-muted)]">
+                      Aparece cuando se acerca la fecha del pago fijo.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={alertEnabled}
+                    aria-label="Avisar pago fijo en Inicio"
+                    onClick={() => {
+                      const next = !alertEnabled;
+                      setAlertEnabled(next);
+                      if (next && !alertDate) setAlertDate(defaultAlertDate());
+                    }}
+                    className={`relative h-7 w-12 shrink-0 rounded-full transition-colors active:scale-95 ${
+                      alertEnabled ? 'bg-[var(--mg-accent)]' : 'bg-[var(--mg-border-hover)]'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all ${
+                        alertEnabled ? 'left-[22px]' : 'left-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {alertEnabled && (
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                        Fecha del aviso *
+                      </label>
+                      <input
+                        type="date"
+                        value={alertDate}
+                        onChange={(e) => setAlertDate(e.target.value)}
+                        className="mg-input min-h-[44px] text-xs font-bold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                        Avisar antes
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[1, 3, 7].map((days) => {
+                          const active = alertDaysBefore === days;
+                          return (
+                            <button
+                              key={days}
+                              type="button"
+                              onClick={() => setAlertDaysBefore(days)}
+                              aria-pressed={active}
+                              className={`min-h-[44px] rounded-xl border text-[11px] font-extrabold transition-all active:scale-95 ${
+                                active
+                                  ? 'border-[var(--mg-accent)] bg-[var(--mg-bg-surface)] text-[var(--mg-accent-text)]'
+                                  : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                              }`}
+                            >
+                              {days} día{days === 1 ? '' : 's'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Monto destacado (caja grande como Inicio7) */}
             <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-2xl border border-[var(--mg-border)] text-center">

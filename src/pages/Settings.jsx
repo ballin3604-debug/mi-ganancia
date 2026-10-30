@@ -99,6 +99,7 @@ export default function Settings() {
   const savedAddress = settings?.address || '';
   const savedFooter = settings?.footerMessage || '';
   const savedShowQr = settings?.showQrOnTicket ?? true;
+  const savedShowStock = settings?.sector_config?.features?.stock !== false;
 
   // ── Estados editables ──
   const [slogan, setSlogan] = useState(savedSlogan);
@@ -112,6 +113,7 @@ export default function Settings() {
   const [address, setAddress] = useState(savedAddress);
   const [footerMessage, setFooterMessage] = useState(savedFooter);
   const [showQrOnTicket, setShowQrOnTicket] = useState(savedShowQr);
+  const [showStock, setShowStock] = useState(savedShowStock);
 
   // ── UI de lista ──
   const [openId, setOpenId] = useState(null);
@@ -148,7 +150,8 @@ export default function Settings() {
     setAddress(savedAddress);
     setFooterMessage(savedFooter);
     setShowQrOnTicket(savedShowQr);
-  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr]);
+    setShowStock(savedShowStock);
+  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock]);
 
   const changedFields = useMemo(() => {
     const d = [];
@@ -163,9 +166,10 @@ export default function Settings() {
     if (address !== savedAddress) d.push('dirección');
     if (footerMessage !== savedFooter) d.push('mensaje');
     if (showQrOnTicket !== savedShowQr) d.push('qr visible');
+    if (showStock !== savedShowStock) d.push('stock');
     return d;
-  }, [slogan, phone, logoData, qrData, businessCategory, legalName, nit, city, address, footerMessage, showQrOnTicket,
-    savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr]);
+  }, [slogan, phone, logoData, qrData, businessCategory, legalName, nit, city, address, footerMessage, showQrOnTicket, showStock,
+    savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock]);
 
   const hasChanges = changedFields.length > 0;
   const isSearching = query.trim().length > 0;
@@ -179,6 +183,7 @@ export default function Settings() {
 
   const currentCat = getCategoryById(businessCategory);
   const sectorConfig = getBusinessSectorConfig(settings);
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
 
   function toggle(id) {
     setOpenId((prev) => (prev === id ? null : id));
@@ -200,6 +205,7 @@ export default function Settings() {
     pie: 'pie mensaje gracias footer ticket',
     formato: 'formato recibo termico hoja a4 impresion impresora',
     verqr: 'mostrar qr ticket imprimir visible',
+    stock: 'stock inventario existencias mostrar ocultar restaurante platos',
     vista: 'vista previa ejemplo probar imprimir test',
     respaldo: 'respaldo copia seguridad exportar descargar json backup',
     admin: 'admin panel administracion',
@@ -226,6 +232,7 @@ export default function Settings() {
       case 'pie': return footerMessage || 'gracias por su compra';
       case 'formato': return receiptFormat === 'sheet' ? 'hoja a4' : 'ticket termico 80mm';
       case 'verqr': return showQrOnTicket ? 'sí' : 'no';
+      case 'stock': return showStock ? 'visible' : 'oculto';
       default: return '';
     }
   }
@@ -276,15 +283,25 @@ export default function Settings() {
     setQrData(savedQr); setBusinessCategory(savedCategory); setLegalName(savedLegalName);
     setNit(savedNit); setCity(savedCity); setAddress(savedAddress);
     setFooterMessage(savedFooter); setShowQrOnTicket(savedShowQr);
+    setShowStock(savedShowStock);
   }
   async function handleSave() {
     setSaving(true);
     try {
+      const currentSectorConfig = settings?.sector_config || settings?.sectorConfig || {};
+      const nextSectorConfig = {
+        ...currentSectorConfig,
+        features: {
+          ...(currentSectorConfig.features || {}),
+          stock: showStock,
+        },
+      };
       const data = {
         slogan, phone, logo_data: logoData, qr_data: qrData,
         business_category: businessCategory, legal_name: legalName.trim(),
         nit: nit.trim(), city: city.trim(), address: address.trim(),
         footer_message: footerMessage.trim(), show_qr: showQrOnTicket,
+        sector_config: nextSectorConfig,
       };
       await saveBusinessSettings(businessId, data);
       refreshSettings(data);
@@ -503,6 +520,7 @@ export default function Settings() {
     ? ['respaldo', 'admin'].some(visible)
     : true;
   const showApariencia = visible('tema');
+  const showOperacion = isRestaurantMode && visible('stock');
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-4 pb-32">
@@ -604,6 +622,26 @@ export default function Settings() {
                 ? <img src={qrData} alt="" className="w-10 h-10 rounded-xl object-contain border border-[var(--mg-border)] bg-white" />
                 : <Chevron />}
             />
+          </SectionCard>
+        )}
+
+        {/* ── OPERACIÓN (SOLO RESTAURANTE) ── */}
+        {showOperacion && (
+          <SectionCard
+            icon="paquete"
+            title="Operación del restaurante"
+            description="Elegí qué información querés ver al trabajar."
+          >
+            <div className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3">
+              <IconBox icon="paquete" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold leading-tight text-[var(--mg-text-primary)]">Mostrar stock</span>
+                <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
+                  Si lo desactivás, ocultás existencias y alertas. Tus datos no se borran.
+                </span>
+              </span>
+              <Toggle on={showStock} onChange={setShowStock} />
+            </div>
           </SectionCard>
         )}
 
@@ -714,7 +752,7 @@ export default function Settings() {
         </div>
       )}
 
-      {isSearching && !showNegocio && !showFiscal && !showTicket && !showDatos && !showApariencia && (
+      {isSearching && !showNegocio && !showFiscal && !showTicket && !showDatos && !showApariencia && !showOperacion && (
         <p className="text-center text-sm text-[var(--mg-text-muted)] mt-10">Sin resultados para “{query}”.</p>
       )}
 

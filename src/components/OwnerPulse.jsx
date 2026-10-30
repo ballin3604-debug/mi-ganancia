@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // Pulso del negocio (solo dueño): rendimiento mensual real,
-// alertas de stock, sucursales y ventas en vivo.
+// sucursales y ventas en vivo.
 // Todo calculado con datos locales existentes. Tema claro de la app.
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react';
@@ -20,7 +20,7 @@ function timeAgo(date) {
   return `hace ${Math.floor(h / 24)} d`;
 }
 
-export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, lowStock = [], branchId = 'all', mainBranchId = null, branchName = '', showBranches = true, reorderPath = '/compras', onNavigate, onReimprint, printingSaleId }) {
+export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, branchId = 'all', mainBranchId = null, branchName = '', showBranches = true, onNavigate, onReimprint, printingSaleId }) {
   const { branches } = useBranches();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
@@ -104,104 +104,54 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, low
 
   return (
     <section className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Rendimiento mensual */}
-        <div className="lg:col-span-3 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
-                <AppIcon name="reportes" size={16} />
-              </span>
-              Rendimiento del Negocio ({monthly.length} {monthly.length === 1 ? 'mes' : 'meses'})
-            </h3>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--mg-text-muted)]">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-success)]" /> Ingresos</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-text-muted)]" /> Costos</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-brand)]" /> Utilidad</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">
-            Ingresos vs costo de mercadería y utilidad neta por mes.
-            {branchId !== 'all' && branchName ? ` · ${branchName}` : ''}
-          </p>
-          <div className="overflow-x-auto pb-1">
-            {monthly.length > 0 ? (
-              <div
-                className="flex items-end justify-between gap-2 h-44"
-                style={{ minWidth: monthly.length > 6 ? `${monthly.length * 56}px` : undefined }}
-              >
-                {monthly.map((m) => (
-                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                    <div className="flex items-end gap-1 h-32 w-full justify-center">
-                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${m.income > 0 ? Math.max((m.income / maxBar) * 100, 2) : 0}%` }} title={`Ingresos ${formatBs(m.income)}`} />
-                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${m.cogs > 0 ? Math.max((m.cogs / maxBar) * 100, 2) : 0}%` }} title={`Costos ${formatBs(m.cogs)}`} />
-                      <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${m.net > 0 ? Math.max((m.net / maxBar) * 100, 2) : 0}%` }} title={`Utilidad ${formatBs(m.net)}`} />
-                    </div>
-                    <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-44 flex items-center justify-center text-xs font-medium text-[var(--mg-text-muted)]">
-                Aún no hay ventas registradas.
-              </div>
-            )}
-          </div>
-          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs flex-wrap">
-            <span className="text-[var(--mg-text-muted)] font-medium">
-              Margen Neto Promedio: <strong className="text-[var(--mg-text-primary)]">{avgMargin.toFixed(1)}%</strong>
+      {/* Rendimiento mensual */}
+      <div className="bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
+              <AppIcon name="reportes" size={16} />
             </span>
-            <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline">
-              Ver análisis mensual detallado →
-            </button>
+            Rendimiento del Negocio ({monthly.length} {monthly.length === 1 ? 'mes' : 'meses'})
+          </h3>
+          <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--mg-text-muted)]">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-success)]" /> Ingresos</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-text-muted)]" /> Costos</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-brand)]" /> Utilidad</span>
           </div>
         </div>
-
-        {/* Alertas de stock */}
-        <div className="lg:col-span-2 bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] flex items-center justify-center shrink-0">
-                <AppIcon name="reloj" size={16} />
-              </span>
-              Alertas de Bajo Stock
-            </h3>
-            {lowStock.length > 0 && (
-              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--mg-danger)] bg-[var(--mg-danger-bg)] border border-[var(--mg-danger-border)] px-2 py-0.5 rounded-full shrink-0">
-                Urgente
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-[var(--mg-text-muted)] mb-3">Existencias en mínimo o menos. Evita quiebres de venta.</p>
-          {lowStock.length > 0 ? (
-            <ul className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
-              {lowStock.slice(0, 6).map((p) => (
-                <li key={p.id} className="flex items-center gap-2 bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-black text-[var(--mg-text-primary)] truncate">{p.name}</p>
-                    <p className="text-[10px] font-bold text-[var(--mg-danger)]">{p.stock} en stock · Mín: {p.minStock || 5}</p>
+        <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">
+          Ingresos vs costo de mercadería y utilidad neta por mes.
+          {branchId !== 'all' && branchName ? ` · ${branchName}` : ''}
+        </p>
+        <div className="overflow-x-auto pb-1">
+          {monthly.length > 0 ? (
+            <div
+              className="flex items-end justify-between gap-2 h-44"
+              style={{ minWidth: monthly.length > 6 ? `${monthly.length * 56}px` : undefined }}
+            >
+              {monthly.map((m) => (
+                <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+                  <div className="flex items-end gap-1 h-32 w-full justify-center">
+                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${m.income > 0 ? Math.max((m.income / maxBar) * 100, 2) : 0}%` }} title={`Ingresos ${formatBs(m.income)}`} />
+                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${m.cogs > 0 ? Math.max((m.cogs / maxBar) * 100, 2) : 0}%` }} title={`Costos ${formatBs(m.cogs)}`} />
+                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${m.net > 0 ? Math.max((m.net / maxBar) * 100, 2) : 0}%` }} title={`Utilidad ${formatBs(m.net)}`} />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate && onNavigate(reorderPath, { state: { reorderProductId: p.id } })}
-                    className="text-[11px] font-black text-white bg-[var(--mg-accent)] hover:bg-[var(--mg-accent-hover)] px-2.5 py-1.5 rounded-lg shrink-0 transition-colors"
-                  >
-                    + Reordenar
-                  </button>
-                </li>
+                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p className="text-xs font-bold text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] border border-[var(--mg-success-border)] rounded-xl px-3 py-2.5">
-              Todo el stock está sano. Sin alertas.
-            </p>
+            <div className="h-44 flex items-center justify-center text-xs font-medium text-[var(--mg-text-muted)]">
+              Aún no hay ventas registradas.
+            </div>
           )}
-          <button
-            type="button"
-            onClick={() => onNavigate && onNavigate('/inventario')}
-            className="w-full mt-3 text-xs font-bold text-[var(--mg-text-secondary)] bg-[var(--mg-bg-elevated)] hover:bg-[var(--mg-bg-section)] border border-[var(--mg-border)] rounded-xl py-2.5 min-h-[44px] transition-colors"
-          >
-            Gestionar Inventario Completo{lowStock.length > 0 ? ` (${lowStock.length} alertas)` : ''}
+        </div>
+        <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs flex-wrap">
+          <span className="text-[var(--mg-text-muted)] font-medium">
+            Margen Neto Promedio: <strong className="text-[var(--mg-text-primary)]">{avgMargin.toFixed(1)}%</strong>
+          </span>
+          <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline">
+            Ver análisis mensual detallado →
           </button>
         </div>
       </div>

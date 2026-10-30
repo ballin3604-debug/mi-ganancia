@@ -39,6 +39,17 @@ function formatDate(ts) {
   return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatAlertDate(value) {
+  if (!value) return '';
+  const raw = String(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  const d = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+}
+
 export default function Expenses() {
   const { businessId } = useAuth();
   const { business } = useBusiness();
@@ -50,10 +61,14 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState(null);
   
   // Filter States
-  const [selectedDays, setSelectedDays] = useState(30);
+  const [selectedDays, setSelectedDays] = useState(() => (searchParams.get('tipo') === 'fixed' ? 365 : 30));
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('all'); // 'all' | 'daily' | 'fixed'
+  const [selectedType, setSelectedType] = useState(() => (searchParams.get('tipo') === 'fixed' ? 'fixed' : 'all')); // 'all' | 'daily' | 'fixed'
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    if (searchParams.get('tipo') === 'fixed') setSelectedType('fixed');
+  }, [searchParams]);
 
   // Confirm Modal state for deletion
   const [deletingExpense, setDeletingExpense] = useState(null);
@@ -291,6 +306,8 @@ export default function Expenses() {
               {filteredExpenses.map((exp) => {
                 const isFixed = (exp.expense_type || exp.expenseType) === 'fixed';
                 const payMethod = exp.payment_method || 'efectivo';
+                const alertDate = exp.alert_date || exp.alertDate;
+                const hasAlert = isFixed && !!(exp.alert_enabled ?? exp.alertEnabled) && !!alertDate;
                 return (
                   <div
                     key={exp.id}
@@ -328,9 +345,17 @@ export default function Expenses() {
                           </span>
                         ) : null}
                       </p>
-                      <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
-                        <AppIcon name={PAY_ICONS[payMethod] || 'cash'} size={11} />
-                        {EXPENSE_PAYMENT_LABELS[payMethod] || 'Efectivo'}
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
+                          <AppIcon name={PAY_ICONS[payMethod] || 'cash'} size={11} />
+                          {EXPENSE_PAYMENT_LABELS[payMethod] || 'Efectivo'}
+                        </span>
+                        {hasAlert && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--mg-gold-text)]">
+                            <AppIcon name="reloj" size={11} />
+                            Aviso {formatAlertDate(alertDate)}
+                          </span>
+                        )}
                       </span>
                     </div>
 
