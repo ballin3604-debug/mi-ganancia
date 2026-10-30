@@ -143,6 +143,10 @@ export default function Inventory() {
   const [invBranch, setInvBranch] = useState(() => activeBranchId || 'all');
   // Panel de filtros colapsable en celular (en PC siempre visible).
   const [showFilters, setShowFilters] = useState(false);
+  // Restaurante: sin vencimiento, sin código de barras, sin compras.
+  const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
+  const showStock = sectorConfig?.features?.stock !== false;
   const activeFilterCount =
     (filterCategory !== 'Todas' ? 1 : 0) +
     (filterExpiry !== 'todos' ? 1 : 0) +
@@ -155,9 +159,6 @@ export default function Inventory() {
     setFilterLowStock(false);
   }
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
-  // Restaurante: sin vencimiento, sin código de barras, sin compras.
-  const isRestaurantMode = !!sectorConfig?.features?.dishes;
-  const showStock = sectorConfig?.features?.stock !== false;
   const showExpiryFilters = !isRestaurantMode;
   const showBarcode = !isRestaurantMode;
   const stockRows = useBranchStocks(businessId, mainBranchId);
