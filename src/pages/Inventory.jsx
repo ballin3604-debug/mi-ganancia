@@ -1317,8 +1317,10 @@ export default function Inventory() {
                       <p className="text-xs font-extrabold text-[var(--mg-text-primary)]">Disponible para vender</p>
                       <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] leading-snug">
                         {form.isAvailable === false
-                          ? 'Agotado: no aparece en Ventas hasta reactivarlo.'
-                          : 'Se puede pedir en Ventas ahora mismo.'}
+                          ? 'Pausado: no aparece en Ventas hasta reactivarlo.'
+                          : Number(form.stock) <= 0
+                            ? 'Sin porciones: cargá stock para poder venderlo.'
+                            : 'Se puede pedir en Ventas ahora mismo.'}
                       </p>
                     </div>
                     <button

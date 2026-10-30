@@ -20,7 +20,8 @@ function CardImage({ imageData, name }) {
 }
 
 export function StockLabel({ stock, minStock, isDish, isAvailable = true }) {
-  if (isAvailable === false) {
+  const isOut = Number(stock || 0) <= 0;
+  if (isAvailable === false || isOut) {
     return (
       <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]">
         {isDish ? '🍽️ Agotado' : 'Sin stock'}
@@ -28,7 +29,6 @@ export function StockLabel({ stock, minStock, isDish, isAvailable = true }) {
     );
   }
 
-  const isOut = Number(stock || 0) <= 0;
   const isLow = !isOut && Number(stock) <= (minStock || 5);
 
   const styles = isOut

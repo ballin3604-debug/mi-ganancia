@@ -227,18 +227,18 @@ export function ProductDetailModal({
               {/* Plato: disponibilidad y porciones */}
               {product.isDish ? (
                 <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
-                  product.isAvailable === false
+                  product.isAvailable === false || currentStock <= 0
                     ? 'bg-[var(--mg-danger-bg)] border-[var(--mg-danger-border)]'
                     : 'bg-[var(--mg-success-bg)] border-[var(--mg-success-border)]'
                 }`}>
                   <div className="min-w-0">
-                    <span className={`font-extrabold block text-xs ${product.isAvailable === false ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'}`}>
-                      {product.isAvailable === false ? '⛔ Agotado' : '✅ Disponible'}
+                    <span className={`font-extrabold block text-xs ${product.isAvailable === false || currentStock <= 0 ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'}`}>
+                      {product.isAvailable === false || currentStock <= 0 ? '⛔ Agotado' : '✅ Disponible'}
                     </span>
                     <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">
                       {showStock
-                        ? `${currentStock} porciones en stock${product.isAvailable === false ? ' · no aparece en Ventas' : ''}`
-                        : (product.isAvailable === false ? 'No aparece en Ventas hasta reactivarlo' : 'Se puede vender en el POS')}
+                        ? `${currentStock} porciones en stock${product.isAvailable === false ? ' · pausado en Ventas' : currentStock <= 0 ? ' · cargá stock para venderlo' : ''}`
+                        : (product.isAvailable === false || currentStock <= 0 ? 'No aparece en Ventas hasta cargar stock o reactivarlo' : 'Se puede vender en el POS')}
                     </span>
                   </div>
                   {onToggleAvailability && (

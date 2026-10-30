@@ -24,8 +24,9 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
   const profit = supplierPrice > 0 ? price - supplierPrice : null;
   const marginPct = supplierPrice > 0 ? Math.round((profit / supplierPrice) * 100) : null;
   const exp = expiryInfo(nearestExpiry);
-  const isOut = product.stock === 0;
-  const isLow = !isOut && product.stock <= (product.minStock || 5);
+  const stockNum = Number(product.stock || 0);
+  const isOut = stockNum <= 0;
+  const isLow = !isOut && stockNum <= (Number(product.minStock) || 5);
   const packSize = Number(product.packageSize || 0);
   const hasPack = packSize > 1 && product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined && Number(product.packPrice) > 0;
 
@@ -101,7 +102,9 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                     Stock Disponible
                   </span>
                   <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
-                    {product.stock} {product.isDish ? 'porciones' : (product.unitLabel || 'und')}
+                    {isOut && product.isDish
+                      ? 'Agotado'
+                      : `${stockNum} ${product.isDish ? 'porciones' : (product.unitLabel || 'und')}`}
                   </p>
                 </>
               )}
