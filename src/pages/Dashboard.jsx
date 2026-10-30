@@ -282,9 +282,9 @@ export default function Dashboard() {
           if (!p) return null;
           return { ...p, stock: Number(r.stock || 0) };
         })
-        .filter((p) => p && !p.isDish && p.stock <= (p.minStock || 5));
+        .filter((p) => p && p.stock <= (p.minStock || 5));
     }
-    return products.filter((p) => !p.isDish && p.stock <= (p.minStock || 5));
+    return products.filter((p) => p.stock <= (p.minStock || 5));
   }, [products, homeBranch, branchStockRows, isOwner]);
 
   // Pagos fijos con aviso activo, según la sede elegida en Inicio.

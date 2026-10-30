@@ -165,7 +165,7 @@ export function ProductDetailModal({
             </div>
 
             {/* Stock por sede + traspasos (Fase 2, solo si hay varias sedes) */}
-            {showStock && branches.length > 1 && !product.isDish && (
+            {showStock && branches.length > 1 && (
               <div className="bg-[var(--mg-bg-elevated)] p-4 rounded-[22px] border border-[var(--mg-border)] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
@@ -224,7 +224,7 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Plato: disponibilidad en lugar de valorización */}
+              {/* Plato: disponibilidad y porciones */}
               {product.isDish ? (
                 <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
                   product.isAvailable === false
@@ -236,7 +236,9 @@ export function ProductDetailModal({
                       {product.isAvailable === false ? '⛔ Agotado' : '✅ Disponible'}
                     </span>
                     <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">
-                      {product.isAvailable === false ? 'No aparece en Ventas hasta reactivarlo' : 'Se puede vender en el POS'}
+                      {showStock
+                        ? `${currentStock} porciones en stock${product.isAvailable === false ? ' · no aparece en Ventas' : ''}`
+                        : (product.isAvailable === false ? 'No aparece en Ventas hasta reactivarlo' : 'Se puede vender en el POS')}
                     </span>
                   </div>
                   {onToggleAvailability && (

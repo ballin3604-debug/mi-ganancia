@@ -356,9 +356,7 @@ export default function Sales() {
         const usedBase = {};
         const pushLine = (key, prod, presId, variant, qty, unitPrice, factor, presLabel, presentationId = null) => {
           const already = usedBase[prod.id] || 0;
-          const cap = prod.isDish
-            ? qty
-            : Math.floor(((hasB && activeBranchId ? Number(bMap.get(`${activeBranchId}:${prod.id}`) ?? 0) : prod.stock) - already) / factor);
+          const cap = Math.floor(((hasB && activeBranchId ? Number(bMap.get(`${activeBranchId}:${prod.id}`) ?? 0) : prod.stock) - already) / factor);
           const q = Math.max(0, Math.min(qty, cap));
           if (q <= 0) return;
           usedBase[prod.id] = already + q * factor;
@@ -367,7 +365,7 @@ export default function Sales() {
         Object.entries(draft.cart || {}).forEach(([key, line]) => {
           if (typeof line === 'number') {
             const prod = prods.find((p) => p.id === key);
-            if (!prod || (!prod.isDish && prod.stock <= 0)) return;
+            if (!prod || prod.stock <= 0) return;
             const opt = defaultSellOption(prod);
             if (!opt) return;
             pushLine(opt.key, prod, opt.presId, opt.variant, line, opt.price, opt.factor, presShortLabel(prod, opt.presId, opt.variant, opt.presentationId), opt.presentationId);
@@ -375,7 +373,7 @@ export default function Sales() {
           }
           if (!line || typeof line.qty !== 'number') return;
           const prod = prods.find((p) => p.id === line.productId);
-          if (!prod || (!prod.isDish && prod.stock <= 0)) return;
+          if (!prod || prod.stock <= 0) return;
           // Precio vigente del inventario (no el guardado en el borrador):
           // si el precio cambió mientras el borrador esperaba, el carrito nace actualizado.
           const freshOpts = getSellOptions(prod);
@@ -1065,13 +1063,11 @@ export default function Sales() {
     const base = activeBranchId && hasBranchRows
       ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${activeBranchId}:${p.id}`) ?? 0) }))
       : products;
-    // Plato: se vende sin inventario. Tope virtual solo en memoria (nunca se
-    // guarda) para que los topes del carrito/escáner no bloqueen el ticket.
-    return base.map((p) => (p.isDish ? { ...p, stock: 9999 } : p));
+    return base;
   }, [products, stockMap, activeBranchId, hasBranchRows]);
 
   const availableProducts = useMemo(() => {
-    return productsWithStock.filter((p) => p.stock > 0 && !(p.isDish && p.isAvailable === false));
+    return productsWithStock.filter((p) => p.stock > 0 && p.isAvailable !== false);
   }, [productsWithStock]);
 
   const editingBranchId = editingOrder
@@ -1081,7 +1077,7 @@ export default function Sales() {
     const base = editingBranchId && hasBranchRows
       ? products.map((p) => ({ ...p, stock: Number(stockMap.get(`${editingBranchId}:${p.id}`) ?? 0) }))
       : products;
-    return base.map((p) => (p.isDish ? { ...p, stock: 9999 } : p));
+    return base;
   }, [products, stockMap, editingBranchId, hasBranchRows]);
 
   async function openOrderEditor(sale, { cancel = false } = {}) {
@@ -2523,7 +2519,7 @@ export default function Sales() {
                           product={product}
                           subtitle={product.unitLabel || 'Unidad'}
                           priceLabel={priceLabel}
-                          meta={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} /> : null}
+                          meta={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} /> : null}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}
@@ -2535,7 +2531,7 @@ export default function Sales() {
                         <ProductCatalogCard
                           product={product}
                           priceLabel={priceLabel}
-                          metaLabel={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} /> : null}
+                          metaLabel={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} /> : null}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}

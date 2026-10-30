@@ -264,9 +264,6 @@ export async function registerSale(
       }
       validateSellSelection(prod, item);
       const baseQty = calculateBaseQuantity(qty, factor);
-      // Plato: se vende sin inventario. La línea de venta se guarda igual
-      // (ticket y reportes), pero no se toca el stock ni global ni por sede.
-      if (prod.is_dish) continue;
       const currentStock = Number(prod.stock || 0);
       if (currentStock < baseQty) {
         throw new Error(`Stock insuficiente de ${prod.name}: quedan ${currentStock} unidades base.`);
@@ -442,7 +439,6 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
       if (!product || product.business_id !== businessId) {
         throw new Error('El producto ya no está disponible en este negocio.');
       }
-      if (product.is_dish) continue;
       const oldBase = oldBaseByProduct.get(productId) || 0;
       const available = Number(product.stock || 0) + oldBase;
       if (newBase > available + 0.0001) {
@@ -463,7 +459,7 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
     const allProductIds = new Set([...oldBaseByProduct.keys(), ...newBaseByProduct.keys()]);
     for (const productId of allProductIds) {
       const product = productsById[productId];
-      if (!product || product.is_dish) continue;
+      if (!product) continue;
       const oldBase = oldBaseByProduct.get(productId) || 0;
       const newBase = newBaseByProduct.get(productId) || 0;
       const delta = newBase - oldBase;
@@ -632,7 +628,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
 
     for (const [productId, baseQty] of baseByProduct.entries()) {
       const product = await db.products.get(productId);
-      if (!product || product.business_id !== businessId || product.is_dish) continue;
+      if (!product || product.business_id !== businessId) continue;
       await db.products.update(productId, {
         stock: Number(product.stock || 0) + baseQty,
         updated_at: now,

@@ -360,7 +360,8 @@ export default function Inventory() {
     }
   }
 
-  // Plato (restaurante): sin stock, sin marca, sin vencimiento, sin paquete.
+  // Plato (restaurante): sin marca, sin vencimiento, sin paquete. Lleva stock
+  // como cualquier producto: cada venta descuenta porciones.
   // El ticket dice "Plato" porque vive en unit_label.
   function toggleDish(value) {
     setStockMode('directo');
@@ -369,8 +370,6 @@ export default function Inventory() {
         return {
           ...f,
           isDish: true,
-          stock: 0,
-          minStock: '0',
           supplierPrice: '',
           sellPack: false,
           packLabel: '',
@@ -505,7 +504,7 @@ export default function Inventory() {
   async function handleSave(e, options = {}) {
     const { another = false } = options;
     if (e?.preventDefault) e.preventDefault();
-    if (!form.name.trim() || !form.price || (!form.isDish && form.stock === '')) return;
+    if (!form.name.trim() || !form.price || form.stock === '') return;
     if (!form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
       alert('Dinos cuánto te costó cada unidad: así tu ganancia se calcula sola.');
       return;
@@ -525,8 +524,6 @@ export default function Inventory() {
         packPrice: '',
         packPriceHot: '',
         packageSize: '',
-        stock: 0,
-        minStock: '0',
         isAvailable: form.isAvailable !== false,
       };
       delete data.presentations;
@@ -563,10 +560,7 @@ export default function Inventory() {
     try {
       if (editingProduct) {
         const globalCur = Number(products.find((p) => p.id === editingProduct.id)?.stock || 0);
-        if (form.isDish) {
-          // Plato: el inventario queda en 0 y no se toca stock de sede.
-          await updateProduct(editingProduct.id, { ...data, stock: 0 });
-        } else if (targetBranchId) {
+        if (targetBranchId) {
           // El stock vive en la sede: global nuevo = global actual + (nuevo − anterior de sede).
           // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
           // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
@@ -581,9 +575,7 @@ export default function Inventory() {
         }
       } else if (targetBranchId) {
         const created = await addProduct(businessId, { ...data, stock: Number(formStockVal) });
-        if (!form.isDish) {
-          await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
-        }
+        await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
       } else {
         await addProduct(businessId, { ...data, stock: Number(formStockVal) });
       }
@@ -821,12 +813,12 @@ export default function Inventory() {
         return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
       })
       .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id))
-      .filter((p) => !filterLowStock || !showStock || (!p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)));
+      .filter((p) => !filterLowStock || !showStock || (Number(p.stock) || 0) <= (Number(p.minStock) || 5));
   }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters, showStock]);
 
   const lowStockCount = useMemo(() => (
     showStock
-      ? viewProducts.filter((p) => !p.isDish && (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
+      ? viewProducts.filter((p) => (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length
       : 0
   ), [viewProducts, showStock]);
 
@@ -994,7 +986,7 @@ export default function Inventory() {
                       priceLabel={formatBs(Number(prod.price || 0))}
                       meta={
                         <span className="flex items-center gap-1.5 flex-wrap mt-1">
-                          {showStock && <StockLabel stock={prod.stock} minStock={prod.minStock} />}
+                          {showStock && <StockLabel stock={prod.stock} minStock={prod.minStock} isDish={prod.isDish} isAvailable={prod.isAvailable} />}
                           {hasPack && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
                               📦 {(prod.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
@@ -1466,9 +1458,41 @@ export default function Inventory() {
 
                 {/* Stock y Unidad */}
                 {form.isDish ? (
-                  <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-xl px-3 py-2">
-                    🍽️ Los platos no llevan stock: cada venta se registra y se imprime el ticket sin descontar inventario.
-                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                        Stock actual (porciones) *
+                      </label>
+                      <input
+                        type="number"
+                        value={form.stock}
+                        onChange={(e) => setField('stock', clampNumberInput(e.target.value, { max: 999999 }))}
+                        onKeyDown={blockInvalidNumberKeys}
+                        placeholder="0"
+                        min="0"
+                        max="999999"
+                        step="1"
+                        className="mg-input text-sm font-black"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                        Alerta cuando queden
+                      </label>
+                      <input
+                        type="number"
+                        value={form.minStock}
+                        onChange={(e) => setField('minStock', clampNumberInput(e.target.value, { min: 1, max: 99999 }))}
+                        onKeyDown={blockInvalidNumberKeys}
+                        placeholder="5"
+                        min="1"
+                        max="99999"
+                        step="1"
+                        className="mg-input text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
                 ) : (
                 <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>

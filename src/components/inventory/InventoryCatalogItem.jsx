@@ -100,13 +100,9 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                     Stock Disponible
                   </span>
-                  {product.isDish ? (
-                    <p className="text-sm font-black text-[var(--mg-text-muted)]">🍽️ Sin inventario</p>
-                  ) : (
-                    <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
-                      {product.stock} {product.unitLabel || 'und'}
-                    </p>
-                  )}
+                  <p className={`text-sm font-black ${isOut ? 'text-[var(--mg-danger)]' : isLow ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-success-text)]'}`}>
+                    {product.stock} {product.isDish ? 'porciones' : (product.unitLabel || 'und')}
+                  </p>
                 </>
               )}
             </div>

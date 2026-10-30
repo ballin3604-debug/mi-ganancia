@@ -80,10 +80,10 @@ describe('sales offline flow', () => {
     expect(storedProduct.stock).toBe(98);
   });
 
-  it('registerSale vende un plato sin stock y no descuenta inventario', async () => {
+  it('registerSale descuenta el stock del plato como cualquier producto', async () => {
     const businessId = generateUUID();
     const userId = generateUUID();
-    const product = makeProduct({ business_id: businessId, is_dish: true, stock: 0, min_stock: 0 });
+    const product = makeProduct({ business_id: businessId, is_dish: true, stock: 10, min_stock: 2 });
     await db.products.add(product);
 
     const saleId = await registerSale(businessId, userId, [makeCartItem(product, 2)]);
@@ -93,12 +93,22 @@ describe('sales offline flow', () => {
     expect(sale.total).toBe(20);
 
     const storedProduct = await db.products.get(product.id);
-    expect(storedProduct.stock).toBe(0);
+    expect(storedProduct.stock).toBe(8);
 
     const pending = await getPendingOperations(businessId, 'pending');
     expect(pending.length).toBe(1);
     expect(pending[0].operation_type).toBe('REGISTER_SALE');
     expect(pending[0].payload.p_items[0].product_id).toBe(product.id);
+  });
+
+  it('registerSale no vende un plato agotado', async () => {
+    const businessId = generateUUID();
+    const product = makeProduct({ business_id: businessId, is_dish: true, stock: 0, min_stock: 0 });
+    await db.products.add(product);
+
+    await expect(
+      registerSale(businessId, generateUUID(), [makeCartItem(product, 1)])
+    ).rejects.toThrow(/Stock insuficiente/);
   });
 
   it('registerSale with packages discounts base stock correctly', async () => {

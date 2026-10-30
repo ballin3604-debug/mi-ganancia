@@ -95,8 +95,7 @@ export default function OrderEditModal({
     const query = search.trim().toLowerCase();
     return products
       .filter((product) => {
-        if (product.isDish && product.isAvailable === false) return false;
-        if (!product.isDish && Number(product.stock || 0) <= 0) return false;
+        if (Number(product.stock || 0) <= 0) return false;
         if (!query) return true;
         return `${product.name || ''} ${product.brand || ''} ${product.category || ''}`
           .toLowerCase()
@@ -107,7 +106,7 @@ export default function OrderEditModal({
 
   function availableBaseFor(productId) {
     const product = productsById[productId];
-    if (!product || product.isDish) return Infinity;
+    if (!product) return 0;
     return Number(product.stock || 0) + Number(originalBaseByProduct[productId] || 0);
   }
 
@@ -127,13 +126,11 @@ export default function OrderEditModal({
         setLocalError('Este producto ya no está disponible en el inventario.');
         return;
       }
-      if (!product.isDish) {
-        const available = availableBaseFor(line.productId);
-        const proposed = proposedBaseFor(line.productId) + lineBase({ ...line, quantity: 1 });
-        if (proposed > available + 0.0001) {
-          setLocalError(`No hay más stock de ${product.name}.`);
-          return;
-        }
+      const available = availableBaseFor(line.productId);
+      const proposed = proposedBaseFor(line.productId) + lineBase({ ...line, quantity: 1 });
+      if (proposed > available + 0.0001) {
+        setLocalError(`No hay más stock de ${product.name}.`);
+        return;
       }
     }
     setLines((prev) => prev.map((item) => (
@@ -151,13 +148,11 @@ export default function OrderEditModal({
   function addProductOption(product, option) {
     setLocalError('');
     if (!product || !option) return;
-    if (!product.isDish) {
-      const available = availableBaseFor(product.id);
-      const proposed = proposedBaseFor(product.id) + Number(option.factor || 1);
-      if (proposed > available + 0.0001) {
-        setLocalError(`No hay más stock de ${product.name}.`);
-        return;
-      }
+    const available = availableBaseFor(product.id);
+    const proposed = proposedBaseFor(product.id) + Number(option.factor || 1);
+    if (proposed > available + 0.0001) {
+      setLocalError(`No hay más stock de ${product.name}.`);
+      return;
     }
     const candidate = {
       id: generateUUID(),
@@ -362,7 +357,7 @@ export default function OrderEditModal({
                                 {line.presentation ? `${line.presentation} · ` : ''}{formatBs(line.price)}
                                 {factor > 1 ? ` · x${factor} unidades base` : ''}
                               </p>
-                              {product && !product.isDish ? (
+                              {product ? (
                                 <p className="mt-0.5 text-[10px] font-bold text-[var(--mg-text-faint)]">
                                   Stock actual: {Math.max(0, Number(product.stock || 0))} unidades base
                                 </p>
@@ -421,7 +416,7 @@ export default function OrderEditModal({
                             <div className="flex items-center justify-between gap-2">
                               <p className="min-w-0 truncate text-xs font-black text-[var(--mg-text-primary)]">{product.name}</p>
                               <span className="shrink-0 text-[10px] font-bold text-[var(--mg-text-muted)]">
-                                {product.isDish ? 'Plato' : `Stock ${Math.max(0, Number(product.stock || 0))}`}
+                                {product.isDish ? 'Porciones' : 'Stock'} {Math.max(0, Number(product.stock || 0))}
                               </span>
                             </div>
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
