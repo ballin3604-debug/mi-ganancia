@@ -602,6 +602,14 @@ export default function Sales() {
     cancelled: todayOrders.filter((s) => s.status === 'cancelled').length,
   }), [todayOrders]);
 
+  const todayOrderRevenue = useMemo(
+    () => todayOrders.reduce(
+      (sum, sale) => (sale.status === 'cancelled' ? sum : sum + Number(sale.total || 0)),
+      0
+    ),
+    [todayOrders]
+  );
+
   // La lista de pedidos no se filtra por sede: si hay varias, se avisa que
   // se están viendo todas para no confundir con la sede operativa.
   const ordersBranchLabel = branches.length > 1 ? 'Todas las sedes' : (activeBranch?.name || '');
@@ -630,6 +638,14 @@ export default function Sales() {
     () => orderChanges.filter((change) => todayOrderIds.has(change.saleId)),
     [orderChanges, todayOrderIds]
   );
+
+  const changesBySaleId = useMemo(() => {
+    const map = {};
+    for (const change of todayOrderChanges) {
+      map[change.saleId] = (map[change.saleId] || 0) + 1;
+    }
+    return map;
+  }, [todayOrderChanges]);
 
   const bitacoraChanges = useMemo(() => {
     return orderChanges.filter((change) => {
@@ -1908,36 +1924,55 @@ export default function Sales() {
 
           {activeTab === 'pedidos' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
-              <div className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
-                      <AppIcon name="historial" size={21} />
+              <div className="relative overflow-hidden rounded-[28px] bg-[var(--mg-brand)] p-5 text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-lg)] sm:p-6">
+                <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full border-[20px] border-white/10" />
+                <div className="pointer-events-none absolute -bottom-24 right-28 h-52 w-52 rounded-full bg-white/5 blur-2xl" />
+                <div className="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full border-[14px] border-white/5" />
+
+                <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex min-w-0 items-start gap-3.5">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+                      <AppIcon name="restaurante" size={23} color="currentColor" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">Restaurante</p>
-                      <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-brand-text)]">Pedidos de hoy</h2>
-                      <p className="truncate text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ring-1 ring-white/20">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                        Servicio de hoy
+                      </span>
+                      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Pedidos de hoy</h2>
+                      <p className="mt-1 text-[11px] font-semibold text-white/70 sm:text-xs">
                         {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
                         {ordersBranchLabel ? ` · ${ordersBranchLabel}` : ''}
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/ventas?tab=bitacora')}
-                      className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 py-2 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
-                    >
-                      <AppIcon name="reportes" size={14} /> Bitácora
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/ventas?tab=venta')}
-                      className="flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 py-2 text-[11px] font-black text-[var(--mg-brand-contrast)] shadow-sm active:scale-95"
-                    >
-                      <AppIcon name="agregar" size={14} /> Nueva venta
-                    </button>
+
+                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2.5 ring-1 ring-white/15 backdrop-blur">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                        <AppIcon name="caja" size={17} color="currentColor" />
+                      </span>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/60">Vendido hoy</p>
+                        <p className="text-base font-black tabular-nums">{formatBs(todayOrderRevenue)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/ventas?tab=bitacora')}
+                        className="flex min-h-[42px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-[11px] font-black text-[var(--mg-brand-contrast)] backdrop-blur transition-colors hover:bg-white/20 active:scale-95 sm:flex-none"
+                      >
+                        <AppIcon name="reportes" size={14} color="currentColor" /> Bitácora
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/ventas?tab=venta')}
+                        className="flex min-h-[42px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand-contrast)] px-3.5 py-2 text-[11px] font-black text-[var(--mg-brand)] shadow-sm transition-all hover:opacity-90 active:scale-95 sm:flex-none"
+                      >
+                        <AppIcon name="agregar" size={14} color="currentColor" /> Nueva venta
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1956,18 +1991,58 @@ export default function Sales() {
               ) : null}
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <MetricCard label="Pedidos de hoy" value={todayOrderStats.total} hint="Incluye cancelados" icon="recibo" tone="brand" />
-                <MetricCard label="En curso" value={todayOrderStats.active} hint="Pedidos vigentes" icon="check" tone="success" />
-                <MetricCard label="Cancelados" value={todayOrderStats.cancelled} hint="Anulados hoy" icon="cancelar" tone="danger" />
-                <MetricCard label="Con cambios" value={todayOrderChanges.length} hint="Ajustes registrados" icon="editar" tone="warning" />
+                {[
+                  { label: 'Pedidos', value: todayOrderStats.total, hint: 'Incluye cancelados', icon: 'recibo', bar: 'bg-[var(--mg-brand)]', chip: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border-[var(--mg-brand-border)]', live: false },
+                  { label: 'En curso', value: todayOrderStats.active, hint: 'Listos para gestionar', icon: 'check', bar: 'bg-[var(--mg-success)]', chip: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]', live: true },
+                  { label: 'Cancelados', value: todayOrderStats.cancelled, hint: 'Anulados hoy', icon: 'cancelar', bar: 'bg-[var(--mg-danger)]', chip: 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]', live: false },
+                  { label: 'Con cambios', value: todayOrderChanges.length, hint: 'Ajustes registrados', icon: 'editar', bar: 'bg-[var(--mg-gold)]', chip: 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] border-[var(--mg-gold-border)]', live: false },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="group relative overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--mg-shadow-md)]"
+                  >
+                    <span className={`absolute inset-x-0 top-0 h-1 ${stat.bar}`} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                          {stat.label}
+                          {stat.live && stat.value > 0 ? (
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--mg-success)]" />
+                          ) : null}
+                        </p>
+                        <p className="mt-1.5 text-2xl font-black tracking-tight text-[var(--mg-text-primary)] tabular-nums">{stat.value}</p>
+                        <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">{stat.hint}</p>
+                      </div>
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${stat.chip}`}>
+                        <AppIcon name={stat.icon} size={16} />
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <SectionCard
-                title={`Pedidos (${filteredTodayOrders.length})`}
-                subtitle="Edita productos, ajusta cantidades o cancela un pedido."
+                title={
+                  <span className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
+                      <AppIcon name="restaurante" size={14} />
+                    </span>
+                    Pedidos del día
+                    <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2 py-0.5 text-[9px] font-black text-[var(--mg-brand-text)] tabular-nums">
+                      {filteredTodayOrders.length}
+                    </span>
+                  </span>
+                }
+                subtitle="Toca un pedido para ajustar productos, cantidades o cancelarlo."
+                action={
+                  <span className="hidden items-center gap-1.5 text-[10px] font-bold text-[var(--mg-text-muted)] sm:flex">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-success)]" />
+                    En vivo
+                  </span>
+                }
                 bodyClassName="p-4 space-y-3"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-2 sm:flex-row sm:items-center">
                   <div className="relative min-w-0 flex-1">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
                       <AppIcon name="search" size={16} />
@@ -1977,127 +2052,219 @@ export default function Sales() {
                       value={orderSearch}
                       onChange={(e) => setOrderSearch(e.target.value)}
                       placeholder="Buscar por pedido, producto o cajero..."
-                      className="mg-input min-h-[44px] pl-9 text-sm"
+                      className="mg-input min-h-[42px] !rounded-xl !border-transparent !bg-[var(--mg-bg-surface)] pl-9 pr-9 text-sm shadow-sm"
                     />
-                  </div>
-                  <div className="flex shrink-0 gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-                    {[
-                      { id: 'todos', label: 'Todos' },
-                      { id: 'activos', label: 'En curso' },
-                      { id: 'cancelados', label: 'Cancelados' },
-                    ].map((option) => (
+                    {orderSearch ? (
                       <button
-                        key={option.id}
                         type="button"
-                        onClick={() => setOrdersFilter(option.id)}
-                        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-black transition-colors ${
-                          ordersFilter === option.id
-                            ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]'
-                            : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]'
-                        }`}
+                        onClick={() => setOrderSearch('')}
+                        aria-label="Limpiar búsqueda"
+                        className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
                       >
-                        {option.label}
+                        <AppIcon name="cerrar" size={12} />
                       </button>
-                    ))}
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1 overflow-x-auto rounded-xl bg-[var(--mg-bg-surface)] p-1 shadow-sm scrollbar-none">
+                    {[
+                      { id: 'todos', label: 'Todos', count: todayOrderStats.total },
+                      { id: 'activos', label: 'En curso', count: todayOrderStats.active },
+                      { id: 'cancelados', label: 'Cancelados', count: todayOrderStats.cancelled },
+                    ].map((option) => {
+                      const active = ordersFilter === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setOrdersFilter(option.id)}
+                          className={`flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-black transition-all ${
+                            active
+                              ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
+                              : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                          }`}
+                        >
+                          {option.label}
+                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] tabular-nums ${
+                            active ? 'bg-white/20' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                          }`}>
+                            {option.count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {filteredTodayOrders.length === 0 ? (
-                  <EmptyState
-                    icon="recibo"
-                    title={todayOrders.length === 0 ? 'Todavía no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
-                    description={todayOrders.length === 0
-                      ? 'Los pedidos que cobres hoy aparecerán aquí para editarlos o cancelarlos.'
-                      : 'Prueba con otra búsqueda o cambia el estado.'}
-                    className="border-0 bg-[var(--mg-bg-elevated)] px-4 py-6 shadow-none"
-                  />
+                  <div className="relative overflow-hidden rounded-3xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-6 py-10 text-center">
+                    <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
+                      <AppIcon name="restaurante" size={30} />
+                    </span>
+                    <h3 className="mt-4 text-sm font-black text-[var(--mg-text-primary)]">
+                      {todayOrders.length === 0 ? 'Aún no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
+                    </h3>
+                    <p className="mx-auto mt-1 max-w-sm text-xs font-medium leading-relaxed text-[var(--mg-text-muted)]">
+                      {todayOrders.length === 0
+                        ? 'Cuando cobres el primer pedido, aparecerá acá listo para editar o cancelar.'
+                        : 'Probá con otra búsqueda o cambiá el estado del filtro.'}
+                    </p>
+                    {todayOrders.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/ventas?tab=venta')}
+                        className="mt-4 inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-4 text-[11px] font-black text-[var(--mg-brand-contrast)] active:scale-95"
+                      >
+                        <AppIcon name="agregar" size={13} /> Crear primera venta
+                      </button>
+                    ) : null}
+                  </div>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {filteredTodayOrders.map((sale) => {
                       const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
                       const validDate = d instanceof Date && !Number.isNaN(d.getTime());
                       const time = validDate ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
                       const number = saleNumberById[sale.id];
+                      const displayNumber = number ? `#${String(number).padStart(4, '0')}` : '#----';
                       const items = itemsBySaleId[sale.id] || [];
                       const cancelled = sale.status === 'cancelled';
-                      const summary = items.length > 0
-                        ? `${items.slice(0, 3).map((item) => `${item.quantity}× ${item.productName}`).join(' · ')}${items.length > 3 ? ` +${items.length - 3}` : ''}`
-                        : 'Cargando detalle...';
-                      const methodLabel = METHOD_META[sale.paymentMethod]?.label || 'Efectivo';
+                      const method = METHOD_META[sale.paymentMethod] || METHOD_META.cash;
+                      const cashier = sale.seller_name || sale.sellerName || 'Cajero';
+                      const initials = cashier.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('') || 'C';
+                      const units = sale.item_count ?? items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+                      const changesCount = changesBySaleId[sale.id] || 0;
                       return (
                         <li
                           key={sale.id}
-                          className={`overflow-hidden rounded-2xl border ${
-                            cancelled
-                              ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'
-                              : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]'
+                          className={`group relative overflow-hidden rounded-2xl border bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--mg-shadow-md)] ${
+                            cancelled ? 'border-[var(--mg-danger-border)]' : 'border-[var(--mg-border)]'
                           }`}
                         >
-                          <div className="flex items-start gap-3 p-3">
-                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                              cancelled
-                                ? 'border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-danger)]'
-                                : 'border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-brand-text)]'
-                            }`}>
-                              <AppIcon name={cancelled ? 'cancelar' : 'recibo'} size={18} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="text-sm font-black text-[var(--mg-text-primary)]">
-                                  Pedido {number ? `#${String(number).padStart(4, '0')}` : ''}
-                                </p>
-                                {cancelled ? (
-                                  <span className="rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
-                                    Cancelado
-                                  </span>
-                                ) : (
-                                  <span className="rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
-                                    En curso
-                                  </span>
-                                )}
-                                {time ? <span className="text-[10px] font-bold text-[var(--mg-text-muted)]">{time}</span> : null}
+                          <span className={`absolute inset-y-0 left-0 w-1 ${cancelled ? 'bg-[var(--mg-danger)]' : 'bg-[var(--mg-success)]'}`} />
+
+                          <div className="p-3.5 pl-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 items-start gap-2.5">
+                                <span className={`flex h-11 min-w-[62px] shrink-0 flex-col items-center justify-center rounded-xl border px-2 ${
+                                  cancelled
+                                    ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
+                                    : 'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
+                                }`}>
+                                  <span className="text-[8px] font-black uppercase tracking-[0.14em] opacity-70">Pedido</span>
+                                  <span className="text-[13px] font-black leading-tight tabular-nums">{displayNumber}</span>
+                                </span>
+
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {cancelled ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                        Cancelado
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                                        En curso
+                                      </span>
+                                    )}
+                                    {changesCount > 0 ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[9px] font-black text-[var(--mg-gold-text)]">
+                                        <AppIcon name="editar" size={9} />
+                                        {changesCount} {changesCount === 1 ? 'ajuste' : 'ajustes'}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold text-[var(--mg-text-muted)]">
+                                    {time ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        <AppIcon name="reloj" size={11} /> {time}
+                                      </span>
+                                    ) : null}
+                                    <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                                    <span className="inline-flex items-center gap-1">
+                                      <AppIcon name={method.icon} size={11} /> {method.label}
+                                    </span>
+                                  </p>
+                                </div>
                               </div>
-                              <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                                {sale.seller_name || sale.sellerName || 'Cajero'} · {methodLabel} · {sale.item_count ?? items.length} unidades
-                              </p>
-                              <p className="mt-1 line-clamp-2 text-xs font-semibold text-[var(--mg-text-secondary)]">{summary}</p>
-                              {cancelled && sale.cancellationReason ? (
-                                <p className="mt-1 text-[11px] font-bold text-[var(--mg-danger)]">Motivo: {sale.cancellationReason}</p>
-                              ) : null}
+
+                              <div className="shrink-0 text-right">
+                                <p className={`text-sm font-black tabular-nums ${cancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
+                                  {formatBs(sale.total)}
+                                </p>
+                                <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Total</p>
+                              </div>
                             </div>
-                            <div className="shrink-0 text-right">
-                              <p className={`text-sm font-black tabular-nums ${cancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
-                                {formatBs(sale.total)}
-                              </p>
-                              <p className="mt-0.5 text-[10px] font-bold text-[var(--mg-text-muted)]">
-                                {items.length} {items.length === 1 ? 'producto' : 'productos'}
+
+                            <div className="mt-2.5 flex items-center gap-1.5">
+                              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[9px] font-black ${
+                                cancelled
+                                  ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
+                                  : 'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
+                              }`}>
+                                {initials}
+                              </span>
+                              <p className="min-w-0 flex-1 truncate text-[11px] font-bold text-[var(--mg-text-secondary)]">
+                                {cashier}
+                                <span className="font-semibold text-[var(--mg-text-muted)]"> · {units} {units === 1 ? 'unidad' : 'unidades'}</span>
                               </p>
                             </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2 border-t border-[var(--mg-separator)] px-3 py-2.5">
-                            <button
-                              type="button"
-                              onClick={() => openOrderEditor(sale)}
-                              disabled={cancelled}
-                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-bg-surface)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-brand-text)] transition-colors hover:bg-[var(--mg-brand-bg)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              <AppIcon name="editar" size={13} /> Editar pedido
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openOrderEditor(sale, { cancel: true })}
-                              disabled={cancelled}
-                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-danger)] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              <AppIcon name="cancelar" size={13} /> Cancelar pedido
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/recibo/${sale.id}`, { state: { saleNumber: number } })}
-                              className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 py-1.5 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors active:scale-95"
-                            >
-                              <AppIcon name="recibo" size={13} /> Ver recibo
-                            </button>
+
+                            {items.length > 0 ? (
+                              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                {items.slice(0, 3).map((item, index) => (
+                                  <span
+                                    key={item.id || `${sale.id}-${index}`}
+                                    className="inline-flex max-w-full items-center gap-1 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-1 pl-1 pr-2 text-[10px] font-bold text-[var(--mg-text-secondary)]"
+                                  >
+                                    <span className="rounded bg-[var(--mg-brand-bg)] px-1 py-0.5 text-[9px] font-black text-[var(--mg-brand-text)] tabular-nums">
+                                      {item.quantity}×
+                                    </span>
+                                    <span className="max-w-[150px] truncate">{item.productName}</span>
+                                  </span>
+                                ))}
+                                {items.length > 3 ? (
+                                  <span className="inline-flex items-center rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 py-1 text-[10px] font-black text-[var(--mg-text-muted)]">
+                                    +{items.length - 3} más
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-[11px] font-semibold text-[var(--mg-text-muted)]">Cargando detalle…</p>
+                            )}
+
+                            {cancelled && sale.cancellationReason ? (
+                              <p className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--mg-danger)]">
+                                <AppIcon name="cancelar" size={12} />
+                                <span className="min-w-0">Motivo: {sale.cancellationReason}</span>
+                              </p>
+                            ) : null}
+
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--mg-separator)] pt-2.5">
+                              <button
+                                type="button"
+                                onClick={() => openOrderEditor(sale)}
+                                disabled={cancelled}
+                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[11px] font-black text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+                              >
+                                <AppIcon name="editar" size={13} /> Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openOrderEditor(sale, { cancel: true })}
+                                disabled={cancelled}
+                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 text-[11px] font-black text-[var(--mg-danger)] transition-colors hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+                              >
+                                <AppIcon name="cancelar" size={13} /> Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/recibo/${sale.id}`, { state: { saleNumber: number } })}
+                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95 sm:ml-auto sm:flex-none"
+                              >
+                                <AppIcon name="recibo" size={13} /> Ver recibo
+                              </button>
+                            </div>
                           </div>
                         </li>
                       );
