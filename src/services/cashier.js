@@ -9,7 +9,7 @@ function generateCode() {
   ).join('');
 }
 
-export const PLAN_MAX_MEMBERS = { pro: 3, premium: 10 };
+export const PLAN_MAX_MEMBERS = { pro: 5, premium: 10 };
 export function maxMembersForPlan(planId) {
   return PLAN_MAX_MEMBERS[planId] || PLAN_MAX_MEMBERS.pro;
 }

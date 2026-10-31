@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // Planes Pro / Premium — matriz oficial de funcionalidades.
-// Pro: negocio único a fondo, sin anuncios y hasta 3 usuarios.
+// Pro: negocio único a fondo, sin anuncios y hasta 5 usuarios.
 // Premium: sucursales, desempeño por sede y hasta 10 usuarios.
 // El trial de 14 días equivale a Pro.
 // ─────────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ export const PLANS = {
     priceMonthly: 49,
     priceYearly: 490,
     maxProducts: 1000000,
-    maxUsers: 3,
+    maxUsers: 5,
     features: {
       scanner: true,
       advancedReports: true,

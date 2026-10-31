@@ -55,7 +55,7 @@ const PLAN_CARDS = [
       'Escáner de códigos',
       'Productos ilimitados',
       'Reportes avanzados + PDF',
-      'Equipo hasta 3 (multi-caja)',
+      'Equipo hasta 5 (multi-caja)',
       'Sin anuncios',
       'Compras, gastos y kardex',
     ],
