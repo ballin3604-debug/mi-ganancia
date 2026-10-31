@@ -235,6 +235,7 @@ describe('sales offline flow', () => {
     const sale = await getSaleById(businessId, saleId);
     expect(sale.status).toBe('cancelled');
     expect(sale.cancellationReason).toBe('Cliente canceló');
+    expect(sale.stockReturned).toBe(true);
 
     expect((await db.products.get(product.id)).stock).toBe(100);
 
@@ -251,5 +252,32 @@ describe('sales offline flow', () => {
       { ...(await getSaleItems(businessId, saleId))[0], quantity: 3 },
     ])).rejects.toThrow('cancelado');
     await expect(cancelSale(businessId, userId, saleId)).rejects.toThrow('cancelado');
+  });
+
+  it('cancelSale puede dejar el stock descontado si no se devuelve', async () => {
+    const businessId = generateUUID();
+    const userId = generateUUID();
+    const product = makeProduct({ business_id: businessId });
+    await db.products.add(product);
+
+    const saleId = await registerSale(
+      businessId, userId, [makeCartItem(product, 2)], '', '', 'cash', 'Cajera', {}
+    );
+    expect((await db.products.get(product.id)).stock).toBe(98);
+
+    await cancelSale(businessId, userId, saleId, { reason: 'Producto consumido', restock: false });
+
+    const sale = await getSaleById(businessId, saleId);
+    expect(sale.status).toBe('cancelled');
+    expect(sale.cancellationReason).toBe('Producto consumido');
+    expect(sale.stockReturned).toBe(false);
+
+    // El stock queda descontado: no se repone lo vendido.
+    expect((await db.products.get(product.id)).stock).toBe(98);
+
+    const pending = await getPendingOperations(businessId, 'pending');
+    const cancelOp = pending.find((entry) => entry.operation_type === 'CANCEL_SALE');
+    expect(cancelOp).toBeDefined();
+    expect(cancelOp.payload.restock).toBe(false);
   });
 });

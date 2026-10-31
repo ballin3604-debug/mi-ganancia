@@ -20,6 +20,7 @@ function mapSale(s) {
     cancelledAt: s.cancelled_at || null,
     cancelledBy: s.cancelled_by || null,
     cancellationReason: s.cancellation_reason || '',
+    stockReturned: s.stock_returned !== false,
     updatedAt: s.updated_at || null,
     createdAt: s.created_at ? { toDate: () => new Date(s.created_at) } : null,
   };
@@ -600,6 +601,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
     throw new Error('No se indicó qué pedido cancelar.');
   }
   const reason = (options.reason || '').trim();
+  const restock = options.restock !== false;
   const now = new Date().toISOString();
   let result;
   await db.transaction('rw', db.sales, db.sale_items, db.products, db.branch_stock, db.pending_operations, db.sale_changes, async () => {
@@ -626,21 +628,24 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
       ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
       : false;
 
-    for (const [productId, baseQty] of baseByProduct.entries()) {
-      const product = await db.products.get(productId);
-      if (!product || product.business_id !== businessId) continue;
-      await db.products.update(productId, {
-        stock: Number(product.stock || 0) + baseQty,
-        updated_at: now,
-      });
-      if (saleBranchId && hasBranchRows) {
-        const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
-        if (row) {
-          await db.branch_stock.put({
-            ...row,
-            stock: Number(row.stock || 0) + baseQty,
-            updated_at: now,
-          });
+    // Solo devuelve stock si se decidió que el producto sirve para vender.
+    if (restock) {
+      for (const [productId, baseQty] of baseByProduct.entries()) {
+        const product = await db.products.get(productId);
+        if (!product || product.business_id !== businessId) continue;
+        await db.products.update(productId, {
+          stock: Number(product.stock || 0) + baseQty,
+          updated_at: now,
+        });
+        if (saleBranchId && hasBranchRows) {
+          const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
+          if (row) {
+            await db.branch_stock.put({
+              ...row,
+              stock: Number(row.stock || 0) + baseQty,
+              updated_at: now,
+            });
+          }
         }
       }
     }
@@ -658,6 +663,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
       cancelled_at: now,
       cancelled_by: userId || null,
       cancellation_reason: reason || null,
+      stock_returned: restock,
       updated_at: now,
     });
     await db.sale_changes.put(change);
@@ -668,6 +674,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
       event: toServerChangeEvent(change),
       items: items.map((item) => ({ product_id: item.product_id })),
       reason,
+      restock,
       actor: userId || null,
       branch_id: saleBranchId,
     }, businessId, { userId, branchId: saleBranchId, origin: 'offline' });

@@ -63,6 +63,7 @@ export default function OrderEditModal({
   const [reason, setReason] = useState('');
   const [cancelMode, setCancelMode] = useState(initialCancel);
   const [cancelReason, setCancelReason] = useState('');
+  const [restock, setRestock] = useState(true);
   const [localError, setLocalError] = useState('');
 
   useEffect(() => {
@@ -71,6 +72,8 @@ export default function OrderEditModal({
 
   useEffect(() => {
     setCancelMode(initialCancel);
+    setRestock(true);
+    setCancelReason('');
   }, [initialCancel, sale?.id]);
 
   const originalBaseByProduct = useMemo(() => {
@@ -90,6 +93,10 @@ export default function OrderEditModal({
   const total = lines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.price || 0), 0);
   const totalBefore = Number(sale?.total || 0);
   const itemCount = lines.reduce((sum, line) => sum + lineBase(line), 0);
+  const cancelBaseUnits = items.reduce((sum, line) => sum + lineBase(line), 0);
+  const cancelUnitsLabel = Number.isInteger(cancelBaseUnits)
+    ? cancelBaseUnits
+    : Math.round(cancelBaseUnits * 100) / 100;
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -193,7 +200,7 @@ export default function OrderEditModal({
 
   function handleCancel() {
     setLocalError('');
-    onCancelOrder(cancelReason.trim());
+    onCancelOrder(cancelReason.trim(), restock);
   }
 
   const saleDate = toDate(sale?.createdAt || sale?.created_at);
@@ -247,8 +254,7 @@ export default function OrderEditModal({
                   <div>
                     <p className="text-sm font-black text-[var(--mg-danger)]">Esta acción anula el pedido completo</p>
                     <p className="mt-1 text-xs font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
-                      Los productos vuelven al inventario y el pedido deja de contar en las ventas del día.
-                      La cancelación queda registrada en la bitácora.
+                      Elegí qué pasa con los productos. El pedido deja de contar como venta y la cancelación queda registrada en la bitácora.
                     </p>
                   </div>
                 </div>
@@ -261,6 +267,82 @@ export default function OrderEditModal({
                 </div>
                 <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
                   {items.length} {items.length === 1 ? 'producto' : 'productos'} en el pedido original.
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">¿Qué pasa con los productos?</p>
+                <div className="mt-1.5 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Devolución de stock al cancelar">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={restock}
+                    onClick={() => setRestock(true)}
+                    className={`flex items-start gap-2.5 rounded-2xl border p-3 text-left transition-all active:scale-[0.98] ${
+                      restock
+                        ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] ring-1 ring-[var(--mg-success-border)]'
+                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]'
+                    }`}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                      restock
+                        ? 'border-[var(--mg-success-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-success-text)]'
+                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]'
+                    }`}>
+                      <AppIcon name="paquete" size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-xs font-black ${restock ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-text-primary)]'}`}>
+                        Devolver al stock
+                      </span>
+                      <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-[var(--mg-text-muted)]">
+                        Se pueden vender otra vez.
+                      </span>
+                    </span>
+                    <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                      restock ? 'border-[var(--mg-success)] bg-[var(--mg-success)]' : 'border-[var(--mg-border-hover)]'
+                    }`}>
+                      {restock ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!restock}
+                    onClick={() => setRestock(false)}
+                    className={`flex items-start gap-2.5 rounded-2xl border p-3 text-left transition-all active:scale-[0.98] ${
+                      !restock
+                        ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] ring-1 ring-[var(--mg-gold-border)]'
+                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]'
+                    }`}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                      !restock
+                        ? 'border-[var(--mg-gold-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-gold-text)]'
+                        : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]'
+                    }`}>
+                      <AppIcon name="alerta" size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-xs font-black ${!restock ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-text-primary)]'}`}>
+                        No devolver
+                      </span>
+                      <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-[var(--mg-text-muted)]">
+                        Queda descontado (merma).
+                      </span>
+                    </span>
+                    <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                      !restock ? 'border-[var(--mg-gold)] bg-[var(--mg-gold)]' : 'border-[var(--mg-border-hover)]'
+                    }`}>
+                      {!restock ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                    </span>
+                  </button>
+                </div>
+                <p className={`mt-1.5 text-[11px] font-semibold leading-snug ${restock ? 'text-[var(--mg-text-muted)]' : 'text-[var(--mg-gold-text)]'}`}>
+                  {restock
+                    ? `Se devolverán ${cancelUnitsLabel} ${cancelUnitsLabel === 1 ? 'unidad' : 'unidades'} al inventario.`
+                    : 'El stock seguirá descontado y no se repone.'}
                 </p>
               </div>
 

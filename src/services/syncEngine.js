@@ -1022,6 +1022,7 @@ async function processOperation(op, businessId) {
         p_business_id: businessId,
         p_event: payload.event || null,
         p_reason: payload.reason || null,
+        p_restock: payload.restock !== false,
       });
       if (error) throw error;
       try {

@@ -148,7 +148,9 @@ export default function ReceiptView() {
             <div className="min-w-0">
               <p className="text-sm font-black text-[var(--mg-danger)]">Pedido cancelado</p>
               <p className="mt-1 text-xs font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
-                Este pedido fue anulado y no cuenta como venta. Los productos volvieron al inventario.
+                Este pedido fue anulado y no cuenta como venta. {sale.stockReturned === false
+                  ? 'Los productos no volvieron al inventario.'
+                  : 'Los productos volvieron al inventario.'}
               </p>
               {sale.cancellationReason ? (
                 <p className="mt-1.5 text-[11px] font-bold text-[var(--mg-danger)]">Motivo: {sale.cancellationReason}</p>

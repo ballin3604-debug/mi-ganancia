@@ -682,7 +682,11 @@ export default function Sales() {
     const before = change.quantityBefore;
     const after = change.quantityAfter;
     let detail = '—';
-    if (change.eventType === 'sale_cancelled') detail = 'Se anuló el pedido completo';
+    if (change.eventType === 'sale_cancelled') {
+      detail = sale?.stockReturned === false
+        ? 'Se anuló el pedido completo · stock no devuelto'
+        : 'Se anuló el pedido completo · productos devueltos al stock';
+    }
     else if (change.eventType === 'item_added') detail = `Se agregó ${after ?? 1}`;
     else if (change.eventType === 'item_removed') detail = `Se retiró ${before ?? 1}`;
     else if (change.eventType === 'qty_increased' || change.eventType === 'qty_decreased') {
@@ -1147,16 +1151,20 @@ export default function Sales() {
     }
   }
 
-  async function handleCancelOrder(reason) {
+  async function handleCancelOrder(reason, restock = true) {
     if (!editingOrder) return;
     setEditSaving(true);
     setEditError('');
     try {
-      const result = await cancelSale(businessId, user?.uid, editingOrder.id, { reason });
+      const result = await cancelSale(businessId, user?.uid, editingOrder.id, { reason, restock });
       const number = saleNumberById[editingOrder.id];
       setOrderFlash({
         tone: 'danger',
-        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''} cancelado. Los productos volvieron al inventario y ya no cuenta como venta.`,
+        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''} cancelado. ${
+          restock
+            ? 'Los productos volvieron al inventario'
+            : 'Los productos no volvieron al inventario'
+        } y ya no cuenta como venta.`,
       });
       setEditingOrder(null);
       setEditingItems([]);
@@ -2233,11 +2241,23 @@ export default function Sales() {
                               <p className="mt-2 text-[11px] font-semibold text-[var(--mg-text-muted)]">Cargando detalle…</p>
                             )}
 
-                            {cancelled && sale.cancellationReason ? (
-                              <p className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--mg-danger)]">
-                                <AppIcon name="cancelar" size={12} />
-                                <span className="min-w-0">Motivo: {sale.cancellationReason}</span>
-                              </p>
+                            {cancelled ? (
+                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-black ${
+                                  sale.stockReturned === false
+                                    ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
+                                    : 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
+                                }`}>
+                                  <AppIcon name={sale.stockReturned === false ? 'alerta' : 'paquete'} size={11} />
+                                  {sale.stockReturned === false ? 'Stock no devuelto' : 'Stock devuelto'}
+                                </span>
+                                {sale.cancellationReason ? (
+                                  <span className="inline-flex min-w-0 items-start gap-1 rounded-lg border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2 py-1 text-[10px] font-bold text-[var(--mg-danger)]">
+                                    <AppIcon name="cancelar" size={11} />
+                                    <span className="line-clamp-2 min-w-0">Motivo: {sale.cancellationReason}</span>
+                                  </span>
+                                ) : null}
+                              </div>
                             ) : null}
 
                             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--mg-separator)] pt-2.5">
