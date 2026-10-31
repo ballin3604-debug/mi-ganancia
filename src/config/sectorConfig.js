@@ -19,6 +19,8 @@ export const SECTOR_FEATURES = {
   dishes: false,
   // Mostrar existencias y alertas de stock (el dueño puede ocultarlas).
   stock: true,
+  // Botones de escaneo de códigos de barras (el dueño puede desactivarlos).
+  scanner: true,
 };
 
 export const SECTOR_CONFIG_DEFAULTS = {

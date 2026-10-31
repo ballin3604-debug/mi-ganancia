@@ -231,6 +231,7 @@ export default function Sales() {
   // Restaurante: tickets sin cliente ni código de barras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const showStock = sectorConfig?.features?.stock !== false;
+  const scannerEnabled = sectorConfig?.features?.scanner !== false;
   const { branches, activeBranchId, activeBranch, selectBranch } = useBranches();
   // Un almacén custodia y distribuye: no vende al público en ningún caso.
   const sellingBlocked = activeBranch?.type === 'almacen';
@@ -296,10 +297,13 @@ export default function Sales() {
   // ── Picker de presentación (unidad / paquete frío-caliente) ──
   const [pickerProduct, setPickerProduct] = useState(null);
   function openScanner() {
-    if (!hasPermission('scanner')) return;
+    if (!scannerEnabled || !hasPermission('scanner')) return;
     setScanMsg(null);
     setShowScanner(true);
   }
+  useEffect(() => {
+    if (!scannerEnabled) setShowScanner(false);
+  }, [scannerEnabled]);
 
   const hasRestoredRef = useRef(false);
   const draftStateRef = useRef(null);
@@ -2435,7 +2439,7 @@ export default function Sales() {
                 className="mg-input min-h-[52px] pl-11 text-base"
               />
             </div>
-            {!isRestaurantMode && (
+            {!isRestaurantMode && scannerEnabled && (
               <button
                 type="button"
                 onClick={openScanner}

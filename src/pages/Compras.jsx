@@ -32,7 +32,8 @@ function formatDate(dateLike) {
 
 export default function Compras() {
   const { businessId, user, hasPermission } = useAuth();
-  const { settings } = useBusiness();
+  const { settings, sectorConfig } = useBusiness();
+  const scannerEnabled = sectorConfig?.features?.scanner !== false;
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [products, setProducts] = useState([]);
@@ -50,10 +51,13 @@ export default function Compras() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanMsg, setScanMsg] = useState('');
   function openScanner() {
-    if (!hasPermission('scanner')) return;
+    if (!scannerEnabled || !hasPermission('scanner')) return;
     setScanMsg('');
     setShowScanner(true);
   }
+  useEffect(() => {
+    if (!scannerEnabled) setShowScanner(false);
+  }, [scannerEnabled]);
   const hasTriedRestoreRef = useRef(false);
   // Fase 2: catálogo con stock de la sede operativa
   const { branches, activeBranchId } = useBranches();
@@ -382,15 +386,17 @@ export default function Compras() {
                     className="mg-input min-h-[52px] pl-11 text-base"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={openScanner}
-                  title="Escanear código de barras"
-                  aria-label="Escanear código de barras"
-                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
-                >
-                  <AppIcon name="scan" size={23} />
-                </button>
+                {scannerEnabled && (
+                  <button
+                    type="button"
+                    onClick={openScanner}
+                    title="Escanear código de barras"
+                    aria-label="Escanear código de barras"
+                    className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-90"
+                  >
+                    <AppIcon name="scan" size={23} />
+                  </button>
+                )}
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-1.5 -mx-4 px-4 scrollbar-hide shrink-0">

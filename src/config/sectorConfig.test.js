@@ -13,4 +13,14 @@ describe('getSectorConfig', () => {
     expect(config.features.dishes).toBe(true);
     expect(config.features.stock).toBe(false);
   });
+
+  it('mantiene el escáner activo por defecto', () => {
+    const config = getSectorConfig('tienda');
+    expect(config.features.scanner).toBe(true);
+  });
+
+  it('permite que el dueño desactive el escáner con un override', () => {
+    const config = getSectorConfig('tienda', { features: { scanner: false } });
+    expect(config.features.scanner).toBe(false);
+  });
 });

@@ -147,6 +147,8 @@ export default function Inventory() {
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
   const showStock = sectorConfig?.features?.stock !== false;
+  // El dueño puede activar o desactivar el escáner desde Ajustes.
+  const scannerEnabled = sectorConfig?.features?.scanner !== false;
   const activeFilterCount =
     (filterCategory !== 'Todas' ? 1 : 0) +
     (filterExpiry !== 'todos' ? 1 : 0) +
@@ -212,10 +214,13 @@ export default function Inventory() {
   const [scannerMode, setScannerMode] = useState(null); // null | 'search' | 'assign'
   const [scanMsg, setScanMsg] = useState('');
   function openScanner(mode) {
-    if (!hasPermission('scanner')) return;
+    if (!scannerEnabled || !hasPermission('scanner')) return;
     setScanMsg('');
     setScannerMode(mode);
   }
+  useEffect(() => {
+    if (!scannerEnabled) setScannerMode(null);
+  }, [scannerEnabled]);
   // Cámara interna (no sale del formulario, la foto nunca se pierde)
   const [showCamera, setShowCamera] = useState(false);
 
@@ -908,7 +913,7 @@ export default function Inventory() {
         onClearFilters={clearAllFilters}
         onOpenAddProduct={() => openAdd()}
         onOpenCatManager={() => setShowCatManager(true)}
-        onOpenScanner={showBarcode ? () => openScanner('search') : undefined}
+        onOpenScanner={showBarcode && scannerEnabled ? () => openScanner('search') : undefined}
         searchPlaceholder={isRestaurantMode ? 'Buscar plato o producto...' : undefined}
         allLabel={isRestaurantMode ? 'Todo el menú' : undefined}
         showRecentFilter={!isRestaurantMode}
@@ -1357,16 +1362,18 @@ export default function Inventory() {
                       className="mg-input font-mono text-xs flex-1 min-w-0"
                       maxLength={40}
                     />
-                    <button
-                      type="button"
-                      onClick={() => openScanner('assign')}
-                      title="Escanear código"
-                      className="w-[46px] shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] flex items-center justify-center active:scale-95"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
-                      </svg>
-                    </button>
+                    {scannerEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => openScanner('assign')}
+                        title="Escanear código"
+                        className="w-[46px] shrink-0 rounded-xl bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] flex items-center justify-center active:scale-95"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h2v14H3zM7 5h1v14H7zM10 5h3v14h-3zM15 5h1v14h-1zM18 5h3v14h-3z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
                 )}

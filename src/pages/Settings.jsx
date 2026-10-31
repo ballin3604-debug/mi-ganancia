@@ -100,6 +100,7 @@ export default function Settings() {
   const savedFooter = settings?.footerMessage || '';
   const savedShowQr = settings?.showQrOnTicket ?? true;
   const savedShowStock = settings?.sector_config?.features?.stock !== false;
+  const savedScanner = settings?.sector_config?.features?.scanner !== false;
 
   // ── Estados editables ──
   const [slogan, setSlogan] = useState(savedSlogan);
@@ -114,6 +115,7 @@ export default function Settings() {
   const [footerMessage, setFooterMessage] = useState(savedFooter);
   const [showQrOnTicket, setShowQrOnTicket] = useState(savedShowQr);
   const [showStock, setShowStock] = useState(savedShowStock);
+  const [scannerEnabled, setScannerEnabled] = useState(savedScanner);
 
   // ── UI de lista ──
   const [openId, setOpenId] = useState(null);
@@ -151,7 +153,8 @@ export default function Settings() {
     setFooterMessage(savedFooter);
     setShowQrOnTicket(savedShowQr);
     setShowStock(savedShowStock);
-  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock]);
+    setScannerEnabled(savedScanner);
+  }, [savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock, savedScanner]);
 
   const changedFields = useMemo(() => {
     const d = [];
@@ -167,9 +170,10 @@ export default function Settings() {
     if (footerMessage !== savedFooter) d.push('mensaje');
     if (showQrOnTicket !== savedShowQr) d.push('qr visible');
     if (showStock !== savedShowStock) d.push('stock');
+    if (scannerEnabled !== savedScanner) d.push('escáner');
     return d;
-  }, [slogan, phone, logoData, qrData, businessCategory, legalName, nit, city, address, footerMessage, showQrOnTicket, showStock,
-    savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock]);
+  }, [slogan, phone, logoData, qrData, businessCategory, legalName, nit, city, address, footerMessage, showQrOnTicket, showStock, scannerEnabled,
+    savedSlogan, savedPhone, savedLogo, savedQr, savedCategory, savedLegalName, savedNit, savedCity, savedAddress, savedFooter, savedShowQr, savedShowStock, savedScanner]);
 
   const hasChanges = changedFields.length > 0;
   const isSearching = query.trim().length > 0;
@@ -206,6 +210,7 @@ export default function Settings() {
     formato: 'formato recibo termico hoja a4 impresion impresora',
     verqr: 'mostrar qr ticket imprimir visible',
     stock: 'stock inventario existencias mostrar ocultar restaurante platos',
+    scanner: 'escaner escáner scanner codigo barras camara lector activar desactivar',
     vista: 'vista previa ejemplo probar imprimir test',
     respaldo: 'respaldo copia seguridad exportar descargar json backup',
     admin: 'admin panel administracion',
@@ -233,6 +238,7 @@ export default function Settings() {
       case 'formato': return receiptFormat === 'sheet' ? 'hoja a4' : 'ticket termico 80mm';
       case 'verqr': return showQrOnTicket ? 'sí' : 'no';
       case 'stock': return showStock ? 'visible' : 'oculto';
+      case 'scanner': return scannerEnabled ? 'activo' : 'desactivado';
       default: return '';
     }
   }
@@ -284,6 +290,7 @@ export default function Settings() {
     setNit(savedNit); setCity(savedCity); setAddress(savedAddress);
     setFooterMessage(savedFooter); setShowQrOnTicket(savedShowQr);
     setShowStock(savedShowStock);
+    setScannerEnabled(savedScanner);
   }
   async function handleSave() {
     setSaving(true);
@@ -294,6 +301,7 @@ export default function Settings() {
         features: {
           ...(currentSectorConfig.features || {}),
           stock: showStock,
+          scanner: scannerEnabled,
         },
       };
       const data = {
@@ -520,7 +528,7 @@ export default function Settings() {
     ? ['respaldo', 'admin'].some(visible)
     : true;
   const showApariencia = visible('tema');
-  const showOperacion = isRestaurantMode && visible('stock');
+  const showOperacion = visible('scanner') || (isRestaurantMode && visible('stock'));
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-4 pb-32">
@@ -625,23 +633,35 @@ export default function Settings() {
           </SectionCard>
         )}
 
-        {/* ── OPERACIÓN (SOLO RESTAURANTE) ── */}
+        {/* ── OPERACIÓN ── */}
         {showOperacion && (
           <SectionCard
-            icon="paquete"
-            title="Operación del restaurante"
-            description="Elegí qué información querés ver al trabajar."
+            icon="scan"
+            title="Operación"
+            description="Elegí qué herramientas querés tener activas al trabajar."
           >
             <div className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3">
-              <IconBox icon="paquete" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
+              <IconBox icon="scan" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
               <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold leading-tight text-[var(--mg-text-primary)]">Mostrar stock</span>
+                <span className="block text-sm font-bold leading-tight text-[var(--mg-text-primary)]">Escáner de códigos</span>
                 <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
-                  Si lo desactivás, ocultás existencias y alertas. Tus datos no se borran.
+                  Si lo desactivás, ocultás los botones de escaneo en Ventas, Inventario y Compras.
                 </span>
               </span>
-              <Toggle on={showStock} onChange={setShowStock} />
+              <Toggle on={scannerEnabled} onChange={setScannerEnabled} />
             </div>
+            {isRestaurantMode && (
+              <div className="w-full flex items-center gap-3.5 px-4 sm:px-5 min-h-[72px] py-3">
+                <IconBox icon="paquete" tint="bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold leading-tight text-[var(--mg-text-primary)]">Mostrar stock</span>
+                  <span className="block text-xs text-[var(--mg-text-muted)] font-medium mt-0.5">
+                    Si lo desactivás, ocultás existencias y alertas. Tus datos no se borran.
+                  </span>
+                </span>
+                <Toggle on={showStock} onChange={setShowStock} />
+              </div>
+            )}
           </SectionCard>
         )}
 
