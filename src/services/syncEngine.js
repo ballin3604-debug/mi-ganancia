@@ -1052,6 +1052,18 @@ async function processOperation(op, businessId) {
       }
       break;
     }
+    case 'ADD_CASH_ARQUEO': {
+      const { error } = await assertSupabase()
+        .from('cash_arqueos')
+        .upsert(payload, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) throw error;
+      try {
+        await db.cash_arqueos.update(payload.id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar el arqueo como confirmado:', confirmErr);
+      }
+      break;
+    }
     case 'UPDATE_EXPENSE': {
       const { id, ...updateData } = payload;
       let upd = await stripUnknownExpenseKeys(updateData);
@@ -1354,6 +1366,9 @@ export async function syncCacheFromServer(businessId) {
         case 'DELETE_EXPENSE':
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;
+        case 'ADD_CASH_ARQUEO':
+          if (op.payload.id) pendingIds.add(op.payload.id);
+          break;
       }
     });
 
@@ -1500,6 +1515,21 @@ export async function syncCacheFromServer(businessId) {
       }
     } catch (err) {
       console.warn('syncEngine: no se pudo sincronizar sales:', err);
+    }
+
+    if (db.cash_arqueos) {
+      try {
+        const rows = await fetchAll((from, to) => assertSupabase()
+          .from('cash_arqueos')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('closed_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to));
+        await safeSyncTable(db.cash_arqueos, rows, (item) => pendingIds.has(item.id), belongsToBiz);
+      } catch (err) {
+        console.warn('syncEngine: no se pudieron sincronizar los arqueos de caja:', err);
+      }
     }
 
     // ── BITÁCORA DE PEDIDOS: cambios de los últimos 12 meses. Se hace

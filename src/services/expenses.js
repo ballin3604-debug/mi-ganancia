@@ -78,6 +78,7 @@ export async function addExpense(businessId, data) {
     payment_method: data.paymentMethod || data.payment_method || 'efectivo',
     invoice_number: (data.invoiceNumber || data.invoice_number || '').trim(),
     notes: (data.notes || '').trim(),
+    branch_id: data.branchId || data.branch_id || null,
     alert_enabled: alertEnabled,
     alert_date: alertDate,
     alert_days_before: normalizeAlertDays(data.alertDaysBefore ?? data.alert_days_before),

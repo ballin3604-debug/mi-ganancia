@@ -1,0 +1,162 @@
+import { db, generateUUID } from './localDb';
+import { buildOutboxOp, refreshOutboxState } from './syncEngine';
+
+export const CASH_DENOMINATIONS = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
+
+function roundMoney(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function dateValue(value) {
+  if (!value) return null;
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function inPeriod(value, start, end) {
+  const date = dateValue(value);
+  return !!date && date >= start && date <= end;
+}
+
+function belongsToBranch(row, branchId, isMainBranch) {
+  return row.branch_id === branchId || (isMainBranch && !row.branch_id);
+}
+
+export function calculateCashMovements({
+  sales = [],
+  expenses = [],
+  branchId,
+  isMainBranch = false,
+  periodStart,
+  periodEnd = new Date(),
+  openingCash = 0,
+}) {
+  const start = dateValue(periodStart);
+  const end = dateValue(periodEnd) || new Date();
+  if (!start || !branchId) {
+    return { cashSales: 0, qrSales: 0, cashExpenses: 0, expectedCash: roundMoney(openingCash) };
+  }
+
+  let cashSales = 0;
+  let qrSales = 0;
+  for (const sale of sales) {
+    if (sale.status === 'cancelled' || sale.status === 'voided') continue;
+    if (!belongsToBranch(sale, branchId, isMainBranch) || !inPeriod(sale.created_at || sale.createdAt, start, end)) continue;
+    const total = Number(sale.total || 0);
+    const method = sale.payment_method || sale.paymentMethod;
+    if (method === 'cash' || method === 'efectivo') {
+      cashSales += total;
+    } else if (method === 'mixto') {
+      cashSales += Number(sale.monto_efectivo ?? sale.montoEfectivo ?? sale.cash_amount ?? sale.cashAmount ?? total);
+      qrSales += Number(sale.monto_qr ?? sale.montoQR ?? sale.qr_amount ?? sale.qrAmount ?? 0);
+    } else if (method === 'qr') {
+      qrSales += total;
+    }
+  }
+
+  let cashExpenses = 0;
+  for (const expense of expenses) {
+    const method = expense.payment_method || expense.paymentMethod || 'efectivo';
+    if (method !== 'efectivo' && method !== 'cash') continue;
+    if (!belongsToBranch(expense, branchId, isMainBranch)) continue;
+    if (!inPeriod(expense.created_at || expense.createdAt, start, end)) continue;
+    cashExpenses += Number(expense.amount || 0);
+  }
+
+  cashSales = roundMoney(cashSales);
+  qrSales = roundMoney(qrSales);
+  cashExpenses = roundMoney(cashExpenses);
+  return {
+    cashSales,
+    qrSales,
+    cashExpenses,
+    expectedCash: roundMoney(Number(openingCash || 0) + cashSales - cashExpenses),
+  };
+}
+
+const listeners = new Set();
+
+export async function getCashArqueos(businessId) {
+  if (!businessId) return [];
+  const rows = await db.cash_arqueos.where('business_id').equals(businessId).toArray();
+  return rows.sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at));
+}
+
+export function subscribeCashArqueos(businessId, callback) {
+  getCashArqueos(businessId).then(callback).catch(console.error);
+  const entry = { businessId, callback };
+  listeners.add(entry);
+  return () => listeners.delete(entry);
+}
+
+function notifyCashArqueos(businessId) {
+  getCashArqueos(businessId).then((rows) => {
+    listeners.forEach((entry) => {
+      if (entry.businessId === businessId) entry.callback(rows);
+    });
+  }).catch(console.error);
+}
+
+export async function createCashArqueo(businessId, userId, userName, data) {
+  if (!businessId || !userId || !data?.branchId) {
+    throw new Error('Falta el negocio, usuario o sucursal para guardar el arqueo.');
+  }
+  const openingCash = Number(data.openingCash);
+  const countedCash = Number(data.countedCash);
+  const expectedCash = Number(data.expectedCash);
+  if (![openingCash, countedCash, expectedCash].every(Number.isFinite) || openingCash < 0 || countedCash < 0) {
+    throw new Error('Revisa los montos del arqueo.');
+  }
+  const difference = roundMoney(countedCash - expectedCash);
+  const notes = String(data.notes || '').trim();
+  if (Math.abs(difference) > 0.009 && notes.length < 3) {
+    throw new Error('Explica la diferencia de caja en las observaciones antes de guardar.');
+  }
+
+  const closedAt = new Date().toISOString();
+  const row = {
+    id: generateUUID(),
+    business_id: businessId,
+    branch_id: data.branchId,
+    period_start: new Date(data.periodStart).toISOString(),
+    closed_at: closedAt,
+    opening_cash: roundMoney(openingCash),
+    cash_sales: roundMoney(data.cashSales),
+    qr_sales: roundMoney(data.qrSales),
+    cash_expenses: roundMoney(data.cashExpenses),
+    expected_cash: roundMoney(expectedCash),
+    counted_cash: roundMoney(countedCash),
+    difference,
+    denominations: data.denominations || {},
+    notes,
+    closed_by: userId,
+    closed_by_name: String(userName || 'Usuario').slice(0, 100),
+    created_at: closedAt,
+    sync_status: 'local',
+  };
+  const { sync_status, ...payload } = row;
+  const operation = buildOutboxOp('ADD_CASH_ARQUEO', payload, businessId, {
+    userId,
+    branchId: data.branchId,
+    origin: 'offline',
+  });
+
+  await db.transaction('rw', db.cash_arqueos, db.pending_operations, async () => {
+    await db.cash_arqueos.add(row);
+    await db.pending_operations.add(operation);
+  });
+  notifyCashArqueos(businessId);
+  try {
+    await refreshOutboxState(businessId);
+  } catch {
+    return row;
+  }
+  return row;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('tuganancia-cache-synced', (event) => {
+    const businessId = event.detail?.businessId;
+    if (businessId) notifyCashArqueos(businessId);
+  });
+}

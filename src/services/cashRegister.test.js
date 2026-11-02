@@ -1,0 +1,97 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { db, generateUUID } from './localDb';
+import { calculateCashMovements, createCashArqueo } from './cashRegister';
+import { getPendingOperations } from './syncEngine';
+
+vi.mock('./supabaseClient', () => ({
+  supabase: null,
+  isSupabaseConfigured: false,
+  supabaseConfigError: '',
+  assertSupabase: () => { throw new Error('Supabase no configurado en pruebas'); },
+}));
+
+describe('cash register arqueos', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('calcula el esperado solo con efectivo y egresos de la sucursal en el período', () => {
+    const branchId = generateUUID();
+    const otherBranchId = generateUUID();
+    const periodStart = new Date('2026-11-01T10:00:00.000Z');
+    const periodEnd = new Date('2026-11-01T12:00:00.000Z');
+    const sales = [
+      { branch_id: branchId, created_at: '2026-11-01T10:30:00.000Z', payment_method: 'cash', total: 100 },
+      { branch_id: branchId, created_at: '2026-11-01T10:45:00.000Z', payment_method: 'qr', total: 60 },
+      { branch_id: branchId, created_at: '2026-11-01T11:00:00.000Z', payment_method: 'mixto', total: 50, monto_efectivo: 20, monto_qr: 30 },
+      { branch_id: branchId, created_at: '2026-11-01T11:10:00.000Z', payment_method: 'cash', total: 40, status: 'cancelled' },
+      { branch_id: otherBranchId, created_at: '2026-11-01T11:15:00.000Z', payment_method: 'cash', total: 500 },
+      { branch_id: branchId, created_at: '2026-11-01T09:59:00.000Z', payment_method: 'cash', total: 900 },
+    ];
+    const expenses = [
+      { branch_id: branchId, created_at: '2026-11-01T11:30:00.000Z', payment_method: 'efectivo', amount: 15 },
+      { branch_id: branchId, created_at: '2026-11-01T11:35:00.000Z', payment_method: 'qr', amount: 70 },
+      { branch_id: otherBranchId, created_at: '2026-11-01T11:40:00.000Z', payment_method: 'efectivo', amount: 20 },
+    ];
+
+    expect(calculateCashMovements({
+      sales, expenses, branchId, periodStart, periodEnd, openingCash: 50,
+    })).toEqual({ cashSales: 120, qrSales: 90, cashExpenses: 15, expectedCash: 155 });
+  });
+
+  it('incluye ventas y egresos antiguos sin sede en la sucursal principal', () => {
+    const branchId = generateUUID();
+    const periodStart = new Date('2026-11-01T10:00:00.000Z');
+    const periodEnd = new Date('2026-11-01T12:00:00.000Z');
+    const result = calculateCashMovements({
+      branchId,
+      isMainBranch: true,
+      periodStart,
+      periodEnd,
+      openingCash: 20,
+      sales: [{ created_at: '2026-11-01T11:00:00.000Z', payment_method: 'cash', total: 30 }],
+      expenses: [{ created_at: '2026-11-01T11:15:00.000Z', payment_method: 'efectivo', amount: 5 }],
+    });
+    expect(result.expectedCash).toBe(45);
+  });
+
+  it('guarda el arqueo localmente y encola su sincronización offline', async () => {
+    const businessId = generateUUID();
+    const userId = generateUUID();
+    const branchId = generateUUID();
+    const arqueo = await createCashArqueo(businessId, userId, 'Cajera Test', {
+      branchId,
+      periodStart: '2026-11-01T10:00:00.000Z',
+      openingCash: 20,
+      cashSales: 30,
+      qrSales: 5,
+      cashExpenses: 5,
+      expectedCash: 45,
+      countedCash: 45,
+      denominations: { 20: 2, 5: 1 },
+      notes: '',
+    });
+
+    expect(arqueo.difference).toBe(0);
+    expect((await db.cash_arqueos.get(arqueo.id)).sync_status).toBe('local');
+    const operations = await getPendingOperations(businessId, 'pending');
+    expect(operations).toHaveLength(1);
+    expect(operations[0].operation_type).toBe('ADD_CASH_ARQUEO');
+    expect(operations[0].payload.closed_by).toBe(userId);
+  });
+
+  it('exige observación cuando hay diferencia', async () => {
+    await expect(createCashArqueo(generateUUID(), generateUUID(), 'Dueño', {
+      branchId: generateUUID(),
+      periodStart: '2026-11-01T10:00:00.000Z',
+      openingCash: 0,
+      expectedCash: 100,
+      countedCash: 90,
+      cashSales: 100,
+      qrSales: 0,
+      cashExpenses: 0,
+      notes: '',
+    })).rejects.toThrow('Explica la diferencia');
+  });
+});

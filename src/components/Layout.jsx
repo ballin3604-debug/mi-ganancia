@@ -93,6 +93,9 @@ const NAV_ITEMS = [
     ],
   },
   {
+    label: 'Arqueo de caja', Icon: WalletIcon, ownerOnly: false, key: 'cash-register', basePath: '/arqueo', section: 'Operación',
+  },
+  {
     label: 'Compras', Icon: BagIcon, ownerOnly: false, key: 'purchases', basePath: '/compras',
     children: [
       { to: '/compras?tab=comprar', label: 'Comprar', key: 'purchases-new' },

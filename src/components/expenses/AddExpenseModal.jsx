@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { EXPENSE_CATEGORIES, addExpense, updateExpense, EXPENSE_PAYMENT_LABELS } from '../../services/expenses';
 import { clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';
 import { AppIcon } from '../icons';
+import { useBranches } from '../../context/BranchContext';
 
 const CATEGORY_ICONS = {
   'Mercadería': 'paquete',
@@ -28,6 +29,7 @@ function defaultAlertDate() {
 }
 
 export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingExpense = null }) {
+  const { activeBranchId } = useBranches();
   const [description, setDescription] = useState('');
   const [supplier, setSupplier] = useState('');
   const [amount, setAmount] = useState('');
@@ -93,6 +95,7 @@ export function AddExpenseModal({ businessId, isOpen, onClose, onSaved, editingE
       const payload = {
         description, supplier, amount, category,
         expenseType, paymentMethod, invoiceNumber, notes,
+        branchId: activeBranchId,
         alertEnabled: expenseType === 'fixed' && alertEnabled,
         alertDate: expenseType === 'fixed' && alertEnabled ? alertDate : null,
         alertDaysBefore,

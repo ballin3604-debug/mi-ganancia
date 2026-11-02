@@ -16,18 +16,19 @@ export async function exportFullBackup(businessId, businessName) {
   }
 
   // Todas las tablas del negocio, en paralelo.
-  const [products, clientes, debts, expenses, replenishments, sales, settingsRes] = await Promise.all([
+  const [products, clientes, debts, expenses, replenishments, sales, cashArqueos, settingsRes] = await Promise.all([
     assertSupabase().from('products').select('*').eq('business_id', businessId),
     assertSupabase().from('clientes').select('*').eq('business_id', businessId),
     assertSupabase().from('debts').select('*').eq('business_id', businessId),
     assertSupabase().from('expenses').select('*').eq('business_id', businessId),
     assertSupabase().from('replenishments').select('*').eq('business_id', businessId),
     assertSupabase().from('sales').select('*').eq('business_id', businessId),
+    assertSupabase().from('cash_arqueos').select('*').eq('business_id', businessId),
     assertSupabase().from('business_settings').select('*').eq('business_id', businessId).maybeSingle(),
   ]);
 
   const firstError = products.error || clientes.error || debts.error
-    || expenses.error || replenishments.error || sales.error || settingsRes.error;
+    || expenses.error || replenishments.error || sales.error || cashArqueos.error || settingsRes.error;
   if (firstError) {
     console.error('exportFullBackup: error bajando datos del servidor:', firstError);
     throw firstError;
@@ -56,6 +57,7 @@ export async function exportFullBackup(businessId, businessName) {
     egresos: expenses.data?.length || 0,
     compras: replenishments.data?.length || 0,
     clientes: clientes.data?.length || 0,
+    arqueos_caja: cashArqueos.data?.length || 0,
   };
 
   const backup = {
@@ -73,6 +75,7 @@ export async function exportFullBackup(businessId, businessName) {
       debts: debts.data || [],
       expenses: expenses.data || [],
       replenishments: replenishments.data || [],
+      cash_arqueos: cashArqueos.data || [],
       clientes: clientes.data || [],
       business_settings: settingsRes.data || null,
     },
