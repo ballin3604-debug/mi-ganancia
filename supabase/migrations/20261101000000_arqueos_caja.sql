@@ -24,7 +24,7 @@ create index if not exists cash_arqueos_business_branch_closed_idx
   on public.cash_arqueos (business_id, branch_id, closed_at desc);
 
 alter table public.cash_arqueos enable row level security;
-revoke all on table public.cash_arqueos from anon, public;
+revoke all on table public.cash_arqueos from anon, authenticated, public;
 grant select, insert on table public.cash_arqueos to authenticated;
 
 drop policy if exists "miembros ven arqueos de sus sucursales" on public.cash_arqueos;
