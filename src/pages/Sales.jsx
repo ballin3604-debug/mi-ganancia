@@ -248,14 +248,12 @@ export default function Sales() {
   const sellingBlocked = activeBranch?.type === 'almacen';
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
-    : searchParams.get('tab') === 'cajeros' ? 'cajeros'
+    : searchParams.get('tab') === 'cajeros' ? 'reporte'
     : searchParams.get('tab') === 'auditoria' ? 'auditoria'
     : searchParams.get('tab') === 'pedidos' ? 'pedidos'
     : searchParams.get('tab') === 'bitacora' ? 'bitacora' : 'venta';
-  // El cajero no tiene Por Cajero: cae a su reporte propio.
   // Pedidos y bitácora son exclusivos del modo restaurante.
-  const activeTab = (!isOwner && requestedTab === 'cajeros') ? 'reporte'
-    : ((requestedTab === 'pedidos' || requestedTab === 'bitacora') && !isRestaurantMode) ? 'venta'
+  const activeTab = ((requestedTab === 'pedidos' || requestedTab === 'bitacora') && !isRestaurantMode) ? 'venta'
     : requestedTab;
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
@@ -771,7 +769,6 @@ export default function Sales() {
     })
   ), [scopedSalesReport, itemsBySaleId, saleNumberById]);
 
-  // ── Reporte por cajero ─────────────────────────────────────────────
   const [reportCashier, setReportCashier] = useState('Todos');
 
   function renderBranchPills() {
@@ -794,37 +791,44 @@ export default function Sales() {
     return [...set].sort((a, b) => a.localeCompare(b, 'es'));
   }, [scopedSalesReport]);
 
-  // Totales por cajero calculados a nivel VENTA (no por ítem, para no duplicar).
-  // "En caja" = efectivo + QR + mixto (plata que entró).
-  // Usa la lista CON sede aplicada: resumen y detalle siempre cuadran.
-  const cashierStats = useMemo(() => {
-    const map = {};
-    scopedSalesReport.forEach((s) => {
-      const name = s.seller_name || 'Sin nombre';
-      if (!map[name]) {
-        map[name] = { name, ventas: 0, cash: 0, qr: 0, mixto: 0, ganancia: 0 };
-      }
-      const st = map[name];
-      const total = Number(s.total || 0);
-      st.ventas += 1;
-      if (s.paymentMethod === 'cash') st.cash += total;
-      else if (s.paymentMethod === 'qr') st.qr += total;
-      else if (s.paymentMethod === 'mixto') st.mixto += total;
-      else st.cash += total;
-    });
-    salesReportRows.forEach((r) => {
-      const name = r.sellerName || 'Sin nombre';
-      if (map[name]) map[name].ganancia += Number(r.ganancia || 0);
-    });
-    return Object.values(map)
-      .map((st) => ({ ...st, enCaja: st.cash + st.qr + st.mixto, total: st.cash + st.qr + st.mixto }))
-      .sort((a, b) => b.enCaja - a.enCaja);
-  }, [scopedSalesReport, salesReportRows]);
+  function renderSalesReportFilters() {
+    const branchSelector = renderBranchPills();
+    if (!branchSelector && !isOwner) return null;
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {branchSelector}
+        {isOwner ? (
+          <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
+            <AppIcon name="equipo" size={14} color="var(--mg-accent-text)" />
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Cajero</span>
+            <select
+              value={reportCashier}
+              onChange={(event) => setReportCashier(event.target.value)}
+              aria-label="Filtrar reporte por cajero"
+              className="max-w-[180px] cursor-pointer truncate bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none"
+            >
+              <option value="Todos">Todos los cajeros</option>
+              {reportCashier !== 'Todos' && !sellersInRange.includes(reportCashier) ? (
+                <option value={reportCashier}>{reportCashier}</option>
+              ) : null}
+              {sellersInRange.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
+        ) : null}
+      </div>
+    );
+  }
+
+  const filteredCashierSales = useMemo(() => (
+    reportCashier === 'Todos'
+      ? scopedSalesReport
+      : scopedSalesReport.filter((sale) => (sale.seller_name || 'Sin nombre') === reportCashier)
+  ), [scopedSalesReport, reportCashier]);
 
   const cashierRows = useMemo(() => (
     reportCashier === 'Todos'
       ? salesReportRows
-      : salesReportRows.filter((r) => (r.sellerName || 'Sin nombre') === reportCashier)
+      : salesReportRows.filter((row) => (row.sellerName || 'Sin nombre') === reportCashier)
   ), [salesReportRows, reportCashier]);
 
   // Auditoría: todos los tickets, sin filtros (el cajero solo ve los suyos).
@@ -857,21 +861,6 @@ export default function Sales() {
     });
   }, [salesList, saleNumberById, isOwner, user?.uid]);
 
-  // Tickets (ventas) del cajero seleccionado: uno por venta, no por ítem.
-  const cashierTickets = useMemo(() => {
-    const list = reportCashier === 'Todos'
-      ? scopedSalesReport
-      : scopedSalesReport.filter((s) => (s.seller_name || 'Sin nombre') === reportCashier);
-    return list.map((s) => ({
-      id: s.id,
-      number: saleNumberById[s.id] || 0,
-      createdAt: s.createdAt,
-      total: Number(s.total || 0),
-      paymentMethod: s.paymentMethod,
-      seller: s.seller_name || 'Sin nombre',
-    }));
-  }, [scopedSalesReport, reportCashier, saleNumberById]);
-
   const METHOD_META = {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]' },
     qr: { label: 'QR', icon: 'qr', pill: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]' },
@@ -886,7 +875,7 @@ export default function Sales() {
     );
   }
 
-  // Tabla de detalle compartida por "Reporte de Ventas" y "Por Cajero"
+  // Tabla de detalle del reporte de ventas.
   const detailColumns = [
     {
       key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28',
@@ -959,48 +948,6 @@ export default function Sales() {
         footer={visibleFooter}
         columns={visibleColumns}
       />
-    );
-  }
-
-  // Lista de tickets por cajero: a la izquierda N° + fecha y hora,
-  // a la derecha icono de billete con el precio.
-  function renderTicketList() {
-    const emptyMessage = reportCashier === 'Todos'
-      ? 'No se encontraron ventas en el rango de fechas seleccionado.'
-      : `Sin ventas de ${reportCashier} en este período.`;
-    if (cashierTickets.length === 0) {
-      return <EmptyState icon="recibo" title="Sin tickets" description={emptyMessage} />;
-    }
-    const total = cashierTickets.reduce((sum, t) => sum + t.total, 0);
-    return (
-      <SectionCard
-        title={`Tickets (${cashierTickets.length})`}
-        action={<p className="text-xs font-black text-[var(--mg-text-primary)] tabular-nums">Total: {formatBs(total)}</p>}
-        bodyClassName="divide-y divide-[var(--mg-separator)]"
-      >
-          {cashierTickets.map((t) => {
-            const d = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
-            const valid = d instanceof Date && !Number.isNaN(d.getTime());
-            const fecha = valid ? d.toLocaleDateString('es-BO') : '—';
-            const hora = valid ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
-            return (
-              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-black text-[var(--mg-text-primary)] text-sm tabular-nums">
-                    Ticket #{String(t.number).padStart(4, '0')}
-                  </p>
-                  <p className="text-[11px] text-[var(--mg-text-muted)] font-semibold mt-0.5 truncate">
-                    {fecha}{hora ? ` · ${hora}` : ''}{reportCashier === 'Todos' ? ` · ${t.seller}` : ''}
-                  </p>
-                </div>
-                <span className="flex items-center gap-1.5 font-black text-[var(--mg-success-text)] text-sm sm:text-base tabular-nums shrink-0">
-                  <AppIcon name="cash" size={20} />
-                  {formatBs(t.total)}
-                </span>
-              </div>
-            );
-          })}
-      </SectionCard>
     );
   }
 
@@ -2486,34 +2433,34 @@ export default function Sales() {
               <ReportHeader
                 icon={<AppIcon name="carrito" size={21} />}
                 title="Reporte de Ventas"
-                subtitle="Historial detallado de tus ventas por producto."
+                subtitle="Historial detallado de ventas por producto y cajero."
                 startDate={reportStartDate}
                 endDate={reportEndDate}
                 onStartDateChange={setReportStartDate}
                 onEndDateChange={setReportEndDate}
                 onExport={canExport ? handleExportSales : undefined}
-                exportDisabled={salesReportRows.length === 0}
-                branchSelector={renderBranchPills()}
+                exportDisabled={cashierRows.length === 0}
+                branchSelector={renderSalesReportFilters()}
               />
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <MetricCard
                   label="Total vendido"
-                  value={formatBs(salesReportRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0))}
-                  hint={`${scopedSalesReport.length} ${scopedSalesReport.length === 1 ? 'ticket' : 'tickets'}`}
+                  value={formatBs(cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0))}
+                  hint={`${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`}
                   icon="caja"
                   tone="brand"
                 />
                 <MetricCard
                   label="Unidades"
-                  value={salesReportRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0)}
+                  value={cashierRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0)}
                   hint="Vendidas en el período"
                   icon="paquete"
                   tone="action"
                 />
                 <MetricCard
                   label="Ticket promedio"
-                  value={formatBs(scopedSalesReport.length ? salesReportRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0) / scopedSalesReport.length : 0)}
+                  value={formatBs(filteredCashierSales.length ? cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0) / filteredCashierSales.length : 0)}
                   hint="Por venta"
                   icon="recibo"
                   tone="neutral"
@@ -2521,7 +2468,7 @@ export default function Sales() {
                 {canSeeCosts ? (
                   <MetricCard
                     label="Ganancia"
-                    value={formatBs(salesReportRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0))}
+                    value={formatBs(cashierRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0))}
                     hint="Ventas menos costo"
                     icon="ranking"
                     tone="success"
@@ -2529,165 +2476,13 @@ export default function Sales() {
                 ) : null}
               </div>
 
-              {renderDetailTable(salesReportRows, 'No se encontraron ventas en el rango de fechas seleccionado.', 'Total del período')}
-            </div>
-          ) : activeTab === 'cajeros' ? (
-            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
-              <ReportHeader
-                icon={<AppIcon name="equipo" size={21} />}
-                title="Reporte por Cajero"
-                subtitle="Lo que vendió cada vendedor y en qué método de pago."
-                startDate={reportStartDate}
-                endDate={reportEndDate}
-                onStartDateChange={setReportStartDate}
-                onEndDateChange={setReportEndDate}
-                onExport={handleExportSales}
-                exportDisabled={cashierRows.length === 0}
-                branchSelector={renderBranchPills()}
-              />
-
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <MetricCard
-                  label="En caja"
-                  value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.enCaja, 0))}
-                  hint="Efectivo + QR + mixto"
-                  icon="caja"
-                  tone="brand"
-                />
-                <MetricCard
-                  label="Ventas"
-                  value={(reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.ventas, 0)}
-                  hint="Tickets del período"
-                  icon="recibo"
-                  tone="action"
-                />
-                <MetricCard
-                  label="Efectivo"
-                  value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.cash, 0))}
-                  hint="Cobrado en efectivo"
-                  icon="cash"
-                  tone="success"
-                />
-                {canSeeCosts ? (
-                  <MetricCard
-                    label="Ganancia"
-                    value={formatBs((reportCashier === 'Todos' ? cashierStats : cashierStats.filter((s) => s.name === reportCashier)).reduce((sum, s) => sum + s.ganancia, 0))}
-                    hint="Estimada del período"
-                    icon="ranking"
-                    tone="warning"
-                  />
-                ) : null}
-              </div>
-
-              <SectionCard
-                title="Ventas por cajero"
-                subtitle="Toca un cajero para ver su detalle"
-                bodyClassName="p-4 space-y-3"
-              >
-                {/* Filtro de cajeros */}
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {['Todos', ...sellersInRange].map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setReportCashier(name)}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                        reportCashier === name
-                          ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
-                          : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] hover:text-[var(--mg-text-secondary)]'
-                      }`}
-                    >
-                      {name === 'Todos' ? 'Todos' : name}
-                    </button>
-                  ))}
-                </div>
-
-                {cashierStats.length === 0 ? (
-                  <EmptyState
-                    icon="equipo"
-                    title="Sin ventas en este período"
-                    description="Cambia el rango de fechas o registra una nueva venta."
-                    className="border-0 bg-[var(--mg-bg-elevated)] px-4 py-6 shadow-none"
-                  />
-                ) : reportCashier === 'Todos' ? (
-                  /* Resumen comparativo: una fila por cajero */
-                  <div className="overflow-x-auto rounded-2xl border border-[var(--mg-border)]">
-                    <table className="w-full min-w-[640px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
-                      <thead>
-                        <tr className="bg-[var(--mg-bg-section)]">
-                          {['Cajero', 'Ventas', 'Efectivo', 'QR', 'Mixto', 'En caja', 'Ganancia'].map((h, i) => (
-                            <th key={h} className={`whitespace-nowrap p-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-secondary)] ${i >= 2 ? 'text-right' : 'text-left'}`}>
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cashierStats.map((st) => (
-                          <tr
-                            key={st.name}
-                            onClick={() => setReportCashier(st.name)}
-                            className="cursor-pointer border-t border-[var(--mg-separator)] transition-colors hover:bg-[var(--mg-accent-bg-soft)]"
-                          >
-                            <td className="whitespace-nowrap p-3 font-bold text-[var(--mg-text-primary)]">
-                              {st.name}
-                            </td>
-                            <td className="p-3 text-left">
-                              <span className="inline-block rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-0.5 text-xs font-black">
-                                {st.ventas}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right font-semibold text-[var(--mg-success-text)]">{formatBs(st.cash)}</td>
-                            <td className="p-3 text-right font-semibold text-[var(--mg-accent-text)]">{formatBs(st.qr)}</td>
-                            <td className="p-3 text-right font-semibold text-[var(--mg-brand-text)]">{formatBs(st.mixto)}</td>
-                            <td className="p-3 text-right font-black text-[var(--mg-brand-text)]">{formatBs(st.enCaja)}</td>
-                            <td className="p-3 text-right font-bold text-[var(--mg-success-text)]">{formatBs(st.ganancia)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  /* Ficha del cajero seleccionado */
-                  (() => {
-                    const st = cashierStats.find((s) => s.name === reportCashier);
-                    if (!st) return null;
-                    return (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-2.5">
-                          <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3 text-center">
-                            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">En caja</p>
-                            <p className="text-lg font-black text-[var(--mg-brand-text)]">{formatBs(st.enCaja)}</p>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-center">
-                            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Ventas</p>
-                            <p className="text-lg font-black text-[var(--mg-text-primary)]">{st.ventas}</p>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] p-3 text-center">
-                            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Ganancia</p>
-                            <p className="text-lg font-black text-[var(--mg-success-text)]">{formatBs(st.ganancia)}</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {[
-                            { icon: 'cash', label: 'Efectivo', value: st.cash, cls: 'text-[var(--mg-success-text)] bg-[var(--mg-success-bg)] border-[var(--mg-success-border)]' },
-                            { icon: 'qr', label: 'QR', value: st.qr, cls: 'text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] border-[var(--mg-accent-border)]' },
-                            { icon: 'mixto', label: 'Mixto', value: st.mixto, cls: 'text-[var(--mg-brand-text)] bg-[var(--mg-brand-bg)] border-[var(--mg-brand-border)]' },
-                          ].map((m) => (
-                            <div key={m.label} className={`rounded-2xl border p-2.5 text-center ${m.cls}`}>
-                              <p className="flex justify-center"><AppIcon name={m.icon} size={18} /></p>
-                              <p className="text-[10px] font-extrabold uppercase tracking-wide opacity-80">{m.label}</p>
-                              <p className="text-sm font-black">{formatBs(m.value)}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()
-                )}
-              </SectionCard>
-
-              {renderTicketList()}
+              {renderDetailTable(
+                cashierRows,
+                reportCashier === 'Todos'
+                  ? 'No se encontraron ventas en el rango seleccionado.'
+                  : `Sin ventas de ${reportCashier} en este período.`,
+                reportCashier === 'Todos' ? 'Total del período' : `Total de ${reportCashier}`,
+              )}
             </div>
           ) : activeTab === 'auditoria' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
