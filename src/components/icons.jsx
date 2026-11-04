@@ -69,6 +69,7 @@ import {
   UtensilsCrossed,
   Mail,
   Smartphone,
+  Zap,
 } from 'lucide-react';
 // Colores semánticos opcionales (variables del tema) para pasar a `color`.
 // Por defecto AppIcon usa currentColor y hereda el color del contenedor.
@@ -149,6 +150,7 @@ const ICONS = {
   sinConexion: { Component: WifiOff },
   correo: { Component: Mail },
   celular: { Component: Smartphone },
+  rayo: { Component: Zap },
 };
 
 export function AppIcon({ name, size = 18, color = 'currentColor', strokeWidth = 2, className = '' }) {

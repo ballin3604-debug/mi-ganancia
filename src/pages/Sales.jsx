@@ -1991,17 +1991,17 @@ export default function Sales() {
 
           {activeTab === 'pedidos' ? (
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-24 xl:overflow-hidden xl:pb-0">
-              <div className="shrink-0 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] sm:p-4">
+              <div className="mg-orders-panel-edge shrink-0 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] sm:p-4">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]">
+                    <span className="mg-orders-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[var(--mg-brand-contrast)]">
                       <AppIcon name="restaurante" size={20} />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-accent-text)]">
                         Servicio de hoy
                       </p>
-                      <h2 className="truncate text-xl font-black tracking-tight text-[var(--mg-text-primary)] sm:text-2xl">
+                      <h2 className="truncate text-xl font-black tracking-tight text-[var(--mg-brand-text)] sm:text-2xl">
                         Pedidos en curso
                       </h2>
                       <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
@@ -2035,26 +2035,26 @@ export default function Sales() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex min-h-[36px] items-center gap-2 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[11px] font-bold text-[var(--mg-text-secondary)]">
+                    <span className="inline-flex min-h-[36px] items-center gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3 text-[11px] font-bold text-[var(--mg-success-text)]">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--mg-success)]" />
                       Total pedidos activos:
-                      <b className="text-[var(--mg-text-primary)] tabular-nums">{todayOrderStats.active}</b>
+                      <b className="text-[var(--mg-success-text)] tabular-nums">{todayOrderStats.active}</b>
                     </span>
-                    <span className="hidden min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[11px] font-bold text-[var(--mg-text-secondary)] sm:inline-flex">
+                    <span className="hidden min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3 text-[11px] font-bold text-[var(--mg-gold-text)] sm:inline-flex">
                       <AppIcon name="caja" size={13} />
-                      Vendido hoy <b className="text-[var(--mg-text-primary)] tabular-nums">{formatBs(todayOrderRevenue)}</b>
+                      Vendido hoy <b className="text-[var(--mg-gold-text)] tabular-nums">{formatBs(todayOrderRevenue)}</b>
                     </span>
                     <button
                       type="button"
                       onClick={() => navigate('/ventas?tab=bitacora')}
-                      className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                      className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-accent-border)] hover:bg-[var(--mg-accent-bg)] hover:text-[var(--mg-accent-text)] active:scale-95"
                     >
                       <AppIcon name="reportes" size={13} /> Bitácora
                     </button>
                     <button
                       type="button"
                       onClick={() => navigate('/ventas?tab=venta')}
-                      className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[11px] font-black text-[var(--mg-brand-contrast)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
+                      className="mg-orders-tile inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl px-3 text-[11px] font-black text-[var(--mg-brand-contrast)] transition-all hover:brightness-110 active:scale-95"
                     >
                       <AppIcon name="agregar" size={13} /> Nueva venta
                     </button>
@@ -2075,261 +2075,276 @@ export default function Sales() {
                 </div>
               ) : null}
 
-              <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_330px] xl:grid-rows-1">
-                <section className="flex min-h-0 flex-col rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 shadow-[var(--mg-shadow-sm)]">
-                  <div className="flex items-center justify-between gap-2 px-0.5">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                      Pedidos del día
-                    </h3>
-                    <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2 py-0.5 text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
-                      {filteredTodayOrders.length}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex gap-1 overflow-x-auto rounded-xl bg-[var(--mg-bg-elevated)] p-1 scrollbar-none">
-                    {[
-                      { id: 'activos', label: 'En curso', count: todayOrderStats.active },
-                      { id: 'todos', label: 'Todos', count: todayOrderStats.total },
-                      { id: 'cancelados', label: 'Cancelados', count: todayOrderStats.cancelled },
-                    ].map((option) => {
-                      const active = ordersFilter === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setOrdersFilter(option.id)}
-                          className={`flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-black transition-all ${
-                            active
-                              ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
-                              : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-surface)]'
-                          }`}
-                        >
-                          {option.label}
-                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] tabular-nums ${
-                            active ? 'bg-white/20' : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]'
-                          }`}>
-                            {option.count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
-                    {filteredTodayOrders.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-4 py-8 text-center">
-                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
-                          <AppIcon name="restaurante" size={24} />
+              <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px] xl:grid-rows-1">
+                <div className="mg-orders-workspace mg-orders-panel-edge grid min-h-0 overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)] xl:grid-cols-[300px_minmax(0,1fr)] xl:grid-rows-1">
+                  <section className="flex min-h-0 flex-col border-b border-[var(--mg-separator)] bg-[var(--mg-bg-surface)] p-3 xl:border-b-0 xl:border-r">
+                    <div className="flex items-center justify-between gap-2 px-0.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]">
+                          <AppIcon name="recibo" size={14} />
                         </span>
-                        <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">
-                          {todayOrders.length === 0 ? 'Aún no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
-                        </p>
-                        <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-muted)]">
-                          {todayOrders.length === 0
-                            ? 'Cuando cobres el primer pedido aparecerá acá.'
-                            : 'Probá con otra búsqueda o cambiá el estado.'}
-                        </p>
-                        {todayOrders.length === 0 ? (
+                        <h3 className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                          Pedidos del día
+                        </h3>
+                      </div>
+                      <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2 py-0.5 text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
+                        {filteredTodayOrders.length}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex gap-1 overflow-x-auto rounded-xl bg-[var(--mg-bg-elevated)] p-1 scrollbar-none">
+                      {[
+                        { id: 'activos', label: 'En curso', count: todayOrderStats.active },
+                        { id: 'todos', label: 'Todos', count: todayOrderStats.total },
+                        { id: 'cancelados', label: 'Cancelados', count: todayOrderStats.cancelled },
+                      ].map((option) => {
+                        const active = ordersFilter === option.id;
+                        return (
                           <button
+                            key={option.id}
                             type="button"
-                            onClick={() => navigate('/ventas?tab=venta')}
-                            className="mt-3 inline-flex min-h-[34px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[10px] font-black text-[var(--mg-brand-contrast)] active:scale-95"
+                            onClick={() => setOrdersFilter(option.id)}
+                            className={`flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-black transition-all ${
+                              active
+                                ? 'mg-orders-filter-active text-[var(--mg-brand-contrast)]'
+                                : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-surface)]'
+                            }`}
                           >
-                            <AppIcon name="agregar" size={12} /> Crear primera venta
+                            {option.label}
+                            <span className={`rounded-full px-1.5 py-0.5 text-[9px] tabular-nums ${
+                              active ? 'bg-white/20' : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]'
+                            }`}>
+                              {option.count}
+                            </span>
                           </button>
-                        ) : null}
-                      </div>
-                    ) : filteredTodayOrders.map((sale) => {
-                      const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
-                      const validDate = d instanceof Date && !Number.isNaN(d.getTime());
-                      const number = saleNumberById[sale.id];
-                      const displayNumber = number ? `#${String(number).padStart(4, '0')}` : '#----';
-                      const items = itemsBySaleId[sale.id] || [];
-                      const cancelled = sale.status === 'cancelled';
-                      const isSelected = selectedOrder?.id === sale.id;
-                      const units = sale.item_count ?? items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-                      return (
-                        <button
-                          key={sale.id}
-                          type="button"
-                          onClick={() => setSelectedOrderId(sale.id)}
-                          className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all active:scale-[0.99] ${
-                            isSelected
-                              ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)]'
-                              : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] hover:border-[var(--mg-brand-border)] hover:bg-[var(--mg-bg-elevated)]'
-                          }`}
-                        >
-                          <span className={`absolute inset-y-0 left-0 w-1 ${cancelled ? 'bg-[var(--mg-danger)]' : 'bg-[var(--mg-success)]'}`} />
-                          <div className="flex items-start justify-between gap-2 pl-1.5">
-                            <div className="min-w-0">
-                              <p className="text-2xl font-black leading-none tracking-tight tabular-nums">{displayNumber}</p>
-                              <p className={`mt-1 text-[9px] font-black uppercase tracking-[0.18em] ${isSelected ? 'opacity-60' : 'text-[var(--mg-text-muted)]'}`}>
-                                {cancelled ? 'Cancelado' : 'Pedido'}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1">
-                              <span className={`text-[10px] font-black ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
-                                {validDate ? relativeOrderTime(d) : ''}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide ${
-                                isSelected
-                                  ? 'opacity-80'
-                                  : cancelled
-                                    ? 'text-[var(--mg-danger)]'
-                                    : 'text-[var(--mg-success-text)]'
-                              }`}>
-                                <span className={`h-1.5 w-1.5 rounded-full bg-current ${cancelled ? '' : 'animate-pulse'}`} />
-                                {cancelled ? 'Cancelado' : 'En curso'}
-                              </span>
-                            </div>
-                          </div>
+                        );
+                      })}
+                    </div>
 
-                          <div className={`mt-2.5 space-y-0.5 pl-1.5 text-[11px] font-semibold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-secondary)]'}`}>
-                            {items.length === 0 ? (
-                              <p className="opacity-60">Cargando detalle…</p>
-                            ) : items.slice(0, 3).map((item, index) => (
-                              <p key={item.id || `${sale.id}-${index}`} className="truncate">
-                                <span className="font-black">{item.quantity}×</span> {item.productName}
-                              </p>
-                            ))}
-                            {items.length > 3 ? (
-                              <p className="opacity-60">+{items.length - 3} más</p>
-                            ) : null}
-                          </div>
-
-                          <div className="mt-2.5 pl-1.5">
-                            <span className={`block h-px w-full ${isSelected ? 'bg-[var(--mg-brand-contrast)] opacity-20' : 'bg-[var(--mg-separator)]'}`} />
-                            <div className={`mt-1.5 flex items-center justify-between gap-2 text-[10px] font-bold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
-                              <span>{units} {Number(units) === 1 ? 'unidad' : 'unidades'}</span>
-                              <span className={`text-[12px] font-black tabular-nums ${isSelected ? '' : 'text-[var(--mg-brand-text)]'}`}>
-                                {formatBs(sale.total)}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section className="flex min-h-0 flex-col overflow-y-auto rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
-                  {selectedOrder ? (
-                    <>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
-                            Pedido {selectedOrderDisplayNumber}
+                    <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
+                      {filteredTodayOrders.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-4 py-8 text-center">
+                          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]">
+                            <AppIcon name="restaurante" size={24} />
+                          </span>
+                          <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">
+                            {todayOrders.length === 0 ? 'Aún no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
                           </p>
-                          <h3 className="mt-1 truncate text-xl font-black tracking-tight text-[var(--mg-text-primary)] sm:text-2xl">
-                            {selectedOrder.clientName || selectedOrder.client_name || 'Sin cliente'}
-                          </h3>
-                          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                            <span className="inline-flex items-center gap-1">
-                              <AppIcon name="reloj" size={12} /> {selectedOrderTime}
-                            </span>
-                            <span className="h-1 w-1 rounded-full bg-current opacity-40" />
-                            <span className="inline-flex items-center gap-1">
-                              <AppIcon name={(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).icon} size={12} />
-                              {(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).label}
-                            </span>
-                            <span className="h-1 w-1 rounded-full bg-current opacity-40" />
-                            <span>{selectedOrderCashier}</span>
+                          <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-muted)]">
+                            {todayOrders.length === 0
+                              ? 'Cuando cobres el primer pedido aparecerá acá.'
+                              : 'Probá con otra búsqueda o cambiá el estado.'}
                           </p>
+                          {todayOrders.length === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate('/ventas?tab=venta')}
+                              className="mt-3 inline-flex min-h-[34px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[10px] font-black text-[var(--mg-brand-contrast)] active:scale-95"
+                            >
+                              <AppIcon name="agregar" size={12} /> Crear primera venta
+                            </button>
+                          ) : null}
                         </div>
-                        <div className="text-right">
-                          {selectedOrderCancelled ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-current" /> Cancelado
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" /> En curso
-                            </span>
-                          )}
-                          <p className={`mt-2 text-2xl font-black tabular-nums ${selectedOrderCancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
-                            {formatBs(selectedOrder.total)}
-                          </p>
-                          <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                            {selectedOrderUnits} {Number(selectedOrderUnits) === 1 ? 'unidad' : 'unidades'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {selectedOrderCancelled ? (
-                        <div className="mt-4 rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-3">
-                          <p className="text-xs font-black text-[var(--mg-danger)]">Este pedido fue cancelado</p>
-                          <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
-                            {selectedOrder.stockReturned === false ? 'El stock no se devolvió.' : 'Los productos volvieron al inventario.'}
-                            {selectedOrder.cancellationReason ? ` Motivo: ${selectedOrder.cancellationReason}` : ''}
-                          </p>
-                        </div>
-                      ) : null}
-
-                      <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]">
-                        {selectedOrderItems.length === 0 ? (
-                          <div className="flex items-center justify-center gap-2 px-4 py-10 text-xs font-bold text-[var(--mg-text-muted)]">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
-                            Cargando el detalle…
-                          </div>
-                        ) : selectedOrderItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-3.5 py-3 last:border-b-0">
-                            <div className="flex min-w-0 items-center gap-2.5">
-                              <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-1 text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
-                                {item.quantity}×
-                              </span>
+                      ) : filteredTodayOrders.map((sale) => {
+                        const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+                        const validDate = d instanceof Date && !Number.isNaN(d.getTime());
+                        const number = saleNumberById[sale.id];
+                        const displayNumber = number ? `#${String(number).padStart(4, '0')}` : '#----';
+                        const items = itemsBySaleId[sale.id] || [];
+                        const cancelled = sale.status === 'cancelled';
+                        const isSelected = selectedOrder?.id === sale.id;
+                        const units = sale.item_count ?? items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+                        return (
+                          <button
+                            key={sale.id}
+                            type="button"
+                            onClick={() => setSelectedOrderId(sale.id)}
+                            className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all active:scale-[0.99] ${
+                              isSelected
+                                ? 'mg-orders-selected border-transparent text-[var(--mg-brand-contrast)]'
+                                : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] hover:border-[var(--mg-accent-border)] hover:bg-[var(--mg-bg-elevated)] hover:shadow-[var(--mg-shadow-md)]'
+                            }`}
+                          >
+                            <span className={`absolute inset-y-0 left-0 w-1.5 ${cancelled ? 'bg-[var(--mg-danger)]' : isSelected ? 'bg-[var(--mg-gold)]' : 'bg-[var(--mg-success)]'}`} />
+                            <div className="flex items-start justify-between gap-2 pl-1.5">
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{item.productName}</p>
-                                <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                                  {item.presentation ? `${item.presentation} · ` : ''}{formatBs(item.price)} c/u
+                                <p className="text-2xl font-black leading-none tracking-tight tabular-nums">{displayNumber}</p>
+                                <p className={`mt-1 text-[9px] font-black uppercase tracking-[0.18em] ${isSelected ? 'opacity-60' : 'text-[var(--mg-text-muted)]'}`}>
+                                  {cancelled ? 'Cancelado' : 'Pedido'}
                                 </p>
                               </div>
+                              <div className="flex shrink-0 flex-col items-end gap-1">
+                                <span className={`text-[10px] font-black ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
+                                  {validDate ? relativeOrderTime(d) : ''}
+                                </span>
+                                <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide ${
+                                  isSelected
+                                    ? 'opacity-80'
+                                    : cancelled
+                                      ? 'text-[var(--mg-danger)]'
+                                      : 'text-[var(--mg-success-text)]'
+                                }`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full bg-current ${cancelled ? '' : 'animate-pulse'}`} />
+                                  {cancelled ? 'Cancelado' : 'En curso'}
+                                </span>
+                              </div>
                             </div>
-                            <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-text-primary)]">
-                              {formatBs(item.subtotal ?? Number(item.quantity || 0) * Number(item.price || 0))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                        {selectedOrderChanges > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
-                            <AppIcon name="editar" size={10} />
-                            {selectedOrderChanges} {selectedOrderChanges === 1 ? 'ajuste' : 'ajustes'}
-                          </span>
-                        ) : null}
-                        {selectedOrder.stockReturned === false ? (
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
-                            <AppIcon name="alerta" size={10} /> Stock no devuelto
-                          </span>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/recibo/${selectedOrder.id}`, { state: { saleNumber: selectedOrderNumber } })}
-                          className="ml-auto inline-flex min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[10px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
-                        >
-                          <AppIcon name="recibo" size={12} /> Ver recibo
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 text-center">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
-                        <AppIcon name="carrito" size={26} />
-                      </span>
-                      <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Selecciona un pedido</p>
-                      <p className="mt-1 max-w-xs text-xs font-semibold leading-relaxed text-[var(--mg-text-muted)]">
-                        Elige un pedido de la lista para ver sus productos y gestionarlo.
-                      </p>
+                            <div className={`mt-2.5 space-y-0.5 pl-1.5 text-[11px] font-semibold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-secondary)]'}`}>
+                              {items.length === 0 ? (
+                                <p className="opacity-60">Cargando detalle…</p>
+                              ) : items.slice(0, 3).map((item, index) => (
+                                <p key={item.id || `${sale.id}-${index}`} className="truncate">
+                                  <span className="font-black">{item.quantity}×</span> {item.productName}
+                                </p>
+                              ))}
+                              {items.length > 3 ? (
+                                <p className="opacity-60">+{items.length - 3} más</p>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-2.5 pl-1.5">
+                              <span className={`block h-px w-full ${isSelected ? 'bg-[var(--mg-brand-contrast)] opacity-20' : 'bg-[var(--mg-separator)]'}`} />
+                              <div className={`mt-1.5 flex items-center justify-between gap-2 text-[10px] font-bold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
+                                <span>{units} {Number(units) === 1 ? 'unidad' : 'unidades'}</span>
+                                <span className={`text-[12px] font-black tabular-nums ${isSelected ? '' : 'text-[var(--mg-accent-text)]'}`}>
+                                  {formatBs(sale.total)}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </section>
+                  </section>
 
-                <aside className="flex min-h-0 flex-col overflow-y-auto rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
+                  <section className="flex min-h-0 flex-col overflow-y-auto p-4 sm:p-5">
+                    {selectedOrder ? (
+                      <>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
+                              Pedido
+                              <span className="rounded-md border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-1.5 py-0.5 text-[10px] tracking-normal text-[var(--mg-brand-text)] tabular-nums">
+                                {selectedOrderDisplayNumber}
+                              </span>
+                            </p>
+                            <h3 className="mt-1 truncate text-xl font-black tracking-tight text-[var(--mg-text-primary)] sm:text-2xl">
+                              {selectedOrder.clientName || selectedOrder.client_name || 'Sin cliente'}
+                            </h3>
+                            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                              <span className="inline-flex items-center gap-1">
+                                <AppIcon name="reloj" size={12} /> {selectedOrderTime}
+                              </span>
+                              <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                              <span className="inline-flex items-center gap-1">
+                                <AppIcon name={(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).icon} size={12} />
+                                {(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).label}
+                              </span>
+                              <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                              <span>{selectedOrderCashier}</span>
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            {selectedOrderCancelled ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-current" /> Cancelado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" /> En curso
+                              </span>
+                            )}
+                            <p className={`mt-2 text-2xl font-black tabular-nums ${selectedOrderCancelled ? 'text-[var(--mg-text-muted)] line-through' : 'mg-orders-amount'}`}>
+                              {formatBs(selectedOrder.total)}
+                            </p>
+                            <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                              {selectedOrderUnits} {Number(selectedOrderUnits) === 1 ? 'unidad' : 'unidades'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedOrderCancelled ? (
+                          <div className="mt-4 rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-3">
+                            <p className="text-xs font-black text-[var(--mg-danger)]">Este pedido fue cancelado</p>
+                            <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                              {selectedOrder.stockReturned === false ? 'El stock no se devolvió.' : 'Los productos volvieron al inventario.'}
+                              {selectedOrder.cancellationReason ? ` Motivo: ${selectedOrder.cancellationReason}` : ''}
+                            </p>
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]">
+                          {selectedOrderItems.length === 0 ? (
+                            <div className="flex items-center justify-center gap-2 px-4 py-10 text-xs font-bold text-[var(--mg-text-muted)]">
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
+                              Cargando el detalle…
+                            </div>
+                          ) : selectedOrderItems.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-3.5 py-3 transition-colors last:border-b-0 hover:bg-[var(--mg-bg-surface)]">
+                              <div className="flex min-w-0 items-center gap-2.5">
+                                <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-1 text-[10px] font-black text-[var(--mg-success-text)] tabular-nums">
+                                  {item.quantity}×
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{item.productName}</p>
+                                  <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                    {item.presentation ? `${item.presentation} · ` : ''}{formatBs(item.price)} c/u
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-text-primary)]">
+                                {formatBs(item.subtotal ?? Number(item.quantity || 0) * Number(item.price || 0))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                          {selectedOrderChanges > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
+                              <AppIcon name="editar" size={10} />
+                              {selectedOrderChanges} {selectedOrderChanges === 1 ? 'ajuste' : 'ajustes'}
+                            </span>
+                          ) : null}
+                          {selectedOrder.stockReturned === false ? (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
+                              <AppIcon name="alerta" size={10} /> Stock no devuelto
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/recibo/${selectedOrder.id}`, { state: { saleNumber: selectedOrderNumber } })}
+                            className="ml-auto inline-flex min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 text-[10px] font-black text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent)] hover:text-white active:scale-95"
+                          >
+                            <AppIcon name="recibo" size={12} /> Ver recibo
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 text-center">
+                        <span className="mg-orders-tile flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--mg-brand-contrast)]">
+                          <AppIcon name="carrito" size={26} />
+                        </span>
+                        <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Selecciona un pedido</p>
+                        <p className="mt-1 max-w-xs text-xs font-semibold leading-relaxed text-[var(--mg-text-muted)]">
+                          Elige un pedido de la lista para ver sus productos y gestionarlo.
+                        </p>
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                <aside className="mg-orders-panel-edge flex min-h-0 flex-col overflow-y-auto rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                      Acciones rápidas
-                    </h3>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]">
+                        <AppIcon name="rayo" size={14} />
+                      </span>
+                      <h3 className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                        Acciones rápidas
+                      </h3>
+                    </div>
                     {selectedOrder ? (
                       <span className="text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
                         {selectedOrderDisplayNumber}
@@ -2351,7 +2366,7 @@ export default function Sales() {
                           <button
                             type="button"
                             onClick={() => openOrderEditor(selectedOrder, { cancel: true })}
-                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-danger)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                            className="mg-orders-btn-danger flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left text-white transition-all hover:brightness-110 active:scale-[0.98]"
                           >
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
                               <AppIcon name="cancelar" size={18} color="currentColor" />
@@ -2365,7 +2380,7 @@ export default function Sales() {
                           <button
                             type="button"
                             onClick={() => openOrderEditor(selectedOrder)}
-                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-gold)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                            className="mg-orders-btn-gold flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left text-white transition-all hover:brightness-110 active:scale-[0.98]"
                           >
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
                               <AppIcon name="editar" size={18} color="currentColor" />
@@ -2394,7 +2409,7 @@ export default function Sales() {
                               <div key={item.id} className="flex items-center justify-between gap-2 py-2.5">
                                 <div className="min-w-0">
                                   <p className="truncate text-[11px] font-bold text-[var(--mg-text-primary)]">
-                                    <span className="mr-1 font-black text-[var(--mg-brand-text)]">{item.quantity}×</span>
+                                    <span className="mr-1 font-black text-[var(--mg-accent-text)]">{item.quantity}×</span>
                                     {item.productName}
                                   </p>
                                   {item.presentation ? (
@@ -2416,7 +2431,7 @@ export default function Sales() {
                                     onClick={() => handleQuickAdjust(selectedOrder, item, 1)}
                                     disabled={!!quickAdjusting || selectedOrderCancelled}
                                     aria-label={`Agregar uno de ${item.productName}`}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--mg-success)] text-sm font-black text-white transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
+                                    className="mg-orders-btn-success flex h-7 w-7 items-center justify-center rounded-lg text-sm font-black text-white transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
                                   >
                                     +
                                   </button>
@@ -2433,7 +2448,7 @@ export default function Sales() {
                       <button
                         type="button"
                         onClick={() => navigate(`/recibo/${selectedOrder.id}`, { state: { saleNumber: selectedOrderNumber } })}
-                        className="mt-3 flex w-full min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[10px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                        className="mt-3 flex w-full min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 text-[10px] font-black text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent)] hover:text-white active:scale-95"
                       >
                         <AppIcon name="recibo" size={12} /> Ver recibo
                       </button>

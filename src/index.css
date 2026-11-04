@@ -188,6 +188,71 @@ input[type="number"]::-webkit-outer-spin-button {
     animation: mgShimmer 1.4s ease-in-out infinite;
     border-radius: 12px;
   }
+
+  .mg-orders-tile {
+    background-color: var(--mg-brand);
+    background-image:
+      linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.26) 100%),
+      linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-accent-mid) 130%);
+    box-shadow: 0 10px 24px -12px var(--mg-brand);
+  }
+
+  .mg-orders-filter-active {
+    background-color: var(--mg-brand);
+    background-image:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 60%),
+      linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-accent-mid) 140%);
+    box-shadow: 0 6px 14px -8px var(--mg-brand);
+  }
+
+  .mg-orders-selected {
+    background-color: var(--mg-brand);
+    background-image:
+      linear-gradient(155deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.28) 100%),
+      radial-gradient(100% 140% at 100% 0%, var(--mg-gold-bg) 0%, transparent 100%),
+      linear-gradient(135deg, var(--mg-brand) 0%, var(--mg-accent-mid) 150%);
+    box-shadow: 0 18px 38px -22px var(--mg-brand);
+  }
+
+  .mg-orders-btn-danger {
+    background-color: var(--mg-danger);
+    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.20) 100%);
+    box-shadow: 0 12px 24px -16px var(--mg-danger);
+  }
+
+  .mg-orders-btn-gold {
+    background-color: var(--mg-gold);
+    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.18) 100%);
+    box-shadow: 0 12px 24px -16px var(--mg-gold);
+  }
+
+  .mg-orders-btn-success {
+    background-color: var(--mg-success);
+    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.18) 100%);
+    box-shadow: 0 8px 16px -10px var(--mg-success);
+  }
+
+  .mg-orders-panel-edge {
+    position: relative;
+  }
+  .mg-orders-panel-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+    background-image: linear-gradient(90deg, var(--mg-brand) 0%, var(--mg-accent-mid) 55%, var(--mg-gold) 100%);
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
+  .mg-orders-amount {
+    background-image: linear-gradient(120deg, var(--mg-accent-text) 0%, var(--mg-accent) 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 @keyframes mgFadeIn {
