@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import { formatBs } from '../utils/currency';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useBranches } from '../context/BranchContext';
+import CashierCashSessionPanel from './CashierCashSessionPanel';
 import { AppIcon } from './icons';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import OrderChangesCard from './OrderChangesCard';
@@ -240,6 +241,8 @@ export function CashierHome({
         </span>
       </button>
       )}
+
+      <CashierCashSessionPanel />
 
       {/* Mi turno hoy */}
       <section>
