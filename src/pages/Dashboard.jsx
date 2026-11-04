@@ -506,7 +506,25 @@ export default function Dashboard() {
         onBranchChange={setHomeBranch}
       />
 
-      {/* 1 — PAGOS FIJOS: lo primero que el dueño necesita resolver */}
+      <section>
+        <SectionHeader title={homeBranch !== 'all' ? `Resumen del día · ${(branches.find((b) => b.id === homeBranch)?.name) || 'Sucursal'}` : 'Resumen del día'} />
+        <MagicMetricCards
+          totalHoy={totalHoy}
+          paidSalesCount={paidSalesCount}
+          totalCash={totalCash}
+          totalQr={totalQr}
+          comprasTotal={comprasHoy.total}
+          comprasCount={comprasHoy.count}
+          egresosTotal={gastosHoy}
+          gananciaNeta={gananciaHoy}
+          margen={margenHoy}
+          showCompras={!isRestaurantMode}
+          showEgresos={isRestaurantMode}
+          onNavigate={(path) => navigate(path)}
+        />
+      </section>
+
+      {/* 2 — PAGOS FIJOS */}
       <FixedExpenseAlerts
         alerts={fixedAlerts}
         onOpen={() => navigate('/egresos?tipo=fixed')}
@@ -515,7 +533,7 @@ export default function Dashboard() {
         busyId={alertBusyId}
       />
 
-      {/* 2 — PEDIDOS CON CAMBIOS (solo restaurante) */}
+      {/* 3 — PEDIDOS CON CAMBIOS (solo restaurante) */}
       {isRestaurantMode && (
         <OrderChangesCard
           changes={homeOrderChanges}
@@ -525,7 +543,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 3 — ALERTAS OPERATIVAS: stock y vencimientos */}
+      {/* 4 — ALERTAS OPERATIVAS: stock y vencimientos */}
       {((showStock && lowStock.length > 0) || !isRestaurantMode) && (
         <div className="mg-grid-auto">
           {showStock && (
@@ -545,25 +563,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-
-      {/* 4 — RESUMEN DEL DÍA (siempre visible, aunque sea 0) */}
-      <section>
-        <SectionHeader title={homeBranch !== 'all' ? `Resumen del día · ${(branches.find((b) => b.id === homeBranch)?.name) || 'Sucursal'}` : 'Resumen del día'} />
-        <MagicMetricCards
-          totalHoy={totalHoy}
-          paidSalesCount={paidSalesCount}
-          totalCash={totalCash}
-          totalQr={totalQr}
-          comprasTotal={comprasHoy.total}
-          comprasCount={comprasHoy.count}
-          egresosTotal={gastosHoy}
-          gananciaNeta={gananciaHoy}
-          margen={margenHoy}
-          showCompras={!isRestaurantMode}
-          showEgresos={isRestaurantMode}
-          onNavigate={(path) => navigate(path)}
-        />
-      </section>
 
       {/* 5 — DESEMPEÑO POR SUCURSAL */}
       {!isRestaurantMode && canBranches ? <OwnerPulse businessId={businessId} /> : null}
