@@ -565,16 +565,8 @@ export default function Dashboard() {
         />
       </section>
 
-      {/* 5 — PULSO DEL NEGOCIO: sucursales y ventas en vivo */}
-      <OwnerPulse
-        businessId={businessId}
-        liveSales={daySales}
-        salesItemsMap={scopedItemsMap}
-        showBranches={!isRestaurantMode && canBranches}
-        onNavigate={(path, opts) => navigate(path, opts)}
-        onReimprint={handleReimprint}
-        printingSaleId={printingSaleId}
-      />
+      {/* 5 — DESEMPEÑO POR SUCURSAL */}
+      {!isRestaurantMode && canBranches ? <OwnerPulse businessId={businessId} /> : null}
 
       {/* 6 — ANÁLISIS DETALLADO (siempre visible) */}
       <section className="bg-[var(--mg-bg-surface)] rounded-3xl p-4 sm:p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] space-y-4">
