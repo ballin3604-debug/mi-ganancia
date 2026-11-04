@@ -2796,13 +2796,13 @@ export default function Sales() {
           }}
           title="Carrito"
           aria-label="Abrir carrito"
-          className={`fixed z-40 bottom-24 right-4 lg:bottom-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[0_12px_30px_-6px_var(--mg-brand)] ring-2 ring-[var(--mg-accent-border)] transition-all duration-300 hover:bg-[var(--mg-brand-hover)] hover:scale-105 active:scale-95 ${
+          className={`fixed z-40 bottom-24 right-4 lg:bottom-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[0_1px_4px_rgba(0,0,0,0.14)] transition-all duration-300 hover:bg-[var(--mg-brand-hover)] hover:scale-105 active:scale-95 ${
             cartOpen ? 'lg:right-[404px]' : 'lg:right-6'
           }`}
         >
           <AppIcon name="carrito" size={24} strokeWidth={2.2} />
           {totalBaseUnits > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--mg-bg-surface)] bg-[var(--mg-accent)] px-1 text-[10px] font-black leading-none text-white shadow-md">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--mg-bg-surface)] bg-[var(--mg-accent)] px-1 text-[10px] font-black leading-none text-white shadow-sm">
               {totalBaseUnits > 99 ? '99+' : totalBaseUnits}
             </span>
           )}
