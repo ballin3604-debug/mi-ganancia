@@ -4,6 +4,7 @@ import { formatBs } from '../../utils/currency';
 import { TransferModal } from './TransferModal';
 import { AppIcon } from '../icons';
 import { useBusiness } from '../../context/BusinessContext';
+import { getSellOptions } from '../../utils/presentations';
 
 function formatDate(dateVal) {
   if (!dateVal) return '—';
@@ -53,11 +54,20 @@ export function ProductDetailModal({
   const stockPercentage = Math.min(100, Math.round((currentStock / targetHealthyStock) * 100));
 
   // Financial calculations
-  const price = Number(product.price || 0);
+  const sellOptions = getSellOptions(product);
+  const primaryOption = sellOptions[0];
+  const packageOption = sellOptions.find((option) => option.factor > 1);
+  const price = Number(primaryOption?.price ?? product.price ?? 0);
   const supplierPrice = Number(product.supplierPrice || 0);
-  const profit = supplierPrice > 0 ? price - supplierPrice : 0;
-  const marginPct = supplierPrice > 0 ? Math.round((profit / supplierPrice) * 100) : null;
-  const totalSaleValue = price * currentStock;
+  const packageCost = supplierPrice * Number(primaryOption?.factor || 1);
+  const profit = packageCost > 0 ? price - packageCost : 0;
+  const marginPct = packageCost > 0 ? Math.round((profit / packageCost) * 100) : null;
+  const unitOption = sellOptions.find((option) => option.factor === 1);
+  const totalSaleValue = unitOption
+    ? currentStock * unitOption.price
+    : packageOption
+      ? Math.floor(currentStock / packageOption.factor) * packageOption.price
+      : 0;
 
   // Expiry calculation
   let expiryInfo = null;
@@ -149,10 +159,9 @@ export function ProductDetailModal({
                   </p>
                 )}
 
-                {Number(product.packageSize || 0) > 1 && product.packPrice && (
+                {packageOption && (
                   <p className="text-[11px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5">
-                    📦 {(product.packLabel || 'Paquete').trim() || 'Paquete'} x{product.packageSize}: Bs {Number(product.packPrice).toFixed(2)}
-                    {product.packPriceHot ? ` · caliente Bs ${Number(product.packPriceHot).toFixed(2)}` : ''}
+                    📦 {packageOption.label} x{packageOption.factor}: Bs {packageOption.price.toFixed(2)}
                   </p>
                 )}
 
@@ -202,14 +211,14 @@ export function ProductDetailModal({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
-                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">Precio Venta</span>
+                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">Precio Venta · {primaryOption?.label || 'unidad'}</span>
                   <p className="text-base font-black text-[var(--mg-accent-text)] mt-0.5">{formatBs(price)}</p>
                 </div>
 
                 <div className="bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
-                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">Precio Compra</span>
+                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">{primaryOption?.factor > 1 ? 'Costo por paquete' : 'Precio Compra'}</span>
                   <p className="text-base font-black text-[var(--mg-text-primary)] mt-0.5">
-                    {supplierPrice > 0 ? formatBs(supplierPrice) : '—'}
+                    {supplierPrice > 0 ? formatBs(packageCost) : '—'}
                   </p>
                 </div>
 
@@ -219,7 +228,7 @@ export function ProductDetailModal({
                     {marginPct !== null ? `+${marginPct}%` : '—'}
                   </p>
                   {profit > 0 && (
-                    <span className="text-[10px] font-bold text-[var(--mg-success-text)] block">({formatBs(profit)} / und)</span>
+                    <span className="text-[10px] font-bold text-[var(--mg-success-text)] block">({formatBs(profit)} / {primaryOption?.label || 'und'})</span>
                   )}
                 </div>
               </div>
@@ -255,7 +264,11 @@ export function ProductDetailModal({
                 <div className="bg-[var(--mg-accent-bg)] p-3 rounded-xl border border-[var(--mg-accent-border)] flex items-center justify-between text-xs">
                   <div>
                     <span className="font-extrabold text-[var(--mg-accent-text)] block">Valor Total en Ventas:</span>
-                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">({currentStock} unidades × {formatBs(price)})</span>
+                    <span className="text-[10px] text-[var(--mg-text-muted)] font-semibold">
+                      {packageOption && !unitOption
+                        ? `${Math.floor(currentStock / packageOption.factor)} paquetes × ${formatBs(packageOption.price)}`
+                        : `${currentStock} unidades × ${formatBs(price)}`}
+                    </span>
                   </div>
                   <p className="text-base font-black text-[var(--mg-accent-text)]">{formatBs(totalSaleValue)}</p>
                 </div>

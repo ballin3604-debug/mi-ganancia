@@ -78,6 +78,27 @@ describe('presentaciones configurables', () => {
     expect(options[1].price).toBe(55);
   });
 
+  it('permite vender solo el paquete cuando no se configuró precio por unidad', () => {
+    const legacy = getSellOptions({
+      id: 'package-only',
+      price: 0,
+      packageSize: 12,
+      packLabel: 'Caja',
+      packPrice: 100,
+    });
+    const configured = getSellOptions({
+      id: 'configured-package-only',
+      price: 0,
+      presentations: [
+        { id: 'base', name: 'Unidad', factor: 1, price: 0, isBase: true },
+        { id: 'case', name: 'Caja', factor: 12, price: 100, isBase: false },
+      ],
+    });
+
+    expect(legacy.map((option) => [option.label, option.price, option.factor])).toEqual([['Caja', 100, 12]]);
+    expect(configured.map((option) => [option.label, option.price, option.factor])).toEqual([['Caja', 100, 12]]);
+  });
+
   it('rechaza factores no positivos, no finitos, nombres duplicados y bases inconsistentes', () => {
     const base = { id: 'base', name: 'Botella', factor: 1, price: 12, isBase: true };
     expect(() => validatePresentationDefinitions([base, { id: 'pack', name: 'Caja', factor: 0, price: 20 }], { baseName: 'Botella', basePrice: 12 })).toThrow(/factor/i);

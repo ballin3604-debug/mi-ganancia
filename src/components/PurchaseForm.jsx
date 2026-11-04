@@ -10,7 +10,7 @@ import { useBranches } from '../context/BranchContext';
 import { printReceipt } from './Receipt';
 import { savePurchaseDraft, clearPurchaseDraft } from '../services/purchaseDraft';
 import { AppIcon } from './icons';
-import { calculatePurchaseBaseQuantity } from '../utils/presentations';
+import { calculatePurchaseBaseQuantity, getSellOptions } from '../utils/presentations';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -73,16 +73,16 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
     // Sin borrador: el modal "recuerda" cómo se compró la última vez este
     // producto (modo y tamaño de caja), deducido del historial. Así reponer
     // algo recurrente es solo poner cuántas cajas y a cuánto.
-    const learnedMode = lastPurchase?.purchaseUnitType === 'package' ? 'package' : 'unit';
+    const learnedMode = Number(product.packageSize || 0) > 1 || lastPurchase?.purchaseUnitType === 'package' ? 'package' : 'unit';
     const learnedBoxSize = lastPurchase?.packageSize || product.packageSize || '';
     const configuredPurchaseOptions = (product.presentations || []).filter((presentation) => Number(presentation.factor) > 1);
 
     setSalePrice(draft ? (draft.salePrice ?? '') : String(product.price || ''));
-    setSupplierPrice(draft ? (draft.supplierPrice ?? '') : String(product.supplierPrice || ''));
+    setSupplierPrice(draft
+      ? (draft.supplierPrice ?? '')
+      : String(Number(product.supplierPrice || 0) * (learnedMode === 'package' ? Number(learnedBoxSize || 0) : 1) || ''));
     setQuantity(draft ? (draft.quantity ?? '') : '');
-    setPurchaseUnitType(configuredPurchaseOptions.length === 0
-      ? 'unit'
-      : (draft?.purchaseUnitType || learnedMode));
+    setPurchaseUnitType(draft?.purchaseUnitType || learnedMode);
     setPackageSize(draft ? (draft.packageSize ?? '') : (learnedBoxSize ? String(learnedBoxSize) : ''));
     setPackageCount(draft ? (draft.packageCount ?? '') : '');
     const preferredPresentation = configuredPurchaseOptions.find((presentation) => (
@@ -152,6 +152,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
   const salePriceVal = Number(salePrice || 0);
   const costInputVal = Number(supplierPrice || 0);
+  const hasPackageSalePrice = getSellOptions(product).some((option) => option.factor > 1);
   const configuredPurchaseOptions = (product.presentations || []).filter((presentation) => Number(presentation.factor) > 1);
   const configuredPurchasePresentation = configuredPurchaseOptions.find((presentation) => presentation.id === purchasePresentationId);
   const configuredPurchaseMode = Array.isArray(product.presentations) && product.presentations.length > 0;
@@ -235,7 +236,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!salePrice || qtyVal <= 0) return;
+    if ((!salePriceVal && !hasPackageSalePrice) || qtyVal <= 0) return;
     setSaving(true);
     try {
       const cleanExtraCosts = extraCosts
@@ -684,18 +685,23 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
             {/* Precio de venta */}
             <div>
               <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">
-                ¿A cuánto vas a vender <strong className="text-[var(--mg-text-primary)]">CADA</strong> {shortName} al público? *
+                {hasPackageSalePrice
+                  ? 'Precio de venta por unidad (opcional)'
+                  : <>¿A cuánto vas a vender <strong className="text-[var(--mg-text-primary)]">CADA</strong> {shortName} al público? *</>}
               </label>
               <input
                 type="number" step="0.01" min="0" max="999999"
                 value={salePrice}
                 onChange={(e) => setSalePrice(clampNumberInput(e.target.value, { max: 999999 }))}
                 onKeyDown={blockInvalidNumberKeys}
-                placeholder="0.00"
+                placeholder={hasPackageSalePrice ? 'Déjalo vacío si no vendes suelto' : '0.00'}
                 className="mg-input py-2 text-sm font-bold"
-                required
+                required={!hasPackageSalePrice}
               />
-              {purchaseUnitType === 'package' && (
+              {hasPackageSalePrice && (
+                <p className="text-[11px] text-[var(--mg-text-faint)] mt-1">El precio por paquete ya está configurado; déjalo vacío si no vendes unidades sueltas.</p>
+              )}
+              {purchaseUnitType === 'package' && salePriceVal > 0 && (
                 <p className="text-[11px] text-[var(--mg-text-faint)] mt-1">Siempre el precio de 1 unidad suelta, aunque hayas comprado por caja.</p>
               )}
             </div>
@@ -821,7 +827,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                   <>Estás comprando <strong className="text-[var(--mg-text-primary)]">{numOr(qtyVal)}</strong> unidades de {shortName}. </>
                 )}
                 Le pagás <strong className="text-[var(--mg-text-primary)]">{bsOr(merchandiseTotal)}</strong> al proveedor por la mercadería
-                {totalExtra > 0 && <> (más {formatBs(totalExtra)} de gastos extra)</>}. Cada unidad te sale a <strong className="text-[var(--mg-text-primary)]">{bsOr(costoUnitarioReal)}</strong> y la vendés a <strong className="text-[var(--mg-text-primary)]">{bsOr(salePriceVal)}</strong>.
+                {totalExtra > 0 && <> (más {formatBs(totalExtra)} de gastos extra)</>}. Cada unidad te sale a <strong className="text-[var(--mg-text-primary)]">{bsOr(costoUnitarioReal)}</strong>{salePriceVal > 0 ? <> y la vendés a <strong className="text-[var(--mg-text-primary)]">{bsOr(salePriceVal)}</strong>.</> : '. La venta se hará al precio por paquete configurado.'}
                 {salePriceVal > 0 && qtyVal > 0 && (
                   <> <strong className={profitMontoVal >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}>
                     {profitMontoVal >= 0 ? 'Ganás' : 'Perdés'} {formatBs(Math.abs(profitMontoVal))} por unidad ({profitPercentVal.toFixed(1)}% del precio de venta).
@@ -895,7 +901,7 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
 
             <button
               type="submit"
-              disabled={saving || !salePrice || qtyVal <= 0}
+              disabled={saving || (!salePriceVal && !hasPackageSalePrice) || qtyVal <= 0}
               className="mt-2 w-full rounded-2xl bg-[var(--mg-brand)] py-3.5 text-sm font-bold text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:opacity-50"
             >
               {saving ? 'Guardando...' : 'Confirmar compra'}

@@ -2665,7 +2665,9 @@ export default function Sales() {
               <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-3 p-1 mg-stagger">
                 {filtered.map((product) => {
                   const options = getSellOptions(product);
-                  const hasPack = options.some((o) => o.presId === 'pack');
+                  const packOpt = options.find((option) => option.factor > 1);
+                  const unitOpt = options.find((option) => option.factor === 1);
+                  const hasPack = !!packOpt;
                   const usedBase = productUsedBase(product.id);
                   const maxed = usedBase >= product.stock;
                   // Stepper de la tarjeta: línea de UNIDAD (rápido); el paquete se elige con tap
@@ -2673,10 +2675,11 @@ export default function Sales() {
                   const inCart = (unitKey && cart[unitKey] && typeof cart[unitKey].qty === 'number')
                     ? cart[unitKey].qty
                     : (typeof cart[product.id] === 'number' ? cart[product.id] : 0);
-                  const packOpt = options.find((o) => o.presId === 'pack');
                   const priceLabel = hasPack && packOpt
-                    ? `${formatBs(product.price)} · ${formatBs(packOpt.price)}`
-                    : formatBs(product.price);
+                    ? unitOpt
+                      ? `${formatBs(unitOpt.price)} · ${formatBs(packOpt.price)}`
+                      : `${formatBs(packOpt.price)} / ${packOpt.label}`
+                    : formatBs(options[0]?.price ?? product.price);
                   const actionArea = inCart > 0 ? (
                     <div
                       className="flex items-center gap-1 rounded-full bg-[var(--mg-brand)] px-1 py-1 shadow-md"

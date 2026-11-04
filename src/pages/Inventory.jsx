@@ -49,7 +49,7 @@ const EMPTY_FORM = {
   packPrice: '',
   packPriceHot: '',
   price: '',
-  stock: '',
+  stock: '0',
   minStock: '5',
   brand: '',
   category: 'Otros',
@@ -401,7 +401,13 @@ export default function Inventory() {
     setStockMode('directo');
     setShowAdvanced(false);
     setCelebrate(false);
-    const nextForm = { ...EMPTY_FORM, ...prefill };
+    const nextForm = {
+      ...EMPTY_FORM,
+      ...prefill,
+      sellPack: !prefill.isDish,
+      packLabel: prefill.packLabel || 'Paquete',
+      unitLabel: prefill.unitLabel || sectorConfig?.defaultUnit || 'Unidad',
+    };
     if (sectorConfig?.features?.configurablePresentations) {
       nextForm.unitLabel = nextForm.unitLabel || sectorConfig.defaultUnit || 'Unidad';
       nextForm.presentations = [{
@@ -509,12 +515,24 @@ export default function Inventory() {
   async function handleSave(e, options = {}) {
     const { another = false } = options;
     if (e?.preventDefault) e.preventDefault();
-    if (!form.name.trim() || !form.price || form.stock === '') return;
-    if (!form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
-      alert('Dinos cuánto te costó cada unidad: así tu ganancia se calcula sola.');
+    const newPackageProduct = !editingProduct && !form.isDish;
+    const packageSize = Number(form.packageSize || 0);
+    if (!form.name.trim()) return;
+    if (newPackageProduct) {
+      if (!form.packPrice || Number(form.packPrice) <= 0 || packageSize < 2) {
+        alert('Indica cuántas unidades trae el paquete y su precio de venta.');
+        return;
+      }
+    } else if ((!form.price || Number(form.price) <= 0)
+      && !getSellOptions(editingProduct).some((option) => option.factor > 1)) {
       return;
     }
-    if (!form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
+    if (form.stock === '' && !newPackageProduct) return;
+    if (!form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
+      alert('Dinos cuánto te costó cada paquete: así tu ganancia se calcula sola.');
+      return;
+    }
+    if (!newPackageProduct && !form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
     }
@@ -534,18 +552,30 @@ export default function Inventory() {
       delete data.presentations;
     } else if (sectorConfig?.features?.configurablePresentations) {
       try {
-        const presentations = validatePresentationDefinitions(form.presentations, {
+        const formPresentations = newPackageProduct
+          ? [
+            ...(form.presentations || []).filter((presentation) => presentation.isBase),
+            ...(form.presentations || []).filter((presentation) => !presentation.isBase),
+            {
+              id: 'new-package',
+              name: (form.packLabel || 'Paquete').trim() || 'Paquete',
+              factor: packageSize,
+              price: Number(form.packPrice),
+              isBase: false,
+            },
+          ]
+          : form.presentations;
+        const unitPrice = Number(form.price || 0);
+        const presentations = validatePresentationDefinitions(formPresentations, {
           baseName: form.unitLabel || 'Unidad',
-          basePrice: form.price,
+          basePrice: unitPrice,
         });
         data = {
           ...form,
+          price: unitPrice,
           unitLabel: presentations.find((presentation) => presentation.isBase)?.name || 'Unidad',
           presentations,
-          packLabel: '',
-          packPrice: '',
-          packPriceHot: '',
-          packageSize: '',
+          ...(newPackageProduct ? {} : { packLabel: '', packPrice: '', packPriceHot: '', packageSize: '' }),
         };
       } catch (err) {
         alert(err.message || 'Revisa las presentaciones del producto.');
@@ -555,10 +585,20 @@ export default function Inventory() {
       data = form.sellPack
         ? { ...form }
         : { ...form, packLabel: '', packPrice: '', packPriceHot: '', packageSize: '' };
+      if (newPackageProduct) {
+        data.price = Number(form.price || 0);
+        data.sellPack = true;
+      }
       delete data.presentations;
     }
     delete data.sellPack;
-    const formStockVal = data.stock;
+    const formStockVal = Number(data.stock || 0);
+    const stockToSave = newPackageProduct ? formStockVal * packageSize : formStockVal;
+    if (newPackageProduct) {
+      data.supplierPrice = form.supplierPrice !== '' && form.supplierPrice !== null
+        ? Number(form.supplierPrice) / packageSize
+        : null;
+    }
     const eraCatalogoVacio = products.length === 0;
     delete data.stock;
     setSaving(true);
@@ -570,19 +610,19 @@ export default function Inventory() {
           // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
           // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
           const oldBranch = Number(stockMap.get(`${targetBranchId}:${editingProduct.id}`) ?? globalCur);
-          const newGlobal = Math.max(0, globalCur + (Number(formStockVal) - oldBranch));
-          await setBranchStock(businessId, editingProduct, targetBranchId, Number(formStockVal));
+          const newGlobal = Math.max(0, globalCur + (stockToSave - oldBranch));
+          await setBranchStock(businessId, editingProduct, targetBranchId, stockToSave);
           // Otros campos + stock neutro (expectedStock = stock → no mueve el global local,
           // pero la operación lleva el valor ya correcto al servidor).
           await updateProduct(editingProduct.id, { ...data, stock: newGlobal, expectedStock: newGlobal });
         } else {
-          await updateProduct(editingProduct.id, { ...data, stock: Number(formStockVal), expectedStock: globalCur });
+          await updateProduct(editingProduct.id, { ...data, stock: stockToSave, expectedStock: globalCur });
         }
       } else if (targetBranchId) {
-        const created = await addProduct(businessId, { ...data, stock: Number(formStockVal) });
-        await setBranchStock(businessId, { ...created, stock: Number(formStockVal) }, targetBranchId, Number(formStockVal));
+        const created = await addProduct(businessId, { ...data, stock: stockToSave });
+        await setBranchStock(businessId, { ...created, stock: stockToSave }, targetBranchId, stockToSave);
       } else {
-        await addProduct(businessId, { ...data, stock: Number(formStockVal) });
+        await addProduct(businessId, { ...data, stock: stockToSave });
       }
       if (expiryReplenishmentId) {
         await updateReplenishmentExpiry(expiryReplenishmentId, expiryDate);
@@ -831,6 +871,7 @@ export default function Inventory() {
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount]
   );
+  const isNewPackageProduct = !editingProduct && !form.isDish;
 
   // Scroll infinito: al llegar al final de la grilla se cargan más
   useEffect(() => {
@@ -979,22 +1020,25 @@ export default function Inventory() {
         <>
           <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3 mg-stagger">
             {visibleProducts.map((prod) => {
-              const packSize = Number(prod.packageSize || 0);
-              const hasPack = packSize > 1 && prod.packPrice !== '' && prod.packPrice !== null && prod.packPrice !== undefined && Number(prod.packPrice) > 0;
+              const sellOptions = getSellOptions(prod);
+              const packageOption = sellOptions.find((option) => option.factor > 1);
+              const packSize = Number(packageOption?.factor || prod.packageSize || 0);
+              const packLabel = packageOption?.label || (prod.packLabel || 'Paquete').trim() || 'Paquete';
+              const hasPack = !!packageOption;
               return (
                 <Fragment key={prod.id}>
                   {/* Lista para celular */}
                   <div className="sm:hidden">
-                    <ProductListRow
-                      product={prod}
-                      subtitle={prod.unitLabel || 'Unidad'}
-                      priceLabel={formatBs(Number(prod.price || 0))}
+                      <ProductListRow
+                        product={prod}
+                        subtitle={prod.unitLabel || 'Unidad'}
+                        priceLabel={formatBs(Number(sellOptions[0]?.price ?? prod.price ?? 0))}
                       meta={
                         <span className="flex items-center gap-1.5 flex-wrap mt-1">
                           {showStock && <StockLabel stock={prod.stock} minStock={prod.minStock} isDish={prod.isDish} isAvailable={prod.isAvailable} />}
                           {hasPack && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
-                              📦 {(prod.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
+                              📦 {packLabel} x{packSize}
                             </span>
                           )}
                         </span>
@@ -1426,44 +1470,134 @@ export default function Inventory() {
                 )}
 
                 {/* Precios */}
-                <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
-                  <div>
-                    <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                      Precio Venta (Bs) *
-                    </label>
-                    <input
-                      type="number"
-                      value={form.price}
-                      onChange={(e) => setField('price', clampNumberInput(e.target.value, { max: 999999 }))}
-                      onKeyDown={blockInvalidNumberKeys}
-                      placeholder="0.00"
-                      min="0"
-                      max="999999"
-                      step="0.01"
-                      className="mg-input text-sm font-black text-[var(--mg-accent-text)]"
-                      required
-                    />
+                {isNewPackageProduct ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Precio venta por paquete (Bs) *
+                        </label>
+                        <input
+                          type="number"
+                          value={form.packPrice}
+                          onChange={(e) => setField('packPrice', clampNumberInput(e.target.value, { max: 999999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="0.00"
+                          min="0"
+                          max="999999"
+                          step="0.01"
+                          className="mg-input text-sm font-black text-[var(--mg-accent-text)]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Unidades por paquete *
+                        </label>
+                        <input
+                          type="number"
+                          value={form.packageSize}
+                          onChange={(e) => setField('packageSize', clampNumberInput(e.target.value, { min: 2, max: 9999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="Ej: 12"
+                          min="2"
+                          max="9999"
+                          step="1"
+                          className="mg-input text-sm font-black"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Precio venta por unidad (opcional)
+                        </label>
+                        <input
+                          type="number"
+                          value={form.price}
+                          onChange={(e) => setField('price', clampNumberInput(e.target.value, { max: 999999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="No vender suelto"
+                          min="0"
+                          max="999999"
+                          step="0.01"
+                          className="mg-input text-xs font-bold text-[var(--mg-accent-text)]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Nombre del paquete
+                        </label>
+                        <input
+                          type="text"
+                          value={form.packLabel}
+                          onChange={(e) => setField('packLabel', e.target.value)}
+                          placeholder="Paquete o caja"
+                          maxLength={20}
+                          className="mg-input text-xs font-semibold"
+                        />
+                      </div>
+                    </div>
+                    {!practical && (
+                      <div>
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                          Costo de compra por paquete (opcional)
+                        </label>
+                        <input
+                          type="number"
+                          value={form.supplierPrice}
+                          onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
+                          onKeyDown={blockInvalidNumberKeys}
+                          placeholder="0.00"
+                          min="0"
+                          max="999999"
+                          step="0.01"
+                          className="mg-input text-xs font-bold"
+                        />
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+                    <div>
+                      <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                        Precio Venta (Bs) *
+                      </label>
+                      <input
+                        type="number"
+                        value={form.price}
+                        onChange={(e) => setField('price', clampNumberInput(e.target.value, { max: 999999 }))}
+                        onKeyDown={blockInvalidNumberKeys}
+                        placeholder="0.00"
+                        min="0"
+                        max="999999"
+                        step="0.01"
+                        className="mg-input text-sm font-black text-[var(--mg-accent-text)]"
+                        required
+                      />
+                    </div>
 
-                  {!(practical && !editingProduct) && !form.isDish && (
-                  <div>
-                    <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                      Precio Compra (Bs)
-                    </label>
-                    <input
-                      type="number"
-                      value={form.supplierPrice}
-                      onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
-                      onKeyDown={blockInvalidNumberKeys}
-                      placeholder="0.00"
-                      min="0"
-                      max="999999"
-                      step="0.01"
-                      className="mg-input text-xs font-bold"
-                    />
+                    {!(practical && !editingProduct) && !form.isDish && (
+                    <div>
+                      <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
+                        Precio Compra (Bs)
+                      </label>
+                      <input
+                        type="number"
+                        value={form.supplierPrice}
+                        onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
+                        onKeyDown={blockInvalidNumberKeys}
+                        placeholder="0.00"
+                        min="0"
+                        max="999999"
+                        step="0.01"
+                        className="mg-input text-xs font-bold"
+                      />
+                    </div>
+                    )}
                   </div>
-                  )}
-                </div>
+                )}
 
                 {/* Stock y Unidad */}
                 {form.isDish ? (
@@ -1522,7 +1656,7 @@ export default function Inventory() {
                             </span>
                             <span className="min-w-0">
                               <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">Ya lo tengo</span>
-                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Cuento directo las unidades que hay ahora.</span>
+                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Indico cuántos paquetes completos tengo.</span>
                             </span>
                           </span>
                         </button>
@@ -1530,7 +1664,7 @@ export default function Inventory() {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                                ¿Cuántas hay? *
+                                ¿Cuántos paquetes tienes? *
                               </label>
                               <input
                                 type="number"
@@ -1547,7 +1681,7 @@ export default function Inventory() {
                             </div>
                             <div>
                               <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                                Costo por und. (opcional)
+                                Costo por paquete (opcional)
                               </label>
                               <input
                                 type="number"
@@ -1575,7 +1709,7 @@ export default function Inventory() {
                             </span>
                             <span className="min-w-0">
                               <span className="block text-sm font-extrabold text-[var(--mg-text-primary)]">Lo acabo de comprar</span>
-                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Registro la compra: el stock sube solo y sé mi ganancia real.</span>
+                              <span className="block text-[11px] font-semibold text-[var(--mg-text-secondary)]">Anoto los paquetes recibidos y el costo de cada paquete.</span>
                             </span>
                           </span>
                         </button>
@@ -1584,7 +1718,7 @@ export default function Inventory() {
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                                  ¿Cuántas llegaron? *
+                                  ¿Cuántos paquetes llegaron? *
                                 </label>
                                 <input
                                   type="number"
@@ -1601,7 +1735,7 @@ export default function Inventory() {
                               </div>
                               <div>
                                 <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                                  ¿Cuánto te costó cada una? *
+                                  ¿Cuánto te costó cada paquete? *
                                 </label>
                                 <input
                                   type="number"
@@ -1618,7 +1752,7 @@ export default function Inventory() {
                               </div>
                             </div>
                             <p className="text-[11px] font-semibold text-[var(--mg-gold-text)]">
-                              Las próximas resurtidas hazlas siempre en Compras: el stock se suma solo y queda el registro.
+                              El inventario se convierte automáticamente a unidades individuales.
                             </p>
                           </div>
                         )}
@@ -1626,7 +1760,7 @@ export default function Inventory() {
                     ) : (
                       <>
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                          Stock Actual *{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
+                          {isNewPackageProduct ? 'Paquetes actuales *' : 'Stock Actual *'}{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
                         </label>
                         <input
                           type="number"
@@ -1758,7 +1892,7 @@ export default function Inventory() {
                       {sectorConfig.unitLabels.map((label) => <option key={label} value={label} />)}
                     </datalist>
                   </div>
-                ) : (
+                ) : isNewPackageProduct ? null : (
                 <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">

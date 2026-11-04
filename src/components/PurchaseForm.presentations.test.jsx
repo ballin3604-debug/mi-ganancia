@@ -66,7 +66,7 @@ describe('compras con presentaciones configurables', () => {
     fireEvent.change(screen.getByPlaceholderText('Ej: 10'), { target: { value: '3' } });
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'six' } });
     fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], { target: { value: '42' } });
-    fireEvent.change(screen.getAllByPlaceholderText('0.00')[1], { target: { value: '14' } });
+    fireEvent.change(screen.getByText('Precio de venta por unidad (opcional)').parentElement.querySelector('input'), { target: { value: '14' } });
     fireEvent.submit(screen.getByText('Confirmar compra').closest('form'));
     await waitFor(() => expect(mocks.addReplenishment).toHaveBeenCalledTimes(1));
     expect(mocks.applyPurchaseStock).toHaveBeenCalledWith(expect.objectContaining({
@@ -85,6 +85,33 @@ describe('compras con presentaciones configurables', () => {
       purchaseUnitType: 'package',
       packageSize: 6,
       packageCount: 3,
+    }));
+  });
+
+  it('repone por paquete y permite dejar vacío el precio por unidad', async () => {
+    render(<PurchaseForm
+      businessId="business-test"
+      product={{
+        id: 'pack-product',
+        name: 'Caja',
+        price: 0,
+        packPrice: 100,
+        packLabel: 'Caja',
+        packageSize: 12,
+        supplierPrice: 5,
+        stock: 0,
+      }}
+    />);
+
+    fireEvent.change(await screen.findByText('¿Cuántos paquetes compraste? *').then((label) => label.parentElement.querySelector('input')), { target: { value: '2' } });
+    expect(screen.getByText('Precio de venta por unidad (opcional)')).toBeTruthy();
+    expect(screen.queryByText('¿Cuántas unidades compraste? *')).toBeNull();
+    fireEvent.submit(screen.getByText('Confirmar compra').closest('form'));
+
+    await waitFor(() => expect(mocks.applyPurchaseStock).toHaveBeenCalledTimes(1));
+    expect(mocks.applyPurchaseStock).toHaveBeenCalledWith(expect.objectContaining({
+      qty: 24,
+      fields: expect.objectContaining({ price: 0, supplierPrice: 5 }),
     }));
   });
 });

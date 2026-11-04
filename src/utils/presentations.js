@@ -49,7 +49,7 @@ export function getSellOptions(product) {
 
   const unitLabel = (product.unitLabel || '').trim() || 'Unidad';
   const unitPrice = Number(product.price || 0);
-  const options = [
+  const options = unitPrice > 0 ? [
     {
       key: `${product.id}|unit|unico`,
       presId: 'unit',
@@ -61,7 +61,7 @@ export function getSellOptions(product) {
       factor: 1,
       icon: '🔹',
     },
-  ];
+  ] : [];
 
   const packSize = Number(product.packageSize || 0);
   const packLabel = (product.packLabel || '').trim() || 'Paquete';
@@ -135,7 +135,9 @@ export function validatePresentationDefinitions(presentations, { baseName, baseP
     if (!name) throw new Error(`La presentación ${index + 1} necesita un nombre.`);
     if (!id) throw new Error(`La presentación ${name} necesita un identificador.`);
     if (!Number.isFinite(factor) || factor <= 0) throw new Error(`El factor de ${name} debe ser mayor que cero.`);
-    if (!Number.isFinite(price) || price <= 0) throw new Error(`El precio de ${name} debe ser mayor que cero.`);
+    if (!Number.isFinite(price) || (presentation?.isBase ? price < 0 : price <= 0)) {
+      throw new Error(`El precio de ${name} debe ser mayor que cero.`);
+    }
     return {
       id,
       name,

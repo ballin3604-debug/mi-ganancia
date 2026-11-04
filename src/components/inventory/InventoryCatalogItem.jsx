@@ -1,6 +1,7 @@
 import { formatBs } from '../../utils/currency';
 import ProductCatalogCard, { StockLabel } from '../ProductCatalogCard';
 import { useBusiness } from '../../context/BusinessContext';
+import { getSellOptions } from '../../utils/presentations';
 
 function expiryInfo(nearestExpiry) {
   if (!nearestExpiry?.date) return null;
@@ -19,16 +20,21 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
   const { sectorConfig } = useBusiness();
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const showStock = sectorConfig?.features?.stock !== false;
-  const price = Number(product.price || 0);
+  const sellOptions = getSellOptions(product);
+  const primaryOption = sellOptions[0];
+  const price = Number(primaryOption?.price ?? product.price ?? 0);
   const supplierPrice = Number(product.supplierPrice || 0);
-  const profit = supplierPrice > 0 ? price - supplierPrice : null;
-  const marginPct = supplierPrice > 0 ? Math.round((profit / supplierPrice) * 100) : null;
+  const packageCost = supplierPrice * Number(primaryOption?.factor || 1);
+  const profit = packageCost > 0 ? price - packageCost : null;
+  const marginPct = packageCost > 0 ? Math.round((profit / packageCost) * 100) : null;
   const exp = expiryInfo(nearestExpiry);
   const stockNum = Number(product.stock || 0);
   const isOut = stockNum <= 0;
   const isLow = !isOut && stockNum <= (Number(product.minStock) || 5);
-  const packSize = Number(product.packageSize || 0);
-  const hasPack = packSize > 1 && product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined && Number(product.packPrice) > 0;
+  const packageOption = sellOptions.find((option) => option.factor > 1);
+  const packSize = Number(packageOption?.factor || product.packageSize || 0);
+  const packLabel = packageOption?.label || (product.packLabel || 'Paquete').trim() || 'Paquete';
+  const hasPack = !!packageOption;
 
   return (
     // hover:z-30 → la tarjeta (y su ficha) suben por encima del encabezado,
@@ -44,7 +50,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
             )}
             {hasPack && (
               <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
-                📦 {(product.packLabel || 'Paquete').trim() || 'Paquete'} x{packSize}
+                📦 {packLabel} x{packSize}
               </span>
             )}
             {exp && (
