@@ -263,7 +263,6 @@ export default function Sales() {
   const [ordersFilter, setOrdersFilter] = useState('activos');
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [quickAdjusting, setQuickAdjusting] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
@@ -1203,35 +1202,6 @@ export default function Sales() {
       setEditError(err.message || 'No se pudo cancelar el pedido.');
     } finally {
       setEditSaving(false);
-    }
-  }
-
-  async function handleQuickAdjust(sale, item, delta) {
-    if (!sale || sale.status === 'cancelled' || quickAdjusting) return;
-    const currentItems = itemsBySaleId[sale.id] || [];
-    const target = currentItems.find((line) => line.id === item.id);
-    if (!target) return;
-    const nextQuantity = Number(target.quantity || 0) + delta;
-    if (nextQuantity < 1) return;
-    const nextLines = currentItems.map((line) => (
-      line.id === target.id ? { ...line, quantity: nextQuantity } : line
-    ));
-    setQuickAdjusting(`${sale.id}:${target.id}`);
-    setOrderFlash(null);
-    try {
-      const result = await updateSale(businessId, user?.uid, sale.id, nextLines, {
-        reason: 'Ajuste rápido desde Pedidos',
-      });
-      const number = saleNumberById[sale.id];
-      setOrderFlash({
-        tone: 'success',
-        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''}: ${delta > 0 ? 'agregaste' : 'quitaste'} 1 ${target.productName}. Nuevo total: ${formatBs(result.totalAfter)}.`,
-      });
-    } catch (err) {
-      console.error(err);
-      setOrderFlash({ tone: 'danger', text: err.message || 'No se pudo ajustar el pedido.' });
-    } finally {
-      setQuickAdjusting(null);
     }
   }
 
@@ -2392,58 +2362,6 @@ export default function Sales() {
                           </button>
                         </div>
                       )}
-
-                      <div className="mt-4 border-t border-[var(--mg-separator)] pt-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                            Ajuste rápido
-                          </p>
-                          <span className="text-[9px] font-bold text-[var(--mg-text-muted)]">± unidades</span>
-                        </div>
-                        <div className="mt-1 divide-y divide-[var(--mg-separator)]">
-                          {selectedOrderItems.length === 0 ? (
-                            <p className="py-3 text-[11px] font-semibold text-[var(--mg-text-muted)]">Cargando detalle…</p>
-                          ) : selectedOrderItems.map((item) => {
-                            const adjusting = quickAdjusting === `${selectedOrder.id}:${item.id}`;
-                            return (
-                              <div key={item.id} className="flex items-center justify-between gap-2 py-2.5">
-                                <div className="min-w-0">
-                                  <p className="truncate text-[11px] font-bold text-[var(--mg-text-primary)]">
-                                    <span className="mr-1 font-black text-[var(--mg-accent-text)]">{item.quantity}×</span>
-                                    {item.productName}
-                                  </p>
-                                  {item.presentation ? (
-                                    <p className="truncate text-[9px] font-semibold text-[var(--mg-text-muted)]">{item.presentation}</p>
-                                  ) : null}
-                                </div>
-                                <div className="flex shrink-0 items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuickAdjust(selectedOrder, item, -1)}
-                                    disabled={Number(item.quantity) <= 1 || !!quickAdjusting || selectedOrderCancelled}
-                                    aria-label={`Quitar uno de ${item.productName}`}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-sm font-black text-[var(--mg-gold-text)] transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
-                                  >
-                                    −
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuickAdjust(selectedOrder, item, 1)}
-                                    disabled={!!quickAdjusting || selectedOrderCancelled}
-                                    aria-label={`Agregar uno de ${item.productName}`}
-                                    className="mg-orders-btn-success flex h-7 w-7 items-center justify-center rounded-lg text-sm font-black text-white transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
-                                  >
-                                    +
-                                  </button>
-                                  {adjusting ? (
-                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
-                                  ) : null}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
 
                       <button
                         type="button"

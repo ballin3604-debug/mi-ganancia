@@ -226,12 +226,6 @@ input[type="number"]::-webkit-outer-spin-button {
     box-shadow: 0 12px 24px -16px var(--mg-gold);
   }
 
-  .mg-orders-btn-success {
-    background-color: var(--mg-success);
-    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.18) 100%);
-    box-shadow: 0 8px 16px -10px var(--mg-success);
-  }
-
   .mg-orders-panel-edge {
     position: relative;
   }
