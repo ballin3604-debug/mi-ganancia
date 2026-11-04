@@ -731,7 +731,7 @@ export default function Sales() {
     if (reportOrderFilter === 'cancelled') return cancelled;
     if (reportOrderFilter === 'edited') return !cancelled && edited;
     if (reportOrderFilter === 'regular') return !cancelled && !edited;
-    return true;
+    return !cancelled;
   }), [scopedSalesReport, cancelledOrderIds, editedOrderIds, reportOrderFilter]);
 
   const salesById = useMemo(
@@ -982,7 +982,7 @@ export default function Sales() {
               aria-label="Filtrar reporte por tipo de pedido"
               className="max-w-[180px] cursor-pointer truncate bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none"
             >
-              <option value="all">Todos</option>
+              <option value="all">Ventas vigentes</option>
               <option value="regular">Regulares</option>
               <option value="edited">Editados</option>
               <option value="cancelled">Cancelados</option>
@@ -1011,17 +1011,33 @@ export default function Sales() {
     );
   }
 
+  const isCancelledOrderReport = reportOrderFilter === 'cancelled';
   const filteredCashierSales = useMemo(() => (
     reportCashier === 'Todos'
       ? orderFilteredSalesReport
       : orderFilteredSalesReport.filter((sale) => (sale.seller_name || 'Sin nombre') === reportCashier)
   ), [orderFilteredSalesReport, reportCashier]);
+  const filteredCashierCountHint = isCancelledOrderReport
+    ? `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'pedido cancelado' : 'pedidos cancelados'}`
+    : `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`;
 
   const cashierRows = useMemo(() => (
     reportCashier === 'Todos'
       ? salesReportRows
       : salesReportRows.filter((row) => (row.sellerName || 'Sin nombre') === reportCashier)
   ), [salesReportRows, reportCashier]);
+  const filteredCashierAmount = useMemo(
+    () => cashierRows.reduce((sum, row) => sum + Number(row.subtotal || 0), 0),
+    [cashierRows],
+  );
+  const filteredCashierUnits = useMemo(
+    () => cashierRows.reduce((sum, row) => sum + Number(row.baseQty ?? row.quantity ?? 0), 0),
+    [cashierRows],
+  );
+  const filteredCashierProfit = useMemo(
+    () => cashierRows.reduce((sum, row) => sum + Number(row.ganancia || 0), 0),
+    [cashierRows],
+  );
 
   // Auditoría: todos los tickets, sin filtros (el cajero solo ve los suyos).
   const auditTickets = useMemo(() => {
@@ -1110,7 +1126,7 @@ export default function Sales() {
     },
     {
       key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32',
-      render: (r) => <span className="font-black text-[var(--mg-brand-text)] tabular-nums whitespace-nowrap">{formatBs(r.subtotal)}</span>,
+      render: (r) => <span className={`font-black tabular-nums whitespace-nowrap ${isCancelledOrderReport ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-brand-text)]'}`}>{formatBs(r.subtotal)}</span>,
     },
     {
       key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28',
@@ -1119,9 +1135,12 @@ export default function Sales() {
   ];
 
   function renderDetailTable(rows, emptyMessage, footerLabel) {
-    // El cajero no ve costos ni ganancias.
-    const visibleColumns = canSeeCosts ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia');
-    const visibleFooter = canSeeCosts
+    const showCosts = canSeeCosts && reportOrderFilter !== 'cancelled';
+    const visibleColumns = (showCosts ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia'))
+      .map((column) => column.key === 'totalVenta' && reportOrderFilter === 'cancelled'
+        ? { ...column, label: 'Monto cancelado' }
+        : column);
+    const visibleFooter = showCosts
       ? [
           { key: 'cantidad', label: footerLabel, value: rows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0) },
           { key: 'totalVenta', value: formatBs(rows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0)) },
@@ -1145,6 +1164,7 @@ export default function Sales() {
 
   function handleExportSales() {
     const labels = { cash: 'Efectivo', qr: 'QR', mixto: 'Mixto' };
+    const cancelledReport = isCancelledOrderReport;
     const columns = [
       { label: 'Fecha' },
       { label: 'N° Venta' },
@@ -1155,7 +1175,7 @@ export default function Sales() {
       { label: 'P. Venta', align: 'right' },
       { label: 'Método de pago', align: 'center' },
       { label: 'Vendedor' },
-      { label: 'Total Venta', align: 'right' },
+      { label: cancelledReport ? 'Monto cancelado' : 'Total Venta', align: 'right' },
       { label: 'Ganancia', align: 'right' },
     ];
     const rows = cashierRows.map((r) => {
@@ -1177,16 +1197,16 @@ export default function Sales() {
     const formattedStart = reportStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
     const formattedEnd = reportEnd.toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
     // El cajero exporta sin costos ni ganancias (mismas columnas que ve).
-    const visibleIdx = columns.map((_, i) => i).filter((i) => canSeeCosts || (i !== 5 && i !== 10));
+    const visibleIdx = columns.map((_, i) => i).filter((i) => (canSeeCosts && !cancelledReport) || (i !== 5 && i !== 10));
     exportReportToPDF({
       businessName: settings?.businessName,
-      title: reportCashier === 'Todos' ? 'Reporte de Ventas' : `Ventas de ${reportCashier}`,
-      subtitle: 'Historial detallado de ventas por producto.',
+      title: cancelledReport ? 'Pedidos Cancelados' : reportCashier === 'Todos' ? 'Reporte de Ventas' : `Ventas de ${reportCashier}`,
+      subtitle: cancelledReport ? 'Detalle e importe de los pedidos anulados; no se incluyen como ventas netas.' : 'Historial detallado de ventas por producto.',
       periodLabel: `Periodo: ${formattedStart} hasta ${formattedEnd}`,
       columns: visibleIdx.map((i) => columns[i]),
       rows: rows.map((r) => visibleIdx.map((i) => r[i])),
       totals: {
-        label: 'Total del período',
+        label: cancelledReport ? 'Importe cancelado' : 'Total del período',
         values: Object.fromEntries(
           Object.entries({
             4: cashierRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0),
@@ -2357,8 +2377,10 @@ export default function Sales() {
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
               <ReportHeader
                 icon={<AppIcon name="carrito" size={21} />}
-                title="Reporte de Ventas"
-                subtitle="Historial detallado de ventas por producto y cajero."
+                title={isCancelledOrderReport ? 'Pedidos Cancelados' : 'Reporte de Ventas'}
+                subtitle={isCancelledOrderReport
+                  ? 'Importes de pedidos anulados; no se contabilizan como ventas netas.'
+                  : 'Historial detallado de ventas vigentes por producto y cajero.'}
                 startDate={reportStartDate}
                 endDate={reportEndDate}
                 onStartDateChange={setReportStartDate}
@@ -2368,32 +2390,32 @@ export default function Sales() {
                 branchSelector={renderSalesReportFilters()}
               />
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className={`grid grid-cols-2 gap-3 ${isCancelledOrderReport || !canSeeCosts ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
                 <MetricCard
-                  label="Total vendido"
-                  value={formatBs(cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0))}
-                  hint={`${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`}
+                  label={isCancelledOrderReport ? 'Monto cancelado' : 'Ventas netas'}
+                  value={formatBs(filteredCashierAmount)}
+                  hint={filteredCashierCountHint}
                   icon="caja"
-                  tone="brand"
+                  tone={isCancelledOrderReport ? 'danger' : 'brand'}
                 />
                 <MetricCard
-                  label="Unidades"
-                  value={cashierRows.reduce((sum, r) => sum + Number(r.baseQty ?? r.quantity ?? 0), 0)}
-                  hint="Vendidas en el período"
+                  label={isCancelledOrderReport ? 'Unidades canceladas' : 'Unidades vendidas'}
+                  value={filteredCashierUnits}
+                  hint={isCancelledOrderReport ? 'En pedidos anulados' : 'En el período'}
                   icon="paquete"
                   tone="action"
                 />
                 <MetricCard
-                  label="Ticket promedio"
-                  value={formatBs(filteredCashierSales.length ? cashierRows.reduce((sum, r) => sum + Number(r.subtotal || 0), 0) / filteredCashierSales.length : 0)}
-                  hint="Por venta"
+                  label={isCancelledOrderReport ? 'Promedio cancelado' : 'Ticket promedio'}
+                  value={formatBs(filteredCashierSales.length ? filteredCashierAmount / filteredCashierSales.length : 0)}
+                  hint={isCancelledOrderReport ? 'Por pedido anulado' : 'Por venta'}
                   icon="recibo"
                   tone="neutral"
                 />
-                {canSeeCosts ? (
+                {canSeeCosts && !isCancelledOrderReport ? (
                   <MetricCard
                     label="Ganancia"
-                    value={formatBs(cashierRows.reduce((sum, r) => sum + Number(r.ganancia || 0), 0))}
+                    value={formatBs(filteredCashierProfit)}
                     hint="Ventas menos costo"
                     icon="ranking"
                     tone="success"
@@ -2403,10 +2425,14 @@ export default function Sales() {
 
               {renderDetailTable(
                 cashierRows,
-                reportCashier === 'Todos'
-                  ? 'No se encontraron ventas en el rango seleccionado.'
-                  : `Sin ventas de ${reportCashier} en este período.`,
-                reportCashier === 'Todos' ? 'Total del período' : `Total de ${reportCashier}`,
+                isCancelledOrderReport
+                  ? 'No se encontraron pedidos cancelados en el rango seleccionado.'
+                  : reportCashier === 'Todos'
+                    ? 'No se encontraron ventas vigentes en el rango seleccionado.'
+                    : `Sin ventas vigentes de ${reportCashier} en este período.`,
+                isCancelledOrderReport
+                  ? 'Monto cancelado'
+                  : reportCashier === 'Todos' ? 'Total del período' : `Total de ${reportCashier}`,
               )}
             </div>
           ) : activeTab === 'auditoria' ? (
