@@ -94,6 +94,10 @@ const NAV_ITEMS = [
   },
   {
     label: 'Arqueo de caja', Icon: WalletIcon, ownerOnly: false, key: 'cash-register', basePath: '/arqueo',
+    children: [
+      { to: '/arqueo', label: 'Arqueo actual', key: 'cash-register-current' },
+      { to: '/arqueo/historial', label: 'Historial de cierres', key: 'cash-register-history' },
+    ],
   },
   {
     label: 'Compras', Icon: BagIcon, ownerOnly: false, key: 'purchases', basePath: '/compras',
@@ -193,7 +197,8 @@ export default function Layout() {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const initial = {};
     NAV_ITEMS.forEach((item) => {
-      if (item.children) initial[item.key] = location.pathname === item.basePath;
+      if (item.children) initial[item.key] = location.pathname === item.basePath
+        || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`));
     });
     return initial;
   });
@@ -217,7 +222,10 @@ export default function Layout() {
   }, [showMenuDrawer]);
 
   useEffect(() => {
-    const activeGroup = NAV_ITEMS.find((item) => item.children && location.pathname === item.basePath);
+    const activeGroup = NAV_ITEMS.find((item) => item.children && (
+      location.pathname === item.basePath
+      || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`))
+    ));
     if (activeGroup) {
       setExpandedGroups((prev) => (prev[activeGroup.key] ? prev : { ...prev, [activeGroup.key]: true }));
     }
@@ -322,7 +330,8 @@ export default function Layout() {
         <nav aria-label="Navegación principal" className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {visibleItems.map((item, index) => {
             const isOpen = !!item.children && !!expandedGroups[item.key];
-            const isGroupActive = location.pathname === item.basePath;
+            const isGroupActive = location.pathname === item.basePath
+              || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`));
             const GroupIcon = item.Icon;
             const prevItem = visibleItems[index - 1];
             const showSection = sidebarOpen && item.section && item.section !== prevItem?.section;

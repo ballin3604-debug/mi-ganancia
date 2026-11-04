@@ -8,6 +8,7 @@ import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
 import Sales from './pages/Sales';
 import CashRegister from './pages/CashRegister';
+import CashHistory from './pages/CashHistory';
 import Compras from './pages/Compras';
 import Inventory from './pages/Inventory';
 import Expenses from './pages/Expenses';
@@ -230,6 +231,8 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="ventas" element={<Sales />} />
+              <Route path="arqueo" element={<CashRegister />} />
+              <Route path="arqueo/historial" element={<CashHistory />} />
               <Route path="compras" element={<Compras />} />
               <Route path="inventario" element={<Inventory />} />
               <Route path="egresos" element={<Expenses />} />
@@ -268,6 +271,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="ventas" element={<Sales />} />
             <Route path="arqueo" element={<CashRegister />} />
+            <Route path="arqueo/historial" element={<CashHistory />} />
             <Route path="compras" element={<Compras />} />
             <Route path="inventario" element={<Inventory />} />
             <Route path="egresos" element={<Expenses />} />

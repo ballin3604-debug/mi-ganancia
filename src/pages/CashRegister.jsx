@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranches } from '../context/BranchContext';
 import { getAllExpenses, subscribeToExpenses } from '../services/expenses';
@@ -79,6 +80,7 @@ function Difference({ amount }) {
 export default function CashRegister() {
   const { businessId, user, sellerName } = useAuth();
   const { branches, activeBranch, activeBranchId, selectBranch } = useBranches();
+  const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [arqueos, setArqueos] = useState([]);
@@ -231,7 +233,16 @@ export default function CashRegister() {
               <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Arqueos recientes</h2>
               <p className="mt-0.5 text-[11px] font-medium text-[var(--mg-text-muted)]">Cierres guardados para {activeBranch?.name || 'esta sucursal'}.</p>
             </div>
-            <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-brand-text)]">{branchArqueos.length} registrados</span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-brand-text)]">{branchArqueos.length} registrados</span>
+              <button
+                type="button"
+                onClick={() => navigate('/arqueo/historial')}
+                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 text-[10px] font-black text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent)] hover:text-white"
+              >
+                <AppIcon name="historial" size={12} /> Historial completo
+              </button>
+            </div>
           </div>
 
           {branchArqueos.length === 0 ? (
