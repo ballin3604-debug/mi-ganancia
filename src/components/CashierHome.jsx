@@ -98,6 +98,7 @@ export function CashierHome({
   onReimprint,
   printingSaleId,
   orderChanges = [],
+  orderSales = [],
   salesById = {},
   saleNumberById = {},
   showOrderChanges = false,
@@ -307,6 +308,7 @@ export function CashierHome({
       {showOrderChanges ? (
         <OrderChangesCard
           changes={orderChanges}
+          orders={orderSales}
           salesById={salesById}
           saleNumberById={saleNumberById}
           onOpen={() => onNavigate('/ventas?tab=bitacora')}

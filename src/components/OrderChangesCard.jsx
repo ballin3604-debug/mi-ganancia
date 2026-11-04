@@ -55,18 +55,27 @@ function Stat({ label, value, icon, tone }) {
 
 export default function OrderChangesCard({
   changes = [],
+  orders = [],
   salesById = {},
   saleNumberById = {},
   onOpen,
   className = '',
   compact = false,
 }) {
-  const cancelled = changes.filter((change) => change.eventType === 'sale_cancelled').length;
-  const added = changes.filter((change) => change.eventType === 'item_added').length;
-  const removed = changes.filter((change) => change.eventType === 'item_removed').length;
-  const adjusted = changes.filter((change) => (
-    change.eventType === 'qty_increased' || change.eventType === 'qty_decreased'
+  const cancelledIds = new Set(changes
+    .filter((change) => change.eventType === 'sale_cancelled')
+    .map((change) => change.saleId || change.sale_id));
+  const editedIds = new Set(changes
+    .filter((change) => ['item_added', 'item_removed', 'qty_increased', 'qty_decreased'].includes(change.eventType))
+    .map((change) => change.saleId || change.sale_id));
+  const cancelledOrders = orders.filter((sale) => (
+    sale.status === 'cancelled' || sale.status === 'voided' || cancelledIds.has(sale.id)
+  ));
+  const cancelledOrderIds = new Set(cancelledOrders.map((sale) => sale.id));
+  const edited = orders.filter((sale) => (
+    !cancelledOrderIds.has(sale.id) && editedIds.has(sale.id)
   )).length;
+  const regular = orders.length - cancelledOrders.length - edited;
   const latest = changes.slice(0, compact ? 3 : 5);
 
   return (
@@ -91,10 +100,10 @@ export default function OrderChangesCard({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Cancelados" value={cancelled} icon="cancelar" tone="danger" />
-        <Stat label="Añadidos" value={added} icon="agregar" tone="success" />
-        <Stat label="Retirados" value={removed} icon="eliminar" tone="warning" />
-        <Stat label="Cantidades" value={adjusted} icon="editar" tone="brand" />
+        <Stat label="Pedidos regulares" value={regular} icon="check" tone="success" />
+        <Stat label="Pedidos editados" value={edited} icon="editar" tone="warning" />
+        <Stat label="Pedidos cancelados" value={cancelledOrders.length} icon="cancelar" tone="danger" />
+        <Stat label="Pedidos totales" value={orders.length} icon="recibo" tone="brand" />
       </div>
 
       {latest.length > 0 ? (

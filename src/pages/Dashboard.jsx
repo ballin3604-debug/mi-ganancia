@@ -146,15 +146,18 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleSales, homeBranch, mainBranchId, isOwner]);
 
-  // Bitácora de pedidos del inicio: mismas ventas visibles y misma sede.
-  const homeOrderChanges = useMemo(() => {
+  // Pedidos visibles en Inicio: mismas ventas y sede que el resto del resumen.
+  const homeOrderSales = useMemo(() => {
     if (!isRestaurantMode) return [];
-    const scopedSales = (isOwner ? todaySales : todaySales.filter((s) => s.createdBy === user?.uid))
+    return (isOwner ? todaySales : todaySales.filter((s) => s.createdBy === user?.uid))
       .filter((s) => !isOwner || homeBranch === 'all' || saleBranchId(s) === homeBranch);
-    const ids = new Set(scopedSales.map((s) => s.id));
-    return todayOrderChanges.filter((change) => ids.has(change.saleId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRestaurantMode, isOwner, todaySales, user?.uid, homeBranch, mainBranchId, todayOrderChanges]);
+  }, [isRestaurantMode, isOwner, todaySales, user?.uid, homeBranch, mainBranchId]);
+
+  const homeOrderChanges = useMemo(() => {
+    const ids = new Set(homeOrderSales.map((sale) => sale.id));
+    return todayOrderChanges.filter((change) => ids.has(change.saleId || change.sale_id));
+  }, [homeOrderSales, todayOrderChanges]);
 
   // Ítems solo de las ventas del día/sede visible
   const scopedItemsMap = useMemo(() => {
@@ -482,6 +485,7 @@ export default function Dashboard() {
           onReimprint={handleReimprint}
           printingSaleId={printingSaleId}
           orderChanges={homeOrderChanges}
+          orderSales={homeOrderSales}
           salesById={todaySalesById}
           showOrderChanges={isRestaurantMode}
         />
@@ -521,6 +525,7 @@ export default function Dashboard() {
       {isRestaurantMode && (
         <OrderChangesCard
           changes={homeOrderChanges}
+          orders={homeOrderSales}
           salesById={todaySalesById}
           onOpen={() => navigate('/ventas?tab=bitacora')}
         />
