@@ -4,12 +4,10 @@
 // Todo calculado con datos locales existentes. Tema claro de la app.
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react';
-import { getSales, getSaleItemsAll } from '../services/sales';
-import { getAllExpenses } from '../services/expenses';
+import { getSales } from '../services/sales';
 import { useBranches } from '../context/BranchContext';
 import { formatBs } from '../utils/currency';
 import { AppIcon } from './icons';
-import { buildMonthlyPerformance } from './ownerPulseMetrics';
 
 function timeAgo(date) {
   const mins = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
@@ -20,45 +18,25 @@ function timeAgo(date) {
   return `hace ${Math.floor(h / 24)} d`;
 }
 
-export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, branchId = 'all', mainBranchId = null, branchName = '', showBranches = true, onNavigate, onReimprint, printingSaleId }) {
+export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, showBranches = true, onNavigate, onReimprint, printingSaleId }) {
   const { branches } = useBranches();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState([]);
-  const [items, setItems] = useState([]);
-  const [expenses, setExpenses] = useState([]);
 
   useEffect(() => {
     if (!businessId) { setLoading(false); return; }
     let alive = true;
     (async () => {
       try {
-        const [s, it, ex] = await Promise.all([
-          getSales(businessId).catch(() => []),
-          getSaleItemsAll(businessId).catch(() => []),
-          getAllExpenses(businessId).catch(() => []),
-        ]);
+        const s = await getSales(businessId).catch(() => []);
         if (!alive) return;
         setSales((Array.isArray(s) ? s : []).filter((sale) => sale.status !== 'cancelled'));
-        setItems(Array.isArray(it) ? it : []);
-        setExpenses(Array.isArray(ex) ? ex : []);
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
   }, [businessId]);
-
-  const monthly = useMemo(
-    () => buildMonthlyPerformance(sales, items, expenses, branchId, mainBranchId),
-    [sales, items, expenses, branchId, mainBranchId],
-  );
-
-  const maxBar = Math.max(...monthly.map((m) => Math.max(m.income, m.cogs, m.net, 0)), 1);
-  const avgMargin = (() => {
-    const inc = monthly.reduce((s, m) => s + m.income, 0);
-    const net = monthly.reduce((s, m) => s + m.net, 0);
-    return inc > 0 ? (net / inc) * 100 : 0;
-  })();
 
   const byBranch = useMemo(() => {
     const now = new Date();
@@ -104,58 +82,6 @@ export function OwnerPulse({ businessId, liveSales = [], salesItemsMap = {}, bra
 
   return (
     <section className="space-y-4">
-      {/* Rendimiento mensual */}
-      <div className="bg-[var(--mg-bg-surface)] rounded-3xl border border-[var(--mg-border)] p-5 shadow-[var(--mg-shadow-sm)]">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <h3 className="text-sm font-black text-[var(--mg-brand-text)] flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] flex items-center justify-center shrink-0">
-              <AppIcon name="reportes" size={16} />
-            </span>
-            Rendimiento del Negocio ({monthly.length} {monthly.length === 1 ? 'mes' : 'meses'})
-          </h3>
-          <div className="flex items-center gap-3 text-[10px] font-bold text-[var(--mg-text-muted)]">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-success)]" /> Ingresos</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-text-muted)]" /> Costos</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-brand)]" /> Utilidad</span>
-          </div>
-        </div>
-        <p className="text-[11px] text-[var(--mg-text-muted)] mb-4">
-          Ingresos vs costo de mercadería y utilidad neta por mes.
-          {branchId !== 'all' && branchName ? ` · ${branchName}` : ''}
-        </p>
-        <div className="overflow-x-auto pb-1">
-          {monthly.length > 0 ? (
-            <div
-              className="flex items-end justify-between gap-2 h-44"
-              style={{ minWidth: monthly.length > 6 ? `${monthly.length * 56}px` : undefined }}
-            >
-              {monthly.map((m) => (
-                <div key={m.key} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                  <div className="flex items-end gap-1 h-32 w-full justify-center">
-                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-success)]" style={{ height: `${m.income > 0 ? Math.max((m.income / maxBar) * 100, 2) : 0}%` }} title={`Ingresos ${formatBs(m.income)}`} />
-                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-text-muted)]" style={{ height: `${m.cogs > 0 ? Math.max((m.cogs / maxBar) * 100, 2) : 0}%` }} title={`Costos ${formatBs(m.cogs)}`} />
-                    <div className="w-3 sm:w-4 rounded-t-md bg-[var(--mg-brand)]" style={{ height: `${m.net > 0 ? Math.max((m.net / maxBar) * 100, 2) : 0}%` }} title={`Utilidad ${formatBs(m.net)}`} />
-                  </div>
-                  <span className="text-[10px] font-bold text-[var(--mg-text-muted)] capitalize">{m.label}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="h-44 flex items-center justify-center text-xs font-medium text-[var(--mg-text-muted)]">
-              Aún no hay ventas registradas.
-            </div>
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[var(--mg-separator)] text-xs flex-wrap">
-          <span className="text-[var(--mg-text-muted)] font-medium">
-            Margen Neto Promedio: <strong className="text-[var(--mg-text-primary)]">{avgMargin.toFixed(1)}%</strong>
-          </span>
-          <button type="button" onClick={() => onNavigate && onNavigate('/reportes?type=profit')} className="font-bold text-[var(--mg-accent-text)] hover:text-[var(--mg-accent-hover)] hover:underline">
-            Ver análisis mensual detallado →
-          </button>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-5 lg:items-start gap-4">
         {/* Sucursales (fuera en restaurante: sede única) */}
         {showBranches && (

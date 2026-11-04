@@ -564,15 +564,12 @@ export default function Dashboard() {
         />
       </section>
 
-      {/* 5 — PULSO DEL NEGOCIO: rendimiento mensual, sucursales y en vivo */}
+      {/* 5 — PULSO DEL NEGOCIO: sucursales y ventas en vivo */}
       <OwnerPulse
         businessId={businessId}
         liveSales={daySales}
         salesItemsMap={scopedItemsMap}
-        branchId={homeBranch}
-        mainBranchId={mainBranchId}
         showBranches={!isRestaurantMode && canBranches}
-        branchName={homeBranch !== 'all' ? (branches.find((b) => b.id === homeBranch)?.name || '') : ''}
         onNavigate={(path, opts) => navigate(path, opts)}
         onReimprint={handleReimprint}
         printingSaleId={printingSaleId}
