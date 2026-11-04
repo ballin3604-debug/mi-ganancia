@@ -2763,25 +2763,8 @@ export default function Sales() {
         </div>
       </div>
 
-      {/* Botón para desplegar/contraer el carrito (Sólo Desktop) */}
       {activeTab === 'venta' && (
       <>
-      <button
-        type="button"
-        onClick={() => setCartOpen((v) => !v)}
-        title={cartOpen ? 'Ocultar carrito' : 'Mostrar carrito'}
-        className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] text-[var(--mg-text-secondary)] shadow-md items-center justify-center z-20 active:scale-90 transition-all duration-300 ${
-          cartOpen ? 'right-[372px]' : 'right-2'
-        }`}
-      >
-        <svg
-          className={`w-5 h-5 transition-transform duration-300 ${cartOpen ? '' : 'rotate-180'}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 17l-5-5 5-5M11 17l-5-5 5-5" />
-        </svg>
-      </button>
-
       {/* Columna Derecha (Desktop Sidebar): Carrito */}
       {cartOpen && (
         <aside className="hidden lg:flex flex-col w-[380px] border-l border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shrink-0 h-full overflow-hidden">
@@ -2800,22 +2783,29 @@ export default function Sales() {
         </aside>
       )}
 
-      {/* Botón flotante para ver carrito (FAB - Sólo Mobile y pestaña venta) */}
-      {activeTab === 'venta' && totalBaseUnits > 0 && !showCartModal && (
+      {/* Botón flotante del carrito (desktop y móvil) */}
+      {!showCartModal && (
         <button
-          onClick={() => setShowCartModal(true)}
-          className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-2xl bg-[var(--mg-brand)] px-5 py-3.5 font-bold text-[var(--mg-brand-contrast)] shadow-2xl transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 lg:hidden"
+          type="button"
+          onClick={() => {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+              setCartOpen((v) => !v);
+            } else {
+              setShowCartModal(true);
+            }
+          }}
+          title="Carrito"
+          aria-label="Abrir carrito"
+          className={`fixed z-40 bottom-24 right-4 lg:bottom-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[0_12px_30px_-6px_var(--mg-brand)] ring-2 ring-[var(--mg-accent-border)] transition-all duration-300 hover:bg-[var(--mg-brand-hover)] hover:scale-105 active:scale-95 ${
+            cartOpen ? 'lg:right-[404px]' : 'lg:right-6'
+          }`}
         >
-          <div className="relative flex items-center">
-            <AppIcon name="carrito" size={20} />
-            <span className="absolute -right-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--mg-brand-deep)] shadow-md">
-              {totalBaseUnits}
+          <AppIcon name="carrito" size={24} strokeWidth={2.2} />
+          {totalBaseUnits > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--mg-bg-surface)] bg-[var(--mg-accent)] px-1 text-[10px] font-black leading-none text-white shadow-md">
+              {totalBaseUnits > 99 ? '99+' : totalBaseUnits}
             </span>
-          </div>
-          <div className="text-left border-l border-white/20 pl-3">
-            <p className="text-[10px] uppercase tracking-wider text-[var(--mg-brand-contrast)] opacity-70 font-semibold leading-none">Ver Carrito</p>
-            <p className="text-sm font-black leading-tight mt-0.5">{formatBs(total)}</p>
-          </div>
+          )}
         </button>
       )}
 

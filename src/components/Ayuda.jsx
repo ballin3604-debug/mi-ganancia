@@ -30,6 +30,7 @@ export default function Ayuda() {
   }, [location.pathname, location.search]);
 
   const clave = claveAyudaParaRuta(location.pathname, location.search);
+  const isSalesPage = location.pathname.startsWith('/ventas');
   const rawInfo = AYUDA[clave] || AYUDA.inicio;
   const { sectorConfig } = useBusiness();
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
@@ -47,7 +48,7 @@ export default function Ayuda() {
         title={`¿Qué es esto? ${info.titulo}`}
         aria-label="Ayuda: qué es esta pantalla"
         className={`fixed z-40 bottom-24 lg:bottom-6 right-4 lg:right-6 w-11 h-11 rounded-full bg-[var(--mg-bg-surface)] border border-[var(--mg-border)] shadow-lg items-center justify-center text-lg font-black text-[var(--mg-accent-text)] active:scale-90 hover:shadow-xl transition-all ${
-          location.pathname.startsWith('/inventario') ? 'hidden md:flex' : 'flex'
+          isSalesPage ? 'hidden' : location.pathname.startsWith('/inventario') ? 'hidden md:flex' : 'flex'
         }`}
       >
         ?
