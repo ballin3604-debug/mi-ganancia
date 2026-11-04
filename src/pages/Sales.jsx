@@ -408,6 +408,10 @@ export default function Sales() {
     return toLocalISODate(new Date());
   });
   const [reportEndDate, setReportEndDate] = useState(() => searchParams.get('end') || toLocalISODate(new Date()));
+  const [reportOrderFilter, setReportOrderFilter] = useState(() => {
+    const value = searchParams.get('pedido');
+    return ['all', 'regular', 'edited', 'cancelled'].includes(value) ? value : 'all';
+  });
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState({});
   const [search, setSearch] = useState('');
@@ -652,7 +656,6 @@ export default function Sales() {
   const reportEnd = useMemo(() => new Date(`${reportEndDate}T23:59:59.999`), [reportEndDate]);
 
   const filteredSalesReport = useMemo(() => salesList
-    .filter((s) => s.status !== 'cancelled')
     .filter((s) => {
       const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
       return d >= reportStart && d <= reportEnd;
@@ -713,6 +716,21 @@ export default function Sales() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredSalesReport, reportBranch, mainBranchId, isOwner, user?.uid, teamMembers]);
+
+  const cancelledOrderIds = useMemo(() => new Set(orderChanges
+    .filter((change) => change.eventType === 'sale_cancelled')
+    .map((change) => change.saleId || change.sale_id)), [orderChanges]);
+  const editedOrderIds = useMemo(() => new Set(orderChanges
+    .filter((change) => ['item_added', 'item_removed', 'qty_increased', 'qty_decreased'].includes(change.eventType))
+    .map((change) => change.saleId || change.sale_id)), [orderChanges]);
+  const orderFilteredSalesReport = useMemo(() => scopedSalesReport.filter((sale) => {
+    const cancelled = sale.status === 'cancelled' || sale.status === 'voided' || cancelledOrderIds.has(sale.id);
+    const edited = editedOrderIds.has(sale.id);
+    if (reportOrderFilter === 'cancelled') return cancelled;
+    if (reportOrderFilter === 'edited') return !cancelled && edited;
+    if (reportOrderFilter === 'regular') return !cancelled && !edited;
+    return true;
+  }), [scopedSalesReport, cancelledOrderIds, editedOrderIds, reportOrderFilter]);
 
   const salesById = useMemo(
     () => Object.fromEntries(salesList.map((s) => [s.id, s])),
@@ -898,7 +916,7 @@ export default function Sales() {
     net: bitacoraChanges.reduce((sum, c) => sum + Number(c.amountDelta || 0), 0),
   }), [bitacoraChanges]);
 
-  const salesReportRows = useMemo(() => scopedSalesReport.flatMap((s) =>
+  const salesReportRows = useMemo(() => orderFilteredSalesReport.flatMap((s) =>
     (itemsBySaleId[s.id] || []).map((item) => {
       const unitCost = Number(item.supplier_price || 0);
       const factor = Number(item.presentation_factor ?? item.presentationFactor ?? 1);
@@ -922,7 +940,7 @@ export default function Sales() {
         sellerName: s.seller_name,
       };
     })
-  ), [scopedSalesReport, itemsBySaleId, saleNumberById]);
+  ), [orderFilteredSalesReport, itemsBySaleId, saleNumberById]);
 
   const [reportCashier, setReportCashier] = useState('Todos');
 
@@ -942,16 +960,33 @@ export default function Sales() {
 
   const sellersInRange = useMemo(() => {
     const set = new Set();
-    scopedSalesReport.forEach((s) => set.add(s.seller_name || 'Sin nombre'));
+    orderFilteredSalesReport.forEach((s) => set.add(s.seller_name || 'Sin nombre'));
     return [...set].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [scopedSalesReport]);
+  }, [orderFilteredSalesReport]);
 
   function renderSalesReportFilters() {
     const branchSelector = renderBranchPills();
-    if (!branchSelector && !isOwner) return null;
+    if (!branchSelector && !isOwner && !isRestaurantMode) return null;
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         {branchSelector}
+        {isRestaurantMode ? (
+          <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
+            <AppIcon name="restaurante" size={14} color="var(--mg-accent-text)" />
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Pedido</span>
+            <select
+              value={reportOrderFilter}
+              onChange={(event) => setReportOrderFilter(event.target.value)}
+              aria-label="Filtrar reporte por tipo de pedido"
+              className="max-w-[180px] cursor-pointer truncate bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none"
+            >
+              <option value="all">Todos</option>
+              <option value="regular">Regulares</option>
+              <option value="edited">Editados</option>
+              <option value="cancelled">Cancelados</option>
+            </select>
+          </label>
+        ) : null}
         {isOwner ? (
           <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
             <AppIcon name="equipo" size={14} color="var(--mg-accent-text)" />
@@ -976,9 +1011,9 @@ export default function Sales() {
 
   const filteredCashierSales = useMemo(() => (
     reportCashier === 'Todos'
-      ? scopedSalesReport
-      : scopedSalesReport.filter((sale) => (sale.seller_name || 'Sin nombre') === reportCashier)
-  ), [scopedSalesReport, reportCashier]);
+      ? orderFilteredSalesReport
+      : orderFilteredSalesReport.filter((sale) => (sale.seller_name || 'Sin nombre') === reportCashier)
+  ), [orderFilteredSalesReport, reportCashier]);
 
   const cashierRows = useMemo(() => (
     reportCashier === 'Todos'

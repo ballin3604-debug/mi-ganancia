@@ -99,8 +99,6 @@ export function CashierHome({
   printingSaleId,
   orderChanges = [],
   orderSales = [],
-  salesById = {},
-  saleNumberById = {},
   showOrderChanges = false,
 }) {
   const [expandedId, setExpandedId] = useState(null);
@@ -309,10 +307,8 @@ export function CashierHome({
         <OrderChangesCard
           changes={orderChanges}
           orders={orderSales}
-          salesById={salesById}
-          saleNumberById={saleNumberById}
           onOpen={() => onNavigate('/ventas?tab=bitacora')}
-          compact
+          onFilter={(filter) => onNavigate(`/ventas?tab=reporte&pedido=${filter}`)}
         />
       ) : null}
 

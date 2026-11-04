@@ -10,11 +10,16 @@ export function MagicMetricCards({
   totalQr = 0,
   comprasTotal = 0,
   comprasCount = 0,
+  egresosTotal = 0,
   gananciaNeta = 0,
   margen = 0,
   showCompras = true,
+  showEgresos = false,
   onNavigate
 }) {
+  const extraMetrics = Number(showCompras) + Number(showEgresos);
+  const profitSpan = extraMetrics === 0 ? 'xl:col-span-7' : extraMetrics === 1 ? 'xl:col-span-4' : 'xl:col-span-3';
+  const extraMetricSpan = extraMetrics === 2 ? 'xl:col-span-2' : 'xl:col-span-3';
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -83,7 +88,7 @@ export function MagicMetricCards({
       <motion.div
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className={`bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden sm:col-span-1 ${showCompras ? 'xl:col-span-4' : 'xl:col-span-7'}`}
+        className={`bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden sm:col-span-1 ${profitSpan}`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -119,7 +124,7 @@ export function MagicMetricCards({
         variants={itemVariants}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
         onClick={() => onNavigate && onNavigate('/compras?tab=historial')}
-        className="bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden cursor-pointer sm:col-span-1 xl:col-span-3"
+        className={`bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden cursor-pointer sm:col-span-1 ${extraMetricSpan}`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -144,6 +149,34 @@ export function MagicMetricCards({
           </span>
         </div>
       </motion.div>
+      )}
+
+      {showEgresos && (
+        <motion.div
+          variants={itemVariants}
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          onClick={() => onNavigate && onNavigate('/egresos')}
+          className={`bg-[var(--mg-bg-surface)] rounded-3xl p-5 border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] hover:shadow-[var(--mg-shadow-md)] transition-shadow group relative overflow-hidden cursor-pointer sm:col-span-1 ${extraMetricSpan}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--mg-text-secondary)]">
+                Egresos de hoy
+              </p>
+              <p className="mt-2 text-xl sm:text-2xl font-black text-[var(--mg-danger)] tracking-tight tabular-nums">
+                {formatBs(egresosTotal)}
+              </p>
+            </div>
+            <span className="w-10 h-10 rounded-2xl bg-[var(--mg-danger-bg)] border border-[var(--mg-danger-border)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <AppIcon name="gastos" size={20} />
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--mg-separator)] pt-3 text-[11px]">
+            <span className="font-bold text-[var(--mg-danger)]">Registrados hoy</span>
+            <span className="text-[var(--mg-text-muted)] font-medium">Ver egresos →</span>
+          </div>
+        </motion.div>
       )}
 
     </motion.div>

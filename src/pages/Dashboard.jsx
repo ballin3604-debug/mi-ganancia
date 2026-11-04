@@ -128,11 +128,6 @@ export default function Dashboard() {
     });
   }, [orderChanges]);
 
-  const todaySalesById = useMemo(
-    () => Object.fromEntries(todaySales.map((sale) => [sale.id, sale])),
-    [todaySales]
-  );
-
   // Sede del Inicio: filtra todo el día (resumen, análisis, en vivo).
   const { branches } = useBranches();
   const { can } = usePlan();
@@ -483,11 +478,10 @@ export default function Dashboard() {
           onNavigate={(path, opts) => navigate(path, opts)}
           onSelectSale={(sale) => navigate(`/recibo/${sale.id}`)}
           onReimprint={handleReimprint}
-          printingSaleId={printingSaleId}
-          orderChanges={homeOrderChanges}
-          orderSales={homeOrderSales}
-          salesById={todaySalesById}
-          showOrderChanges={isRestaurantMode}
+           printingSaleId={printingSaleId}
+           orderChanges={homeOrderChanges}
+           orderSales={homeOrderSales}
+           showOrderChanges={isRestaurantMode}
         />
       </>
     );
@@ -526,8 +520,8 @@ export default function Dashboard() {
         <OrderChangesCard
           changes={homeOrderChanges}
           orders={homeOrderSales}
-          salesById={todaySalesById}
           onOpen={() => navigate('/ventas?tab=bitacora')}
+          onFilter={(filter) => navigate(`/ventas?tab=reporte&pedido=${filter}`)}
         />
       )}
 
@@ -562,9 +556,11 @@ export default function Dashboard() {
           totalQr={totalQr}
           comprasTotal={comprasHoy.total}
           comprasCount={comprasHoy.count}
+          egresosTotal={gastosHoy}
           gananciaNeta={gananciaHoy}
           margen={margenHoy}
           showCompras={!isRestaurantMode}
+          showEgresos={isRestaurantMode}
           onNavigate={(path) => navigate(path)}
         />
       </section>
