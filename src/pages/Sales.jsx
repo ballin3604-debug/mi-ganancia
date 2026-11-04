@@ -2365,20 +2365,6 @@ export default function Sales() {
                           <button
                             type="button"
                             onClick={() => openOrderEditor(selectedOrder)}
-                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-success)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                          >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                              <AppIcon name="agregar" size={18} color="currentColor" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block text-[11px] font-black uppercase tracking-wide">Añadir items</span>
-                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Snacks, bebidas y extras</span>
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openOrderEditor(selectedOrder)}
                             className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-gold)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                           >
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
@@ -2386,7 +2372,7 @@ export default function Sales() {
                             </span>
                             <span className="min-w-0">
                               <span className="block text-[11px] font-black uppercase tracking-wide">Modificar / quitar</span>
-                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Editar platos o cambiar cantidades</span>
+                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Añadir, quitar o cambiar cantidades</span>
                             </span>
                           </button>
                         </div>
