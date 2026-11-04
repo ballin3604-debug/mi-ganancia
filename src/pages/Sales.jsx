@@ -38,6 +38,17 @@ function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
 }
 
+function relativeOrderTime(value) {
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return 'Ahora';
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  return date.toLocaleDateString('es-BO', { day: 'numeric', month: 'short' });
+}
+
 function ProductImage({ imageData, name, className }) {
   if (!imageData) {
     return (
@@ -249,8 +260,10 @@ export default function Sales() {
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
   const [orderChanges, setOrderChanges] = useState([]);
-  const [ordersFilter, setOrdersFilter] = useState('todos');
+  const [ordersFilter, setOrdersFilter] = useState('activos');
   const [orderSearch, setOrderSearch] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [quickAdjusting, setQuickAdjusting] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
@@ -632,6 +645,13 @@ export default function Sales() {
     });
   }, [todayOrders, ordersFilter, orderSearch, saleNumberById, itemsBySaleId]);
 
+  const selectedOrder = useMemo(
+    () => filteredTodayOrders.find((sale) => sale.id === selectedOrderId) || filteredTodayOrders[0] || null,
+    [filteredTodayOrders, selectedOrderId]
+  );
+
+  const selectedOrderItems = selectedOrder ? (itemsBySaleId[selectedOrder.id] || []) : [];
+
   const todayOrderIds = useMemo(() => new Set(todayOrders.map((s) => s.id)), [todayOrders]);
 
   const todayOrderChanges = useMemo(
@@ -646,6 +666,16 @@ export default function Sales() {
     }
     return map;
   }, [todayOrderChanges]);
+
+  const selectedOrderNumber = selectedOrder ? saleNumberById[selectedOrder.id] : null;
+  const selectedOrderDisplayNumber = selectedOrderNumber ? `#${String(selectedOrderNumber).padStart(4, '0')}` : '#----';
+  const selectedOrderCancelled = selectedOrder?.status === 'cancelled';
+  const selectedOrderTime = selectedOrder ? relativeOrderTime(selectedOrder.createdAt) : '';
+  const selectedOrderUnits = selectedOrder
+    ? (selectedOrder.item_count ?? selectedOrderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0))
+    : 0;
+  const selectedOrderCashier = selectedOrder ? (selectedOrder.seller_name || selectedOrder.sellerName || 'Cajero') : '';
+  const selectedOrderChanges = selectedOrder ? (changesBySaleId[selectedOrder.id] || 0) : 0;
 
   const bitacoraChanges = useMemo(() => {
     return orderChanges.filter((change) => {
@@ -1173,6 +1203,35 @@ export default function Sales() {
       setEditError(err.message || 'No se pudo cancelar el pedido.');
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleQuickAdjust(sale, item, delta) {
+    if (!sale || sale.status === 'cancelled' || quickAdjusting) return;
+    const currentItems = itemsBySaleId[sale.id] || [];
+    const target = currentItems.find((line) => line.id === item.id);
+    if (!target) return;
+    const nextQuantity = Number(target.quantity || 0) + delta;
+    if (nextQuantity < 1) return;
+    const nextLines = currentItems.map((line) => (
+      line.id === target.id ? { ...line, quantity: nextQuantity } : line
+    ));
+    setQuickAdjusting(`${sale.id}:${target.id}`);
+    setOrderFlash(null);
+    try {
+      const result = await updateSale(businessId, user?.uid, sale.id, nextLines, {
+        reason: 'Ajuste rápido desde Pedidos',
+      });
+      const number = saleNumberById[sale.id];
+      setOrderFlash({
+        tone: 'success',
+        text: `Pedido ${number ? `#${String(number).padStart(4, '0')}` : ''}: ${delta > 0 ? 'agregaste' : 'quitaste'} 1 ${target.productName}. Nuevo total: ${formatBs(result.totalAfter)}.`,
+      });
+    } catch (err) {
+      console.error(err);
+      setOrderFlash({ tone: 'danger', text: err.message || 'No se pudo ajustar el pedido.' });
+    } finally {
+      setQuickAdjusting(null);
     }
   }
 
@@ -1932,55 +1991,73 @@ export default function Sales() {
 
           {activeTab === 'pedidos' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
-              <div className="relative overflow-hidden rounded-[28px] bg-[var(--mg-brand)] p-5 text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-lg)] sm:p-6">
-                <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full border-[20px] border-white/10" />
-                <div className="pointer-events-none absolute -bottom-24 right-28 h-52 w-52 rounded-full bg-white/5 blur-2xl" />
-                <div className="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full border-[14px] border-white/5" />
-
-                <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex min-w-0 items-start gap-3.5">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-                      <AppIcon name="restaurante" size={23} color="currentColor" />
+              <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] sm:p-4">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]">
+                      <AppIcon name="restaurante" size={20} />
                     </span>
                     <div className="min-w-0">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ring-1 ring-white/20">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
                         Servicio de hoy
-                      </span>
-                      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Pedidos de hoy</h2>
-                      <p className="mt-1 text-[11px] font-semibold text-white/70 sm:text-xs">
+                      </p>
+                      <h2 className="truncate text-xl font-black tracking-tight text-[var(--mg-text-primary)] sm:text-2xl">
+                        Pedidos en curso
+                      </h2>
+                      <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
                         {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
                         {ordersBranchLabel ? ` · ${ordersBranchLabel}` : ''}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2.5 ring-1 ring-white/15 backdrop-blur">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                        <AppIcon name="caja" size={17} color="currentColor" />
-                      </span>
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/60">Vendido hoy</p>
-                        <p className="text-base font-black tabular-nums">{formatBs(todayOrderRevenue)}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
+                      <AppIcon name="search" size={16} />
+                    </span>
+                    <input
+                      type="text"
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      placeholder="Buscar rápido..."
+                      className="mg-input min-h-[42px] !rounded-xl pl-9 pr-9 text-sm"
+                    />
+                    {orderSearch ? (
                       <button
                         type="button"
-                        onClick={() => navigate('/ventas?tab=bitacora')}
-                        className="flex min-h-[42px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-[11px] font-black text-[var(--mg-brand-contrast)] backdrop-blur transition-colors hover:bg-white/20 active:scale-95 sm:flex-none"
+                        onClick={() => setOrderSearch('')}
+                        aria-label="Limpiar búsqueda"
+                        className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
                       >
-                        <AppIcon name="reportes" size={14} color="currentColor" /> Bitácora
+                        <AppIcon name="cerrar" size={12} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate('/ventas?tab=venta')}
-                        className="flex min-h-[42px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand-contrast)] px-3.5 py-2 text-[11px] font-black text-[var(--mg-brand)] shadow-sm transition-all hover:opacity-90 active:scale-95 sm:flex-none"
-                      >
-                        <AppIcon name="agregar" size={14} color="currentColor" /> Nueva venta
-                      </button>
-                    </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex min-h-[36px] items-center gap-2 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[11px] font-bold text-[var(--mg-text-secondary)]">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--mg-success)]" />
+                      Total pedidos activos:
+                      <b className="text-[var(--mg-text-primary)] tabular-nums">{todayOrderStats.active}</b>
+                    </span>
+                    <span className="hidden min-h-[36px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[11px] font-bold text-[var(--mg-text-secondary)] sm:inline-flex">
+                      <AppIcon name="caja" size={13} />
+                      Vendido hoy <b className="text-[var(--mg-text-primary)] tabular-nums">{formatBs(todayOrderRevenue)}</b>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/ventas?tab=bitacora')}
+                      className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                    >
+                      <AppIcon name="reportes" size={13} /> Bitácora
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/ventas?tab=venta')}
+                      className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[11px] font-black text-[var(--mg-brand-contrast)] transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95"
+                    >
+                      <AppIcon name="agregar" size={13} /> Nueva venta
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1998,85 +2075,21 @@ export default function Sales() {
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {[
-                  { label: 'Pedidos', value: todayOrderStats.total, hint: 'Incluye cancelados', icon: 'recibo', bar: 'bg-[var(--mg-brand)]', chip: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border-[var(--mg-brand-border)]', live: false },
-                  { label: 'En curso', value: todayOrderStats.active, hint: 'Listos para gestionar', icon: 'check', bar: 'bg-[var(--mg-success)]', chip: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]', live: true },
-                  { label: 'Cancelados', value: todayOrderStats.cancelled, hint: 'Anulados hoy', icon: 'cancelar', bar: 'bg-[var(--mg-danger)]', chip: 'bg-[var(--mg-danger-bg)] text-[var(--mg-danger)] border-[var(--mg-danger-border)]', live: false },
-                  { label: 'Con cambios', value: todayOrderChanges.length, hint: 'Ajustes registrados', icon: 'editar', bar: 'bg-[var(--mg-gold)]', chip: 'bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)] border-[var(--mg-gold-border)]', live: false },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="group relative overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--mg-shadow-md)]"
-                  >
-                    <span className={`absolute inset-x-0 top-0 h-1 ${stat.bar}`} />
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
-                          {stat.label}
-                          {stat.live && stat.value > 0 ? (
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--mg-success)]" />
-                          ) : null}
-                        </p>
-                        <p className="mt-1.5 text-2xl font-black tracking-tight text-[var(--mg-text-primary)] tabular-nums">{stat.value}</p>
-                        <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">{stat.hint}</p>
-                      </div>
-                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${stat.chip}`}>
-                        <AppIcon name={stat.icon} size={16} />
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <SectionCard
-                title={
-                  <span className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
-                      <AppIcon name="restaurante" size={14} />
-                    </span>
-                    Pedidos del día
-                    <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2 py-0.5 text-[9px] font-black text-[var(--mg-brand-text)] tabular-nums">
+              <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+                <section className="flex min-h-0 flex-col rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 shadow-[var(--mg-shadow-sm)]">
+                  <div className="flex items-center justify-between gap-2 px-0.5">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                      Pedidos del día
+                    </h3>
+                    <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2 py-0.5 text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
                       {filteredTodayOrders.length}
                     </span>
-                  </span>
-                }
-                subtitle="Toca un pedido para ajustar productos, cantidades o cancelarlo."
-                action={
-                  <span className="hidden items-center gap-1.5 text-[10px] font-bold text-[var(--mg-text-muted)] sm:flex">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--mg-success)]" />
-                    En vivo
-                  </span>
-                }
-                bodyClassName="p-4 space-y-3"
-              >
-                <div className="flex flex-col gap-2.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-2 sm:flex-row sm:items-center">
-                  <div className="relative min-w-0 flex-1">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--mg-text-muted)]">
-                      <AppIcon name="search" size={16} />
-                    </span>
-                    <input
-                      type="text"
-                      value={orderSearch}
-                      onChange={(e) => setOrderSearch(e.target.value)}
-                      placeholder="Buscar por pedido, producto o cajero..."
-                      className="mg-input min-h-[42px] !rounded-xl !border-transparent !bg-[var(--mg-bg-surface)] pl-9 pr-9 text-sm shadow-sm"
-                    />
-                    {orderSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setOrderSearch('')}
-                        aria-label="Limpiar búsqueda"
-                        className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)] transition-colors hover:text-[var(--mg-text-primary)]"
-                      >
-                        <AppIcon name="cerrar" size={12} />
-                      </button>
-                    ) : null}
                   </div>
-                  <div className="flex shrink-0 gap-1 overflow-x-auto rounded-xl bg-[var(--mg-bg-surface)] p-1 shadow-sm scrollbar-none">
+
+                  <div className="mt-2 flex gap-1 overflow-x-auto rounded-xl bg-[var(--mg-bg-elevated)] p-1 scrollbar-none">
                     {[
-                      { id: 'todos', label: 'Todos', count: todayOrderStats.total },
                       { id: 'activos', label: 'En curso', count: todayOrderStats.active },
+                      { id: 'todos', label: 'Todos', count: todayOrderStats.total },
                       { id: 'cancelados', label: 'Cancelados', count: todayOrderStats.cancelled },
                     ].map((option) => {
                       const active = ordersFilter === option.id;
@@ -2085,15 +2098,15 @@ export default function Sales() {
                           key={option.id}
                           type="button"
                           onClick={() => setOrdersFilter(option.id)}
-                          className={`flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-black transition-all ${
+                          className={`flex min-h-[32px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-black transition-all ${
                             active
                               ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
-                              : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
+                              : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-surface)]'
                           }`}
                         >
                           {option.label}
                           <span className={`rounded-full px-1.5 py-0.5 text-[9px] tabular-nums ${
-                            active ? 'bg-white/20' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+                            active ? 'bg-white/20' : 'bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]'
                           }`}>
                             {option.count}
                           </span>
@@ -2101,197 +2114,353 @@ export default function Sales() {
                       );
                     })}
                   </div>
-                </div>
 
-                {filteredTodayOrders.length === 0 ? (
-                  <div className="relative overflow-hidden rounded-3xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-6 py-10 text-center">
-                    <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
-                      <AppIcon name="restaurante" size={30} />
-                    </span>
-                    <h3 className="mt-4 text-sm font-black text-[var(--mg-text-primary)]">
-                      {todayOrders.length === 0 ? 'Aún no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
-                    </h3>
-                    <p className="mx-auto mt-1 max-w-sm text-xs font-medium leading-relaxed text-[var(--mg-text-muted)]">
-                      {todayOrders.length === 0
-                        ? 'Cuando cobres el primer pedido, aparecerá acá listo para editar o cancelar.'
-                        : 'Probá con otra búsqueda o cambiá el estado del filtro.'}
-                    </p>
-                    {todayOrders.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate('/ventas?tab=venta')}
-                        className="mt-4 inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-4 text-[11px] font-black text-[var(--mg-brand-contrast)] active:scale-95"
-                      >
-                        <AppIcon name="agregar" size={13} /> Crear primera venta
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <ul className="space-y-3">
-                    {filteredTodayOrders.map((sale) => {
+                  <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 xl:max-h-[calc(100vh-330px)]">
+                    {filteredTodayOrders.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-4 py-8 text-center">
+                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
+                          <AppIcon name="restaurante" size={24} />
+                        </span>
+                        <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">
+                          {todayOrders.length === 0 ? 'Aún no hay pedidos hoy' : 'Sin pedidos con ese filtro'}
+                        </p>
+                        <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-muted)]">
+                          {todayOrders.length === 0
+                            ? 'Cuando cobres el primer pedido aparecerá acá.'
+                            : 'Probá con otra búsqueda o cambiá el estado.'}
+                        </p>
+                        {todayOrders.length === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/ventas?tab=venta')}
+                            className="mt-3 inline-flex min-h-[34px] items-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[10px] font-black text-[var(--mg-brand-contrast)] active:scale-95"
+                          >
+                            <AppIcon name="agregar" size={12} /> Crear primera venta
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : filteredTodayOrders.map((sale) => {
                       const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
                       const validDate = d instanceof Date && !Number.isNaN(d.getTime());
-                      const time = validDate ? d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
                       const number = saleNumberById[sale.id];
                       const displayNumber = number ? `#${String(number).padStart(4, '0')}` : '#----';
                       const items = itemsBySaleId[sale.id] || [];
                       const cancelled = sale.status === 'cancelled';
-                      const method = METHOD_META[sale.paymentMethod] || METHOD_META.cash;
-                      const cashier = sale.seller_name || sale.sellerName || 'Cajero';
-                      const initials = cashier.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('') || 'C';
+                      const isSelected = selectedOrder?.id === sale.id;
                       const units = sale.item_count ?? items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-                      const changesCount = changesBySaleId[sale.id] || 0;
                       return (
-                        <li
+                        <button
                           key={sale.id}
-                          className={`group relative overflow-hidden rounded-2xl border bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--mg-shadow-md)] ${
-                            cancelled ? 'border-[var(--mg-danger-border)]' : 'border-[var(--mg-border)]'
+                          type="button"
+                          onClick={() => setSelectedOrderId(sale.id)}
+                          className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all active:scale-[0.99] ${
+                            isSelected
+                              ? 'border-[var(--mg-brand)] bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-md)]'
+                              : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-primary)] hover:border-[var(--mg-brand-border)] hover:bg-[var(--mg-bg-elevated)]'
                           }`}
                         >
                           <span className={`absolute inset-y-0 left-0 w-1 ${cancelled ? 'bg-[var(--mg-danger)]' : 'bg-[var(--mg-success)]'}`} />
-
-                          <div className="p-3.5 pl-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex min-w-0 items-start gap-2.5">
-                                <span className={`flex h-11 min-w-[62px] shrink-0 flex-col items-center justify-center rounded-xl border px-2 ${
-                                  cancelled
-                                    ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
-                                    : 'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
-                                }`}>
-                                  <span className="text-[8px] font-black uppercase tracking-[0.14em] opacity-70">Pedido</span>
-                                  <span className="text-[13px] font-black leading-tight tabular-nums">{displayNumber}</span>
-                                </span>
-
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    {cancelled ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                        Cancelado
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
-                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-                                        En curso
-                                      </span>
-                                    )}
-                                    {changesCount > 0 ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-0.5 text-[9px] font-black text-[var(--mg-gold-text)]">
-                                        <AppIcon name="editar" size={9} />
-                                        {changesCount} {changesCount === 1 ? 'ajuste' : 'ajustes'}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold text-[var(--mg-text-muted)]">
-                                    {time ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <AppIcon name="reloj" size={11} /> {time}
-                                      </span>
-                                    ) : null}
-                                    <span className="h-1 w-1 rounded-full bg-current opacity-40" />
-                                    <span className="inline-flex items-center gap-1">
-                                      <AppIcon name={method.icon} size={11} /> {method.label}
-                                    </span>
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="shrink-0 text-right">
-                                <p className={`text-sm font-black tabular-nums ${cancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
-                                  {formatBs(sale.total)}
-                                </p>
-                                <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Total</p>
-                              </div>
-                            </div>
-
-                            <div className="mt-2.5 flex items-center gap-1.5">
-                              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[9px] font-black ${
-                                cancelled
-                                  ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
-                                  : 'border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]'
-                              }`}>
-                                {initials}
-                              </span>
-                              <p className="min-w-0 flex-1 truncate text-[11px] font-bold text-[var(--mg-text-secondary)]">
-                                {cashier}
-                                <span className="font-semibold text-[var(--mg-text-muted)]"> · {units} {units === 1 ? 'unidad' : 'unidades'}</span>
+                          <div className="flex items-start justify-between gap-2 pl-1.5">
+                            <div className="min-w-0">
+                              <p className="text-2xl font-black leading-none tracking-tight tabular-nums">{displayNumber}</p>
+                              <p className={`mt-1 text-[9px] font-black uppercase tracking-[0.18em] ${isSelected ? 'opacity-60' : 'text-[var(--mg-text-muted)]'}`}>
+                                {cancelled ? 'Cancelado' : 'Pedido'}
                               </p>
                             </div>
-
-                            {items.length > 0 ? (
-                              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                {items.slice(0, 3).map((item, index) => (
-                                  <span
-                                    key={item.id || `${sale.id}-${index}`}
-                                    className="inline-flex max-w-full items-center gap-1 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-1 pl-1 pr-2 text-[10px] font-bold text-[var(--mg-text-secondary)]"
-                                  >
-                                    <span className="rounded bg-[var(--mg-brand-bg)] px-1 py-0.5 text-[9px] font-black text-[var(--mg-brand-text)] tabular-nums">
-                                      {item.quantity}×
-                                    </span>
-                                    <span className="max-w-[150px] truncate">{item.productName}</span>
-                                  </span>
-                                ))}
-                                {items.length > 3 ? (
-                                  <span className="inline-flex items-center rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 py-1 text-[10px] font-black text-[var(--mg-text-muted)]">
-                                    +{items.length - 3} más
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <p className="mt-2 text-[11px] font-semibold text-[var(--mg-text-muted)]">Cargando detalle…</p>
-                            )}
-
-                            {cancelled ? (
-                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-black ${
-                                  sale.stockReturned === false
-                                    ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
-                                    : 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
-                                }`}>
-                                  <AppIcon name={sale.stockReturned === false ? 'alerta' : 'paquete'} size={11} />
-                                  {sale.stockReturned === false ? 'Stock no devuelto' : 'Stock devuelto'}
-                                </span>
-                                {sale.cancellationReason ? (
-                                  <span className="inline-flex min-w-0 items-start gap-1 rounded-lg border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2 py-1 text-[10px] font-bold text-[var(--mg-danger)]">
-                                    <AppIcon name="cancelar" size={11} />
-                                    <span className="line-clamp-2 min-w-0">Motivo: {sale.cancellationReason}</span>
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : null}
-
-                            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--mg-separator)] pt-2.5">
-                              <button
-                                type="button"
-                                onClick={() => openOrderEditor(sale)}
-                                disabled={cancelled}
-                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-brand)] px-3 text-[11px] font-black text-[var(--mg-brand-contrast)] shadow-sm transition-all hover:bg-[var(--mg-brand-hover)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
-                              >
-                                <AppIcon name="editar" size={13} /> Editar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openOrderEditor(sale, { cancel: true })}
-                                disabled={cancelled}
-                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 text-[11px] font-black text-[var(--mg-danger)] transition-colors hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
-                              >
-                                <AppIcon name="cancelar" size={13} /> Cancelar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/recibo/${sale.id}`, { state: { saleNumber: number } })}
-                                className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[11px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95 sm:ml-auto sm:flex-none"
-                              >
-                                <AppIcon name="recibo" size={13} /> Ver recibo
-                              </button>
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <span className={`text-[10px] font-black ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
+                                {validDate ? relativeOrderTime(d) : ''}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide ${
+                                isSelected
+                                  ? 'opacity-80'
+                                  : cancelled
+                                    ? 'text-[var(--mg-danger)]'
+                                    : 'text-[var(--mg-success-text)]'
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full bg-current ${cancelled ? '' : 'animate-pulse'}`} />
+                                {cancelled ? 'Cancelado' : 'En curso'}
+                              </span>
                             </div>
                           </div>
-                        </li>
+
+                          <div className={`mt-2.5 space-y-0.5 pl-1.5 text-[11px] font-semibold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-secondary)]'}`}>
+                            {items.length === 0 ? (
+                              <p className="opacity-60">Cargando detalle…</p>
+                            ) : items.slice(0, 3).map((item, index) => (
+                              <p key={item.id || `${sale.id}-${index}`} className="truncate">
+                                <span className="font-black">{item.quantity}×</span> {item.productName}
+                              </p>
+                            ))}
+                            {items.length > 3 ? (
+                              <p className="opacity-60">+{items.length - 3} más</p>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-2.5 pl-1.5">
+                            <span className={`block h-px w-full ${isSelected ? 'bg-[var(--mg-brand-contrast)] opacity-20' : 'bg-[var(--mg-separator)]'}`} />
+                            <div className={`mt-1.5 flex items-center justify-between gap-2 text-[10px] font-bold ${isSelected ? 'opacity-80' : 'text-[var(--mg-text-muted)]'}`}>
+                              <span>{units} {Number(units) === 1 ? 'unidad' : 'unidades'}</span>
+                              <span className={`text-[12px] font-black tabular-nums ${isSelected ? '' : 'text-[var(--mg-brand-text)]'}`}>
+                                {formatBs(sale.total)}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
                       );
                     })}
-                  </ul>
-                )}
-              </SectionCard>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+                  {selectedOrder ? (
+                    <>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--mg-text-muted)]">
+                            Pedido {selectedOrderDisplayNumber}
+                          </p>
+                          <h3 className="mt-1 truncate text-xl font-black tracking-tight text-[var(--mg-text-primary)] sm:text-2xl">
+                            {selectedOrder.clientName || selectedOrder.client_name || 'Sin cliente'}
+                          </h3>
+                          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
+                            <span className="inline-flex items-center gap-1">
+                              <AppIcon name="reloj" size={12} /> {selectedOrderTime}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                            <span className="inline-flex items-center gap-1">
+                              <AppIcon name={(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).icon} size={12} />
+                              {(METHOD_META[selectedOrder.paymentMethod] || METHOD_META.cash).label}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                            <span>{selectedOrderCashier}</span>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {selectedOrderCancelled ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-danger)]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-current" /> Cancelado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[var(--mg-success-text)]">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" /> En curso
+                            </span>
+                          )}
+                          <p className={`mt-2 text-2xl font-black tabular-nums ${selectedOrderCancelled ? 'text-[var(--mg-text-muted)] line-through' : 'text-[var(--mg-brand-text)]'}`}>
+                            {formatBs(selectedOrder.total)}
+                          </p>
+                          <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                            {selectedOrderUnits} {Number(selectedOrderUnits) === 1 ? 'unidad' : 'unidades'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedOrderCancelled ? (
+                        <div className="mt-4 rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-3">
+                          <p className="text-xs font-black text-[var(--mg-danger)]">Este pedido fue cancelado</p>
+                          <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                            {selectedOrder.stockReturned === false ? 'El stock no se devolvió.' : 'Los productos volvieron al inventario.'}
+                            {selectedOrder.cancellationReason ? ` Motivo: ${selectedOrder.cancellationReason}` : ''}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]">
+                        {selectedOrderItems.length === 0 ? (
+                          <div className="flex items-center justify-center gap-2 px-4 py-10 text-xs font-bold text-[var(--mg-text-muted)]">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
+                            Cargando el detalle…
+                          </div>
+                        ) : selectedOrderItems.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-3.5 py-3 last:border-b-0">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-1 text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
+                                {item.quantity}×
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-[var(--mg-text-primary)]">{item.productName}</p>
+                                <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                  {item.presentation ? `${item.presentation} · ` : ''}{formatBs(item.price)} c/u
+                                </p>
+                              </div>
+                            </div>
+                            <span className="shrink-0 text-sm font-black tabular-nums text-[var(--mg-text-primary)]">
+                              {formatBs(item.subtotal ?? Number(item.quantity || 0) * Number(item.price || 0))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        {selectedOrderChanges > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
+                            <AppIcon name="editar" size={10} />
+                            {selectedOrderChanges} {selectedOrderChanges === 1 ? 'ajuste' : 'ajustes'}
+                          </span>
+                        ) : null}
+                        {selectedOrder.stockReturned === false ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2 py-1 text-[10px] font-black text-[var(--mg-gold-text)]">
+                            <AppIcon name="alerta" size={10} /> Stock no devuelto
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/recibo/${selectedOrder.id}`, { state: { saleNumber: selectedOrderNumber } })}
+                          className="ml-auto inline-flex min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-3 text-[10px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                        >
+                          <AppIcon name="recibo" size={12} /> Ver recibo
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
+                        <AppIcon name="carrito" size={26} />
+                      </span>
+                      <p className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Selecciona un pedido</p>
+                      <p className="mt-1 max-w-xs text-xs font-semibold leading-relaxed text-[var(--mg-text-muted)]">
+                        Elige un pedido de la lista para ver sus productos y gestionarlo.
+                      </p>
+                    </div>
+                  )}
+                </section>
+
+                <aside className="h-fit rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                      Acciones rápidas
+                    </h3>
+                    {selectedOrder ? (
+                      <span className="text-[10px] font-black text-[var(--mg-brand-text)] tabular-nums">
+                        {selectedOrderDisplayNumber}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {selectedOrder ? (
+                    <>
+                      {selectedOrderCancelled ? (
+                        <div className="mt-3 rounded-2xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] p-3">
+                          <p className="text-[11px] font-black text-[var(--mg-danger)]">Pedido cancelado</p>
+                          <p className="mt-1 text-[10px] font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                            No se puede modificar ni cancelar de nuevo.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => openOrderEditor(selectedOrder, { cancel: true })}
+                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-danger)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                              <AppIcon name="cancelar" size={18} color="currentColor" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-[11px] font-black uppercase tracking-wide">Cancelar pedido</span>
+                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Anula por completo</span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openOrderEditor(selectedOrder)}
+                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-success)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                              <AppIcon name="agregar" size={18} color="currentColor" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-[11px] font-black uppercase tracking-wide">Añadir items</span>
+                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Snacks, bebidas y extras</span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openOrderEditor(selectedOrder)}
+                            className="flex w-full items-start gap-3 rounded-2xl bg-[var(--mg-gold)] px-3.5 py-3 text-left text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                              <AppIcon name="editar" size={18} color="currentColor" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-[11px] font-black uppercase tracking-wide">Modificar / quitar</span>
+                              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">Editar platos o cambiar cantidades</span>
+                            </span>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="mt-4 border-t border-[var(--mg-separator)] pt-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
+                            Ajuste rápido
+                          </p>
+                          <span className="text-[9px] font-bold text-[var(--mg-text-muted)]">± unidades</span>
+                        </div>
+                        <div className="mt-1 divide-y divide-[var(--mg-separator)]">
+                          {selectedOrderItems.length === 0 ? (
+                            <p className="py-3 text-[11px] font-semibold text-[var(--mg-text-muted)]">Cargando detalle…</p>
+                          ) : selectedOrderItems.map((item) => {
+                            const adjusting = quickAdjusting === `${selectedOrder.id}:${item.id}`;
+                            return (
+                              <div key={item.id} className="flex items-center justify-between gap-2 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-bold text-[var(--mg-text-primary)]">
+                                    <span className="mr-1 font-black text-[var(--mg-brand-text)]">{item.quantity}×</span>
+                                    {item.productName}
+                                  </p>
+                                  {item.presentation ? (
+                                    <p className="truncate text-[9px] font-semibold text-[var(--mg-text-muted)]">{item.presentation}</p>
+                                  ) : null}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickAdjust(selectedOrder, item, -1)}
+                                    disabled={Number(item.quantity) <= 1 || !!quickAdjusting || selectedOrderCancelled}
+                                    aria-label={`Quitar uno de ${item.productName}`}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-sm font-black text-[var(--mg-gold-text)] transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
+                                  >
+                                    −
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickAdjust(selectedOrder, item, 1)}
+                                    disabled={!!quickAdjusting || selectedOrderCancelled}
+                                    aria-label={`Agregar uno de ${item.productName}`}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--mg-success)] text-sm font-black text-white transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-35"
+                                  >
+                                    +
+                                  </button>
+                                  {adjusting ? (
+                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--mg-brand)] border-t-transparent" />
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/recibo/${selectedOrder.id}`, { state: { saleNumber: selectedOrderNumber } })}
+                        className="mt-3 flex w-full min-h-[36px] items-center justify-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[10px] font-black text-[var(--mg-text-secondary)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)] active:scale-95"
+                      >
+                        <AppIcon name="recibo" size={12} /> Ver recibo
+                      </button>
+                    </>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] p-4 text-center">
+                      <p className="text-[11px] font-bold leading-relaxed text-[var(--mg-text-muted)]">
+                        Selecciona un pedido para ver las acciones disponibles.
+                      </p>
+                    </div>
+                  )}
+                </aside>
+              </div>
             </div>
           ) : activeTab === 'bitacora' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
