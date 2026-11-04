@@ -521,7 +521,7 @@ export default function Dashboard() {
           changes={homeOrderChanges}
           orders={homeOrderSales}
           onOpen={() => navigate('/ventas?tab=bitacora')}
-          onFilter={(filter) => navigate(`/ventas?tab=reporte&pedido=${filter}`)}
+          onFilter={(filter) => navigate(filter === 'all' ? '/ventas?tab=pedidos&estado=todos' : `/ventas?tab=reporte&pedido=${filter}`)}
         />
       )}
 

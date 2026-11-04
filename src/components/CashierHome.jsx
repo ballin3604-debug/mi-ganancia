@@ -311,7 +311,7 @@ export function CashierHome({
           changes={orderChanges}
           orders={orderSales}
           onOpen={() => onNavigate('/ventas?tab=bitacora')}
-          onFilter={(filter) => onNavigate(`/ventas?tab=reporte&pedido=${filter}`)}
+          onFilter={(filter) => onNavigate(filter === 'all' ? '/ventas?tab=pedidos&estado=todos' : `/ventas?tab=reporte&pedido=${filter}`)}
         />
       ) : null}
 

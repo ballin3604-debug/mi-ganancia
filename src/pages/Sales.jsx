@@ -387,7 +387,9 @@ export default function Sales() {
   const [salesList, setSalesList] = useState([]);
   const [saleItemsList, setSaleItemsList] = useState([]);
   const [orderChanges, setOrderChanges] = useState([]);
-  const [ordersFilter, setOrdersFilter] = useState('activos');
+  const [ordersFilter, setOrdersFilter] = useState(() => (
+    ['todos', 'cancelados'].includes(searchParams.get('estado')) ? searchParams.get('estado') : 'activos'
+  ));
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
