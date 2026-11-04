@@ -36,7 +36,7 @@ const REPORT_TYPE_META = {
     ranking: { icon: 'ranking', title: 'Ranking de Productos', subtitle: 'Productos más vendidos por unidades e ingresos.' },
     expenses: { icon: 'gastos', title: 'Reporte de Egresos', subtitle: 'Egresos registrados y su distribución por categoría.' },
     inventory: { icon: 'almacen', title: 'Reporte de Inventario', subtitle: 'Stock actual al día de hoy · entradas y salidas del período elegido.' },
-    profit: { icon: 'reportes', title: 'Ganancias Diarias', subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.' },
+    profit: { icon: 'reportes', title: 'Ganancias Diarias', subtitle: 'Ventas netas, costo de productos y gastos del período.' },
     costoVendido: { icon: 'etiqueta', title: 'Costo de lo Vendido', subtitle: 'Costo de proveedor de cada producto vendido en el periodo.' },
 };
 
@@ -60,9 +60,9 @@ export default function MatrixReport() {
     const branchOfExpense = (e) => e.branch_id || mainBranchId;
 
     // Todo el reporte respeta la sede elegida (ventas, ítems y gastos).
-    // Los pedidos cancelados no cuentan como venta en ningún reporte.
+    // Los pedidos cancelados no cuentan como ingreso ni como costo vendido.
     const sales = useMemo(() => {
-      const active = allSales.filter((s) => s.status !== 'cancelled');
+      const active = allSales.filter((s) => s.status !== 'cancelled' && s.status !== 'voided');
       return reportBranch === 'all' ? active : active.filter((s) => branchOfSale(s) === reportBranch);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allSales, reportBranch, mainBranchId]);
@@ -115,21 +115,23 @@ export default function MatrixReport() {
                 `Bs ${d.vendido.toFixed(2)}`,
                 `Bs ${d.costoVendido.toFixed(2)}`,
                 `Bs ${d.gananciaBruta.toFixed(2)}`,
-                `Bs ${(d.egresosDiarios + d.egresosFijos).toFixed(2)}`,
+                `Bs ${d.egresosDiarios.toFixed(2)}`,
+                `Bs ${d.egresosFijos.toFixed(2)}`,
                 `Bs ${d.gananciaNeta.toFixed(2)}`,
             ];
         });
         exportReportToPDF({
             businessName: settings?.businessName,
             title: 'Reporte de Ganancias Diarias',
-            subtitle: 'Ingresos, costos, gastos y ganancia neta día por día.',
+            subtitle: 'Ventas menos costo de productos y gastos diarios y fijos.',
             periodLabel: periodLabel(),
             columns: [
                 { label: 'Fecha' },
                 { label: 'Total Vendido', align: 'right' },
                 { label: 'Costo Vendido', align: 'right' },
                 { label: 'Ganancia Bruta', align: 'right' },
-                { label: 'Gastos', align: 'right' },
+                { label: 'Gastos Diarios', align: 'right' },
+                { label: 'Gastos Fijos', align: 'right' },
                 { label: 'Ganancia Neta', align: 'right' },
             ],
             rows,
@@ -137,7 +139,8 @@ export default function MatrixReport() {
                 { label: 'Total Vendido (Ingresos):', value: `Bs ${profitReportData.totalVendido.toFixed(2)}` },
                 { label: 'Costo de lo Vendido:', value: `Bs ${profitReportData.totalCostoVendido.toFixed(2)}` },
                 { label: 'Ganancia Bruta:', value: `Bs ${profitReportData.totalGananciaBruta.toFixed(2)}` },
-                { label: 'Gastos del Periodo:', value: `Bs ${(profitReportData.totalEgresosDiarios + profitReportData.totalEgresosFijos).toFixed(2)}` },
+                { label: 'Gastos Diarios:', value: `Bs ${profitReportData.totalEgresosDiarios.toFixed(2)}` },
+                { label: 'Gastos Fijos:', value: `Bs ${profitReportData.totalEgresosFijos.toFixed(2)}` },
                 { label: 'GANANCIA NETA REAL:', value: `Bs ${profitReportData.totalGananciaNeta.toFixed(2)}`, emphasis: true, negative: profitReportData.totalGananciaNeta < 0 },
             ],
         });
@@ -538,12 +541,6 @@ export default function MatrixReport() {
             return d >= start && d <= end;
         });
 
-        const filteredReplenishments = replenishments.filter(r => {
-            if (!r.createdAt) return false;
-            const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-            return d >= start && d <= end;
-        });
-
         const filteredExpenses = expenses.filter(e => {
             if (!e.createdAt) return false;
             const d = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
@@ -561,7 +558,6 @@ export default function MatrixReport() {
                 costoVendido: 0,
                 egresosDiarios: 0,
                 egresosFijos: 0,
-                reposicion: 0,
                 gananciaBruta: 0,
                 gananciaNeta: 0,
             };
@@ -574,9 +570,9 @@ export default function MatrixReport() {
             const dateStr = toLocalISODate(d);
             saleIdToDate[s.id] = dateStr;
             if (!dailyData[dateStr]) {
-                dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, reposicion: 0, gananciaBruta: 0, gananciaNeta: 0 };
+                dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, gananciaBruta: 0, gananciaNeta: 0 };
             }
-            dailyData[dateStr].vendido += s.total || 0;
+            dailyData[dateStr].vendido += Number(s.total || 0);
         });
 
         // Calcular costo de lo vendido diariamente
@@ -590,7 +586,7 @@ export default function MatrixReport() {
                         : null);
 
                 if (!dailyData[dateStr]) {
-                    dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, reposicion: 0, gananciaBruta: 0, gananciaNeta: 0 };
+                    dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, gananciaBruta: 0, gananciaNeta: 0 };
                 }
                 if (itemCost !== null) {
                     const factor = Number(item.presentation_factor ?? item.presentationFactor ?? 1);
@@ -603,24 +599,11 @@ export default function MatrixReport() {
             }
         });
 
-        filteredReplenishments.forEach(r => {
-            const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-            const dateStr = toLocalISODate(d);
-            if (!dailyData[dateStr]) {
-                dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, reposicion: 0, gananciaBruta: 0, gananciaNeta: 0 };
-            }
-            // Costo total ya calculado una sola vez en products.js (precio proveedor x cantidad + gastos extra)
-            const fallbackCost = (Number(r.supplierPrice || 0) * Number(r.quantity || 0))
-                + Number(r.additionalExpenses || r.additional_expenses || 0);
-            const cost = Number(r.totalCost || r.total_cost || fallbackCost);
-            dailyData[dateStr].reposicion += cost;
-        });
-
         filteredExpenses.forEach(e => {
             const d = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
             const dateStr = toLocalISODate(d);
             if (!dailyData[dateStr]) {
-                dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, reposicion: 0, gananciaBruta: 0, gananciaNeta: 0 };
+                dailyData[dateStr] = { date: dateStr, vendido: 0, costoVendido: 0, egresosDiarios: 0, egresosFijos: 0, gananciaBruta: 0, gananciaNeta: 0 };
             }
             const amount = Number(e.amount || 0);
             const isFixed = e.expense_type === 'fixed' || e.expenseType === 'fixed';
@@ -633,8 +616,7 @@ export default function MatrixReport() {
 
         const days = Object.values(dailyData).map(day => {
             day.gananciaBruta = day.vendido - day.costoVendido;
-            // La ganancia neta diaria solo resta los egresos diarios (los daily)
-            day.gananciaNeta = day.gananciaBruta - day.egresosDiarios;
+            day.gananciaNeta = day.gananciaBruta - day.egresosDiarios - day.egresosFijos;
             return day;
         });
 
@@ -644,24 +626,23 @@ export default function MatrixReport() {
         const totalCostoVendido = days.reduce((sum, d) => sum + d.costoVendido, 0);
         const totalEgresosDiarios = days.reduce((sum, d) => sum + d.egresosDiarios, 0);
         const totalEgresosFijos = days.reduce((sum, d) => sum + d.egresosFijos, 0);
-        const totalReposicion = days.reduce((sum, d) => sum + d.reposicion, 0);
         const totalGananciaBruta = totalVendido - totalCostoVendido;
-        // La ganancia neta del periodo resta tanto diarios como fijos
-        const totalGananciaNeta = totalGananciaBruta - totalEgresosDiarios - totalEgresosFijos;
+        const totalGananciaNeta = days.reduce((sum, d) => sum + d.gananciaNeta, 0);
         const totalItemsSinCosto = days.reduce((sum, d) => sum + (d.itemsSinCosto || 0), 0);
 
         return {
             days,
+            totalVentas: filteredSales.length,
             totalVendido,
             totalCostoVendido,
             totalEgresosDiarios,
             totalEgresosFijos,
-            totalReposicion,
             totalGananciaBruta,
             totalGananciaNeta,
-            totalItemsSinCosto
+            totalItemsSinCosto,
+            hasActivity: filteredSales.length > 0 || filteredExpenses.length > 0,
         };
-    }, [sales, replenishments, expenses, saleItems, startDate, endDate]);
+    }, [sales, expenses, saleItems, startDate, endDate]);
 
     // N° Venta: correlativo estable por orden cronológico de TODO el
     // historial (no cambia si se mueve el filtro de fechas) — mismo criterio
@@ -735,7 +716,7 @@ export default function MatrixReport() {
 
     const currentReportHasData = (() => {
         switch (reportType) {
-            case 'profit': return profitReportData.days.length > 0;
+            case 'profit': return profitReportData.hasActivity;
             case 'expenses': return filteredExpenses.length > 0;
             case 'inventory': return products.length > 0;
             case 'ranking': return rankingMatrix.length > 0;
@@ -743,6 +724,12 @@ export default function MatrixReport() {
             default: return true;
         }
     })();
+
+    const profitExpensesTotal = profitReportData.totalEgresosDiarios + profitReportData.totalEgresosFijos;
+    const profitChartDays = [...profitReportData.days].reverse();
+    const maxDailyProfitActivity = profitChartDays.reduce((max, day) => (
+        Math.max(max, day.vendido, day.costoVendido, day.egresosDiarios + day.egresosFijos)
+    ), 1);
 
     return (
         <div className="p-4 lg:p-6 pb-24 mg-fade-in w-full mx-auto">
@@ -1217,41 +1204,32 @@ export default function MatrixReport() {
                 ) : reportType === 'profit' ? (
                     <div className="space-y-6">
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                 {[
                                     {
-                                        label: 'Total vendido',
+                                        label: 'Ventas netas',
                                         value: profitReportData.totalVendido,
-                                        hint: 'Ver reporte de ventas',
-                                        title: 'Ver el detalle de ventas que justifica este total',
+                                        hint: `${profitReportData.totalVentas} ventas no canceladas`,
+                                        title: 'Ver ventas del período',
                                         to: `/ventas?tab=reporte&start=${startDate}&end=${endDate}`,
                                         icon: 'caja',
                                         tone: 'brand',
                                     },
                                     {
-                                        label: 'Costo de lo vendido',
+                                        label: 'Costo de ventas',
                                         value: profitReportData.totalCostoVendido,
-                                        hint: 'Ver detalle de costos',
-                                        title: 'Ver el detalle de costos que justifica este total',
+                                        hint: 'Costo de proveedor de productos vendidos',
+                                        title: 'Ver el detalle del costo de ventas',
                                         to: `/reportes?type=costoVendido&start=${startDate}&end=${endDate}`,
                                         icon: 'etiqueta',
                                         tone: 'warning',
                                     },
                                     {
-                                        label: 'Ganancia bruta',
-                                        value: profitReportData.totalGananciaBruta,
-                                        hint: 'Ver reporte de ventas',
-                                        title: 'Ver el detalle de ventas y ganancia por producto que justifica este total',
-                                        to: `/ventas?tab=reporte&start=${startDate}&end=${endDate}`,
-                                        icon: 'reportes',
-                                        tone: 'success',
-                                    },
-                                    {
-                                        label: 'Gastos diarios',
-                                        value: profitReportData.totalEgresosDiarios,
-                                        hint: 'Ver detalle de gastos',
-                                        title: 'Ver el detalle de egresos que justifica este total',
-                                        to: `/reportes?type=expenses&flow=daily&start=${startDate}&end=${endDate}`,
+                                        label: 'Gastos del período',
+                                        value: profitExpensesTotal,
+                                        hint: `Diarios Bs ${profitReportData.totalEgresosDiarios.toFixed(2)} · Fijos Bs ${profitReportData.totalEgresosFijos.toFixed(2)}`,
+                                        title: 'Ver el detalle de todos los gastos del período',
+                                        to: `/reportes?type=expenses&start=${startDate}&end=${endDate}`,
                                         icon: 'gastos',
                                         tone: 'danger',
                                     },
@@ -1275,63 +1253,86 @@ export default function MatrixReport() {
                                 ))}
                             </div>
 
-                            <div className={`rounded-3xl border p-5 shadow-[var(--mg-shadow-sm)] sm:p-6 ${
-                                profitReportData.totalGananciaNeta >= 0
-                                    ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]'
-                                    : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'
-                            }`}>
-                                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-                                    <div className="min-w-0 space-y-1">
-                                        <p className={`flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${
-                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                        }`}>
-                                            <AppIcon name={profitReportData.totalGananciaNeta >= 0 ? 'ok' : 'reloj'} size={15} />
-                                            Ganancia neta real del período
+                            <section className={`relative overflow-hidden rounded-3xl border p-5 shadow-[var(--mg-shadow-sm)] sm:p-6 ${profitReportData.totalGananciaNeta >= 0 ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]' : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'}`}>
+                                <span className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full border-[20px] border-[var(--mg-brand)]/5" />
+                                <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
+                                    <div className="min-w-0">
+                                        <p className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                            <AppIcon name={profitReportData.totalGananciaNeta >= 0 ? 'ok' : 'alerta'} size={15} /> Resultado neto del período
                                         </p>
-                                        <h3 className={`text-3xl font-black tracking-tight tabular-nums lg:text-4xl ${
-                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                        }`}>
-                                            Bs {profitReportData.totalGananciaNeta.toFixed(2)}
-                                        </h3>
-                                        <p className="mt-2 max-w-md text-xs font-medium text-[var(--mg-text-secondary)]">
-                                            Resultado neto de la operación comercial restando todos los costos y gastos del período.
+                                        <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
+                                            <h2 className={`text-3xl font-black tracking-tight tabular-nums sm:text-4xl ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                                Bs {profitReportData.totalGananciaNeta.toFixed(2)}
+                                            </h2>
+                                            <span className={`mb-1 rounded-full border px-2.5 py-1 text-[10px] font-black tabular-nums ${profitReportData.totalGananciaNeta >= 0 ? 'border-[var(--mg-success-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-success-text)]' : 'border-[var(--mg-danger-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-danger)]'}`}>
+                                                Margen neto {profitReportData.totalVendido > 0 ? ((profitReportData.totalGananciaNeta / profitReportData.totalVendido) * 100).toFixed(1) : '0.0'}%
+                                            </span>
+                                        </div>
+                                        <p className="mt-2 max-w-xl text-xs font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
+                                            Ventas no canceladas con cantidades finales de cada pedido, menos costo de productos y egresos diarios y fijos.
                                         </p>
-                                        {profitReportData.totalItemsSinCosto > 0 && (
-                                            <div className="mt-2 flex items-start gap-2 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-2.5 py-1.5 text-xs font-bold text-[var(--mg-gold-text)]">
-                                                <AppIcon name="ayuda" size={14} className="mt-0.5" />
-                                                <span>
-                                                    {profitReportData.totalItemsSinCosto} {profitReportData.totalItemsSinCosto === 1 ? 'producto vendido no tiene' : 'productos vendidos no tienen'} costo de proveedor registrado — la ganancia real podría ser menor a la mostrada.
-                                                </span>
+                                        {profitReportData.totalItemsSinCosto > 0 ? (
+                                            <div className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3 py-2 text-[11px] font-bold text-[var(--mg-gold-text)]">
+                                                <AppIcon name="ayuda" size={14} className="mt-0.5 shrink-0" />
+                                                <span>{profitReportData.totalItemsSinCosto} {profitReportData.totalItemsSinCosto === 1 ? 'producto vendido no tiene' : 'productos vendidos no tienen'} costo registrado; la ganancia puede ser mayor a la real.</span>
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
 
-                                    <div className="w-full shrink-0 space-y-2 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 text-xs shadow-[var(--mg-shadow-sm)] md:w-auto md:min-w-[280px]">
-                                        <div className="flex justify-between gap-4">
-                                            <span className="font-bold text-[var(--mg-text-muted)]">Ganancia bruta:</span>
-                                            <span className="font-black tabular-nums text-[var(--mg-text-primary)]">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-4 font-bold text-[var(--mg-danger)]">
-                                            <span>(-) Gastos diarios:</span>
-                                            <span className="font-black tabular-nums">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-4 font-bold text-[var(--mg-gold-text)]">
-                                            <span>(-) Gastos fijos:</span>
-                                            <span className="font-black tabular-nums">Bs {profitReportData.totalEgresosFijos.toFixed(2)}</span>
-                                        </div>
-                                        <div className={`flex justify-between gap-4 border-t border-dashed border-[var(--mg-border)] pt-2 text-sm font-black ${
-                                            profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
-                                        }`}>
-                                            <span>Ganancia neta:</span>
-                                            <span className="tabular-nums">Bs {profitReportData.totalGananciaNeta.toFixed(2)}</span>
+                                    <div className="space-y-2 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 text-xs shadow-[var(--mg-shadow-sm)]">
+                                        <div className="flex justify-between gap-4"><span className="font-bold text-[var(--mg-text-muted)]">Ventas</span><span className="font-black tabular-nums text-[var(--mg-text-primary)]">Bs {profitReportData.totalVendido.toFixed(2)}</span></div>
+                                        <div className="flex justify-between gap-4"><span className="font-bold text-[var(--mg-text-muted)]">(−) Costo de ventas</span><span className="font-black tabular-nums text-[var(--mg-gold-text)]">Bs {profitReportData.totalCostoVendido.toFixed(2)}</span></div>
+                                        <div className="flex justify-between gap-4 border-t border-dashed border-[var(--mg-border)] pt-2"><span className="font-bold text-[var(--mg-text-secondary)]">Ganancia bruta</span><span className="font-black tabular-nums text-[var(--mg-brand-text)]">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</span></div>
+                                        <div className="flex justify-between gap-4"><span className="font-bold text-[var(--mg-text-muted)]">(−) Gastos diarios</span><span className="font-black tabular-nums text-[var(--mg-danger)]">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</span></div>
+                                        <div className="flex justify-between gap-4"><span className="font-bold text-[var(--mg-text-muted)]">(−) Gastos fijos</span><span className="font-black tabular-nums text-[var(--mg-danger)]">Bs {profitReportData.totalEgresosFijos.toFixed(2)}</span></div>
+                                        <div className={`flex justify-between gap-4 border-t border-dashed border-[var(--mg-border)] pt-2 text-sm font-black ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
+                                            <span>Ganancia neta</span><span className="tabular-nums">Bs {profitReportData.totalGananciaNeta.toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-xs font-black text-[var(--mg-text-primary)]">Movimiento diario</h3>
+                                        <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">Ventas, costos y gastos por día</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 text-[9px] font-bold text-[var(--mg-text-muted)]">
+                                        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-[var(--mg-brand)]" /> Ventas</span>
+                                        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-[var(--mg-gold)]" /> Costos</span>
+                                        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-[var(--mg-danger)]" /> Gastos</span>
+                                    </div>
+                                </div>
+                                {profitReportData.hasActivity ? (
+                                    <div className="mt-3 overflow-x-auto rounded-xl bg-[var(--mg-bg-elevated)] px-3 pt-3">
+                                        <div className="flex h-40 items-end gap-2" style={{ minWidth: `${Math.max(profitChartDays.length * 48, 360)}px` }}>
+                                            {profitChartDays.map((day) => {
+                                                const dayExpenses = day.egresosDiarios + day.egresosFijos;
+                                                const dayLabel = new Date(`${day.date}T00:00:00`).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+                                                const barHeight = (value) => value > 0 ? `${Math.max((value / maxDailyProfitActivity) * 100, 3)}%` : '0%';
+                                                return (
+                                                    <button key={day.date} type="button" onClick={() => setSelectedDayDetail(day)} title={`${dayLabel} · Ventas Bs ${day.vendido.toFixed(2)} · Costos Bs ${day.costoVendido.toFixed(2)} · Gastos Bs ${dayExpenses.toFixed(2)} · Neto Bs ${day.gananciaNeta.toFixed(2)}`} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5 rounded-t-lg px-1 transition-colors hover:bg-[var(--mg-bg-surface)]">
+                                                        <div className="flex h-28 w-full items-end justify-center gap-1">
+                                                            <span className="w-2 rounded-t-md bg-[var(--mg-brand)] sm:w-3" style={{ height: barHeight(day.vendido) }} />
+                                                            <span className="w-2 rounded-t-md bg-[var(--mg-gold)] sm:w-3" style={{ height: barHeight(day.costoVendido) }} />
+                                                            <span className="w-2 rounded-t-md bg-[var(--mg-danger)] sm:w-3" style={{ height: barHeight(dayExpenses) }} />
+                                                        </div>
+                                                        <span className="whitespace-nowrap text-[8px] font-bold capitalize text-[var(--mg-text-muted)]">{dayLabel}</span>
+                                                        <span className={`whitespace-nowrap text-[8px] font-black tabular-nums ${day.gananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>{`Bs ${day.gananciaNeta.toFixed(2)}`}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="mt-4 rounded-xl bg-[var(--mg-bg-elevated)] p-4 text-center text-xs font-semibold text-[var(--mg-text-muted)]">Sin movimientos en este período.</p>
+                                )}
+                            </section>
                         </div>
 
                         <div className="lg:hidden">
-                            {profitReportData.days.length === 0 ? (
+                            {!profitReportData.hasActivity ? (
                                 <EmptyState
                                     icon="reportes"
                                     title="Sin registros en este período"
@@ -1341,7 +1342,7 @@ export default function MatrixReport() {
                                 <div className="overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
                                     <div className="flex items-center justify-between gap-2 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-4 py-3">
                                         <p className="text-[11px] font-black uppercase tracking-wider text-[var(--mg-text-secondary)]">
-                                            Ganancia por día ({profitReportData.days.length})
+                                            Movimiento diario ({profitReportData.days.length})
                                         </p>
                                         <p className={`text-[11px] font-black tabular-nums ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                                             Total: Bs {profitReportData.totalGananciaNeta.toFixed(2)}
@@ -1364,10 +1365,11 @@ export default function MatrixReport() {
                                                         <p className="text-sm font-bold capitalize text-[var(--mg-text-primary)]">
                                                             {dateLabel}
                                                         </p>
-                                                        <p className="mt-0.5 text-[11px] font-semibold leading-4 tabular-nums text-[var(--mg-text-muted)]">
-                                                            <span className="whitespace-nowrap">Vendido Bs {day.vendido.toFixed(2)}</span>
-                                                            <span className="mx-1 text-[var(--mg-text-faint)]">·</span>
-                                                            <span className="whitespace-nowrap">Gastos Bs {(Number(day.egresosDiarios || 0) + Number(day.egresosFijos || 0)).toFixed(2)}</span>
+                                                        <p className="mt-1 text-[10px] font-semibold leading-4 tabular-nums text-[var(--mg-text-muted)]">
+                                                            Ventas Bs {day.vendido.toFixed(2)} · Costos Bs {day.costoVendido.toFixed(2)}
+                                                        </p>
+                                                        <p className="text-[10px] font-semibold leading-4 tabular-nums text-[var(--mg-danger)]">
+                                                            Gastos Bs {(day.egresosDiarios + day.egresosFijos).toFixed(2)}
                                                         </p>
                                                     </div>
                                                     <span className={`shrink-0 text-sm font-black tabular-nums ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
@@ -1382,15 +1384,15 @@ export default function MatrixReport() {
                             )}
                         </div>
                         <div className="hidden overflow-x-auto rounded-2xl border border-[var(--mg-border)] shadow-[var(--mg-shadow-sm)] lg:block">
-                            <table className="w-full min-w-[800px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
+                            <table className="w-full min-w-[980px] border-collapse bg-[var(--mg-bg-surface)] text-sm">
                                 <thead>
                                     <tr>
-                                        {['Fecha', 'Total vendido', 'Costo vendido', 'Ganancia bruta', 'Gastos diarios', 'Ganancia neta'].map((label, idx) => (
+                                        {['Fecha', 'Ventas netas', 'Costo vendido', 'Ganancia bruta', 'Gastos diarios', 'Gastos fijos', 'Ganancia neta'].map((label, idx) => (
                                             <th
                                                 key={label}
                                                 className={`whitespace-nowrap bg-[var(--mg-bg-section)] p-3.5 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand-text)] ${
                                                     idx === 0 ? 'text-left' : 'text-right'
-                                                } ${idx === 5 ? 'text-[var(--mg-accent-text)]' : ''}`}
+                                                } ${idx === 6 ? 'text-[var(--mg-accent-text)]' : ''}`}
                                             >
                                                 {label}
                                             </th>
@@ -1398,7 +1400,7 @@ export default function MatrixReport() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {profitReportData.days.map((day, idx) => {
+                                    {profitReportData.hasActivity && profitReportData.days.map((day, idx) => {
                                         const dateLabel = new Date(`${day.date}T00:00:00`).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
                                         const isDayPositive = day.gananciaNeta >= 0;
                                         return (
@@ -1421,23 +1423,17 @@ export default function MatrixReport() {
                                                 <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-success-text)]">
                                                     Bs {day.gananciaBruta.toFixed(2)}
                                                 </td>
-                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-danger)]">
-                                                    <div>Bs {day.egresosDiarios.toFixed(2)}</div>
-                                                    {day.egresosFijos > 0 && (
-                                                        <span className="mt-0.5 inline-block rounded-md border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--mg-gold-text)]" title="Gasto fijo registrado este día (se descuenta al final en el global)">
-                                                            + Bs {day.egresosFijos.toFixed(2)} fijos
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-danger)]">Bs {day.egresosDiarios.toFixed(2)}</td>
+                                                <td className="p-3.5 text-right font-semibold tabular-nums text-[var(--mg-danger)]">Bs {day.egresosFijos.toFixed(2)}</td>
                                                 <td className={`p-3.5 text-right font-black tabular-nums ${isDayPositive ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>
                                                     Bs {day.gananciaNeta.toFixed(2)}
                                                 </td>
                                             </tr>
                                         );
                                     })}
-                                    {profitReportData.days.length === 0 && (
+                                    {!profitReportData.hasActivity && (
                                         <tr>
-                                            <td colSpan={6} className="bg-[var(--mg-bg-elevated)] p-12 text-center">
+                                            <td colSpan={7} className="bg-[var(--mg-bg-elevated)] p-12 text-center">
                                                 <AppIcon name="reportes" size={24} className="mx-auto text-[var(--mg-text-muted)]" />
                                                 <p className="mt-2 text-sm font-bold text-[var(--mg-text-primary)]">Sin registros en este período</p>
                                                 <p className="mt-1 text-xs font-medium text-[var(--mg-text-muted)]">Prueba ampliando el rango de fechas.</p>
@@ -1445,6 +1441,19 @@ export default function MatrixReport() {
                                         </tr>
                                     )}
                                 </tbody>
+                                {profitReportData.hasActivity && (
+                                    <tfoot>
+                                        <tr className="border-t-2 border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-xs font-black">
+                                            <td className="p-3.5 text-[var(--mg-text-primary)]">Total del período</td>
+                                            <td className="p-3.5 text-right tabular-nums">Bs {profitReportData.totalVendido.toFixed(2)}</td>
+                                            <td className="p-3.5 text-right tabular-nums text-[var(--mg-gold-text)]">Bs {profitReportData.totalCostoVendido.toFixed(2)}</td>
+                                            <td className="p-3.5 text-right tabular-nums text-[var(--mg-brand-text)]">Bs {profitReportData.totalGananciaBruta.toFixed(2)}</td>
+                                            <td className="p-3.5 text-right tabular-nums text-[var(--mg-danger)]">Bs {profitReportData.totalEgresosDiarios.toFixed(2)}</td>
+                                            <td className="p-3.5 text-right tabular-nums text-[var(--mg-danger)]">Bs {profitReportData.totalEgresosFijos.toFixed(2)}</td>
+                                            <td className={`p-3.5 text-right tabular-nums ${profitReportData.totalGananciaNeta >= 0 ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'}`}>Bs {profitReportData.totalGananciaNeta.toFixed(2)}</td>
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </div>
@@ -1578,7 +1587,7 @@ export default function MatrixReport() {
                             : reportType === 'expenses'
                             ? 'Resumen y desglose de egresos del negocio en el período.'
                             : reportType === 'profit'
-                            ? 'Ingresos, costos de reposición, egresos y ganancia neta.'
+                            ? 'Ventas no canceladas, costo vendido, gastos y ganancia neta del período.'
                             : 'Stock actual, valorización y movimientos del período.'}
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-[var(--mg-success-text)]">
@@ -1890,7 +1899,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                                     </div>
                                     {day.egresosFijos > 0 && (
                                         <div className="text-[var(--mg-gold-text)]">
-                                            Gastos fijos registrados hoy (informativo): <span className="font-bold">Bs {day.egresosFijos.toFixed(2)}</span>
+                                            Gastos fijos registrados hoy: <span className="font-bold">Bs {day.egresosFijos.toFixed(2)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1907,7 +1916,7 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                         </span>
                         {day.egresosFijos > 0 && (
                             <span className="mt-1 block text-[9px] font-semibold text-[var(--mg-gold-text)]">
-                                * Se registraron Bs {day.egresosFijos.toFixed(2)} fijos hoy (se restan del total del mes).
+                                Incluye Bs {day.egresosFijos.toFixed(2)} de gastos fijos registrados ese día.
                             </span>
                         )}
                     </div>
