@@ -691,6 +691,49 @@ export default function Sales() {
     });
   }, [orderChanges, reportStart, reportEnd, reportBranch, salesById, mainBranchId, isOwner, user?.uid]);
 
+  const ordersInReportRange = useMemo(() => {
+    const inRange = salesList.filter((sale) => {
+      const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt || sale.created_at);
+      if (!(date >= reportStart && date <= reportEnd)) return false;
+      if (!isOwner && user?.uid && (sale.createdBy || sale.created_by) !== user.uid) return false;
+      return true;
+    });
+    const inBranch = reportBranch === 'all'
+      ? inRange
+      : inRange.filter((sale) => saleBranchId(sale) === reportBranch);
+    if (!isOwner || reportBranch === 'all' || teamMembers.length === 0) return inBranch;
+    const membersById = Object.fromEntries(teamMembers.map((member) => [member.id, member]));
+    return inBranch.filter((sale) => {
+      const uid = sale.createdBy || sale.created_by;
+      if (!uid) return true;
+      const member = membersById[uid];
+      if (!member || !Array.isArray(member.branchIds) || member.branchIds.length === 0) return true;
+      return member.branchIds.includes(reportBranch);
+    });
+  }, [salesList, reportStart, reportEnd, reportBranch, isOwner, user?.uid, teamMembers, mainBranchId]);
+
+  const bitacoraOrderStats = useMemo(() => {
+    const cancelledIds = new Set(orderChanges
+      .filter((change) => change.eventType === 'sale_cancelled')
+      .map((change) => change.saleId));
+    const editedIds = new Set(orderChanges
+      .filter((change) => ['item_added', 'item_removed', 'qty_increased', 'qty_decreased'].includes(change.eventType))
+      .map((change) => change.saleId));
+    const cancelled = ordersInReportRange.filter((sale) => (
+      sale.status === 'cancelled' || sale.status === 'voided' || cancelledIds.has(sale.id)
+    ));
+    const cancelledSet = new Set(cancelled.map((sale) => sale.id));
+    const edited = ordersInReportRange.filter((sale) => (
+      !cancelledSet.has(sale.id) && editedIds.has(sale.id)
+    ));
+    return {
+      regular: ordersInReportRange.length - cancelled.length - edited.length,
+      edited: edited.length,
+      cancelled: cancelled.length,
+      total: ordersInReportRange.length,
+    };
+  }, [ordersInReportRange, orderChanges]);
+
   const memberNameById = useMemo(() => {
     const map = Object.fromEntries(teamMembers.map((m) => [m.id, m.displayName || m.email || '']));
     if (user?.uid) map[user.uid] = user.displayName || user.email || sellerName || 'Tú';
@@ -2344,10 +2387,10 @@ export default function Sales() {
               />
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <MetricCard label="Pedidos cancelados" value={bitacoraStats.cancelled} hint="Anulados en el período" icon="cancelar" tone="danger" />
-                <MetricCard label="Productos añadidos" value={bitacoraStats.added} hint="Agregados al pedido" icon="agregar" tone="success" />
-                <MetricCard label="Productos retirados" value={bitacoraStats.removed} hint="Quitados del pedido" icon="eliminar" tone="warning" />
-                <MetricCard label="Cantidades ajustadas" value={bitacoraStats.adjusted} hint="Subieron o bajaron" icon="editar" tone="brand" />
+                <MetricCard label="Pedidos regulares" value={bitacoraOrderStats.regular} hint="Sin cambios ni cancelaciones" icon="check" tone="success" />
+                <MetricCard label="Pedidos editados" value={bitacoraOrderStats.edited} hint="Con productos o cantidades modificados" icon="editar" tone="warning" />
+                <MetricCard label="Pedidos cancelados" value={bitacoraOrderStats.cancelled} hint="Anulados en el período" icon="cancelar" tone="danger" />
+                <MetricCard label="Pedidos totales" value={bitacoraOrderStats.total} hint="Incluye regulares, editados y cancelados" icon="recibo" tone="brand" />
               </div>
 
               <SectionCard
