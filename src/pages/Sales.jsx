@@ -2282,20 +2282,17 @@ export default function Sales() {
               </div>
 
               <SectionCard
-                title="Cambios registrados"
-                subtitle={`${bitacoraRows.length} ${bitacoraRows.length === 1 ? 'cambio' : 'cambios'} en el período`}
-                bodyClassName="p-4"
-              >
-                <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                  {['sale_cancelled', 'item_added', 'item_removed', 'qty_increased', 'qty_decreased'].map((type) => (
-                    <OrderChangeBadge key={type} type={type} compact />
-                  ))}
-                  <span className="ml-auto text-[11px] font-bold text-[var(--mg-text-muted)]">
-                    Impacto neto: {formatBs(bitacoraStats.net)}
+                title="Movimientos de pedidos"
+                subtitle={`${bitacoraRows.length} ${bitacoraRows.length === 1 ? 'movimiento' : 'movimientos'} en el período`}
+                action={(
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2.5 py-1.5 text-[10px] font-black text-[var(--mg-accent-text)]">
+                    Impacto neto <b className="tabular-nums">{formatBs(bitacoraStats.net)}</b>
                   </span>
-                </div>
+                )}
+                bodyClassName="p-2 sm:p-4"
+              >
                 <DataTable
-                  storageKey="mg-bitacora-pedidos-columns"
+                  storageKey="mg-bitacora-pedidos-columns-v2"
                   getRowKey={(row) => row.rowKey}
                   emptyMessage="No hay cambios de pedidos en el rango de fechas seleccionado."
                   rows={bitacoraRows}
@@ -2320,12 +2317,21 @@ export default function Sales() {
                       render: (row) => <OrderChangeBadge type={row.eventType} />,
                     },
                     {
-                      key: 'producto', label: 'Producto',
-                      render: (row) => <span className="block max-w-[180px] truncate font-semibold">{row.productName}</span>,
-                    },
-                    {
-                      key: 'detalle', label: 'Detalle', align: 'center', width: 'w-28',
-                      render: (row) => <span className="whitespace-nowrap tabular-nums">{row.detail}</span>,
+                      key: 'detalle', label: 'Producto y detalle',
+                      render: (row) => (
+                        <div className="min-w-[150px] max-w-[360px]">
+                          <p className="truncate font-semibold text-[var(--mg-text-primary)]">{row.productName}</p>
+                          <p className="mt-0.5 text-[10px] font-semibold tabular-nums text-[var(--mg-text-muted)]">{row.detail}</p>
+                          <details className="mt-1 text-[10px]">
+                            <summary className="w-fit cursor-pointer font-bold text-[var(--mg-accent-text)]">Ver datos adicionales</summary>
+                            <div className="mt-1 space-y-0.5 text-[var(--mg-text-secondary)]">
+                              {row.reason ? <p><b>Motivo:</b> {row.reason}</p> : null}
+                              <p><b>Responsable:</b> {row.actorName}</p>
+                              <p><b>Sede:</b> {row.branchName}</p>
+                            </div>
+                          </details>
+                        </div>
+                      ),
                     },
                     {
                       key: 'monto', label: 'Monto', align: 'right', width: 'w-28',
@@ -2340,20 +2346,6 @@ export default function Sales() {
                           {row.amountDelta === 0 ? '—' : `${row.amountDelta > 0 ? '+' : '−'}${formatBs(Math.abs(row.amountDelta))}`}
                         </span>
                       ),
-                    },
-                    {
-                      key: 'motivo', label: 'Motivo',
-                      render: (row) => row.reason
-                        ? <span className="block max-w-[180px] truncate">{row.reason}</span>
-                        : <span className="text-[var(--mg-text-faint)]">—</span>,
-                    },
-                    {
-                      key: 'responsable', label: 'Responsable', width: 'w-32',
-                      render: (row) => <span className="block max-w-[140px] truncate font-semibold">{row.actorName}</span>,
-                    },
-                    {
-                      key: 'sede', label: 'Sede', width: 'w-32',
-                      render: (row) => <span className="block max-w-[140px] truncate">{row.branchName}</span>,
                     },
                   ]}
                 />
