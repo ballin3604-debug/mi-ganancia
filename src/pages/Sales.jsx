@@ -1990,8 +1990,8 @@ export default function Sales() {
           )}
 
           {activeTab === 'pedidos' ? (
-            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
-              <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] sm:p-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-24 xl:overflow-hidden xl:pb-0">
+              <div className="shrink-0 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)] sm:p-4">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]">
@@ -2063,7 +2063,7 @@ export default function Sales() {
               </div>
 
               {orderFlash ? (
-                <div className={`flex items-start justify-between gap-3 rounded-2xl border px-3.5 py-3 ${
+                <div className={`flex shrink-0 items-start justify-between gap-3 rounded-2xl border px-3.5 py-3 ${
                   orderFlash.tone === 'danger'
                     ? 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
                     : 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]'
@@ -2075,7 +2075,7 @@ export default function Sales() {
                 </div>
               ) : null}
 
-              <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+              <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_330px] xl:grid-rows-1">
                 <section className="flex min-h-0 flex-col rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 shadow-[var(--mg-shadow-sm)]">
                   <div className="flex items-center justify-between gap-2 px-0.5">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
@@ -2115,7 +2115,7 @@ export default function Sales() {
                     })}
                   </div>
 
-                  <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 xl:max-h-[calc(100vh-330px)]">
+                  <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
                     {filteredTodayOrders.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-[var(--mg-border-hover)] bg-[var(--mg-bg-elevated)] px-4 py-8 text-center">
                         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
@@ -2212,7 +2212,7 @@ export default function Sales() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+                <section className="flex min-h-0 flex-col overflow-y-auto rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
                   {selectedOrder ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2313,7 +2313,7 @@ export default function Sales() {
                       </div>
                     </>
                   ) : (
-                    <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                    <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 text-center">
                       <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]">
                         <AppIcon name="carrito" size={26} />
                       </span>
@@ -2325,7 +2325,7 @@ export default function Sales() {
                   )}
                 </section>
 
-                <aside className="h-fit rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
+                <aside className="flex min-h-0 flex-col overflow-y-auto rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--mg-text-muted)]">
                       Acciones rápidas
