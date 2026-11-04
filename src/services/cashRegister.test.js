@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, generateUUID } from './localDb';
-import { calculateCashMovements, createCashArqueo } from './cashRegister';
+import { calculateCashMovements, createCashArqueo, openCashSession } from './cashRegister';
 import { getPendingOperations } from './syncEngine';
 
 vi.mock('./supabaseClient', () => ({
@@ -79,6 +79,68 @@ describe('cash register arqueos', () => {
     expect(operations).toHaveLength(1);
     expect(operations[0].operation_type).toBe('ADD_CASH_ARQUEO');
     expect(operations[0].payload.closed_by).toBe(userId);
+  });
+
+  it('abre una caja para un cajero y evita dos cajas abiertas en la misma sucursal', async () => {
+    const businessId = generateUUID();
+    const ownerId = generateUUID();
+    const branchId = generateUUID();
+    const cashierId = generateUUID();
+    const session = await openCashSession(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashierId,
+      cashierName: 'Cajera Test',
+      openingCash: 75,
+    });
+
+    expect(session.status).toBe('open');
+    expect(session.opening_cash).toBe(75);
+    expect(session.cashier_id).toBe(cashierId);
+    expect((await db.cash_sessions.get(session.id)).sync_status).toBe('local');
+    await expect(openCashSession(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashierId: generateUUID(),
+      cashierName: 'Otro Cajero',
+      openingCash: 20,
+    })).rejects.toThrow('Ya hay una caja abierta');
+  });
+
+  it('cierra la sesión asignada junto con el arqueo', async () => {
+    const businessId = generateUUID();
+    const ownerId = generateUUID();
+    const branchId = generateUUID();
+    const cashierId = generateUUID();
+    const session = await openCashSession(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashierId,
+      cashierName: 'Cajera Test',
+      openingCash: 20,
+    });
+
+    const arqueo = await createCashArqueo(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashSessionId: session.id,
+      periodStart: session.opened_at,
+      openingCash: 20,
+      cashSales: 30,
+      qrSales: 0,
+      cashExpenses: 5,
+      expectedCash: 45,
+      countedCash: 45,
+      notes: '',
+    });
+
+    const closedSession = await db.cash_sessions.get(session.id);
+    expect(closedSession.status).toBe('closed');
+    expect(closedSession.closed_arqueo_id).toBe(arqueo.id);
+    expect(arqueo.cashier_id).toBe(cashierId);
+    expect(arqueo.cashier_name).toBe('Cajera Test');
+    const operations = await getPendingOperations(businessId, 'pending');
+    expect(operations.map((operation) => operation.operation_type)).toEqual([
+      'OPEN_CASH_SESSION',
+      'ADD_CASH_ARQUEO',
+      'CLOSE_CASH_SESSION',
+    ]);
   });
 
   it('exige observación cuando hay diferencia', async () => {

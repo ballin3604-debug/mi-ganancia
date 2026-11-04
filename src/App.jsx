@@ -231,8 +231,8 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="ventas" element={<Sales />} />
-              <Route path="arqueo" element={<CashRegister />} />
-              <Route path="arqueo/historial" element={<CashHistory />} />
+              <Route path="arqueo" element={<Navigate to="/equipo/arqueo" replace />} />
+              <Route path="arqueo/historial" element={<Navigate to="/equipo/arqueo/historial" replace />} />
               <Route path="compras" element={<Compras />} />
               <Route path="inventario" element={<Inventory />} />
               <Route path="egresos" element={<Expenses />} />
@@ -240,6 +240,8 @@ export default function App() {
               <Route path="configuracion" element={<Settings />} />
               <Route path="sucursales" element={<Branches />} />
               <Route path="equipo" element={<Team />} />
+              <Route path="equipo/arqueo" element={<CashRegister />} />
+              <Route path="equipo/arqueo/historial" element={<CashHistory />} />
               <Route path="recibo/:saleId" element={<ReceiptView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
@@ -270,8 +272,8 @@ export default function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="ventas" element={<Sales />} />
-            <Route path="arqueo" element={<CashRegister />} />
-            <Route path="arqueo/historial" element={<CashHistory />} />
+            <Route path="arqueo" element={<Navigate to="/equipo/arqueo" replace />} />
+            <Route path="arqueo/historial" element={<Navigate to="/equipo/arqueo/historial" replace />} />
             <Route path="compras" element={<Compras />} />
             <Route path="inventario" element={<Inventory />} />
             <Route path="egresos" element={<Expenses />} />
@@ -279,6 +281,8 @@ export default function App() {
             <Route path="configuracion" element={<Settings />} />
             <Route path="sucursales" element={<Branches />} />
             <Route path="equipo" element={<Team />} />
+            <Route path="equipo/arqueo" element={<CashRegister />} />
+            <Route path="equipo/arqueo/historial" element={<CashHistory />} />
             <Route path="recibo/:saleId" element={<ReceiptView />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

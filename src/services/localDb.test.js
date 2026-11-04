@@ -26,6 +26,7 @@ describe('localDb schema', () => {
     expect(storeNames).toContain('branches');
     expect(storeNames).toContain('businesses');
     expect(storeNames).toContain('cash_arqueos');
+    expect(storeNames).toContain('cash_sessions');
   });
 
   it('should store and retrieve a pending operation with all metadata fields', async () => {

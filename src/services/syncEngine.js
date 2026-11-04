@@ -1064,6 +1064,57 @@ async function processOperation(op, businessId) {
       }
       break;
     }
+    case 'OPEN_CASH_SESSION': {
+      const { error } = await assertSupabase()
+        .from('cash_sessions')
+        .upsert(payload, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) throw error;
+      try {
+        await db.cash_sessions.update(payload.id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar la apertura de caja como confirmada:', confirmErr);
+      }
+      break;
+    }
+    case 'CLOSE_CASH_SESSION': {
+      const { id, business_id, ...updateData } = payload;
+      const client = assertSupabase();
+      const { data: arqueo, error: arqueoError } = await client
+        .from('cash_arqueos')
+        .select('id')
+        .eq('id', payload.closed_arqueo_id)
+        .eq('business_id', business_id)
+        .maybeSingle();
+      if (arqueoError) throw arqueoError;
+      if (!arqueo) throw new Error('El arqueo asociado todavía no está sincronizado.');
+      const { data: session, error: readError } = await client
+        .from('cash_sessions')
+        .select('status, closed_arqueo_id')
+        .eq('id', id)
+        .eq('business_id', business_id)
+        .maybeSingle();
+      if (readError) throw readError;
+      if (session?.status === 'closed' && session.closed_arqueo_id === payload.closed_arqueo_id) {
+        await db.cash_sessions.update(id, { sync_status: 'confirmed' });
+        break;
+      }
+      if (!session || session.status !== 'open') {
+        throw new Error('La apertura de caja todavía no está sincronizada.');
+      }
+      const { error } = await client
+        .from('cash_sessions')
+        .update(updateData)
+        .eq('id', id)
+        .eq('business_id', business_id)
+        .eq('status', 'open');
+      if (error) throw error;
+      try {
+        await db.cash_sessions.update(id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar el cierre de caja como confirmado:', confirmErr);
+      }
+      break;
+    }
     case 'UPDATE_EXPENSE': {
       const { id, ...updateData } = payload;
       let upd = await stripUnknownExpenseKeys(updateData);
@@ -1367,6 +1418,8 @@ export async function syncCacheFromServer(businessId) {
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;
         case 'ADD_CASH_ARQUEO':
+        case 'OPEN_CASH_SESSION':
+        case 'CLOSE_CASH_SESSION':
           if (op.payload.id) pendingIds.add(op.payload.id);
           break;
       }
@@ -1529,6 +1582,21 @@ export async function syncCacheFromServer(businessId) {
         await safeSyncTable(db.cash_arqueos, rows, (item) => pendingIds.has(item.id), belongsToBiz);
       } catch (err) {
         console.warn('syncEngine: no se pudieron sincronizar los arqueos de caja:', err);
+      }
+    }
+
+    if (db.cash_sessions) {
+      try {
+        const rows = await fetchAll((from, to) => assertSupabase()
+          .from('cash_sessions')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('opened_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to));
+        await safeSyncTable(db.cash_sessions, rows, (item) => pendingIds.has(item.id), belongsToBiz);
+      } catch (err) {
+        console.warn('syncEngine: no se pudieron sincronizar las sesiones de caja:', err);
       }
     }
 

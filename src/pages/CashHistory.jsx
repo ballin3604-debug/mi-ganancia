@@ -221,7 +221,7 @@ export default function CashHistory() {
             />
             <button
               type="button"
-              onClick={() => navigate('/arqueo')}
+              onClick={() => navigate('/equipo/arqueo')}
               className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-[var(--mg-brand)] shadow-sm transition-all hover:bg-white/90 active:scale-95"
             >
               <AppIcon name="volver" size={15} /> Ir al arqueo actual
@@ -347,7 +347,7 @@ export default function CashHistory() {
                     <div className="min-w-0">
                       <p className="truncate text-[12px] font-black">{formatDate(arqueo.closed_at)}</p>
                       <p className={`mt-1 truncate text-[10px] font-semibold ${selected ? 'opacity-70' : 'text-[var(--mg-text-muted)]'}`}>
-                        {branchName} · {arqueo.closed_by_name || 'Equipo'}
+                        {branchName} · {arqueo.cashier_name ? `Caja de ${arqueo.cashier_name} · ` : ''}Cerró {arqueo.closed_by_name || 'Equipo'}
                       </p>
                     </div>
                     <span className={`shrink-0 text-[13px] font-black tabular-nums ${selected ? '' : 'text-[var(--mg-brand-text)]'}`}>
@@ -390,7 +390,7 @@ export default function CashHistory() {
                     {formatDate(selectedArqueo.closed_at)}
                   </h2>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                    <span className="inline-flex items-center gap-1"><AppIcon name="equipo" size={12} /> {selectedArqueo.closed_by_name || 'Equipo'}</span>
+                    <span className="inline-flex items-center gap-1"><AppIcon name="equipo" size={12} /> Caja de {selectedArqueo.cashier_name || 'cajero no asignado'} · cerró {selectedArqueo.closed_by_name || 'Equipo'}</span>
                     <span className="h-1 w-1 rounded-full bg-current opacity-40" />
                     <span>{branchNames[selectedArqueo.branch_id] || 'Sucursal'}</span>
                   </p>

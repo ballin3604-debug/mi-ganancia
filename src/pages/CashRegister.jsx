@@ -7,7 +7,9 @@ import { getSales, subscribeToSales } from '../services/sales';
 import {
   calculateCashMovements,
   getCashArqueos,
+  getCashSessions,
   subscribeCashArqueos,
+  subscribeCashSessions,
 } from '../services/cashRegister';
 import { AppIcon } from '../components/icons';
 import { BranchSelect } from '../components/BranchSelect';
@@ -84,6 +86,7 @@ export default function CashRegister() {
   const [sales, setSales] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [arqueos, setArqueos] = useState([]);
+  const [cashSessions, setCashSessions] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -96,12 +99,14 @@ export default function CashRegister() {
     const unSales = subscribeToSales(businessId, setSales);
     const unExpenses = subscribeToExpenses(businessId, setExpenses);
     const unArqueos = subscribeCashArqueos(businessId, setArqueos);
-    Promise.all([getSales(businessId), getAllExpenses(businessId), getCashArqueos(businessId)])
-      .then(([salesRows, expenseRows, arqueoRows]) => {
+    const unCashSessions = subscribeCashSessions(businessId, setCashSessions);
+    Promise.all([getSales(businessId), getAllExpenses(businessId), getCashArqueos(businessId), getCashSessions(businessId)])
+      .then(([salesRows, expenseRows, arqueoRows, sessionRows]) => {
         if (!mounted) return;
         setSales(salesRows);
         setExpenses(expenseRows);
         setArqueos(arqueoRows);
+        setCashSessions(sessionRows);
       })
       .catch(console.error)
       .finally(() => { if (mounted) setLoaded(true); });
@@ -110,6 +115,7 @@ export default function CashRegister() {
       unSales();
       unExpenses();
       unArqueos();
+      unCashSessions();
     };
   }, [businessId]);
 
@@ -128,9 +134,12 @@ export default function CashRegister() {
     .filter((arqueo) => arqueo.branch_id === activeBranchId)
     .sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at)), [arqueos, activeBranchId]);
   const lastArqueo = branchArqueos[0] || null;
-  const periodStart = toDate(lastArqueo?.closed_at) || todayStart();
+  const activeCashSession = cashSessions.find((session) => (
+    session.branch_id === activeBranchId && session.status === 'open'
+  )) || null;
+  const periodStart = toDate(activeCashSession?.opened_at) || toDate(lastArqueo?.closed_at) || todayStart();
   const isMainBranch = !!(activeBranch?.isMain || activeBranch?.is_main);
-  const openingCash = Number(lastArqueo?.counted_cash || 0);
+  const openingCash = Number(activeCashSession?.opening_cash ?? lastArqueo?.counted_cash ?? 0);
   const movements = useMemo(() => calculateCashMovements({
     sales,
     expenses,
@@ -158,7 +167,6 @@ export default function CashRegister() {
   }
 
   const isWarehouse = activeBranch?.type === 'almacen';
-  const firstName = sellerName || user?.displayName || user?.email || 'Equipo';
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-4 pb-28 pt-4 lg:pb-8">
@@ -179,7 +187,11 @@ export default function CashRegister() {
               <p className="mt-1 text-[11px] font-semibold text-white/70 sm:text-xs">
                 {activeBranch?.name || 'Selecciona una sucursal'} · {now.toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
-              <p className="mt-1 text-[10px] font-semibold text-white/60">Caja compartida por sucursal · preparado para {firstName.split(' ')[0]}</p>
+              <p className="mt-1 text-[10px] font-semibold text-white/70">
+                {activeCashSession
+                  ? `Caja abierta para ${activeCashSession.cashier_name} · desde ${formatDate(activeCashSession.opened_at)}`
+                  : 'Caja cerrada · abre el turno desde Equipo'}
+              </p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -193,11 +205,11 @@ export default function CashRegister() {
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              disabled={!activeBranchId || isWarehouse || !loaded}
+              disabled={!activeBranchId || isWarehouse || !loaded || !activeCashSession}
               className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--mg-brand-contrast)] px-4 text-xs font-black text-[var(--mg-brand)] shadow-sm transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <AppIcon name="cerrar" size={15} color="currentColor" />
-              Realizar arqueo
+              {activeCashSession ? 'Realizar arqueo' : 'Caja cerrada'}
             </button>
           </div>
         </div>
@@ -210,6 +222,15 @@ export default function CashRegister() {
             <p className="text-xs font-black">{flash.text}</p>
             <p className="mt-0.5 text-[10px] font-semibold opacity-80">{flash.sync}</p>
           </div>
+        </div>
+      ) : null}
+
+      {!activeCashSession && !isWarehouse ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-4 py-3">
+          <p className="text-xs font-bold text-[var(--mg-gold-text)]">No hay una caja abierta en esta sucursal. Ábrela y asígnala a un cajero desde Equipo.</p>
+          <button type="button" onClick={() => navigate('/equipo')} className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl bg-[var(--mg-gold)] px-3 text-[10px] font-black text-white transition-all hover:brightness-110">
+            <AppIcon name="equipo" size={13} /> Ir a Equipo
+          </button>
         </div>
       ) : null}
 
@@ -237,7 +258,7 @@ export default function CashRegister() {
               <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-brand-text)]">{branchArqueos.length} registrados</span>
               <button
                 type="button"
-                onClick={() => navigate('/arqueo/historial')}
+                onClick={() => navigate('/equipo/arqueo/historial')}
                 className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 text-[10px] font-black text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent)] hover:text-white"
               >
                 <AppIcon name="historial" size={12} /> Historial completo
@@ -249,9 +270,9 @@ export default function CashRegister() {
             <div className="px-5 py-10 text-center">
               <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]"><AppIcon name="caja" size={25} /></span>
               <h3 className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Aún no hay arqueos</h3>
-              <p className="mx-auto mt-1 max-w-sm text-xs font-medium text-[var(--mg-text-muted)]">El fondo inicial sugerido será Bs 0. Al guardar el primero, el siguiente usará el contado como referencia.</p>
-              <button type="button" onClick={() => setModalOpen(true)} disabled={!activeBranchId || isWarehouse} className="mg-btn-primary mt-4 inline-flex min-h-[38px] items-center gap-1.5 px-4 text-xs disabled:opacity-50">
-                <AppIcon name="agregar" size={14} /> Hacer primer arqueo
+              <p className="mx-auto mt-1 max-w-sm text-xs font-medium text-[var(--mg-text-muted)]">Primero abre una caja desde Equipo y asígnala al cajero que atenderá este turno.</p>
+              <button type="button" onClick={() => navigate('/equipo')} disabled={!activeBranchId || isWarehouse} className="mg-btn-primary mt-4 inline-flex min-h-[38px] items-center gap-1.5 px-4 text-xs disabled:opacity-50">
+                <AppIcon name="equipo" size={14} /> Abrir caja desde Equipo
               </button>
             </div>
           ) : (
@@ -265,7 +286,8 @@ export default function CashRegister() {
                         <Difference amount={arqueo.difference} />
                       </div>
                       <p className="mt-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                        {formatDate(arqueo.period_start)} → {formatDate(arqueo.closed_at)} · Cerró {arqueo.closed_by_name || 'Equipo'}
+                        {formatDate(arqueo.period_start)} → {formatDate(arqueo.closed_at)}
+                        {arqueo.cashier_name ? ` · Caja de ${arqueo.cashier_name}` : ''} · Cerró {arqueo.closed_by_name || 'Equipo'}
                       </p>
                       {arqueo.notes ? <p className="mt-1 line-clamp-2 text-[11px] font-medium text-[var(--mg-text-secondary)]">{arqueo.notes}</p> : null}
                     </div>
@@ -303,12 +325,12 @@ export default function CashRegister() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]"><AppIcon name="permisos" size={17} /></span>
               <div>
                 <h2 className="text-xs font-black text-[var(--mg-text-primary)]">Período actual</h2>
-                <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">{lastArqueo ? 'Desde el último arqueo' : 'Primer arqueo del día'}</p>
+                <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">{activeCashSession ? `Asignada a ${activeCashSession.cashier_name}` : lastArqueo ? 'Desde el último arqueo' : 'Caja cerrada'}</p>
               </div>
             </div>
             <div className="mt-3 space-y-2 border-t border-[var(--mg-separator)] pt-3 text-[11px]">
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Inicio</span><span className="font-bold text-[var(--mg-text-secondary)]">{formatDate(periodStart)}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Fondo sugerido</span><span className="font-black tabular-nums text-[var(--mg-brand-text)]">{formatBs(openingCash)}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Fondo inicial</span><span className="font-black tabular-nums text-[var(--mg-brand-text)]">{formatBs(openingCash)}</span></div>
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Ventas vigentes</span><span className="font-bold tabular-nums text-[var(--mg-text-secondary)]">{branchSalesCount}</span></div>
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Último arqueo</span><span className="font-bold text-[var(--mg-text-secondary)]">{lastArqueo ? formatDate(lastArqueo.closed_at) : 'Todavía ninguno'}</span></div>
             </div>
@@ -327,13 +349,15 @@ export default function CashRegister() {
       </section>
 
       <CashArqueoModal
-        open={modalOpen}
+        open={modalOpen && !!activeCashSession}
         onClose={() => setModalOpen(false)}
         businessId={businessId}
         userId={user?.uid}
         userName={sellerName || user?.displayName || user?.email}
         branch={activeBranch}
         isMainBranch={isMainBranch}
+        cashSessionId={activeCashSession?.id || null}
+        cashierName={activeCashSession?.cashier_name || ''}
         sales={sales}
         expenses={expenses}
         periodStart={periodStart}

@@ -17,6 +17,7 @@ import {
   updateMemberBranches,
 } from '../services/cashier';
 import { TeamSection } from '../components/settings/TeamSection';
+import CashSessionPanel from '../components/CashSessionPanel';
 import PageHeader from '../components/ui/PageHeader';
 import { usePlan } from '../hooks/usePlan';
 
@@ -214,6 +215,7 @@ export default function Team() {
         title="Equipo y accesos"
         subtitle="Cajeros, accesos, invitaciones y permisos del negocio."
       />
+      <CashSessionPanel members={members} />
       <TeamSection
         members={members}
         membersLoading={membersLoading}

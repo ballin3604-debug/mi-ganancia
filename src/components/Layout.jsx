@@ -92,13 +92,6 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: 'Arqueo de caja', Icon: WalletIcon, ownerOnly: false, key: 'cash-register', basePath: '/arqueo',
-    children: [
-      { to: '/arqueo', label: 'Arqueo actual', key: 'cash-register-current' },
-      { to: '/arqueo/historial', label: 'Historial de cierres', key: 'cash-register-history' },
-    ],
-  },
-  {
     label: 'Compras', Icon: BagIcon, ownerOnly: false, key: 'purchases', basePath: '/compras',
     children: [
       { to: '/compras?tab=comprar', label: 'Comprar', key: 'purchases-new' },
@@ -129,6 +122,8 @@ const NAV_ITEMS = [
     label: 'Equipo', Icon: UsersIcon, ownerOnly: true, key: 'team', basePath: '/equipo',
     children: [
       { to: '/equipo', label: 'Cajeros y accesos', key: 'team-list' },
+      { to: '/equipo/arqueo', label: 'Arqueo de caja', key: 'team-cash-register' },
+      { to: '/equipo/arqueo/historial', label: 'Historial de cierres', key: 'team-cash-history' },
     ],
   },
   {
@@ -235,7 +230,7 @@ export default function Layout() {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes', '/sucursales', '/equipo'];
+  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes', '/sucursales', '/equipo', '/arqueo', '/arqueo/historial', '/equipo/arqueo', '/equipo/arqueo/historial'];
   if (isCashier && OWNER_ONLY_PATHS.includes(location.pathname)) {
     return <Navigate to="/" replace />;
   }

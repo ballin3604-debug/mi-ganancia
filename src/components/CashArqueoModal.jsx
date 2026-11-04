@@ -25,6 +25,8 @@ export default function CashArqueoModal({
   userName,
   branch,
   isMainBranch,
+  cashSessionId = null,
+  cashierName = '',
   sales,
   expenses,
   periodStart,
@@ -111,6 +113,8 @@ export default function CashArqueoModal({
         : {};
       const arqueo = await createCashArqueo(businessId, userId, userName, {
         branchId: branch.id,
+        cashSessionId,
+        cashierName,
         periodStart,
         openingCash,
         cashSales: movements.cashSales,
@@ -154,7 +158,7 @@ export default function CashArqueoModal({
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--mg-brand-text)]">Arqueo de caja</p>
                 <h2 className="truncate text-lg font-black tracking-tight text-[var(--mg-text-primary)] sm:text-xl">Cierre del turno</h2>
                 <p className="truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                  {branch?.name || 'Sucursal'} · desde {formatDate(periodStart)}
+                  {branch?.name || 'Sucursal'} · caja de {cashierName || 'cajero'} · desde {formatDate(periodStart)}
                 </p>
               </div>
             </div>
@@ -208,15 +212,16 @@ export default function CashArqueoModal({
                   value={openingInput}
                   onChange={(event) => {
                     const value = event.target.value;
-                    if (/^\d*[.,]?\d{0,2}$/.test(value)) setOpeningInput(value);
+                    if (!cashSessionId && /^\d*[.,]?\d{0,2}$/.test(value)) setOpeningInput(value);
                   }}
+                  readOnly={!!cashSessionId}
                   aria-label="Fondo inicial de caja"
-                  className="mg-input min-h-[42px] min-w-0 flex-1 text-base font-black tabular-nums"
+                  className={`mg-input min-h-[42px] min-w-0 flex-1 text-base font-black tabular-nums ${cashSessionId ? 'cursor-not-allowed opacity-75' : ''}`}
                 />
                 <span className="text-xs font-black text-[var(--mg-text-muted)]">Bs</span>
               </span>
               <span className="mt-1 block text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                {suggestedOpening > 0 ? 'Sugerido del arqueo anterior; puedes ajustarlo.' : 'Efectivo que había al iniciar este período.'}
+                {cashSessionId ? 'Fondo registrado al abrir esta caja.' : suggestedOpening > 0 ? 'Sugerido del arqueo anterior; puedes ajustarlo.' : 'Efectivo que había al iniciar este período.'}
               </span>
             </label>
             <div className="rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-3.5">
