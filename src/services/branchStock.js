@@ -97,9 +97,11 @@ export async function setBranchStock(businessId, product, branchId, newBranchSto
       updated_at: now,
     });
     const existing = await db.products.get(product.id);
+    let newGlobal = null;
     if (existing) {
+      newGlobal = Math.max(0, Number(existing.stock || 0) + delta);
       await db.products.update(product.id, {
-        stock: Math.max(0, Number(existing.stock || 0) + delta),
+        stock: newGlobal,
         updated_at: now,
       });
     }
@@ -109,6 +111,13 @@ export async function setBranchStock(businessId, product, branchId, newBranchSto
         product_id: product.id,
         stock: value,
       }, businessId));
+      if (existing && Math.abs(delta) > 0.0001) {
+        await db.pending_operations.add(buildOutboxOp('UPDATE_PRODUCT', {
+          id: product.id,
+          stock: newGlobal,
+          updated_at: now,
+        }, businessId));
+      }
     }
   });
   notifyBranchStock(businessId);

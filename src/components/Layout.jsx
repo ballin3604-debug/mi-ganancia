@@ -348,34 +348,6 @@ export default function Layout() {
               );
             }
 
-            if (!item.children) {
-              return (
-                <div key={item.key}>
-                  {showSection && (
-                    <p className={`px-3 pb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-secondary)] ${index === 0 ? 'pt-1' : 'pt-4'}`}>
-                      {item.section}
-                    </p>
-                  )}
-                  <Link
-                    to={item.basePath}
-                    data-tutorial={item.key}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-colors ${
-                      isGroupActive ? 'text-[var(--mg-brand-text)] bg-[var(--mg-brand-bg)]' : 'text-[var(--mg-text-secondary)] hover:bg-[var(--mg-bg-elevated)]'
-                    }`}
-                  >
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
-                      isGroupActive ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)]' : 'text-[var(--mg-text-muted)]'
-                    }`}>
-                      <span className="scale-[0.85] flex items-center justify-center">
-                        <GroupIcon />
-                      </span>
-                    </div>
-                    <span className="flex-1 text-left">{item.label}</span>
-                  </Link>
-                </div>
-              );
-            }
-
             return (
               <div key={item.key}>
                 {showSection && (

@@ -33,6 +33,12 @@ describe('disponibilidad de platos', () => {
     const data = dish();
     expect(data).not.toHaveProperty('is_available');
   });
+
+  it('acepta presentations vacías para platos sin presentaciones', () => {
+    const data = dish({ isAvailable: false, presentations: [] });
+    expect(data.is_available).toBe(false);
+    expect(data.presentations).toEqual([]);
+  });
 });
 
 describe('categorías por rubro', () => {

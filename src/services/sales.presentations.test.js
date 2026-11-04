@@ -121,7 +121,7 @@ describe('ventas con presentaciones configurables', () => {
     expect(await db.sales.count()).toBe(0);
   });
 
-  it('revierte la venta local si el stock global o de la sucursal no alcanza', async () => {
+  it('usa el stock de la sede cuando el total global quedó desfasado', async () => {
     const businessId = generateUUID();
     const branchId = generateUUID();
     const product = makeProduct(businessId, { stock: 11 });
@@ -134,17 +134,17 @@ describe('ventas con presentaciones configurables', () => {
       stock: 12,
     });
 
-    await expect(registerSale(
+    await registerSale(
       businessId,
       generateUUID(),
       [cartLine(product, 'six', 2)],
       '', '', 'cash', '', { branchId },
-    )).rejects.toThrow(/stock insuficiente/i);
+    );
 
-    expect(await db.sales.count()).toBe(0);
-    expect(await db.sale_items.count()).toBe(0);
-    expect((await db.products.get(product.id)).stock).toBe(11);
-    expect((await db.branch_stock.get(`${branchId}:${product.id}`)).stock).toBe(12);
+    expect(await db.sales.count()).toBe(1);
+    expect(await db.sale_items.count()).toBe(1);
+    expect((await db.products.get(product.id)).stock).toBe(0);
+    expect((await db.branch_stock.get(`${branchId}:${product.id}`)).stock).toBe(0);
   });
 
   it('rechaza stock insuficiente en la sucursal aunque el total del negocio alcance', async () => {

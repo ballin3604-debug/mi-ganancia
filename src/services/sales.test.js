@@ -111,6 +111,32 @@ describe('sales offline flow', () => {
     ).rejects.toThrow(/Stock insuficiente/);
   });
 
+  it('registerSale usa el stock de la sede si el global quedó desfasado', async () => {
+    const businessId = generateUUID();
+    const branchId = generateUUID();
+    const product = makeProduct({ business_id: businessId, is_dish: true, stock: 0, min_stock: 0 });
+    await db.products.add(product);
+    await db.branch_stock.put({
+      id: `${branchId}:${product.id}`,
+      business_id: businessId,
+      branch_id: branchId,
+      product_id: product.id,
+      stock: 20,
+      updated_at: new Date().toISOString(),
+    });
+
+    await registerSale(
+      businessId,
+      generateUUID(),
+      [makeCartItem(product, 1)],
+      '', '', 'cash', '',
+      { branchId }
+    );
+
+    expect((await db.branch_stock.get(`${branchId}:${product.id}`)).stock).toBe(19);
+    expect((await db.products.get(product.id)).stock).toBe(19);
+  });
+
   it('registerSale with packages discounts base stock correctly', async () => {
     const businessId = generateUUID();
     const product = makeProduct({ business_id: businessId, price: 20 });

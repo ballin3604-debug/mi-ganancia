@@ -46,6 +46,7 @@ build/Release
 
 # Build output
 dist/
+dist-dbg/
 
 # Dependency directories
 node_modules/

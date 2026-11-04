@@ -266,28 +266,32 @@ export async function registerSale(
       validateSellSelection(prod, item);
       const baseQty = calculateBaseQuantity(qty, factor);
       const currentStock = Number(prod.stock || 0);
-      if (currentStock < baseQty) {
+      const branchManaged = !!(saleBranchId && hasBranchRows);
+      let branchRow = null;
+      let branchQty = 0;
+      if (branchManaged) {
+        branchRow = await db.branch_stock.get(`${saleBranchId}:${item.product.id}`);
+        if (!branchRow || branchRow.business_id !== businessId || branchRow.branch_id !== saleBranchId) {
+          throw new Error('No hay stock registrado para el producto en esta sucursal.');
+        }
+        branchQty = Number(branchRow.stock || 0);
+        if (branchQty < baseQty) {
+          throw new Error(`Stock insuficiente en la sucursal: quedan ${branchQty} unidades base.`);
+        }
+      } else if (currentStock < baseQty) {
         throw new Error(`Stock insuficiente de ${prod.name}: quedan ${currentStock} unidades base.`);
       }
       await db.products.update(item.product.id, {
         stock: currentStock - baseQty,
         updated_at: now
       });
-      if (saleBranchId && hasBranchRows) {
-        const rowId = `${saleBranchId}:${item.product.id}`;
-        const row = await db.branch_stock.get(rowId);
-        if (!row || row.business_id !== businessId || row.branch_id !== saleBranchId) {
-          throw new Error('No hay stock registrado para el producto en esta sucursal.');
-        }
-        const branchQty = Number(row.stock || 0);
-        if (branchQty < baseQty) {
-          throw new Error(`Stock insuficiente en la sucursal: quedan ${branchQty} unidades base.`);
-        }
+      if (branchManaged) {
         await db.branch_stock.put({
-          ...row,
+          ...branchRow,
           stock: branchQty - baseQty,
           updated_at: now,
         });
+        await syncProductStockFromBranches(item.product.id, now);
       }
     }
 
@@ -335,6 +339,13 @@ function normalizeEditLine(line) {
 
 function lineBaseQty(line) {
   return Number(line.quantity || 0) * Math.max(1, Number(line.presentationFactor || 1));
+}
+
+async function syncProductStockFromBranches(productId, now) {
+  const rows = await db.branch_stock.where('product_id').equals(productId).toArray();
+  const total = rows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
+  await db.products.update(productId, { stock: total, updated_at: now });
+  return total;
 }
 
 function toServerOrderItem(line) {
@@ -434,6 +445,7 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
     const hasBranchRows = saleBranchId
       ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
       : false;
+    const branchManaged = !!(saleBranchId && hasBranchRows);
 
     for (const [productId, newBase] of newBaseByProduct.entries()) {
       const product = productsById[productId];
@@ -441,11 +453,7 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
         throw new Error('El producto ya no está disponible en este negocio.');
       }
       const oldBase = oldBaseByProduct.get(productId) || 0;
-      const available = Number(product.stock || 0) + oldBase;
-      if (newBase > available + 0.0001) {
-        throw new Error(`Stock insuficiente de ${product.name}: quedan ${Math.max(0, available)} unidades base.`);
-      }
-      if (saleBranchId && hasBranchRows) {
+      if (branchManaged) {
         const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
         if (!row || row.business_id !== businessId || row.branch_id !== saleBranchId) {
           throw new Error('No hay stock registrado para el producto en esta sucursal.');
@@ -453,6 +461,11 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
         const branchAvailable = Number(row.stock || 0) + oldBase;
         if (newBase > branchAvailable + 0.0001) {
           throw new Error(`Stock insuficiente en la sucursal: quedan ${Math.max(0, branchAvailable)} unidades base.`);
+        }
+      } else {
+        const available = Number(product.stock || 0) + oldBase;
+        if (newBase > available + 0.0001) {
+          throw new Error(`Stock insuficiente de ${product.name}: quedan ${Math.max(0, available)} unidades base.`);
         }
       }
     }
@@ -469,7 +482,7 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
         stock: Number(product.stock || 0) - delta,
         updated_at: now,
       });
-      if (saleBranchId && hasBranchRows) {
+      if (branchManaged) {
         const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
         if (row) {
           await db.branch_stock.put({
@@ -477,6 +490,7 @@ export async function updateSale(businessId, userId, saleId, lines, options = {}
             stock: Number(row.stock || 0) - delta,
             updated_at: now,
           });
+          await syncProductStockFromBranches(productId, now);
         }
       }
     }
@@ -627,6 +641,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
     const hasBranchRows = saleBranchId
       ? (await db.branch_stock.where('business_id').equals(businessId).count()) > 0
       : false;
+    const branchManaged = !!(saleBranchId && hasBranchRows);
 
     // Solo devuelve stock si se decidió que el producto sirve para vender.
     if (restock) {
@@ -637,7 +652,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
           stock: Number(product.stock || 0) + baseQty,
           updated_at: now,
         });
-        if (saleBranchId && hasBranchRows) {
+        if (branchManaged) {
           const row = await db.branch_stock.get(`${saleBranchId}:${productId}`);
           if (row) {
             await db.branch_stock.put({
@@ -645,6 +660,7 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
               stock: Number(row.stock || 0) + baseQty,
               updated_at: now,
             });
+            await syncProductStockFromBranches(productId, now);
           }
         }
       }

@@ -182,10 +182,13 @@ export function buildProductUpdateData(existing, data, now) {
   };
 
   if (data.presentations !== undefined) {
-    updateData.presentations = validatePresentationDefinitions(data.presentations, {
-      baseName: data.unitLabel || existing.unit_label || 'Unidad',
-      basePrice: data.price,
-    });
+    const presentations = Array.isArray(data.presentations) ? data.presentations : [];
+    updateData.presentations = presentations.length === 0
+      ? []
+      : validatePresentationDefinitions(presentations, {
+        baseName: data.unitLabel || existing.unit_label || 'Unidad',
+        basePrice: data.price,
+      });
   }
 
   if (data.supplierPrice !== undefined) {
