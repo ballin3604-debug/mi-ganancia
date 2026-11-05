@@ -161,10 +161,10 @@ export function ProductDetailModal({
 
                 {packageOption && (
                   <p
-                    title={`${getAvailablePackages(currentStock, packageOption.factor)} paquetes de ${packageOption.factor} disponibles · ${currentStock} unidades en total`}
+                    title={`${getAvailablePackages(currentStock, packageOption.factor)} paquetes de ${packageOption.factor} disponibles`}
                     className="text-[11px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5"
                   >
-                    📦 {packageOption.label} x{getAvailablePackages(currentStock, packageOption.factor)} disp. · {currentStock} und: Bs {packageOption.price.toFixed(2)}
+                    📦 {packageOption.label} x{getAvailablePackages(currentStock, packageOption.factor)} disp.: Bs {packageOption.price.toFixed(2)}
                   </p>
                 )}
 

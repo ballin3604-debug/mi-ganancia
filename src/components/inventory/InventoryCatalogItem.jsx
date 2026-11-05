@@ -51,10 +51,10 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
             )}
             {hasPack && (
               <span
-                title={`${availablePackages} paquetes de ${packSize} disponibles · ${stockNum} unidades en total`}
+                title={`${availablePackages} paquetes de ${packSize} disponibles`}
                 className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]"
               >
-                📦 {packLabel} x{availablePackages} disp. · {stockNum} und
+                📦 {packLabel} x{availablePackages} disp.
               </span>
             )}
             {exp && (

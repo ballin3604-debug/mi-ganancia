@@ -219,8 +219,9 @@ describe('Inventario', () => {
     }];
     renderPage();
 
-    const badges = await screen.findAllByText(/Chipa x16 disp\. · 192 und/);
+    const badges = await screen.findAllByText(/Chipa x16 disp\./);
     expect(badges.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/192 und/)).toBeNull();
   });
 
   it('licorería: prellena el costo por caja en bolivianos enteros', async () => {
