@@ -6,6 +6,7 @@ import { getProducts, subscribeToProducts } from '../services/products';
 import ProductCatalogCard from '../components/ProductCatalogCard';
 import ProductAvailabilityMeta from '../components/ProductAvailabilityMeta';
 import ProductListRow, { RowAddButton } from '../components/ProductListRow';
+import PillScroller from '../components/PillScroller';
 import { AuditSalesList } from '../components/AuditSalesList';
 import {
   registerSale, subscribeToSales, subscribeToSaleItems,
@@ -2474,11 +2475,12 @@ export default function Sales() {
             )}
           </div>
 
-          <div className="flex shrink-0 gap-2 overflow-x-auto px-0 pb-1 scrollbar-none">
+          <PillScroller activeKey={filterCategory} ariaLabel="categorías" className="flex gap-2 pb-1">
             {['Todas', RECENT_CATEGORY, ...categories].map((cat) => (
               <button
                 key={cat}
                 type="button"
+                aria-pressed={filterCategory === cat}
                 onClick={() => setFilterCategory(cat)}
                 className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                   filterCategory === cat
@@ -2493,7 +2495,7 @@ export default function Sales() {
                     : cat}
               </button>
             ))}
-          </div>
+          </PillScroller>
 
           <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
             {filtered.length > 0 ? (

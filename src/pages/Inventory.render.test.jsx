@@ -238,7 +238,7 @@ describe('Inventario', () => {
     fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
 
     const customButton = (await screen.findAllByRole('button', { name: /Micheladas/ }))
-      .find((button) => button.hasAttribute('aria-pressed'));
+      .find((button) => button.hasAttribute('aria-pressed') && !button.closest('[role="group"]'));
     fireEvent.click(customButton);
 
     expect(screen.getByLabelText('Precio Unidad')).toBeTruthy();

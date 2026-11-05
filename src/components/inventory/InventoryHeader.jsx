@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { AppIcon } from '../icons';
 import { BranchSelect } from '../BranchSelect';
+import PillScroller from '../PillScroller';
 
 function FunnelIcon() {
   return (
@@ -257,7 +258,7 @@ export function InventoryHeader({
 
         {/* Redesigned Category Selector (Pills Carousel with Animated Glider & Item Counts) */}
         <div className="pt-1 border-t border-[var(--mg-separator)]">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+          <PillScroller activeKey={selectedCategory} className="flex items-center gap-1.5 py-1">
             {categories.map((cat) => {
               const isActive = selectedCategory === cat;
               const count = categoryCounts[cat] ?? 0;
@@ -266,6 +267,7 @@ export function InventoryHeader({
                 <button
                   key={cat}
                   type="button"
+                  aria-pressed={isActive}
                   onClick={() => onCategoryChange(cat)}
                   className="relative px-3.5 py-1.5 rounded-2xl text-[11px] font-extrabold transition-all active:scale-95 shrink-0 flex items-center gap-1.5 select-none min-h-[32px]"
                 >
@@ -294,7 +296,7 @@ export function InventoryHeader({
                 </button>
               );
             })}
-          </div>
+          </PillScroller>
           {activeFilterCount > 0 && onClearFilters && (
             <button
               type="button"
