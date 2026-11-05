@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { getProducts, subscribeToProducts } from '../services/products';
-import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
+import ProductCatalogCard from '../components/ProductCatalogCard';
+import ProductAvailabilityMeta from '../components/ProductAvailabilityMeta';
 import ProductListRow, { RowAddButton } from '../components/ProductListRow';
 import { AuditSalesList } from '../components/AuditSalesList';
 import {
@@ -2547,7 +2548,7 @@ export default function Sales() {
                           product={product}
                           subtitle={product.unitLabel || 'Unidad'}
                           priceLabel={priceLabel}
-                          meta={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} /> : null}
+                          meta={<ProductAvailabilityMeta product={product} packageOption={packOpt} showStock={showStock} />}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}
@@ -2559,7 +2560,7 @@ export default function Sales() {
                         <ProductCatalogCard
                           product={product}
                           priceLabel={priceLabel}
-                          metaLabel={showStock ? <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} /> : null}
+                          metaLabel={<ProductAvailabilityMeta product={product} packageOption={packOpt} showStock={showStock} />}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}
