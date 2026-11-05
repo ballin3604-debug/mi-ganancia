@@ -21,23 +21,25 @@ const UNIT_PRESENTATION = {
   fixedFactor: true,
 };
 
+// Todos los empaques de venta son editables; sus `factor` son solo el valor
+// sugerido que aparece precargado en el formulario (chipa x12, caja x24).
 export const LICOR_CATALOG = {
   Cervezas: {
     emoji: '🍺',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'chipa', name: 'Chipa', factor: 12, fixedFactor: true },
-      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24, fixedFactor: true },
-      { key: 'cajaFria', name: 'Caja fría', factor: 24, fixedFactor: true },
+      { key: 'chipa', name: 'Chipa', factor: 12 },
+      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24 },
+      { key: 'cajaFria', name: 'Caja fría', factor: 24 },
     ],
-    purchase: { unit: 'caja', label: 'Caja', factorFrom: ['cajaFria', 'cajaCaliente'], fixedFactor: 24 },
+    purchase: { unit: 'caja', label: 'Caja', factorFrom: ['cajaFria', 'cajaCaliente'] },
   },
   'Vinos y tragos': {
     emoji: '🍷',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'cajaCaliente', name: 'Caja caliente', factor: '', fixedFactor: false },
-      { key: 'cajaFria', name: 'Caja fría', factor: '', fixedFactor: false },
+      { key: 'cajaCaliente', name: 'Caja caliente', factor: '' },
+      { key: 'cajaFria', name: 'Caja fría', factor: '' },
     ],
     purchase: { unit: 'caja', label: 'Caja', factorFrom: ['cajaFria', 'cajaCaliente'] },
   },
@@ -45,7 +47,7 @@ export const LICOR_CATALOG = {
     emoji: '🚬',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'caja', label: 'Caja', askFactor: true },
   },
@@ -53,7 +55,7 @@ export const LICOR_CATALOG = {
     emoji: '⚡',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'paquete', label: 'Paquete', factorFrom: ['paquete'] },
   },
@@ -61,7 +63,7 @@ export const LICOR_CATALOG = {
     emoji: '🥤',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'paquete', label: 'Paquete', factorFrom: ['paquete'] },
   },
@@ -69,7 +71,7 @@ export const LICOR_CATALOG = {
     emoji: '🥤',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'paquete', label: 'Paquete', factorFrom: ['paquete'] },
   },
@@ -77,7 +79,7 @@ export const LICOR_CATALOG = {
     emoji: '🧃',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'paquete', label: 'Paquete', factorFrom: ['paquete'] },
   },
@@ -85,7 +87,7 @@ export const LICOR_CATALOG = {
     emoji: '🍿',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'paquete', name: 'Paquete', factor: '', fixedFactor: false },
+      { key: 'paquete', name: 'Paquete', factor: '' },
     ],
     purchase: { unit: 'paquete', label: 'Paquete', factorFrom: ['paquete'] },
   },
@@ -131,12 +133,13 @@ export function getLicorPurchaseLabel(category, purchaseUnit) {
 }
 
 export function getLicorPurchaseFactorFromForm(form, category) {
-  const config = getLicorCategoryConfig(category);
-  if (config.purchase.fixedFactor) return Number(config.purchase.fixedFactor);
+  // Si el dueño fija un factor de compra distinto, gana ese. Si no, se toma de
+  // las presentaciones de venta de la misma unidad (caja fría, caja caliente
+  // o paquete), que ahora todas son editables.
   const explicit = Number(form?.licorPurchaseFactor || 0);
   if (Number.isFinite(explicit) && explicit > 1) return explicit;
   const factors = form?.licorFactors || {};
-  for (const key of config.purchase.factorFrom || []) {
+  for (const key of getLicorCategoryConfig(category).purchase.factorFrom || []) {
     const value = Number(factors[key] || 0);
     if (value > 1) return value;
   }
@@ -144,14 +147,9 @@ export function getLicorPurchaseFactorFromForm(form, category) {
 }
 
 export function getLicorPurchaseFactorFromProduct(product, category) {
-  const config = getLicorCategoryConfig(category);
   const presentations = Array.isArray(product?.presentations) ? product.presentations : [];
   const purchaseOnly = presentations.find((presentation) => presentation?.purchaseOnly && Number(presentation.factor) > 1);
   if (purchaseOnly) return Number(purchaseOnly.factor);
-
-  // En cervezas la compra siempre es por caja cerrada (24), aunque también
-  // exista una presentación de venta "Caja caliente" con otro factor.
-  if (config.purchase.fixedFactor) return Number(config.purchase.fixedFactor);
 
   // Al guardar desde licorería packageSize guarda el factor de compra real
   // (caja o paquete). Preferirlo evita confundir, por ejemplo, la caja fría

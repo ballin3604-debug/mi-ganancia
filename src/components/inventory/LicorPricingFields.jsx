@@ -73,28 +73,22 @@ export function LicorPricingFields({ form, setField, category }) {
                 <label className="text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
                   {preset.name} (Bs)
                 </label>
-                {preset.fixedFactor ? (
-                  <span className="text-[10px] font-black text-[var(--mg-brand-text)]">
-                    x{factors[preset.key] || preset.factor}
-                  </span>
-                ) : (
-                  <label className="flex items-center gap-1 text-[10px] font-bold text-[var(--mg-text-muted)]">
-                    x
-                    <input
-                      type="number"
-                      aria-label={`Unidades por ${preset.name}`}
-                      value={factors[preset.key] ?? ''}
-                      onChange={(e) => setFactor(preset.key, clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
-                      onKeyDown={blockInvalidNumberKeys}
-                      placeholder="0"
-                      min="0"
-                      max="9999"
-                      step="1"
-                      className="w-14 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1.5 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
-                    />
-                    und.
-                  </label>
-                )}
+                <label className="flex items-center gap-1 text-[10px] font-bold text-[var(--mg-text-muted)]">
+                  x
+                  <input
+                    type="number"
+                    aria-label={`Unidades por ${preset.name}`}
+                    value={factors[preset.key] ?? ''}
+                    onChange={(e) => setFactor(preset.key, clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
+                    onKeyDown={blockInvalidNumberKeys}
+                    placeholder={preset.factor ? String(preset.factor) : '6'}
+                    min="0"
+                    max="9999"
+                    step="1"
+                    className="w-14 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1.5 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
+                  />
+                  und.
+                </label>
               </div>
               <input
                 type="number"
@@ -157,34 +151,26 @@ export function LicorPricingFields({ form, setField, category }) {
             <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
               Unidades por {purchaseLabel.toLowerCase()}
             </label>
-            {config.purchase.fixedFactor ? (
-              <div className="mg-input flex items-center text-sm font-black">
-                {purchaseFactor > 1 ? `${purchaseFactor} und.` : '—'}
-              </div>
-            ) : (
-              <input
-                type="number"
-                aria-label={`Unidades por ${purchaseLabel.toLowerCase()}`}
-                value={form.licorPurchaseFactor ?? ''}
-                onChange={(e) => setField('licorPurchaseFactor', clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
-                onKeyDown={blockInvalidNumberKeys}
-                placeholder={purchaseFactor > 1 ? String(purchaseFactor) : 'Ej: 10'}
-                min="0"
-                max="9999"
-                step="1"
-                className="mg-input text-sm font-black"
-              />
-            )}
+            <input
+              type="number"
+              aria-label={`Unidades por ${purchaseLabel.toLowerCase()}`}
+              value={form.licorPurchaseFactor ?? ''}
+              onChange={(e) => setField('licorPurchaseFactor', clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
+              onKeyDown={blockInvalidNumberKeys}
+              placeholder={purchaseFactor > 1 ? String(purchaseFactor) : 'Ej: 10'}
+              min="0"
+              max="9999"
+              step="1"
+              className="mg-input text-sm font-black"
+            />
           </div>
         </div>
 
-        {!config.purchase.fixedFactor && (
-          <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
-            {purchaseFactor > 1
-              ? `Usamos ${purchaseFactor} unidades por ${purchaseLabel.toLowerCase()}. Cambialo si tu proveedor usa otro empaque.`
-              : `Indicá cuántas unidades trae la ${purchaseLabel.toLowerCase()}.`}
-          </p>
-        )}
+        <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
+          {purchaseFactor > 1
+            ? `Se usan ${purchaseFactor} unidades por ${purchaseLabel.toLowerCase()}. Cambialo si tu proveedor usa otro empaque.`
+            : `Indicá cuántas unidades trae la ${purchaseLabel.toLowerCase()}.`}
+        </p>
       </div>
     </div>
   );

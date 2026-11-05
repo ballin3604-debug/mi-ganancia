@@ -125,9 +125,9 @@ function licorFormDefaults(category, base = {}) {
     licorPrices: prices,
     licorFactors: factors,
     licorPurchaseUnit: config.purchase.askUnit ? 'caja' : config.purchase.unit,
-    licorPurchaseFactor: config.purchase.askFactor
-      ? ''
-      : (config.purchase.fixedFactor ? String(config.purchase.fixedFactor) : ''),
+    // Vacío: el placeholder muestra las unidades que salen de las cajas/paquete
+    // de venta (editable); el dueño puede fijar otro empaque de compra.
+    licorPurchaseFactor: '',
     licorExtraPresentations: [],
   };
 }
@@ -197,7 +197,7 @@ function readLicorProductForm(product) {
     licorPrices: prices,
     licorFactors: factors,
     licorPurchaseUnit: purchaseUnit,
-    licorPurchaseFactor: !config.purchase.fixedFactor && purchaseFactor > 1 ? String(purchaseFactor) : '',
+    licorPurchaseFactor: purchaseFactor > 1 ? String(purchaseFactor) : '',
     licorExtraPresentations: extraPresentations,
   };
 }

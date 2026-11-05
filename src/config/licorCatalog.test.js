@@ -73,4 +73,38 @@ describe('catálogo de licorería', () => {
       supplierPrice: '60',
     })).toThrow('Indicá cuántas unidades trae la caja.');
   });
+
+  it('permite cervezas con chipa y caja de otros tamaños y compra según la caja', () => {
+    // Chipa de 6 y caja fría de 30: la compra por caja usa las 30 unidades.
+    const built = buildLicorPresentations({
+      category: 'Cervezas',
+      price: '8',
+      licorPrices: { chipa: '50', cajaFria: '205' },
+      licorFactors: { chipa: '6', cajaFria: '30' },
+      supplierPrice: '150',
+    });
+
+    expect(built.purchaseFactor).toBe(30);
+    expect(built.purchaseCost).toBe(150);
+    expect(built.unitPrice).toBe(8);
+    expect(built.presentations).toContainEqual({
+      id: 'licor-cajaFria',
+      name: 'Caja fría',
+      factor: 30,
+      price: 205,
+      isBase: false,
+    });
+  });
+
+  it('prefiere el factor guardado del producto en vez de la caja fija de cervezas', () => {
+    const presentations = [
+      { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+      { id: 'licor-cajaFria', name: 'Caja fría', factor: 30, price: 205, isBase: false },
+    ];
+    // El dueño compró cajas de 30; debe respetarse al volver a editar.
+    expect(getLicorPurchaseFactorFromProduct(
+      { category: 'Cervezas', packageSize: '30', presentations },
+      'Cervezas'
+    )).toBe(30);
+  });
 });
