@@ -31,7 +31,7 @@ describe('appThemes', () => {
     expect(theme.id).toBe('blackgold');
     expect(theme.dark).toBe(true);
     expect(theme.themeColor).toBe('#0A0908');
-    expect(theme.preview.accent).toBe('#E9C25D');
+    expect(theme.preview.accent).toBe('#D4AF37');
     expect(APP_THEMES.some((t) => t.id === 'blackgold')).toBe(true);
     expect(BLACKGOLD_THEME_ID).toBe('blackgold');
   });
