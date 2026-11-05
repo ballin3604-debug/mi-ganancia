@@ -103,7 +103,15 @@ export function isLicorCategory(category) {
 }
 
 export function getLicorCategoryConfig(category) {
-  return LICOR_CATALOG[category] || LICOR_CATALOG.Cervezas;
+  if (isLicorCategory(category)) return LICOR_CATALOG[category];
+  const normalized = normalizeLicorCategory(category);
+  // Las categorías nuevas no se renombran: conservan su nombre y usan la
+  // plantilla de vinos/tragos (caja caliente y caja fría) salvo que su nombre
+  // indique otro rubro, como cervezas o snacks.
+  if (normalized === 'Abarrotes' && !String(category || '').toLowerCase().includes('abarrote')) {
+    return LICOR_CATALOG['Vinos y tragos'];
+  }
+  return LICOR_CATALOG[normalized];
 }
 
 export function normalizeLicorCategory(category) {
@@ -169,7 +177,7 @@ export function getLicorPurchaseFactorFromProduct(product, category) {
 }
 
 export function buildLicorPresentations(form, extraPresentations = []) {
-  const category = normalizeLicorCategory(form?.category);
+  const category = String(form?.category || '').trim() || LICOR_CATEGORIES[0];
   const config = getLicorCategoryConfig(category);
   const unitPrice = Number(form?.price || 0);
   if (!Number.isFinite(unitPrice) || unitPrice <= 0) {

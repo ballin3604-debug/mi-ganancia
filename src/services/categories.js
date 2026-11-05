@@ -16,18 +16,34 @@ export function getDefaultCategories(businessCategory) {
   return cat.defaultCategories || DEFAULT_CATEGORIES;
 }
 
-// Licorería: el catálogo es fijo. Además de cambiar la lista, remapea los
-// productos que quedaron con categorías viejas (Whiskey, Ron, Refrescos, o
-// categorías de tienda si el negocio acaba de pasarse a licorería).
-// Si un pull del servidor revierte la lista, se vuelve a aplicar en la
-// siguiente lectura en vez de descartar el desfase.
+// Licorería: el catálogo base se mantiene, pero las categorías propias del
+// negocio se conservan y se sincronizan igual que en los demás rubros.
+// Solo se remapean las categorías viejas de tienda o de catálogos anteriores.
 const licorEnsured = new Set();
+const LEGACY_LICOR_CATEGORIES = new Set([
+  ...DEFAULT_CATEGORIES,
+  'Whiskey', 'Whisky', 'Ron', 'Vino', 'Vinos', 'Vodka', 'Tragos', 'Licores',
+  'Refrescos', 'Gaseosas', 'Jugos', 'Cigarrillos', 'Tabaco',
+].map((category) => category.toLowerCase()));
+
+function isLegacyLicorCategory(category) {
+  return LEGACY_LICOR_CATEGORIES.has(String(category || '').trim().toLowerCase());
+}
 
 export async function ensureLicorCategories(businessId, localSettings = null) {
   const local = localSettings || await db.business_settings.get(businessId);
   const current = Array.isArray(local?.categories) ? local.categories : [];
-  const needsCategoryUpdate = current.length !== LICOR_CATEGORIES.length
-    || current.some((category, index) => category !== LICOR_CATEGORIES[index]);
+  const custom = current.filter((category) => (
+    String(category || '').trim()
+    && !LICOR_CATEGORIES.includes(category)
+    && !isLegacyLicorCategory(category)
+  ));
+  const next = [...LICOR_CATEGORIES];
+  custom.forEach((category) => {
+    if (!next.includes(category)) next.push(category);
+  });
+  const needsCategoryUpdate = current.length !== next.length
+    || current.some((category, index) => category !== next[index]);
 
   if (licorEnsured.has(businessId) && !needsCategoryUpdate) {
     return current;
@@ -38,17 +54,17 @@ export async function ensureLicorCategories(businessId, localSettings = null) {
     await db.business_settings.put({
       business_id: businessId,
       ...local,
-      categories: LICOR_CATEGORIES,
+      categories: next,
     });
     await enqueueOperation(
       'SAVE_BUSINESS_SETTINGS',
-      { business_id: businessId, categories: LICOR_CATEGORIES },
+      { business_id: businessId, categories: next },
       businessId
     );
   }
 
   const all = await db.products.where('business_id').equals(businessId).toArray();
-  const affected = all.filter((product) => !LICOR_CATEGORIES.includes(product.category));
+  const affected = all.filter((product) => isLegacyLicorCategory(product.category));
   if (affected.length > 0) {
     const now = new Date().toISOString();
     await db.transaction('rw', db.products, db.pending_operations, async () => {
@@ -63,7 +79,7 @@ export async function ensureLicorCategories(businessId, localSettings = null) {
     notifyProductChanges(businessId);
   }
 
-  return LICOR_CATEGORIES;
+  return next;
 }
 
 const categoryListeners = new Set();

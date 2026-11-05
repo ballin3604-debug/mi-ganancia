@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildLicorPresentations,
+  getLicorCategoryConfig,
   getLicorPurchaseFactorFromProduct,
 } from './licorCatalog';
 import { getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
@@ -92,6 +93,24 @@ describe('catálogo de licorería', () => {
       { category: 'Energizantes', packageSize: '24', presentations: built.presentations },
       'Energizantes'
     )).toBe(24);
+  });
+
+  it('usa la plantilla de cajas para una categoría nueva', () => {
+    expect(getLicorCategoryConfig('Micheladas')).toBe(getLicorCategoryConfig('Vinos y tragos'));
+
+    const built = buildLicorPresentations({
+      category: 'Micheladas',
+      price: '30',
+      licorPrices: { cajaCaliente: '120', cajaFria: '100' },
+      licorFactors: { cajaCaliente: '6', cajaFria: '6' },
+      supplierPrice: '135',
+      licorPurchaseFactor: '6',
+    });
+
+    expect(built.purchaseFactor).toBe(6);
+    expect(built.presentations.map((presentation) => presentation.name)).toEqual([
+      'Unidad', 'Caja caliente', 'Caja fría',
+    ]);
   });
 
   it('exige unidades por caja cuando hay costo de compra', () => {

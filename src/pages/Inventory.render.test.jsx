@@ -6,6 +6,7 @@ import { addProduct } from '../services/products';
 const state = vi.hoisted(() => ({
   tipoNegocio: 'tienda',
   products: [],
+  categories: [],
   sectorConfig: {
     defaultUnit: 'Unidad',
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -44,7 +45,7 @@ vi.mock('../services/products', () => ({
 }));
 
 vi.mock('../services/categories', () => ({
-  getCategories: async () => [],
+  getCategories: async () => state.categories,
   getDefaultCategories: () => [],
   subscribeToCategories: () => () => {},
   addCategory: vi.fn(),
@@ -73,6 +74,7 @@ describe('Inventario', () => {
     localStorage.removeItem('mg-product-form-draft');
     vi.mocked(addProduct).mockClear();
     state.products = [];
+    state.categories = [];
     state.tipoNegocio = 'tienda';
     state.sectorConfig = {
       defaultUnit: 'Unidad',
@@ -171,7 +173,7 @@ describe('Inventario', () => {
     renderPage();
     fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
 
-    expect(screen.getByText('Catálogo de licorería')).toBeTruthy();
+    expect(screen.getByText('+ Gestionar categorías')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Vinos y tragos/ })).toBeTruthy();
 
     fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Amstel' } });
@@ -222,6 +224,29 @@ describe('Inventario', () => {
     const badges = await screen.findAllByText(/Chipa x16 disp\./);
     expect(badges.length).toBeGreaterThan(0);
     expect(screen.queryByText(/192 und/)).toBeNull();
+  });
+
+  it('licorería: permite elegir una categoría nueva con la plantilla de cajas', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    state.categories = ['Micheladas'];
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
+
+    const customButton = (await screen.findAllByRole('button', { name: /Micheladas/ }))
+      .find((button) => button.hasAttribute('aria-pressed'));
+    fireEvent.click(customButton);
+
+    expect(screen.getByLabelText('Precio Unidad')).toBeTruthy();
+    expect(screen.getByLabelText('Precio Caja caliente')).toBeTruthy();
+    expect(screen.getByLabelText('Precio Caja fría')).toBeTruthy();
+    expect(screen.queryByLabelText('Precio Chipa')).toBeNull();
+    expect(screen.getByLabelText('Costo por caja')).toBeTruthy();
+    expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
   });
 
   it('licorería: prellena el costo por caja en bolivianos enteros', async () => {

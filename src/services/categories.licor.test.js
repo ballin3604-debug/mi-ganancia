@@ -101,4 +101,24 @@ describe('ensureLicorCategories', () => {
     expect(db.products.update).not.toHaveBeenCalled();
     expect(notifyProductChanges).not.toHaveBeenCalled();
   });
+
+  it('conserva y sincroniza las categorías nuevas de licorería', async () => {
+    setLocal({
+      business_id: 'b3',
+      business_category: 'licorera',
+      categories: [...LICOR_CATEGORIES, 'Micheladas'],
+    });
+    setProducts([
+      { id: 'p1', category: 'Micheladas' },
+      { id: 'p2', category: 'Bebidas' },
+    ]);
+
+    const cats = await ensureLicorCategories('b3');
+
+    expect(cats).toEqual([...LICOR_CATEGORIES, 'Micheladas']);
+    // La categoría propia se conserva; la vieja de tienda sí se remapea.
+    expect(db.products.update).toHaveBeenCalledTimes(1);
+    expect(db.products.update).toHaveBeenCalledWith('p2', expect.objectContaining({ category: 'Abarrotes' }));
+    expect(notifyProductChanges).toHaveBeenCalledWith('b3');
+  });
 });
