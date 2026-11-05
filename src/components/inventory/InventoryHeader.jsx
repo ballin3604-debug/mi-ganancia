@@ -82,6 +82,7 @@ export function InventoryHeader({
         {/* Buttons Row */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Gestor de Categorías */}
+          {onOpenCatManager && (
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
@@ -93,6 +94,7 @@ export function InventoryHeader({
             <AppIcon name="etiqueta" size={14} />
             <span>Categorías</span>
           </motion.button>
+          )}
 
           {/* Nuevo Producto Button (Redesigned & Prominent) */}
           <motion.button

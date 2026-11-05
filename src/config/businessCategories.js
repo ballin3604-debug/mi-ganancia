@@ -1,3 +1,5 @@
+import { LICOR_CATEGORIES } from './licorCatalog';
+
 export const BUSINESS_CATEGORIES = [
   {
     id: 'tienda',
@@ -87,7 +89,7 @@ export const BUSINESS_CATEGORIES = [
         'from-indigo-500 to-violet-600',
       ],
     },
-    defaultCategories: ['Cervezas', 'Whiskey', 'Ron', 'Vinos', 'Vodka', 'Refrescos', 'Agua', 'Otros'],
+    defaultCategories: LICOR_CATEGORIES,
   },
   {
     id: 'restaurante',

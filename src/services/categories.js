@@ -3,6 +3,7 @@ import { enqueueOperation, buildOutboxOp } from './syncEngine';
 import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { notifyProductChanges } from './products';
 import { getCategoryById } from '../config/businessCategories';
+import { LICOR_CATEGORIES, normalizeLicorCategory } from '../config/licorCatalog';
 
 export const DEFAULT_CATEGORIES = [
   'Bebidas', 'Lácteos', 'Panadería', 'Carnes', 'Frutas y Verduras',
@@ -13,6 +14,54 @@ export const DEFAULT_CATEGORIES = [
 export function getDefaultCategories(businessCategory) {
   const cat = getCategoryById(businessCategory);
   return cat.defaultCategories || DEFAULT_CATEGORIES;
+}
+
+// Licorería: el catálogo es fijo. Además de cambiar la lista, remapea los
+// productos que quedaron con categorías viejas (Whiskey, Ron, Refrescos…)
+// para que no queden huérfanos en los filtros ni en los reportes.
+const licorEnsured = new Set();
+
+export async function ensureLicorCategories(businessId, localSettings = null) {
+  const local = localSettings || await db.business_settings.get(businessId);
+  const current = Array.isArray(local?.categories) ? local.categories : [];
+  const needsCategoryUpdate = current.length !== LICOR_CATEGORIES.length
+    || current.some((category, index) => category !== LICOR_CATEGORIES[index]);
+
+  if (licorEnsured.has(businessId)) {
+    return needsCategoryUpdate ? LICOR_CATEGORIES : current;
+  }
+  licorEnsured.add(businessId);
+
+  if (needsCategoryUpdate) {
+    await db.business_settings.put({
+      business_id: businessId,
+      ...local,
+      categories: LICOR_CATEGORIES,
+    });
+    await enqueueOperation(
+      'SAVE_BUSINESS_SETTINGS',
+      { business_id: businessId, categories: LICOR_CATEGORIES },
+      businessId
+    );
+  }
+
+  const all = await db.products.where('business_id').equals(businessId).toArray();
+  const affected = all.filter((product) => !LICOR_CATEGORIES.includes(product.category));
+  if (affected.length > 0) {
+    const now = new Date().toISOString();
+    await db.transaction('rw', db.products, db.pending_operations, async () => {
+      for (const product of affected) {
+        const category = normalizeLicorCategory(product.category);
+        await db.products.update(product.id, { category, updated_at: now });
+        await db.pending_operations.add(
+          buildOutboxOp('UPDATE_PRODUCT', { id: product.id, category, updated_at: now }, businessId)
+        );
+      }
+    });
+    notifyProductChanges(businessId);
+  }
+
+  return LICOR_CATEGORIES;
 }
 
 const categoryListeners = new Set();
@@ -45,10 +94,13 @@ if (typeof window !== 'undefined') {
 export async function getCategories(businessId, businessCategory) {
   // Read local first
   const local = await db.business_settings.get(businessId);
+  const categoryHint = businessCategory || local?.business_category || local?.businessCategory;
+  if (categoryHint === 'licorera') {
+    return ensureLicorCategories(businessId, local);
+  }
   if (local && local.categories) {
     return local.categories;
   }
-  const categoryHint = businessCategory || local?.business_category || local?.businessCategory;
 
   // Fallback to Supabase if online, write to cache
   try {
@@ -60,8 +112,11 @@ export async function getCategories(businessId, businessCategory) {
 
     if (!error && data && data.categories) {
       const existing = await db.business_settings.get(businessId);
-      const updated = { business_id: businessId, ...existing, categories: data.categories };
+      const updated = { business_id: businessId, ...existing, categories: data.categories, business_category: data.business_category || existing?.business_category };
       await db.business_settings.put(updated);
+      if (updated.business_category === 'licorera') {
+        return ensureLicorCategories(businessId, updated);
+      }
       return data.categories;
     }
 

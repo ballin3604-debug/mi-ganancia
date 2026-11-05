@@ -88,9 +88,17 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
     const preferredPresentation = configuredPurchaseOptions.find((presentation) => (
       presentation.id === draft?.purchasePresentationId
     ));
+    // En licorería el costo de compra se carga por caja/paquete y se guarda
+    // packageSize con ese factor. Si el borrador no fija la presentación,
+    // preferimos la que coincide con esa caja/paquete para no precargar un
+    // costo por chipa creyendo que es por caja.
+    const matchingPurchasePresentation = configuredPurchaseOptions.find(
+      (presentation) => Number(presentation.factor) === Number(learnedBoxSize)
+    );
+    const defaultPresentation = matchingPurchasePresentation || configuredPurchaseOptions[0];
     setPurchasePresentationId(
       preferredPresentation?.id
-      || configuredPurchaseOptions[0]?.id
+      || defaultPresentation?.id
       || (product.presentations || []).find((presentation) => presentation.isBase)?.id
       || ''
     );

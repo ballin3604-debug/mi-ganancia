@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { addProduct } from '../services/products';
 
 const state = vi.hoisted(() => ({
+  tipoNegocio: 'tienda',
   sectorConfig: {
     defaultUnit: 'Unidad',
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -16,7 +17,7 @@ vi.mock('../context/AuthContext', () => ({
 }));
 
 vi.mock('../context/BusinessContext', () => ({
-  useBusiness: () => ({ sectorConfig: state.sectorConfig, tipoNegocio: 'tienda' }),
+  useBusiness: () => ({ sectorConfig: state.sectorConfig, tipoNegocio: state.tipoNegocio }),
 }));
 
 vi.mock('../context/BranchContext', () => ({
@@ -70,6 +71,7 @@ describe('Inventario', () => {
   beforeEach(() => {
     localStorage.removeItem('mg-product-form-draft');
     vi.mocked(addProduct).mockClear();
+    state.tipoNegocio = 'tienda';
     state.sectorConfig = {
       defaultUnit: 'Unidad',
       unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -153,6 +155,44 @@ describe('Inventario', () => {
       presentations: [
         { id: 'base-unit', name: 'Botella', factor: 1, price: 0, isBase: true },
         { id: 'new-package', name: 'Paquete', factor: 6, price: 60, isBase: false },
+      ],
+    }));
+  });
+
+  it('licorería: guarda precios por presentación y costo por caja', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
+
+    expect(screen.getByText('Catálogo de licorería')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Vinos y tragos/ })).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Amstel' } });
+    fireEvent.change(screen.getByLabelText('Precio Unidad'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Precio Chipa'), { target: { value: '90' } });
+    fireEvent.change(screen.getByLabelText('Precio Caja fría'), { target: { value: '170' } });
+    fireEvent.change(screen.getByLabelText('Costo por caja'), { target: { value: '144' } });
+    fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '24' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar producto' }));
+    await waitFor(() => expect(addProduct).toHaveBeenCalled());
+    expect(addProduct).toHaveBeenCalledWith('b1', expect.objectContaining({
+      name: 'Amstel',
+      category: 'Cervezas',
+      price: 8,
+      stock: 24,
+      supplierPrice: 6,
+      packageSize: '24',
+      unit: 'Unidad',
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+        { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 90, isBase: false },
+        { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 170, isBase: false },
       ],
     }));
   });

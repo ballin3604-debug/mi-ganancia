@@ -32,6 +32,7 @@ import { StockLabel } from '../components/ProductCatalogCard';
 import { ProductDetailModal } from '../components/inventory/ProductDetailModal';
 import { ProductGridSkeleton } from '../components/inventory/ProductGridSkeleton';
 import { InventoryHeader } from '../components/inventory/InventoryHeader';
+import { LicorPricingFields } from '../components/inventory/LicorPricingFields';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { AppIcon } from '../components/icons';
 import PhotoCamera from '../components/PhotoCamera';
@@ -39,6 +40,13 @@ import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap, setBranchStock } from '../services/branchStock';
 import { ensureBasePresentation, getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
+import {
+  LICOR_CATEGORIES,
+  buildLicorPresentations,
+  getLicorCategoryConfig,
+  getLicorPurchaseFactorFromProduct,
+  normalizeLicorCategory,
+} from '../config/licorCatalog';
 
 const EMPTY_FORM = {
   name: '',
@@ -61,6 +69,11 @@ const EMPTY_FORM = {
   isDish: false,
   isAvailable: true,
   presentations: [],
+  licorPrices: {},
+  licorFactors: {},
+  licorPurchaseUnit: 'caja',
+  licorPurchaseFactor: '',
+  licorExtraPresentations: [],
 };
 
 const EXPIRY_WARNING_DAYS = 30;
@@ -89,6 +102,104 @@ function getCatColor(categories, catName) {
   const idx = categories.indexOf(catName);
   if (idx === -1) return CATEGORY_COLORS[0];
   return CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+}
+
+// Campos de licorería del formulario. La categoría define qué presentaciones
+// de venta se muestran y en qué unidad se compra (caja o paquete).
+function licorFormDefaults(category, base = {}) {
+  const normalized = normalizeLicorCategory(category);
+  const config = getLicorCategoryConfig(normalized);
+  const prices = {};
+  const factors = {};
+  config.sell.forEach((preset) => {
+    if (preset.key === 'unidad') return;
+    prices[preset.key] = '';
+    factors[preset.key] = preset.factor ? String(preset.factor) : '';
+  });
+  return {
+    ...base,
+    category: normalized,
+    unit: 'Unidad',
+    unitLabel: 'Unidad',
+    sellPack: false,
+    licorPrices: prices,
+    licorFactors: factors,
+    licorPurchaseUnit: config.purchase.askUnit ? 'caja' : config.purchase.unit,
+    licorPurchaseFactor: config.purchase.askFactor
+      ? ''
+      : (config.purchase.fixedFactor ? String(config.purchase.fixedFactor) : ''),
+    licorExtraPresentations: [],
+  };
+}
+
+function changeLicorCategory(form, category) {
+  return licorFormDefaults(category, form);
+}
+
+function readLicorProductForm(product) {
+  const category = normalizeLicorCategory(product.category);
+  const config = getLicorCategoryConfig(category);
+  const presentations = Array.isArray(product.presentations) ? product.presentations : [];
+  const prices = {};
+  const factors = {};
+
+  config.sell.forEach((preset) => {
+    if (preset.key === 'unidad') return;
+    const found = presentations.find((presentation) => (
+      !presentation?.purchaseOnly
+      && String(presentation?.name || '').trim().toLowerCase() === preset.name.toLowerCase()
+    ));
+    prices[preset.key] = found ? String(found.price) : '';
+    factors[preset.key] = found ? String(found.factor) : (preset.factor ? String(preset.factor) : '');
+  });
+
+  // Productos viejos que usaban "paquete" (packPrice/packageSize) en vez de
+  // presentaciones: se reubican en la presentación equivalente de la categoría.
+  const legacySize = Number(product.packageSize || 0);
+  const legacyPrice = Number(product.packPrice || 0);
+  if (legacySize > 1 && legacyPrice > 0) {
+    const legacyLabel = String(product.packLabel || '').trim().toLowerCase();
+    const target = config.sell.find((preset) => preset.key !== 'unidad' && (
+      (preset.key === 'chipa' && (legacyLabel.includes('chipa') || legacySize === 12))
+      || (preset.key === 'paquete' && (legacyLabel.includes('paquete') || !legacyLabel.includes('caja')))
+      || (preset.key === 'cajaFria' && (legacyLabel.includes('caja') || legacySize === 24))
+    ));
+    if (target && !prices[target.key]) {
+      prices[target.key] = String(legacyPrice);
+      factors[target.key] = String(legacySize);
+    }
+    if (legacySize > 1 && Number(product.packPriceHot) > 0 && config.sell.some((preset) => preset.key === 'cajaCaliente')) {
+      prices.cajaCaliente = String(product.packPriceHot);
+      factors.cajaCaliente = String(legacySize);
+    }
+  }
+
+  const purchaseOnly = presentations.find((presentation) => presentation?.purchaseOnly);
+  const purchaseFactor = getLicorPurchaseFactorFromProduct(product, category);
+  const purchaseUnit = config.purchase.askUnit
+    ? (String(purchaseOnly?.name || '').toLowerCase().startsWith('paquete') ? 'paquete' : 'caja')
+    : config.purchase.unit;
+  const knownNames = new Set(config.sell.map((preset) => preset.name.toLowerCase()));
+  const extraPresentations = presentations.filter((presentation) => (
+    !presentation?.isBase
+    && !presentation?.purchaseOnly
+    && !knownNames.has(String(presentation?.name || '').trim().toLowerCase())
+  ));
+
+  return {
+    category,
+    unit: 'Unidad',
+    unitLabel: 'Unidad',
+    price: String(product.price ?? ''),
+    supplierPrice: product.supplierPrice && purchaseFactor > 0
+      ? String(Number(product.supplierPrice) * purchaseFactor)
+      : '',
+    licorPrices: prices,
+    licorFactors: factors,
+    licorPurchaseUnit: purchaseUnit,
+    licorPurchaseFactor: !config.purchase.fixedFactor && purchaseFactor > 1 ? String(purchaseFactor) : '',
+    licorExtraPresentations: extraPresentations,
+  };
 }
 
 // ── Borrador del formulario (recuperación ante recargas) ─────────────────
@@ -145,6 +256,8 @@ export default function Inventory() {
   const [showFilters, setShowFilters] = useState(false);
   // Restaurante: sin vencimiento, sin código de barras, sin compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  // Licorería: catálogo fijo de categorías y precios por presentación.
+  const isLicoreria = tipoNegocio === 'licorera';
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
   const showStock = sectorConfig?.features?.stock !== false;
   // El dueño puede activar o desactivar el escáner desde Ajustes.
@@ -202,6 +315,22 @@ export default function Inventory() {
     setForm((current) => ensureBasePresentation(current, sectorConfig.defaultUnit));
   }, [showForm, sectorConfig?.features?.configurablePresentations, sectorConfig?.defaultUnit]);
 
+  useEffect(() => {
+    if (!showForm || !isLicoreria) return;
+    setForm((current) => {
+      const category = LICOR_CATEGORIES.includes(current.category)
+        ? current.category
+        : LICOR_CATEGORIES[0];
+      const config = getLicorCategoryConfig(category);
+      const needsShape = !current.licorPrices
+        || !current.licorFactors
+        || (config.sell.some((preset) => preset.key !== 'unidad')
+          && Object.keys(current.licorFactors).length === 0);
+      if (LICOR_CATEGORIES.includes(current.category) && !needsShape) return current;
+      return licorFormDefaults(category, current);
+    });
+  }, [showForm, isLicoreria]);
+
   // Category Manager modal state
   const [showCatManager, setShowCatManager] = useState(() => searchParams.get('action') === 'categorias');
   const [newCatName, setNewCatName] = useState('');
@@ -228,12 +357,12 @@ export default function Inventory() {
     if (!businessId) return;
     const [prods, cats] = await Promise.all([
       getProducts(businessId),
-      getCategories(businessId),
+      getCategories(businessId, tipoNegocio),
     ]);
     setProducts(prods);
     setCategories(cats);
     setLoading(false);
-  }, [businessId]);
+  }, [businessId, tipoNegocio]);
 
   useEffect(() => {
     fetchAll();
@@ -404,11 +533,13 @@ export default function Inventory() {
     const nextForm = {
       ...EMPTY_FORM,
       ...prefill,
-      sellPack: !prefill.isDish,
+      sellPack: isLicoreria ? false : !prefill.isDish,
       packLabel: prefill.packLabel || 'Paquete',
       unitLabel: prefill.unitLabel || sectorConfig?.defaultUnit || 'Unidad',
     };
-    if (sectorConfig?.features?.configurablePresentations) {
+    if (isLicoreria) {
+      Object.assign(nextForm, licorFormDefaults(prefill.category || LICOR_CATEGORIES[0], nextForm));
+    } else if (sectorConfig?.features?.configurablePresentations) {
       nextForm.unitLabel = nextForm.unitLabel || sectorConfig.defaultUnit || 'Unidad';
       nextForm.presentations = [{
         id: 'base-unit',
@@ -453,7 +584,7 @@ export default function Inventory() {
     setShowAdvanced(true);
     setCelebrate(false);
     const hasPack = Number(product.packageSize || 0) > 1 && product.packPrice !== '' && product.packPrice !== null && product.packPrice !== undefined;
-    setForm({
+    const nextForm = {
       name: product.name,
       barcode: product.isDish ? '' : (product.barcode || ''),
       unitLabel: product.unitLabel || (sectorConfig?.features?.configurablePresentations ? sectorConfig.defaultUnit : '') || '',
@@ -482,7 +613,11 @@ export default function Inventory() {
           price: option.price,
           isBase: option.presId === 'unit',
         })),
-    });
+    };
+    if (isLicoreria) {
+      Object.assign(nextForm, readLicorProductForm(product));
+    }
+    setForm(nextForm);
 
     const nearest = getNearestExpiry(replenishments, product.id);
     if (nearest) {
@@ -515,10 +650,15 @@ export default function Inventory() {
   async function handleSave(e, options = {}) {
     const { another = false } = options;
     if (e?.preventDefault) e.preventDefault();
-    const newPackageProduct = !editingProduct && !form.isDish;
+    const newPackageProduct = !isLicoreria && !editingProduct && !form.isDish;
     const packageSize = Number(form.packageSize || 0);
     if (!form.name.trim()) return;
-    if (newPackageProduct) {
+    if (isLicoreria) {
+      if (!form.price || Number(form.price) <= 0) {
+        alert('Ingresá el precio de venta de la unidad.');
+        return;
+      }
+    } else if (newPackageProduct) {
       if (!form.packPrice || Number(form.packPrice) <= 0 || packageSize < 2) {
         alert('Indica cuántas unidades trae el paquete y su precio de venta.');
         return;
@@ -528,16 +668,37 @@ export default function Inventory() {
       return;
     }
     if (form.stock === '' && !newPackageProduct) return;
-    if (!form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
+    if (!isLicoreria && !form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
       alert('Dinos cuánto te costó cada paquete: así tu ganancia se calcula sola.');
       return;
     }
-    if (!newPackageProduct && !form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
+    if (!isLicoreria && !newPackageProduct && !form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
     }
     let data;
-    if (form.isDish) {
+    if (isLicoreria) {
+      try {
+        const built = buildLicorPresentations(form, form.licorExtraPresentations);
+        data = {
+          ...form,
+          price: built.unitPrice,
+          unitLabel: 'Unidad',
+          unit: 'Unidad',
+          presentations: built.presentations,
+          supplierPrice: built.purchaseCost > 0 && built.purchaseFactor > 1
+            ? built.purchaseCost / built.purchaseFactor
+            : '',
+          packageSize: built.purchaseFactor > 1 ? String(built.purchaseFactor) : '',
+          packLabel: '',
+          packPrice: '',
+          packPriceHot: '',
+        };
+      } catch (err) {
+        alert(err.message || 'Revisá los precios y unidades del producto.');
+        return;
+      }
+    } else if (form.isDish) {
       data = {
         ...form,
         barcode: '',
@@ -592,6 +753,13 @@ export default function Inventory() {
       delete data.presentations;
     }
     delete data.sellPack;
+    if (isLicoreria) {
+      delete data.licorPrices;
+      delete data.licorFactors;
+      delete data.licorPurchaseUnit;
+      delete data.licorPurchaseFactor;
+      delete data.licorExtraPresentations;
+    }
     const formStockVal = Number(data.stock || 0);
     const stockToSave = newPackageProduct ? formStockVal * packageSize : formStockVal;
     if (newPackageProduct) {
@@ -953,7 +1121,7 @@ export default function Inventory() {
         activeFilterCount={activeFilterCount}
         onClearFilters={clearAllFilters}
         onOpenAddProduct={() => openAdd()}
-        onOpenCatManager={() => setShowCatManager(true)}
+        onOpenCatManager={isLicoreria ? null : () => setShowCatManager(true)}
         onOpenScanner={showBarcode && scannerEnabled ? () => openScanner('search') : undefined}
         searchPlaceholder={isRestaurantMode ? 'Buscar plato o producto...' : undefined}
         allLabel={isRestaurantMode ? 'Todo el menú' : undefined}
@@ -1439,38 +1607,80 @@ export default function Inventory() {
                 )}
 
                 {/* Categoría */}
-                {(!practical || showAdvanced) && (
+                {(!practical || showAdvanced || isLicoreria) && (
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
-                      Categoría
-                    </label>
-                    <button
-                      type="button"
-                      // Abre el gestor ENCIMA del formulario sin cerrarlo:
-                      // los datos ya escritos se conservan.
-                      onClick={() => setShowCatManager(true)}
-                      className="text-[11px] text-[var(--mg-accent-text)] font-extrabold hover:underline"
-                    >
-                      + Gestionar categorías
-                    </button>
-                  </div>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setField('category', e.target.value)}
-                    className="mg-input text-xs font-bold"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
+                  {isLicoreria ? (
+                    <>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
+                          Categoría *
+                        </label>
+                        <span className="text-[10px] font-bold text-[var(--mg-text-muted)]">Catálogo de licorería</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {LICOR_CATEGORIES.map((cat) => {
+                          const selected = form.category === cat;
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => setForm((current) => changeLicorCategory(current, cat))}
+                              className={`flex items-center gap-2 rounded-2xl border-2 px-3 py-2.5 text-left transition-all active:scale-[0.98] ${
+                                selected
+                                  ? 'border-[var(--mg-accent)] bg-[var(--mg-accent-bg)]'
+                                  : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'
+                              }`}
+                            >
+                              <span className="text-base leading-none">{getLicorCategoryConfig(cat).emoji}</span>
+                              <span className={`min-w-0 text-[11px] font-extrabold leading-tight ${selected ? 'text-[var(--mg-accent-text)]' : 'text-[var(--mg-text-secondary)]'}`}>
+                                {cat}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider">
+                          Categoría
+                        </label>
+                        <button
+                          type="button"
+                          // Abre el gestor ENCIMA del formulario sin cerrarlo:
+                          // los datos ya escritos se conservan.
+                          onClick={() => setShowCatManager(true)}
+                          className="text-[11px] text-[var(--mg-accent-text)] font-extrabold hover:underline"
+                        >
+                          + Gestionar categorías
+                        </button>
+                      </div>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setField('category', e.target.value)}
+                        className="mg-input text-xs font-bold"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
                 )}
 
                 {/* Precios */}
-                {isNewPackageProduct ? (
+                {isLicoreria ? (
+                  <LicorPricingFields
+                    form={form}
+                    setField={setField}
+                    category={normalizeLicorCategory(form.category)}
+                  />
+                ) : isNewPackageProduct ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -1637,9 +1847,9 @@ export default function Inventory() {
                     </div>
                   </div>
                 ) : (
-                <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+                <div className={practical && !editingProduct && !isLicoreria ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
-                    {practical && !editingProduct ? (
+                    {practical && !editingProduct && !isLicoreria ? (
                       <div className="space-y-2.5">
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                           ¿Cómo entra tu stock?
@@ -1760,7 +1970,7 @@ export default function Inventory() {
                     ) : (
                       <>
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                          {isNewPackageProduct ? 'Paquetes actuales *' : 'Stock Actual *'}{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
+                          {isNewPackageProduct && !isLicoreria ? 'Paquetes actuales *' : 'Stock Actual *'}{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
                         </label>
                         <input
                           type="number"
@@ -1778,31 +1988,37 @@ export default function Inventory() {
                     )}
                   </div>
 
-                  {!(practical && !editingProduct) && (
+                  {(isLicoreria || !(practical && !editingProduct)) && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Unidad de Medida
                     </label>
-                    <select
-                      value={form.unit}
-                      onChange={(e) => setField('unit', e.target.value)}
-                      className="mg-input text-xs font-bold"
-                    >
-                      <option value="Unidad">Unidad</option>
-                      <option value="Caja">Caja</option>
-                      <option value="Paquete">Paquete</option>
-                      <option value="Litros">Litros</option>
-                      <option value="Mililitros">Mililitros</option>
-                      <option value="Gramos">Gramos</option>
-                      <option value="Kilogramos">Kilogramos</option>
-                      <option value="Otros">Otros</option>
-                    </select>
+                    {isLicoreria ? (
+                      <div className="mg-input flex items-center text-xs font-bold text-[var(--mg-text-secondary)]">
+                        Unidad (stock suelto)
+                      </div>
+                    ) : (
+                      <select
+                        value={form.unit}
+                        onChange={(e) => setField('unit', e.target.value)}
+                        className="mg-input text-xs font-bold"
+                      >
+                        <option value="Unidad">Unidad</option>
+                        <option value="Caja">Caja</option>
+                        <option value="Paquete">Paquete</option>
+                        <option value="Litros">Litros</option>
+                        <option value="Mililitros">Mililitros</option>
+                        <option value="Gramos">Gramos</option>
+                        <option value="Kilogramos">Kilogramos</option>
+                        <option value="Otros">Otros</option>
+                      </select>
+                    )}
                   </div>
                   )}
                 </div>
                 )}
 
-                {(!practical || showAdvanced) && !form.isDish && (sectorConfig?.features?.configurablePresentations ? (
+                {!isLicoreria && (!practical || showAdvanced) && !form.isDish && (sectorConfig?.features?.configurablePresentations ? (
                   <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                     <div>
                       <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>
@@ -2141,7 +2357,7 @@ export default function Inventory() {
 
       {/* === MODAL: Gestionar Categorías (z alto: va ENCIMA del formulario) === */}
       <AnimatePresence>
-        {showCatManager && (
+        {showCatManager && !isLicoreria && (
           <div
             className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs mg-backdrop-in"
             onClick={() => setShowCatManager(false)}

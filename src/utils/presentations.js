@@ -16,6 +16,7 @@ export function getSellOptions(product) {
       return [];
     }
     return [...configured]
+      .filter((presentation) => !presentation?.purchaseOnly)
       .sort((a, b) => Number(!!b?.isBase) - Number(!!a?.isBase))
       .filter((presentation) => (
         presentation
@@ -132,10 +133,12 @@ export function validatePresentationDefinitions(presentations, { baseName, baseP
     const factor = Number(presentation?.factor);
     const price = presentation?.isBase ? Number(basePrice) : Number(presentation?.price);
     const id = String(presentation?.id || `presentation-${index + 1}`).trim();
+    const purchaseOnly = !!presentation?.purchaseOnly;
     if (!name) throw new Error(`La presentación ${index + 1} necesita un nombre.`);
     if (!id) throw new Error(`La presentación ${name} necesita un identificador.`);
     if (!Number.isFinite(factor) || factor <= 0) throw new Error(`El factor de ${name} debe ser mayor que cero.`);
-    if (!Number.isFinite(price) || (presentation?.isBase ? price < 0 : price <= 0)) {
+    if (purchaseOnly && factor <= 1) throw new Error(`La presentación de compra ${name} debe agrupar más de una unidad.`);
+    if (!Number.isFinite(price) || (presentation?.isBase ? price < 0 : purchaseOnly ? price < 0 : price <= 0)) {
       throw new Error(`El precio de ${name} debe ser mayor que cero.`);
     }
     return {
@@ -144,6 +147,7 @@ export function validatePresentationDefinitions(presentations, { baseName, baseP
       factor,
       price,
       isBase: !!presentation?.isBase,
+      ...(purchaseOnly ? { purchaseOnly: true } : {}),
     };
   });
 
