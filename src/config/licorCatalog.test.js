@@ -3,7 +3,7 @@ import {
   buildLicorPresentations,
   getLicorPurchaseFactorFromProduct,
 } from './licorCatalog';
-import { getSellOptions } from '../utils/presentations';
+import { getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
 
 describe('catálogo de licorería', () => {
   it('convierte el costo de la caja de cervezas a costo por unidad', () => {
@@ -62,6 +62,36 @@ describe('catálogo de licorería', () => {
       { category: 'Cigarros', packageSize: '100', presentations: built.presentations },
       'Cigarros'
     )).toBe(100);
+  });
+
+  it('permite vender un paquete de 12 y comprar uno de 24 sin repetir el nombre', () => {
+    const built = buildLicorPresentations({
+      category: 'Energizantes',
+      price: '8',
+      licorPrices: { paquete: '79' },
+      licorFactors: { paquete: '12' },
+      supplierPrice: '153',
+      licorPurchaseFactor: '24',
+    });
+
+    expect(built.presentations).toContainEqual({
+      id: 'licor-compra',
+      name: 'Paquete de compra',
+      factor: 24,
+      price: 0,
+      isBase: false,
+      purchaseOnly: true,
+    });
+    expect(() => validatePresentationDefinitions(built.presentations, {
+      baseName: 'Unidad',
+      basePrice: 8,
+    })).not.toThrow();
+    expect(getSellOptions({ id: 'p4', price: 8, presentations: built.presentations })
+      .map((option) => option.label)).toEqual(['Unidad', 'Paquete']);
+    expect(getLicorPurchaseFactorFromProduct(
+      { category: 'Energizantes', packageSize: '24', presentations: built.presentations },
+      'Energizantes'
+    )).toBe(24);
   });
 
   it('exige unidades por caja cuando hay costo de compra', () => {

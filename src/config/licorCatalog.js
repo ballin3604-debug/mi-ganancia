@@ -215,9 +215,19 @@ export function buildLicorPresentations(form, extraPresentations = []) {
       && presentation.name.toLowerCase().startsWith(purchaseLabel.toLowerCase())
     ));
     if (!alreadyPresent) {
+      const usedNames = new Set(presentations.map((presentation) => presentation.name.toLowerCase()));
+      let purchaseName = purchaseLabel;
+      if (usedNames.has(purchaseName.toLowerCase())) {
+        purchaseName = `${purchaseLabel} de compra`;
+        let suffix = 2;
+        while (usedNames.has(purchaseName.toLowerCase())) {
+          purchaseName = `${purchaseLabel} de compra ${suffix}`;
+          suffix += 1;
+        }
+      }
       presentations.push({
         id: 'licor-compra',
-        name: purchaseLabel,
+        name: purchaseName,
         factor: purchaseFactor,
         price: 0,
         isBase: false,
