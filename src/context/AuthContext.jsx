@@ -39,39 +39,27 @@ export function AuthProvider({ children }) {
         // Guard check right after the await
         if (thisSessionId !== activeSessionIdRef.current) return;
 
-        if (userData) saveLastAuthUser(supabaseUser);
-
-        if (!userData) {
-          // Sin perfil: ¿lo invitaron por correo? Entra directo, sin PIN.
+        let resolvedUserData = userData;
+        if (!resolvedUserData?.business_id && supabaseUser.email) {
           try {
             const invite = await findInviteForEmail(supabaseUser.email);
             if (invite) {
               if (thisSessionId !== activeSessionIdRef.current) return;
-              const displayName = supabaseUser.user_metadata?.displayName || supabaseUser.email || supabaseUser.phone;
+              const displayName = resolvedUserData?.name
+                || supabaseUser.user_metadata?.displayName
+                || supabaseUser.email
+                || supabaseUser.phone;
               await joinBusinessWithCode(supabaseUser, invite.code, displayName, {});
-              const fresh = await getUserData(supabaseUser.id);
-              if (fresh) {
-                if (thisSessionId !== activeSessionIdRef.current) return;
-                saveLastAuthUser(supabaseUser);
-                setUserStatus(fresh.status || 'active');
-                setRole(fresh.role === 'cashier' ? 'cashier' : 'owner');
-                setSellerName(fresh.name || userObj.displayName || '');
-                setMemberPermissions(Array.isArray(fresh.custom_permissions) ? fresh.custom_permissions : null);
-                if (fresh.business_id) {
-                  setBusinessId(fresh.business_id);
-                  setNeedsSetup(false);
-                } else {
-                  setBusinessId(null);
-                  setNeedsSetup(false);
-                }
-                setUser(userObj);
-                setAuthError(null);
-                setLoading(false);
-                return;
-              }
+              resolvedUserData = await getUserData(supabaseUser.id);
             }
-          } catch { /* sin invitación: flujo normal */ }
-          // Brand new user — no profile doc yet
+          } catch {
+            resolvedUserData = userData;
+          }
+        }
+
+        if (resolvedUserData) saveLastAuthUser(supabaseUser);
+
+        if (!resolvedUserData) {
           setNeedsSetup(true);
           setUserStatus(null);
           setBusinessId(null);
@@ -79,17 +67,17 @@ export function AuthProvider({ children }) {
           setMemberPermissions(null);
           setMemberBranches(null);
         } else {
-          setUserStatus(userData.status || 'active');
-          setRole(userData.role === 'cashier' ? 'cashier' : 'owner');
-          setSellerName(userData.name || userObj.displayName || '');
-          setMemberPermissions(Array.isArray(userData.custom_permissions) ? userData.custom_permissions : null);
-          setMemberBranches(Array.isArray(userData.branch_ids) ? userData.branch_ids : null);
-          if (userData.business_id) {
-            setBusinessId(userData.business_id);
+          setUserStatus(resolvedUserData.status || 'active');
+          setRole(resolvedUserData.role === 'cashier' ? 'cashier' : 'owner');
+          setSellerName(resolvedUserData.name || userObj.displayName || '');
+          setMemberPermissions(Array.isArray(resolvedUserData.custom_permissions) ? resolvedUserData.custom_permissions : null);
+          setMemberBranches(Array.isArray(resolvedUserData.branch_ids) ? resolvedUserData.branch_ids : null);
+          if (resolvedUserData.business_id) {
+            setBusinessId(resolvedUserData.business_id);
             setNeedsSetup(false);
           } else {
             setBusinessId(null);
-            setNeedsSetup(false);
+            setNeedsSetup(true);
           }
         }
         setUser(userObj);

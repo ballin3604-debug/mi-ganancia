@@ -32,7 +32,7 @@ const CATEGORY_ICONS = {
 };
 
 // ── Mode selector shown to regular (non-admin) new users ─────────────────────
-function ModeSelector({ onSelect }) {
+function ModeSelector({ onSelect, error = '' }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f3f6f4] sm:px-5 sm:py-8">
       <section className="mg-slide-up min-h-screen w-full bg-white px-6 pb-[max(32px,env(safe-area-inset-bottom))] pt-[max(28px,env(safe-area-inset-top))] sm:min-h-0 sm:max-w-[480px] sm:rounded-[28px] sm:border sm:border-[#e7ece8] sm:px-10 sm:py-10 sm:shadow-[0_20px_70px_rgba(19,52,39,0.09)]">
@@ -84,6 +84,8 @@ function ModeSelector({ onSelect }) {
             <ArrowRight className="h-5 w-5 shrink-0 text-[#a3aaa5] transition group-hover:text-[#168266] group-hover:translate-x-0.5" />
           </button>
         </div>
+
+        {error ? <p role="alert" className="mt-4 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3.5 py-2.5 text-xs font-semibold text-[var(--mg-danger)]">{error}</p> : null}
 
         <button
           type="button"
@@ -310,15 +312,64 @@ function CategoryPicker({ selected, onSelect }) {
 
 // ── Main Setup component ──────────────────────────────────────────────────────
 export default function Setup({ isAdmin = false }) {
-  const { user, setRequestSent, completeSetup } = useAuth();
+  const { user, setRequestSent, completeSetup, refreshSession } = useAuth();
   const [mode, setMode] = useState(isAdmin ? 'new' : null);
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState(DEFAULT_CATEGORY_ID);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [autoJoiningInvite, setAutoJoiningInvite] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin || !user?.email || mode === 'new') return undefined;
+    let alive = true;
+    let checking = false;
+    let stopped = false;
+
+    const acceptEmailInvite = async () => {
+      if (!alive || checking || stopped) return;
+      checking = true;
+      try {
+        const invite = await findInviteForEmail(user.email);
+        if (!alive || !invite) return;
+        setAutoJoiningInvite(true);
+        setError('');
+        const displayName = user.user_metadata?.displayName || user.email || user.phone;
+        await joinBusinessWithCode(user, invite.code, displayName, {});
+        if (alive) await refreshSession();
+      } catch (joinError) {
+        stopped = true;
+        if (alive) {
+          setAutoJoiningInvite(false);
+          setError(joinError.message || 'No se pudo aceptar la invitación. Intenta iniciar sesión de nuevo.');
+        }
+      } finally {
+        checking = false;
+      }
+    };
+
+    acceptEmailInvite();
+    const timer = window.setInterval(acceptEmailInvite, 5000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [isAdmin, user?.id, user?.email, mode, refreshSession]);
+
+  if (autoJoiningInvite) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f3f6f4] p-5">
+        <section role="status" className="w-full max-w-sm rounded-3xl border border-[#e7ece8] bg-white p-8 text-center shadow-[0_20px_70px_rgba(19,52,39,0.09)]">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef6f1] text-[#168266]"><span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" /></span>
+          <p className="mt-4 text-sm font-black text-[#151a17]">Ingresando al negocio</p>
+          <p className="mt-1 text-xs font-medium text-[#747b76]">Aceptando la invitación asociada a tu correo…</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!isAdmin && mode === null) {
-    return <ModeSelector onSelect={setMode} />;
+    return <ModeSelector onSelect={setMode} error={error} />;
   }
 
   if (mode === 'join') {

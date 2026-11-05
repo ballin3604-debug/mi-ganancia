@@ -405,7 +405,7 @@ export function TeamSection({
         <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between gap-2">
           <div>
             <p className="font-black text-[var(--mg-text-primary)] text-sm">Invitar por Correo Electrónico</p>
-            <p className="text-[11px] text-[var(--mg-text-muted)]">Código atado a su cuenta de Google. Vence en 7 días.</p>
+            <p className="text-[11px] text-[var(--mg-text-muted)]">Al iniciar sesión en la app con este correo, se vincula automáticamente sin ingresar código.</p>
           </div>
           <span className="text-[10px] font-bold text-[var(--mg-text-muted)] bg-[var(--mg-bg-elevated)] px-2 py-1 rounded-lg shrink-0">Revocable siempre</span>
         </div>
