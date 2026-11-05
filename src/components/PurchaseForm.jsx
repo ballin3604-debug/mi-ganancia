@@ -281,7 +281,10 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
           category: product.category || 'Otros',
           description: product.description || '',
           imageData: product.imageData || '',
-          supplierPrice: costoUnitarioReal,
+          // Costo real por unidad (paquete ÷ unidades, con flete/gastos incluidos
+          // si los hubo). Se redondea a 6 decimales para no guardar basuras
+          // de coma flotante (ej. 6,6666666666666671).
+          supplierPrice: Math.round(costoUnitarioReal * 1e6) / 1e6,
           unit: product.unit || 'Unidad',
           presentations: Array.isArray(product.presentations) && product.presentations.length > 0
             ? product.presentations.map((presentation) => (

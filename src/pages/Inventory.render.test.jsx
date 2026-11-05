@@ -5,6 +5,7 @@ import { addProduct } from '../services/products';
 
 const state = vi.hoisted(() => ({
   tipoNegocio: 'tienda',
+  products: [],
   sectorConfig: {
     defaultUnit: 'Unidad',
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -33,7 +34,7 @@ vi.mock('../hooks/useImageUpload', () => ({
 }));
 
 vi.mock('../services/products', () => ({
-  getProducts: async () => [],
+  getProducts: async () => state.products,
   addProduct: vi.fn(),
   updateProduct: vi.fn(),
   deleteProduct: vi.fn(),
@@ -71,6 +72,7 @@ describe('Inventario', () => {
   beforeEach(() => {
     localStorage.removeItem('mg-product-form-draft');
     vi.mocked(addProduct).mockClear();
+    state.products = [];
     state.tipoNegocio = 'tienda';
     state.sectorConfig = {
       defaultUnit: 'Unidad',
@@ -195,5 +197,42 @@ describe('Inventario', () => {
         { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 170, isBase: false },
       ],
     }));
+  });
+
+  it('licorería: prellena el costo por caja redondeado a centavos (sin basura de decimales)', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    // Costo por unidad con basura de coma flotante (típico tras comprar:
+    // Bs 145,92 ÷ 24 unidades = 6,080000000000001).
+    state.products = [{
+      id: 'p1',
+      name: 'Pilsener',
+      category: 'Cervezas',
+      price: 8,
+      stock: 24,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      supplierPrice: 6.0800000000000009,
+      packageSize: '24',
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+        { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 170, isBase: false },
+      ],
+    }];
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Pilsener').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('Pilsener')[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Producto' }));
+
+    expect((await screen.findByLabelText('Costo por caja')).value).toBe('145.92');
+    expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
   });
 });

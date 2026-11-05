@@ -191,8 +191,10 @@ function readLicorProductForm(product) {
     unit: 'Unidad',
     unitLabel: 'Unidad',
     price: String(product.price ?? ''),
+    // El costo guardado es por unidad; al mostrar el empaque se multiplica.
+    // Se redondea a centavos para no ver basuras como "145,9200000000001".
     supplierPrice: product.supplierPrice && purchaseFactor > 0
-      ? String(Number(product.supplierPrice) * purchaseFactor)
+      ? String(Math.round(Number(product.supplierPrice) * purchaseFactor * 100) / 100)
       : '',
     licorPrices: prices,
     licorFactors: factors,
@@ -687,7 +689,7 @@ export default function Inventory() {
           unit: 'Unidad',
           presentations: built.presentations,
           supplierPrice: built.purchaseCost > 0 && built.purchaseFactor > 1
-            ? built.purchaseCost / built.purchaseFactor
+            ? Math.round((built.purchaseCost / built.purchaseFactor) * 1e6) / 1e6
             : '',
           packageSize: built.purchaseFactor > 1 ? String(built.purchaseFactor) : '',
           packLabel: '',
