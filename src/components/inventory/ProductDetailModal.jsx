@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatBs } from '../../utils/currency';
+import { formatBs, formatBsInteger } from '../../utils/currency';
 import { TransferModal } from './TransferModal';
 import { AppIcon } from '../icons';
 import { useBusiness } from '../../context/BusinessContext';
@@ -218,7 +218,7 @@ export function ProductDetailModal({
                 <div className="bg-[var(--mg-bg-surface)] p-3 rounded-xl border border-[var(--mg-border)]">
                   <span className="text-[10px] font-bold text-[var(--mg-text-muted)] block">{primaryOption?.factor > 1 ? 'Costo por paquete' : 'Precio Compra'}</span>
                   <p className="text-base font-black text-[var(--mg-text-primary)] mt-0.5">
-                    {supplierPrice > 0 ? formatBs(packageCost) : '—'}
+                    {supplierPrice > 0 ? formatBsInteger(packageCost) : '—'}
                   </p>
                 </div>
 

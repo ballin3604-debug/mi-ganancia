@@ -1,11 +1,11 @@
-import { clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';
+import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../../utils/numberInput';
 import {
   getLicorCategoryConfig,
   getLicorPurchaseFactorFromForm,
   getLicorPurchaseLabel,
 } from '../../config/licorCatalog';
 
-function NumberField({ label, value, onChange, placeholder = '0.00', className = '', ariaLabel }) {
+function NumberField({ label, value, onChange, placeholder = '0.00', className = '', ariaLabel, integer = false }) {
   return (
     <div>
       <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
@@ -15,12 +15,16 @@ function NumberField({ label, value, onChange, placeholder = '0.00', className =
         type="number"
         aria-label={ariaLabel || label}
         value={value}
-        onChange={(e) => onChange(clampNumberInput(e.target.value, { max: 999999 }))}
-        onKeyDown={blockInvalidNumberKeys}
-        placeholder={placeholder}
+        onChange={(e) => onChange(
+          integer
+            ? clampIntegerInput(e.target.value, { max: 999999 })
+            : clampNumberInput(e.target.value, { max: 999999 })
+        )}
+        onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: !integer })}
+        placeholder={integer ? '0' : placeholder}
         min="0"
         max="999999"
-        step="0.01"
+        step={integer ? '1' : '0.01'}
         className={`mg-input text-sm font-black text-[var(--mg-accent-text)] ${className}`}
       />
     </div>
@@ -145,7 +149,8 @@ export function LicorPricingFields({ form, setField, category }) {
             ariaLabel={`Costo por ${purchaseLabel.toLowerCase()}`}
             value={form.supplierPrice}
             onChange={(value) => setField('supplierPrice', value)}
-            placeholder="0.00"
+            placeholder="0"
+            integer
           />
           <div>
             <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">

@@ -3,7 +3,7 @@ import { addReplenishment } from '../services/products';
 import { applyPurchaseStock } from '../services/branchStock';
 import { getReplenishmentConcepts, addReplenishmentConcepts } from '../services/replenishmentConcepts';
 import { subscribeToSuppliers, addSupplier } from '../services/suppliers';
-import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
+import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import { useBranches } from '../context/BranchContext';
@@ -78,9 +78,12 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
     const configuredPurchaseOptions = (product.presentations || []).filter((presentation) => Number(presentation.factor) > 1);
 
     setSalePrice(draft ? (draft.salePrice ?? '') : String(product.price || ''));
-    setSupplierPrice(draft
-      ? (draft.supplierPrice ?? '')
-      : String(Number(product.supplierPrice || 0) * (learnedMode === 'package' ? Number(learnedBoxSize || 0) : 1) || ''));
+    const initialCost = draft
+      ? draft.supplierPrice
+      : Number(product.supplierPrice || 0) * (learnedMode === 'package' ? Number(learnedBoxSize || 0) : 1);
+    setSupplierPrice(initialCost === '' || initialCost === null || initialCost === undefined || Number(initialCost) === 0
+      ? ''
+      : String(Math.round(Number(initialCost))));
     setQuantity(draft ? (draft.quantity ?? '') : '');
     setPurchaseUnitType(draft?.purchaseUnitType || learnedMode);
     setPackageSize(draft ? (draft.packageSize ?? '') : (learnedBoxSize ? String(learnedBoxSize) : ''));
@@ -679,11 +682,11 @@ export default function PurchaseForm({ businessId, product, initialDraft, lastPu
                 )}
               </label>
               <input
-                type="number" step="0.01" min="0" max="999999"
+                type="number" step="1" min="0" max="999999"
                 value={supplierPrice}
-                onChange={(e) => setSupplierPrice(clampNumberInput(e.target.value, { max: 999999 }))}
-                onKeyDown={blockInvalidNumberKeys}
-                placeholder="0.00"
+                onChange={(e) => setSupplierPrice(clampIntegerInput(e.target.value, { max: 999999 }))}
+                onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+                placeholder="0"
                 className="mg-input py-2 text-sm font-bold"
               />
               {purchaseUnitType === 'package' && (

@@ -65,7 +65,7 @@ describe('compras con presentaciones configurables', () => {
     fireEvent.click(screen.getByText('Por presentación'));
     fireEvent.change(screen.getByPlaceholderText('Ej: 10'), { target: { value: '3' } });
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'six' } });
-    fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], { target: { value: '42' } });
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '42' } });
     fireEvent.change(screen.getByText('Precio de venta por unidad (opcional)').parentElement.querySelector('input'), { target: { value: '14' } });
     fireEvent.submit(screen.getByText('Confirmar compra').closest('form'));
     await waitFor(() => expect(mocks.addReplenishment).toHaveBeenCalledTimes(1));

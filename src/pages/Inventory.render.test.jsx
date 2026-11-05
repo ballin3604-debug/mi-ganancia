@@ -199,7 +199,7 @@ describe('Inventario', () => {
     }));
   });
 
-  it('licorería: prellena el costo por caja redondeado a centavos (sin basura de decimales)', async () => {
+  it('licorería: prellena el costo por caja en bolivianos enteros', async () => {
     state.tipoNegocio = 'licorera';
     state.sectorConfig = {
       defaultUnit: 'Unidad',
@@ -232,7 +232,10 @@ describe('Inventario', () => {
     fireEvent.click(screen.getAllByText('Pilsener')[0]);
     fireEvent.click(await screen.findByRole('button', { name: 'Editar Producto' }));
 
-    expect((await screen.findByLabelText('Costo por caja')).value).toBe('145.92');
+    const costField = await screen.findByLabelText('Costo por caja');
+    expect(costField.value).toBe('146');
+    fireEvent.change(costField, { target: { value: '145.92' } });
+    expect(costField.value).toBe('146');
     expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
   });
 });

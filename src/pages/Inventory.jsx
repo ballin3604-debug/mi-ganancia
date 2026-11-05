@@ -22,7 +22,7 @@ import {
 } from '../services/categories';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
-import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
+import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
 
 // Inventory Subcomponents
 import { formatBs } from '../utils/currency';
@@ -192,9 +192,9 @@ function readLicorProductForm(product) {
     unitLabel: 'Unidad',
     price: String(product.price ?? ''),
     // El costo guardado es por unidad; al mostrar el empaque se multiplica.
-    // Se redondea a centavos para no ver basuras como "145,9200000000001".
+    // El precio de compra se muestra en bolivianos enteros.
     supplierPrice: product.supplierPrice && purchaseFactor > 0
-      ? String(Math.round(Number(product.supplierPrice) * purchaseFactor * 100) / 100)
+      ? String(Math.round(Number(product.supplierPrice) * purchaseFactor))
       : '',
     licorPrices: prices,
     licorFactors: factors,
@@ -601,7 +601,7 @@ export default function Inventory() {
       category: product.category || 'Otros',
       description: product.description || '',
       imageData: product.imageData || '',
-      supplierPrice: product.supplierPrice ? String(product.supplierPrice) : '',
+      supplierPrice: product.supplierPrice ? String(Math.round(Number(product.supplierPrice))) : '',
       unit: product.unit || 'Unidad',
       packageSize: product.packageSize ? String(product.packageSize) : '',
       isDish: !!product.isDish,
@@ -682,14 +682,15 @@ export default function Inventory() {
     if (isLicoreria) {
       try {
         const built = buildLicorPresentations(form, form.licorExtraPresentations);
+        const purchaseCostEntered = Math.round(Number(built.purchaseCost || 0));
         data = {
           ...form,
           price: built.unitPrice,
           unitLabel: 'Unidad',
           unit: 'Unidad',
           presentations: built.presentations,
-          supplierPrice: built.purchaseCost > 0 && built.purchaseFactor > 1
-            ? Math.round((built.purchaseCost / built.purchaseFactor) * 1e6) / 1e6
+          supplierPrice: purchaseCostEntered > 0 && built.purchaseFactor > 1
+            ? Math.round((purchaseCostEntered / built.purchaseFactor) * 1e6) / 1e6
             : '',
           packageSize: built.purchaseFactor > 1 ? String(built.purchaseFactor) : '',
           packLabel: '',
@@ -1759,12 +1760,12 @@ export default function Inventory() {
                         <input
                           type="number"
                           value={form.supplierPrice}
-                          onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
-                          onKeyDown={blockInvalidNumberKeys}
-                          placeholder="0.00"
+                          onChange={(e) => setField('supplierPrice', clampIntegerInput(e.target.value, { max: 999999 }))}
+                          onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+                          placeholder="0"
                           min="0"
                           max="999999"
-                          step="0.01"
+                          step="1"
                           className="mg-input text-xs font-bold"
                         />
                       </div>
@@ -1798,12 +1799,12 @@ export default function Inventory() {
                       <input
                         type="number"
                         value={form.supplierPrice}
-                        onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
-                        onKeyDown={blockInvalidNumberKeys}
-                        placeholder="0.00"
+                        onChange={(e) => setField('supplierPrice', clampIntegerInput(e.target.value, { max: 999999 }))}
+                        onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+                        placeholder="0"
                         min="0"
                         max="999999"
-                        step="0.01"
+                        step="1"
                         className="mg-input text-xs font-bold"
                       />
                     </div>
@@ -1898,12 +1899,12 @@ export default function Inventory() {
                               <input
                                 type="number"
                                 value={form.supplierPrice}
-                                onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
-                                onKeyDown={blockInvalidNumberKeys}
-                                placeholder="0.00"
+                                onChange={(e) => setField('supplierPrice', clampIntegerInput(e.target.value, { max: 999999 }))}
+                                onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+                                placeholder="0"
                                 min="0"
                                 max="999999"
-                                step="0.01"
+                                step="1"
                                 className="mg-input text-xs font-bold"
                               />
                             </div>
@@ -1952,12 +1953,12 @@ export default function Inventory() {
                                 <input
                                   type="number"
                                   value={form.supplierPrice}
-                                  onChange={(e) => setField('supplierPrice', clampNumberInput(e.target.value, { max: 999999 }))}
-                                  onKeyDown={blockInvalidNumberKeys}
-                                  placeholder="0.00"
+                                  onChange={(e) => setField('supplierPrice', clampIntegerInput(e.target.value, { max: 999999 }))}
+                                  onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+                                  placeholder="0"
                                   min="0"
                                   max="999999"
-                                  step="0.01"
+                                  step="1"
                                   className="mg-input text-xs font-black"
                                   required
                                 />

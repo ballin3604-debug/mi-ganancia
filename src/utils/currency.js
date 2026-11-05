@@ -20,3 +20,11 @@ export function formatBsShort(amount) {
   const safe = Number.isFinite(value) ? value : 0;
   return Math.round(safe).toLocaleString('en-US');
 }
+
+/**
+ * Monto en bolivianos enteros, para precios de compra.
+ * Ej: 145.92 → "Bs 146"
+ */
+export function formatBsInteger(amount) {
+  return `Bs ${formatBsShort(amount)}`;
+}

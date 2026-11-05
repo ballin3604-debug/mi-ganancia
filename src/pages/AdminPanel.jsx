@@ -16,7 +16,7 @@ import { useImageUpload } from '../hooks/useImageUpload';
 import { DEFAULT_CATEGORIES } from '../services/categories';
 import ProductCatalogCard from '../components/ProductCatalogCard';
 import PaymentsTab from '../components/admin/PaymentsTab';
-import { clampNumberInput, blockInvalidNumberKeys } from '../utils/numberInput';
+import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
 import { AppIcon } from '../components/icons';
 
 const EMPTY_CATALOG_FORM = {
@@ -90,7 +90,10 @@ function ProductThumb({ imageData, name }) {
 function ItemDetailSheet({ product, initial, onSave, onRemove, onClose }) {
   const [stock, setStock] = useState(initial?.stock ?? '');
   const [salePrice, setSalePrice] = useState(initial?.salePrice ?? (product.suggestedPrice ? String(product.suggestedPrice) : ''));
-  const [supplierPrice, setSupplierPrice] = useState(initial?.supplierPrice ?? (product.suggestedCost ? String(product.suggestedCost) : ''));
+  const [supplierPrice, setSupplierPrice] = useState(() => {
+    const initialCost = initial?.supplierPrice ?? (product.suggestedCost || '');
+    return initialCost === '' ? '' : String(Math.round(Number(initialCost) || 0));
+  });
   const [expiryDate, setExpiryDate] = useState(initial?.expiryDate ?? '');
 
   function handleSubmit(e) {
@@ -145,10 +148,10 @@ function ItemDetailSheet({ product, initial, onSave, onRemove, onClose }) {
               <div>
                 <label className="text-xs font-bold text-[var(--mg-text-muted)] block mb-1">Precio compra (Bs)</label>
                 <input
-                  type="number" min="0" max="999999" step="0.01"
+                  type="number" min="0" max="999999" step="1"
                   value={supplierPrice}
-                  onChange={(e) => setSupplierPrice(clampNumberInput(e.target.value, { max: 999999 }))}
-                  onKeyDown={blockInvalidNumberKeys}
+                  onChange={(e) => setSupplierPrice(clampIntegerInput(e.target.value, { max: 999999 }))}
+                  onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
                   className="w-full border-2 border-[var(--mg-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--mg-text-secondary)] focus:outline-none focus:border-[var(--mg-accent-border)]"
                 />
               </div>
