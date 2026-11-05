@@ -17,8 +17,10 @@ export function getDefaultCategories(businessCategory) {
 }
 
 // Licorería: el catálogo es fijo. Además de cambiar la lista, remapea los
-// productos que quedaron con categorías viejas (Whiskey, Ron, Refrescos…)
-// para que no queden huérfanos en los filtros ni en los reportes.
+// productos que quedaron con categorías viejas (Whiskey, Ron, Refrescos, o
+// categorías de tienda si el negocio acaba de pasarse a licorería).
+// Si un pull del servidor revierte la lista, se vuelve a aplicar en la
+// siguiente lectura en vez de descartar el desfase.
 const licorEnsured = new Set();
 
 export async function ensureLicorCategories(businessId, localSettings = null) {
@@ -27,8 +29,8 @@ export async function ensureLicorCategories(businessId, localSettings = null) {
   const needsCategoryUpdate = current.length !== LICOR_CATEGORIES.length
     || current.some((category, index) => category !== LICOR_CATEGORIES[index]);
 
-  if (licorEnsured.has(businessId)) {
-    return needsCategoryUpdate ? LICOR_CATEGORIES : current;
+  if (licorEnsured.has(businessId) && !needsCategoryUpdate) {
+    return current;
   }
   licorEnsured.add(businessId);
 
