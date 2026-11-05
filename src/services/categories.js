@@ -18,7 +18,8 @@ export function getDefaultCategories(businessCategory) {
 
 // Licorería: el catálogo base se mantiene, pero las categorías propias del
 // negocio se conservan y se sincronizan igual que en los demás rubros.
-// Solo se remapean las categorías viejas de tienda o de catálogos anteriores.
+// La limpieza de categorías viejas solo ocurre al pasar de tienda a licorería
+// (cuando todavía no existe ninguna categoría base en la lista).
 const licorEnsured = new Set();
 const LEGACY_LICOR_CATEGORIES = new Set([
   ...DEFAULT_CATEGORIES,
@@ -33,11 +34,13 @@ function isLegacyLicorCategory(category) {
 export async function ensureLicorCategories(businessId, localSettings = null) {
   const local = localSettings || await db.business_settings.get(businessId);
   const current = Array.isArray(local?.categories) ? local.categories : [];
-  const custom = current.filter((category) => (
-    String(category || '').trim()
-    && !LICOR_CATEGORIES.includes(category)
-    && !isLegacyLicorCategory(category)
-  ));
+  const hasBaseCatalog = current.some((category) => LICOR_CATEGORIES.includes(category));
+  const custom = hasBaseCatalog
+    ? current.filter((category) => (
+      String(category || '').trim()
+      && !LICOR_CATEGORIES.includes(category)
+    ))
+    : [];
   const next = [...LICOR_CATEGORIES];
   custom.forEach((category) => {
     if (!next.includes(category)) next.push(category);
@@ -64,7 +67,11 @@ export async function ensureLicorCategories(businessId, localSettings = null) {
   }
 
   const all = await db.products.where('business_id').equals(businessId).toArray();
-  const affected = all.filter((product) => isLegacyLicorCategory(product.category));
+  // Solo se remapean productos huérfanos de categorías antiguas. Si el dueño
+  // creó una categoría con ese nombre, se respeta y no se toca su producto.
+  const affected = all.filter((product) => (
+    isLegacyLicorCategory(product.category) && !next.includes(product.category)
+  ));
   if (affected.length > 0) {
     const now = new Date().toISOString();
     await db.transaction('rw', db.products, db.pending_operations, async () => {

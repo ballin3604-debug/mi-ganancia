@@ -20,7 +20,7 @@ vi.mock('./supabaseClient', () => ({
 vi.mock('./products', () => ({ notifyProductChanges: vi.fn(async () => {}) }));
 
 import { LICOR_CATEGORIES } from '../config/licorCatalog';
-import { ensureLicorCategories } from './categories';
+import { addCategory, ensureLicorCategories } from './categories';
 import { enqueueOperation } from './syncEngine';
 import { notifyProductChanges } from './products';
 
@@ -120,5 +120,36 @@ describe('ensureLicorCategories', () => {
     expect(db.products.update).toHaveBeenCalledTimes(1);
     expect(db.products.update).toHaveBeenCalledWith('p2', expect.objectContaining({ category: 'Abarrotes' }));
     expect(notifyProductChanges).toHaveBeenCalledWith('b3');
+  });
+
+  it('conserva una categoría nueva llamada Licores aunque sea un nombre histórico', async () => {
+    setLocal({
+      business_id: 'b4',
+      business_category: 'licorera',
+      categories: [...LICOR_CATEGORIES, 'Licores'],
+    });
+    setProducts([{ id: 'p1', category: 'Licores' }]);
+
+    const cats = await ensureLicorCategories('b4');
+
+    expect(cats).toEqual([...LICOR_CATEGORIES, 'Licores']);
+    expect(db.products.update).not.toHaveBeenCalled();
+    expect(notifyProductChanges).not.toHaveBeenCalled();
+  });
+
+  it('agrega Licores desde el gestor y la conserva al volver a leer', async () => {
+    setLocal({
+      business_id: 'b5',
+      business_category: 'licorera',
+      categories: [...LICOR_CATEGORIES],
+    });
+    setProducts([]);
+
+    await addCategory('b5', 'Licores');
+    const settings = await db.business_settings.get('b5');
+    const cats = await ensureLicorCategories('b5');
+
+    expect(settings.categories).toContain('Licores');
+    expect(cats).toContain('Licores');
   });
 });
