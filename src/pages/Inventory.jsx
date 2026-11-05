@@ -39,7 +39,7 @@ import PhotoCamera from '../components/PhotoCamera';
 import { useBranches } from '../context/BranchContext';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap, setBranchStock } from '../services/branchStock';
-import { ensureBasePresentation, getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
+import { ensureBasePresentation, getAvailablePackages, getSellOptions, validatePresentationDefinitions } from '../utils/presentations';
 import {
   LICOR_CATEGORIES,
   buildLicorPresentations,
@@ -1196,6 +1196,7 @@ export default function Inventory() {
               const packSize = Number(packageOption?.factor || prod.packageSize || 0);
               const packLabel = packageOption?.label || (prod.packLabel || 'Paquete').trim() || 'Paquete';
               const hasPack = !!packageOption;
+              const availablePackages = getAvailablePackages(prod.stock, packSize);
               return (
                 <Fragment key={prod.id}>
                   {/* Lista para celular */}
@@ -1208,8 +1209,11 @@ export default function Inventory() {
                         <span className="flex items-center gap-1.5 flex-wrap mt-1">
                           {showStock && <StockLabel stock={prod.stock} minStock={prod.minStock} isDish={prod.isDish} isAvailable={prod.isAvailable} />}
                           {hasPack && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
-                              📦 {packLabel} x{packSize}
+                            <span
+                              title={`${availablePackages} paquetes de ${packSize} disponibles · ${Number(prod.stock || 0)} unidades en total`}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]"
+                            >
+                              📦 {packLabel} x{availablePackages} disp. · {Number(prod.stock || 0)} und
                             </span>
                           )}
                         </span>

@@ -3,6 +3,7 @@ import {
   calculateBaseQuantity,
   calculatePurchaseBaseQuantity,
   ensureBasePresentation,
+  getAvailablePackages,
   getSellOptions,
   validatePresentationDefinitions,
   validateSellSelection,
@@ -37,6 +38,15 @@ describe('presentaciones configurables', () => {
 
   it('convierte paquetes de compra a unidades base', () => {
     expect(calculatePurchaseBaseQuantity(10, 12)).toBe(120);
+  });
+
+  it('calcula cuántos paquetes completos hay según el stock', () => {
+    expect(getAvailablePackages(192, 12)).toBe(16);
+    expect(getAvailablePackages(191, 12)).toBe(15);
+    expect(getAvailablePackages(5, 12)).toBe(0);
+    expect(getAvailablePackages(0, 12)).toBe(0);
+    expect(getAvailablePackages(50, 1)).toBe(0);
+    expect(getAvailablePackages(50, 0)).toBe(0);
   });
 
   it('completa una base para formularios abiertos automáticamente y rescata borradores legacy', () => {

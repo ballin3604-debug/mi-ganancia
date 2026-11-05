@@ -4,7 +4,7 @@ import { formatBs, formatBsInteger } from '../../utils/currency';
 import { TransferModal } from './TransferModal';
 import { AppIcon } from '../icons';
 import { useBusiness } from '../../context/BusinessContext';
-import { getSellOptions } from '../../utils/presentations';
+import { getAvailablePackages, getSellOptions } from '../../utils/presentations';
 
 function formatDate(dateVal) {
   if (!dateVal) return '—';
@@ -160,8 +160,11 @@ export function ProductDetailModal({
                 )}
 
                 {packageOption && (
-                  <p className="text-[11px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5">
-                    📦 {packageOption.label} x{packageOption.factor}: Bs {packageOption.price.toFixed(2)}
+                  <p
+                    title={`${getAvailablePackages(currentStock, packageOption.factor)} paquetes de ${packageOption.factor} disponibles · ${currentStock} unidades en total`}
+                    className="text-[11px] font-bold text-[var(--mg-accent-text)] bg-[var(--mg-accent-bg)] inline-block px-2.5 py-1 rounded-lg border border-[var(--mg-accent-border)] ml-1.5"
+                  >
+                    📦 {packageOption.label} x{getAvailablePackages(currentStock, packageOption.factor)} disp. · {currentStock} und: Bs {packageOption.price.toFixed(2)}
                   </p>
                 )}
 

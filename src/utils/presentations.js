@@ -279,6 +279,16 @@ export function calculatePurchaseBaseQuantity(packageCount, factor) {
   return calculateBaseQuantity(packageCount, factor);
 }
 
+// Paquetes completos que se pueden armar con el stock disponible.
+// Ej: 192 unidades con presentación de 12 → 16 paquetes.
+export function getAvailablePackages(stock, factor) {
+  const units = Number(stock);
+  const conversion = Number(factor);
+  if (!Number.isFinite(units) || units <= 0) return 0;
+  if (!Number.isFinite(conversion) || conversion <= 1) return 0;
+  return Math.floor(units / conversion);
+}
+
 export function formatMoney(n) {
   return `Bs ${Number(n || 0).toFixed(2)}`;
 }

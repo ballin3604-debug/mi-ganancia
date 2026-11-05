@@ -199,6 +199,30 @@ describe('Inventario', () => {
     }));
   });
 
+  it('muestra los paquetes disponibles calculados desde el stock', async () => {
+    state.products = [{
+      id: 'p-cuadro',
+      name: 'Cuadro',
+      category: 'Cervezas',
+      price: 8,
+      stock: 192,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+        { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 90, isBase: false },
+      ],
+    }];
+    renderPage();
+
+    const badges = await screen.findAllByText(/Chipa x16 disp\. · 192 und/);
+    expect(badges.length).toBeGreaterThan(0);
+  });
+
   it('licorería: prellena el costo por caja en bolivianos enteros', async () => {
     state.tipoNegocio = 'licorera';
     state.sectorConfig = {

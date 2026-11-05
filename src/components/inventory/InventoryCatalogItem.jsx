@@ -1,7 +1,7 @@
 import { formatBs } from '../../utils/currency';
 import ProductCatalogCard, { StockLabel } from '../ProductCatalogCard';
 import { useBusiness } from '../../context/BusinessContext';
-import { getSellOptions } from '../../utils/presentations';
+import { getAvailablePackages, getSellOptions } from '../../utils/presentations';
 
 function expiryInfo(nearestExpiry) {
   if (!nearestExpiry?.date) return null;
@@ -35,6 +35,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
   const packSize = Number(packageOption?.factor || product.packageSize || 0);
   const packLabel = packageOption?.label || (product.packLabel || 'Paquete').trim() || 'Paquete';
   const hasPack = !!packageOption;
+  const availablePackages = getAvailablePackages(stockNum, packSize);
 
   return (
     // hover:z-30 → la tarjeta (y su ficha) suben por encima del encabezado,
@@ -49,8 +50,11 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
               <StockLabel stock={product.stock} minStock={product.minStock} isDish={product.isDish} isAvailable={product.isAvailable} />
             )}
             {hasPack && (
-              <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]">
-                📦 {packLabel} x{packSize}
+              <span
+                title={`${availablePackages} paquetes de ${packSize} disponibles · ${stockNum} unidades en total`}
+                className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full border text-[10px] font-black bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]"
+              >
+                📦 {packLabel} x{availablePackages} disp. · {stockNum} und
               </span>
             )}
             {exp && (
