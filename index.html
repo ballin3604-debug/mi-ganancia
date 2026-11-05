@@ -20,6 +20,10 @@
         background: #F4F6FA;
         color-scheme: light;
       }
+      html[data-theme="blackgold"], html[data-theme="blackgold"] body, html[data-theme="blackgold"] #root {
+        background: #0A0908;
+        color-scheme: dark;
+      }
       html[data-theme="gourmet"], html[data-theme="gourmet"] body, html[data-theme="gourmet"] #root {
         background: #0E0E0E;
         color-scheme: dark;
@@ -36,7 +40,7 @@
     <script>
       (function () {
         try {
-          var themeColors = { gourmet: '#0E0E0E', yuzen: '#070B19', pastel: '#FAFAFA' };
+          var themeColors = { blackgold: '#0A0908', gourmet: '#0E0E0E', yuzen: '#070B19', pastel: '#FAFAFA' };
           var stored = localStorage.getItem('mg-theme');
           if (stored && themeColors[stored]) {
             document.documentElement.setAttribute('data-theme', stored);

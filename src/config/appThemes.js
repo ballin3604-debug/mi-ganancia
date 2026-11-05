@@ -16,6 +16,23 @@ export const APP_THEMES = [
     },
   },
   {
+    id: 'blackgold',
+    name: 'BLACK GOLD / Premium dorado',
+    description: 'Fondo carbón, tarjetas oscuras y acentos dorados con brillo.',
+    swatches: ['#0A0908', '#C99B2E', '#E9C25D'],
+    dark: true,
+    themeColor: '#0A0908',
+    preview: {
+      bg: '#0A0908',
+      surface: '#131110',
+      line: '#2A2521',
+      soft: '#3D3730',
+      accent: '#E9C25D',
+      brand: '#C99B2E',
+      dot: '#F5D06F',
+    },
+  },
+  {
     id: 'gourmet',
     name: 'Gourmet Dark / Foobar',
     description: 'Fondo carbón, tarjetas oscuras y acentos ámbar.',
@@ -68,6 +85,7 @@ export const APP_THEMES = [
 
 export const DEFAULT_THEME_ID = 'clasico';
 export const THEME_STORAGE_KEY = 'mg-theme';
+export const BLACKGOLD_THEME_ID = 'blackgold';
 
 export function getThemeMeta(id) {
   return APP_THEMES.find((theme) => theme.id === id) || APP_THEMES[0];
