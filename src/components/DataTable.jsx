@@ -17,12 +17,23 @@ function loadVisibleColumns(storageKey, columns) {
   return defaults;
 }
 
-export default function DataTable({ columns, rows, storageKey, emptyMessage = 'Sin datos para mostrar.', getRowKey, footer }) {
+export default function DataTable({
+  columns,
+  rows,
+  storageKey,
+  emptyMessage = 'Sin datos para mostrar.',
+  getRowKey,
+  footer,
+  sort: controlledSort,
+  onSortChange,
+  initialSort = null,
+}) {
   const [visibleKeys, setVisibleKeys] = useState(() => loadVisibleColumns(storageKey, columns));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState(null); // { key, dir: 'asc' | 'desc' }
+  const [internalSort, setInternalSort] = useState(initialSort);
+  const sort = controlledSort === undefined ? internalSort : controlledSort;
 
   useEffect(() => {
     setPage(1);
@@ -30,11 +41,13 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
 
   function toggleSort(col) {
     if (!col.sortable) return;
-    setSort((prev) => {
-      if (!prev || prev.key !== col.key) return { key: col.key, dir: 'asc' };
-      if (prev.dir === 'asc') return { key: col.key, dir: 'desc' };
-      return null; // tercer clic: vuelve al orden original
-    });
+    const next = !sort || sort.key !== col.key
+      ? { key: col.key, dir: 'asc' }
+      : sort.dir === 'asc'
+        ? { key: col.key, dir: 'desc' }
+        : null;
+    if (controlledSort === undefined) setInternalSort(next);
+    onSortChange?.(next);
   }
 
   useEffect(() => {
@@ -61,16 +74,19 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
     const col = columns.find((c) => c.key === sort.key);
     if (!col) return rows;
     const getValue = col.sortValue || ((row) => row[col.key]);
+    const direction = sort.dir === 'desc' ? -1 : 1;
     const withValue = rows.map((row, i) => ({ row, i, value: getValue(row) }));
     withValue.sort((a, b) => {
       if (a.value == null && b.value == null) return a.i - b.i;
       if (a.value == null) return 1;
       if (b.value == null) return -1;
-      if (typeof a.value === 'number' && typeof b.value === 'number') return a.value - b.value || a.i - b.i;
-      return String(a.value).localeCompare(String(b.value), 'es') || a.i - b.i;
+      const cmp = typeof a.value === 'number' && typeof b.value === 'number'
+        ? a.value - b.value
+        : String(a.value).localeCompare(String(b.value), 'es');
+      if (cmp === 0) return a.i - b.i;
+      return cmp * direction;
     });
-    const ordered = withValue.map((w) => w.row);
-    return sort.dir === 'desc' ? ordered.reverse() : ordered;
+    return withValue.map((w) => w.row);
   }, [rows, sort, columns]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
@@ -159,6 +175,7 @@ export default function DataTable({ columns, rows, storageKey, emptyMessage = 'S
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c)}
+                  aria-sort={c.sortable && sort?.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                   className={`bg-[var(--mg-bg-section)] text-[var(--mg-brand-text)] font-bold p-3.5 border border-[var(--mg-border)] whitespace-nowrap select-none ${
                     c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
                   } ${c.width || ''} ${c.sortable ? 'cursor-pointer hover:bg-[var(--mg-brand-bg)] transition-colors' : ''}`}

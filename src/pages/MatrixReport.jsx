@@ -20,6 +20,7 @@ import { useBranches } from '../context/BranchContext';
 import { usePlan } from '../hooks/usePlan';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
+import { sortInventoryRows } from '../utils/inventorySort';
 
 function getExpenseFlow(e) {
     return (e.expense_type === 'fixed' || e.expenseType === 'fixed') ? 'fixed' : 'daily';
@@ -283,6 +284,7 @@ export default function MatrixReport() {
 
     // Filtro por categoría + kardex (solo reporte de inventario)
     const [inventoryCategory, setInventoryCategory] = useState('Todas');
+    const [inventorySort, setInventorySort] = useState({ key: 'valorTotal', dir: 'desc' });
     const [kardexProductId, setKardexProductId] = useState(null);
 
     useEffect(() => {
@@ -466,9 +468,11 @@ export default function MatrixReport() {
     }, [replenishments, start, end]);
 
     const inventoryRows = useMemo(() => {
-        if (inventoryCategory === 'Todas') return invProducts;
-        return invProducts.filter(p => (p.category || 'Otros') === inventoryCategory);
-    }, [invProducts, inventoryCategory]);
+        const base = inventoryCategory === 'Todas'
+            ? invProducts
+            : invProducts.filter(p => (p.category || 'Otros') === inventoryCategory);
+        return sortInventoryRows(base, inventorySort, productEntries, productMovements);
+    }, [invProducts, inventoryCategory, inventorySort, productEntries, productMovements]);
 
     // -- Kardex de inventario: categorías, filtro y movimientos por producto --
     const inventoryCategories = useMemo(() => {
@@ -1045,8 +1049,8 @@ export default function MatrixReport() {
                             />
                         </div>
 
-                        {/* Filtro por categoría — compacto */}
-                        <div className="flex items-center gap-2">
+                        {/* Filtro por categoría y orden tipo Excel */}
+                        <div className="flex flex-wrap items-center gap-2">
                             <label className="hidden sm:block text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)] shrink-0">
                                 Categoría
                             </label>
@@ -1062,8 +1066,43 @@ export default function MatrixReport() {
                                     </option>
                                 ))}
                             </select>
-                            <span className="hidden md:inline text-[11px] text-[var(--mg-text-muted)] font-medium truncate">
-                                Toca un producto para ver su kardex.
+
+                            <label className="hidden sm:block text-[10px] font-extrabold uppercase tracking-widest text-[var(--mg-text-muted)] shrink-0">
+                                Orden
+                            </label>
+                            <select
+                                value={inventorySort ? `${inventorySort.key}:${inventorySort.dir}` : 'original'}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === 'original') {
+                                        setInventorySort(null);
+                                        return;
+                                    }
+                                    const [key, dir] = value.split(':');
+                                    setInventorySort({ key, dir });
+                                }}
+                                className="mg-input text-xs font-bold py-2 flex-1 sm:flex-none sm:w-auto sm:min-w-48 min-w-0"
+                                aria-label="Ordenar inventario"
+                            >
+                                <option value="valorTotal:desc">Mayor valor total</option>
+                                <option value="valorTotal:asc">Menor valor total</option>
+                                <option value="stock:desc">Mayor stock</option>
+                                <option value="stock:asc">Menor stock</option>
+                                <option value="precioUnitario:desc">Mayor precio unitario</option>
+                                <option value="precioUnitario:asc">Menor precio unitario</option>
+                                <option value="producto:asc">Nombre A-Z</option>
+                                <option value="producto:desc">Nombre Z-A</option>
+                                <option value="categoria:asc">Categoría A-Z</option>
+                                <option value="categoria:desc">Categoría Z-A</option>
+                                <option value="entradas:desc">Más entradas</option>
+                                <option value="entradas:asc">Menos entradas</option>
+                                <option value="salidas:desc">Más salidas</option>
+                                <option value="salidas:asc">Menos salidas</option>
+                                <option value="original">Orden original</option>
+                            </select>
+
+                            <span className="hidden xl:inline text-[11px] text-[var(--mg-text-muted)] font-medium truncate">
+                                Clic en los encabezados para ordenar como en Excel · Toca un producto para ver su kardex.
                             </span>
                         </div>
 
@@ -1132,9 +1171,13 @@ export default function MatrixReport() {
                             getRowKey={(p) => p.id}
                             emptyMessage="No hay productos en esta categoría."
                             rows={inventoryRows}
+                            sort={inventorySort}
+                            onSortChange={setInventorySort}
                             columns={[
                                 {
                                     key: 'producto', label: 'Producto', align: 'left',
+                                    sortable: true,
+                                    sortValue: (p) => p.name || '',
                                     render: (p) => (
                                         <button
                                             type="button"
@@ -1149,10 +1192,14 @@ export default function MatrixReport() {
                                 },
                                 {
                                     key: 'categoria', label: 'Categoría', align: 'left', width: 'w-36',
+                                    sortable: true,
+                                    sortValue: (p) => p.category || 'Otros',
                                     render: (p) => <span className="rounded-full bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">{p.category || 'Otros'}</span>,
                                 },
                                 {
                                     key: 'stock', label: 'Stock Actual', align: 'center', width: 'w-28',
+                                    sortable: true,
+                                    sortValue: (p) => Number(p.stock || 0),
                                     render: (p) => {
                                         const isLowStock = (p.stock || 0) <= (p.minStock || 5);
                                         return (
@@ -1164,16 +1211,22 @@ export default function MatrixReport() {
                                 },
                                 {
                                     key: 'precioUnitario', label: 'Precio Unitario', align: 'right', width: 'w-28',
+                                    sortable: true,
+                                    sortValue: (p) => Number(p.price || 0),
                                     render: (p) => <span className="tabular-nums">Bs {(p.price || 0).toFixed(2)}</span>,
                                 },
                                 {
                                     key: 'valorTotal', label: 'Valor Total', align: 'right', width: 'w-32',
+                                    sortable: true,
+                                    sortValue: (p) => Number(p.stock || 0) * Number(p.price || 0),
                                     render: (p) => (
                                         <span className="font-black tabular-nums text-[var(--mg-brand-text)]">Bs {((p.stock || 0) * (p.price || 0)).toFixed(2)}</span>
                                     ),
                                 },
                                 {
                                     key: 'entradas', label: 'Entradas (Periodo)', align: 'center', width: 'w-32',
+                                    sortable: true,
+                                    sortValue: (p) => Number(productEntries[p.id] || 0),
                                     render: (p) => {
                                         const entries = productEntries[p.id] || 0;
                                         return entries > 0 ? (
@@ -1185,6 +1238,8 @@ export default function MatrixReport() {
                                 },
                                 {
                                     key: 'salidas', label: 'Salidas (Ventas)', align: 'center', width: 'w-32',
+                                    sortable: true,
+                                    sortValue: (p) => Number(productMovements[p.id] || 0),
                                     render: (p) => {
                                         const exits = productMovements[p.id] || 0;
                                         return exits > 0 ? (
@@ -1193,6 +1248,25 @@ export default function MatrixReport() {
                                             <span className="font-bold tabular-nums text-[var(--mg-text-faint)]">0 und.</span>
                                         );
                                     },
+                                },
+                            ]}
+                            footer={[
+                                {
+                                    key: 'stock',
+                                    label: 'Totales',
+                                    value: `${inventoryRows.reduce((sum, p) => sum + Number(p.stock || 0), 0)} und.`,
+                                },
+                                {
+                                    key: 'valorTotal',
+                                    value: `Bs ${inventorySummary.value.toFixed(2)}`,
+                                },
+                                {
+                                    key: 'entradas',
+                                    value: `${inventoryRows.reduce((sum, p) => sum + Number(productEntries[p.id] || 0), 0)} und.`,
+                                },
+                                {
+                                    key: 'salidas',
+                                    value: `${inventoryRows.reduce((sum, p) => sum + Number(productMovements[p.id] || 0), 0)} und.`,
                                 },
                             ]}
                         />
