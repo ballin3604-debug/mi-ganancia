@@ -310,11 +310,11 @@ export default function Inventory() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingProductId, setEditingProductId] = useState(() => loadProductDraft()?.editingId || null);
   const [form, setForm] = useState(() => loadProductDraft()?.form || EMPTY_FORM);
   const [expiryDate, setExpiryDate] = useState(() => loadProductDraft()?.expiryDate || '');
   const [expiryReplenishmentId, setExpiryReplenishmentId] = useState(null);
   const [saving, setSaving] = useState(false);
-  const editingRestoredRef = useRef(false);
 
   useEffect(() => {
     if (!showForm || !sectorConfig?.features?.configurablePresentations) return;
@@ -391,11 +391,11 @@ export default function Inventory() {
         open: true,
         businessId: businessId || null,
         form,
-        editingId: editingProduct?.id || null,
+        editingId: editingProductId,
         expiryDate,
       }));
     } catch { /* cuota llena: el formulario sigue funcionando en memoria */ }
-  }, [showForm, form, editingProduct, expiryDate, businessId]);
+  }, [showForm, form, editingProductId, expiryDate, businessId]);
 
   // Al montar: si hay borrador de otro negocio (dispositivo compartido), descartarlo.
   // La restauración es silenciosa: el formulario simplemente vuelve intacto.
@@ -414,16 +414,14 @@ export default function Inventory() {
     } catch { /* ignore */ }
   }, [businessId]);
 
-  // Tras recargar, reconectar el producto en edición (para no duplicarlo al guardar)
+  // Tras recargar, reconectar el producto en edición usando el id guardado en
+  // el borrador. El id vive aparte del objeto para no perderse si la lista de
+  // productos todavía no terminó de cargar (eso creaba un duplicado al guardar).
   useEffect(() => {
-    if (loading || editingRestoredRef.current || products.length === 0) return;
-    editingRestoredRef.current = true;
-    const draft = loadProductDraft();
-    if (draft?.editingId && showForm && !editingProduct) {
-      const p = products.find((x) => x.id === draft.editingId);
-      if (p) setEditingProduct(p);
-    }
-  }, [loading, products, showForm, editingProduct]);
+    if (loading || !editingProductId || editingProduct) return;
+    const p = products.find((x) => x.id === editingProductId);
+    if (p) setEditingProduct(p);
+  }, [loading, products, editingProductId, editingProduct]);
 
   useEffect(() => {
     if (!businessId) return;
@@ -530,6 +528,7 @@ export default function Inventory() {
 
   function openAdd(prefill = {}, forcePractical = false) {
     setEditingProduct(null);
+    setEditingProductId(null);
     setPractical(forcePractical || products.length === 0 || searchParams.get('guia') === '1');
     setStockMode('directo');
     setShowAdvanced(false);
@@ -583,6 +582,7 @@ export default function Inventory() {
 
   function openEdit(product) {
     setEditingProduct(product);
+    setEditingProductId(product.id);
     setPractical(false);
     setStockMode('directo');
     setShowAdvanced(true);
@@ -641,6 +641,7 @@ export default function Inventory() {
     clearProductDraft();
     setShowForm(false);
     setEditingProduct(null);
+    setEditingProductId(null);
     setForm(EMPTY_FORM);
     setExpiryDate('');
     setExpiryReplenishmentId(null);
@@ -654,7 +655,9 @@ export default function Inventory() {
   async function handleSave(e, options = {}) {
     const { another = false } = options;
     if (e?.preventDefault) e.preventDefault();
-    const newPackageProduct = !isLicoreria && !editingProduct && !form.isDish;
+    const editingId = editingProductId || editingProduct?.id || null;
+    const productBeingEdited = editingProduct || (editingId ? products.find((p) => p.id === editingId) : null) || null;
+    const newPackageProduct = !isLicoreria && !editingId && !form.isDish;
     const packageSize = Number(form.packageSize || 0);
     if (!form.name.trim()) return;
     if (isLicoreria) {
@@ -668,7 +671,7 @@ export default function Inventory() {
         return;
       }
     } else if ((!form.price || Number(form.price) <= 0)
-      && !getSellOptions(editingProduct).some((option) => option.factor > 1)) {
+      && !getSellOptions(productBeingEdited).some((option) => option.factor > 1)) {
       return;
     }
     if (form.stock === '' && !newPackageProduct) return;
@@ -774,22 +777,26 @@ export default function Inventory() {
     }
     const eraCatalogoVacio = products.length === 0;
     delete data.stock;
+    if (editingId && !productBeingEdited) {
+      alert('No pudimos reconectar el producto que estabas editando. Recargá la página y volvé a intentarlo; así no se crea un duplicado.');
+      return;
+    }
     setSaving(true);
     try {
-      if (editingProduct) {
-        const globalCur = Number(products.find((p) => p.id === editingProduct.id)?.stock || 0);
+      if (editingId) {
+        const globalCur = Number(products.find((p) => p.id === editingId)?.stock || 0);
         if (targetBranchId) {
           // El stock vive en la sede: global nuevo = global actual + (nuevo − anterior de sede).
           // Se calcula ANTES de escribir, porque el UPDATE_PRODUCT encolaba el valor
           // viejo y al sincronizar pisaba al nuevo en el servidor (el pull lo "revertía").
-          const oldBranch = Number(stockMap.get(`${targetBranchId}:${editingProduct.id}`) ?? globalCur);
+          const oldBranch = Number(stockMap.get(`${targetBranchId}:${editingId}`) ?? globalCur);
           const newGlobal = Math.max(0, globalCur + (stockToSave - oldBranch));
-          await setBranchStock(businessId, editingProduct, targetBranchId, stockToSave);
+          await setBranchStock(businessId, productBeingEdited, targetBranchId, stockToSave);
           // Otros campos + stock neutro (expectedStock = stock → no mueve el global local,
           // pero la operación lleva el valor ya correcto al servidor).
-          await updateProduct(editingProduct.id, { ...data, stock: newGlobal, expectedStock: newGlobal });
+          await updateProduct(editingId, { ...data, stock: newGlobal, expectedStock: newGlobal });
         } else {
-          await updateProduct(editingProduct.id, { ...data, stock: stockToSave, expectedStock: globalCur });
+          await updateProduct(editingId, { ...data, stock: stockToSave, expectedStock: globalCur });
         }
       } else if (targetBranchId) {
         const created = await addProduct(businessId, { ...data, stock: stockToSave });
@@ -806,7 +813,7 @@ export default function Inventory() {
       } else {
         closeForm();
       }
-      if (!another && !editingProduct && (eraCatalogoVacio || searchParams.get('guia') === '1')) {
+      if (!another && !editingId && (eraCatalogoVacio || searchParams.get('guia') === '1')) {
         setCelebrate(true);
       }
     } catch (err) {
@@ -1057,7 +1064,7 @@ export default function Inventory() {
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount]
   );
-  const isNewPackageProduct = !editingProduct && !form.isDish;
+  const isNewPackageProduct = !editingProductId && !form.isDish;
 
   // Scroll infinito: al llegar al final de la grilla se cargan más
   useEffect(() => {
@@ -1428,7 +1435,7 @@ export default function Inventory() {
             >
               <div className="p-4 border-b border-[var(--mg-separator)] flex items-center justify-between bg-[var(--mg-bg-elevated)]">
                 <h3 className="font-extrabold text-[var(--mg-text-primary)] text-sm flex items-center gap-1.5">
-                  {editingProduct ? <><AppIcon name="editar" size={14} /> Editar Producto</> : <><AppIcon name="nuevoProducto" size={14} /> Nuevo Producto</>}
+                  {editingProductId ? <><AppIcon name="editar" size={14} /> Editar Producto</> : <><AppIcon name="nuevoProducto" size={14} /> Nuevo Producto</>}
                 </h3>
                 <button
                   type="button"
@@ -1440,7 +1447,7 @@ export default function Inventory() {
               </div>
 
               <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4">
-                {practical && !editingProduct && (
+                {practical && !editingProductId && (
                   <button
                     type="button"
                     onClick={() => setShowAdvanced(!showAdvanced)}
@@ -1800,7 +1807,7 @@ export default function Inventory() {
                     )}
                   </div>
                 ) : (
-                  <div className={practical && !editingProduct ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+                  <div className={practical && !editingProductId ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                     <div>
                       <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                         Precio Venta (Bs) *
@@ -1819,7 +1826,7 @@ export default function Inventory() {
                       />
                     </div>
 
-                    {!(practical && !editingProduct) && !form.isDish && (
+                    {!(practical && !editingProductId) && !form.isDish && (
                     <div>
                       <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                         Precio Compra (Bs)
@@ -1878,9 +1885,9 @@ export default function Inventory() {
                     </div>
                   </div>
                 ) : (
-                <div className={practical && !editingProduct && !isLicoreria ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+                <div className={practical && !editingProductId && !isLicoreria ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
-                    {practical && !editingProduct && !isLicoreria ? (
+                    {practical && !editingProductId && !isLicoreria ? (
                       <div className="space-y-2.5">
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                           ¿Cómo entra tu stock?
@@ -2019,7 +2026,7 @@ export default function Inventory() {
                     )}
                   </div>
 
-                  {(isLicoreria || !(practical && !editingProduct)) && (
+                  {(isLicoreria || !(practical && !editingProductId)) && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Unidad de Medida
@@ -2318,10 +2325,10 @@ export default function Inventory() {
                   disabled={saving}
                   className="w-full bg-[var(--mg-brand)] hover:bg-[var(--mg-brand-hover)] text-[var(--mg-brand-contrast)] font-extrabold py-3.5 rounded-2xl text-xs shadow-[var(--mg-shadow-md)] transition-all active:scale-95 disabled:opacity-50 min-h-[44px]"
                 >
-                  {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : practical ? 'Guardar producto' : 'Nuevo Producto'}
+                  {saving ? 'Guardando...' : editingProductId ? 'Guardar Cambios' : practical ? 'Guardar producto' : 'Nuevo Producto'}
                 </motion.button>
 
-                {practical && !editingProduct && (
+                {practical && !editingProductId && (
                   <button
                     type="button"
                     disabled={saving}

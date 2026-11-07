@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { addProduct } from '../services/products';
+import { addProduct, updateProduct } from '../services/products';
 
 const state = vi.hoisted(() => ({
   tipoNegocio: 'tienda',
@@ -73,6 +73,7 @@ describe('Inventario', () => {
   beforeEach(() => {
     localStorage.removeItem('mg-product-form-draft');
     vi.mocked(addProduct).mockClear();
+    vi.mocked(updateProduct).mockClear();
     state.products = [];
     state.categories = [];
     state.tipoNegocio = 'tienda';
@@ -287,5 +288,46 @@ describe('Inventario', () => {
     fireEvent.change(costField, { target: { value: '145.92' } });
     expect(costField.value).toBe('146');
     expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
+  });
+
+  it('al recargar mientras se edita, actualiza el producto y no crea un duplicado', async () => {
+    state.products = [{
+      id: 'p-casino',
+      name: 'CASINO CHICO',
+      category: 'Cigarros',
+      price: 6,
+      stock: 10,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      imageData: '',
+      presentations: [],
+    }];
+
+    const first = renderPage();
+    await waitFor(() => expect(screen.getAllByText('CASINO CHICO').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('CASINO CHICO')[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Producto' }));
+
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem('mg-product-form-draft'));
+      expect(draft.editingId).toBe('p-casino');
+    });
+
+    // Simula que el sistema cerró la app mientras buscaba la foto.
+    first.unmount();
+    renderPage();
+
+    expect(await screen.findByText('Editar Producto')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Cambios' }));
+
+    await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+    expect(updateProduct).toHaveBeenCalledWith('p-casino', expect.objectContaining({
+      name: 'CASINO CHICO',
+    }));
+    expect(addProduct).not.toHaveBeenCalled();
   });
 });
