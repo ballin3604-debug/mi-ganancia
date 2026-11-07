@@ -73,7 +73,11 @@ export default function Compras() {
       : base;
   }, [products, stockMap, activeBranchId, hasBranchRows]);
 
-  const [startDate, setStartDate] = useState(() => toLocalISODate(new Date()));
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return toLocalISODate(d);
+  });
   const [endDate, setEndDate] = useState(() => toLocalISODate(new Date()));
 
   useEffect(() => {
