@@ -2,14 +2,15 @@ import { formatBs } from '../../utils/currency';
 import ProductCatalogCard, { StockLabel } from '../ProductCatalogCard';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAvailablePackages, getSellOptions } from '../../utils/presentations';
+import { getExpiryWarningDays } from '../../utils/expiry';
 
-function expiryInfo(nearestExpiry) {
+function expiryInfo(nearestExpiry, warningDays) {
   if (!nearestExpiry?.date) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const daysLeft = Math.ceil((nearestExpiry.date - today) / (1000 * 60 * 60 * 24));
   if (daysLeft < 0) return { label: 'Vencido', cls: 'bg-[var(--mg-danger)] text-white' };
-  if (daysLeft <= 30) return { label: `${daysLeft}d para vencer`, cls: 'bg-[var(--mg-gold)] text-white' };
+  if (daysLeft <= warningDays) return { label: `${daysLeft}d para vencer`, cls: 'bg-[var(--mg-gold)] text-white' };
   return null;
 }
 
@@ -18,6 +19,7 @@ function expiryInfo(nearestExpiry) {
 // 100% CSS sin animaciones JS para que el scroll se sienta firme).
 export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, onSelect }) {
   const { sectorConfig } = useBusiness();
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const showStock = sectorConfig?.features?.stock !== false;
   const sellOptions = getSellOptions(product);
@@ -27,7 +29,7 @@ export function InventoryCatalogItem({ product, nearestExpiry, categoryColor, on
   const packageCost = supplierPrice * Number(primaryOption?.factor || 1);
   const profit = packageCost > 0 ? price - packageCost : null;
   const marginPct = packageCost > 0 ? Math.round((profit / packageCost) * 100) : null;
-  const exp = expiryInfo(nearestExpiry);
+  const exp = expiryInfo(nearestExpiry, expiryWarningDays);
   const stockNum = Number(product.stock || 0);
   const isOut = stockNum <= 0;
   const isLow = !isOut && stockNum <= (Number(product.minStock) || 5);

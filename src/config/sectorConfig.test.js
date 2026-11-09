@@ -23,4 +23,13 @@ describe('getSectorConfig', () => {
     const config = getSectorConfig('tienda', { features: { scanner: false } });
     expect(config.features.scanner).toBe(false);
   });
+
+  it('avisa los vencimientos con 3 meses de anticipación en licorerías', () => {
+    expect(getSectorConfig('licorera').expiryWarningDays).toBe(90);
+  });
+
+  it('mantiene el aviso de 30 días en los demás rubros', () => {
+    expect(getSectorConfig('tienda').expiryWarningDays).toBe(30);
+    expect(getSectorConfig('restaurante').expiryWarningDays).toBe(30);
+  });
 });

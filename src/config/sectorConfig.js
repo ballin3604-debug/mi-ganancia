@@ -28,18 +28,22 @@ export const SECTOR_CONFIG_DEFAULTS = {
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
     defaultUnit: 'Unidad',
     optionalFields: [],
+    expiryWarningDays: 30,
     features: { ...SECTOR_FEATURES },
   },
   licorera: {
     unitLabels: ['Unidad', 'Lata', 'Botella', 'Six-pack', 'Caja', 'Litro'],
     defaultUnit: 'Unidad',
     optionalFields: ['volume_ml', 'alcohol_degree', 'origin'],
+    // En licorería los lotes rotan lento: avisa con 3 meses de anticipación.
+    expiryWarningDays: 90,
     features: { ...SECTOR_FEATURES, configurablePresentations: true },
   },
   restaurante: {
     unitLabels: ['Plato', 'Porción', 'Unidad'],
     defaultUnit: 'Plato',
     optionalFields: [],
+    expiryWarningDays: 30,
     features: { ...SECTOR_FEATURES, dishes: true },
   },
 };

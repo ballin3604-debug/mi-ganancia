@@ -5,6 +5,7 @@ import { TransferModal } from './TransferModal';
 import { AppIcon } from '../icons';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAvailablePackages, getSellOptions } from '../../utils/presentations';
+import { getExpiryWarningDays } from '../../utils/expiry';
 
 function formatDate(dateVal) {
   if (!dateVal) return '—';
@@ -28,6 +29,7 @@ export function ProductDetailModal({
   businessId,
 }) {
   const { sectorConfig } = useBusiness();
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const showStock = sectorConfig?.features?.stock !== false;
   const [updatingStock, setUpdatingStock] = useState(false);
@@ -79,7 +81,7 @@ export function ProductDetailModal({
       dateFormatted: formatDate(nearestExpiry.date),
       daysLeft,
       isOverdue: daysLeft < 0,
-      isWarning: daysLeft >= 0 && daysLeft <= 30,
+      isWarning: daysLeft >= 0 && daysLeft <= expiryWarningDays,
     };
   }
 

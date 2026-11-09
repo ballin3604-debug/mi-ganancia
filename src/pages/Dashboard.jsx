@@ -30,6 +30,7 @@ import { usePlan } from '../hooks/usePlan';
 import { useBranchStocks } from '../hooks/useBranchStocks';
 import { toStockMap } from '../services/branchStock';
 import { palette } from '../design/tokens.js';
+import { getExpiryWarningDays } from '../utils/expiry';
 
 function SectionHeader({ title }) {
   return (
@@ -48,6 +49,7 @@ export default function Dashboard() {
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
   const showStock = sectorConfig?.features?.stock !== false;
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   const navigate = useNavigate();
   // Todo el contenido del inicio siempre visible: sin anuncios de planes.
 
@@ -356,7 +358,7 @@ export default function Dashboard() {
   const gananciaHoy = totalHoy - cogsHoy - gastosHoy;
   const margenHoy = totalHoy > 0 ? (gananciaHoy / totalHoy) * 100 : 0;
 
-  // Control de vencimientos: lo vencido y por vencer (30 días) con stock.
+  // Control de vencimientos: lo vencido y lo que vence dentro del plazo del rubro.
   const expirySummary = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -379,7 +381,7 @@ export default function Dashboard() {
         return { productId: pid, name: p.name, stock, date, daysLeft };
       })
       .filter(Boolean)
-      .filter((r) => r.daysLeft <= 30)
+      .filter((r) => r.daysLeft <= expiryWarningDays)
       // Con sede filtrada: solo lo que realmente hay en esa sede.
       .filter((r) => homeBranch === 'all' || !isOwner || r.stock > 0)
       .sort((a, b) => a.date - b.date);
@@ -388,7 +390,7 @@ export default function Dashboard() {
       soon: rows.filter((r) => r.daysLeft >= 0).length,
       items: rows,
     };
-  }, [replenishments, products, homeBranch, branchStockRows, branchStockMap, isOwner]);
+  }, [replenishments, products, homeBranch, branchStockRows, branchStockMap, isOwner, expiryWarningDays]);
 
   // Handlers
   async function handleExport() {

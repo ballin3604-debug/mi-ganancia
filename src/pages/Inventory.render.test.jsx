@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   tipoNegocio: 'tienda',
   products: [],
   categories: [],
+  replenishments: [],
   sectorConfig: {
     defaultUnit: 'Unidad',
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -40,7 +41,10 @@ vi.mock('../services/products', () => ({
   updateProduct: vi.fn(),
   deleteProduct: vi.fn(),
   subscribeToProducts: () => () => {},
-  subscribeToReplenishments: () => () => {},
+  subscribeToReplenishments: (businessId, callback) => {
+    callback(state.replenishments);
+    return () => {};
+  },
   updateReplenishmentExpiry: vi.fn(),
 }));
 
@@ -61,6 +65,13 @@ vi.mock('../services/branchStock', () => ({
 
 const { default: Inventory } = await import('./Inventory');
 
+function dateInDays(days) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/inventario']}>
@@ -76,6 +87,7 @@ describe('Inventario', () => {
     vi.mocked(updateProduct).mockClear();
     state.products = [];
     state.categories = [];
+    state.replenishments = [];
     state.tipoNegocio = 'tienda';
     state.sectorConfig = {
       defaultUnit: 'Unidad',
@@ -288,6 +300,83 @@ describe('Inventario', () => {
     fireEvent.change(costField, { target: { value: '145.92' } });
     expect(costField.value).toBe('146');
     expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
+  });
+
+  it('licorería: avisa vencimientos dentro de 3 meses', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      expiryWarningDays: 90,
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    state.products = [
+      {
+        id: 'p-cerveza',
+        name: 'Pilsener',
+        category: 'Cervezas',
+        price: 8,
+        stock: 24,
+        minStock: 5,
+        brand: '',
+        barcode: null,
+        isDish: false,
+        unit: 'Unidad',
+        unitLabel: 'Unidad',
+        presentations: [],
+      },
+      {
+        id: 'p-whisky',
+        name: 'Whisky',
+        category: 'Destilados',
+        price: 120,
+        stock: 3,
+        minStock: 1,
+        brand: '',
+        barcode: null,
+        isDish: false,
+        unit: 'Unidad',
+        unitLabel: 'Unidad',
+        presentations: [],
+      },
+    ];
+    state.replenishments = [
+      { id: 'r-cerveza', productId: 'p-cerveza', expiryDate: dateInDays(60), quantity: 24 },
+      { id: 'r-whisky', productId: 'p-whisky', expiryDate: dateInDays(120), quantity: 3 },
+    ];
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Pilsener').length).toBeGreaterThan(0));
+
+    expect((await screen.findAllByText(/\d+d para vencer/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/120d para vencer/)).toBeNull();
+    expect(screen.getByRole('button', { name: /Por vencer/ }).textContent).toContain('1');
+  });
+
+  it('otros rubros: sigue avisando recién a 30 días', async () => {
+    state.products = [{
+      id: 'p-gaseosa',
+      name: 'Gaseosa',
+      category: 'Bebidas',
+      price: 6,
+      stock: 24,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      presentations: [],
+    }];
+    state.replenishments = [
+      { id: 'r-gaseosa', productId: 'p-gaseosa', expiryDate: dateInDays(60), quantity: 24 },
+    ];
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Gaseosa').length).toBeGreaterThan(0));
+
+    expect(screen.queryByText(/\d+d para vencer/)).toBeNull();
+    expect(screen.getByRole('button', { name: /Por vencer/ }).textContent).not.toContain('1');
   });
 
   it('al recargar mientras se edita, actualiza el producto y no crea un duplicado', async () => {

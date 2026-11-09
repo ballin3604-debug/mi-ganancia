@@ -19,6 +19,7 @@ import ReportHeader from '../components/ReportHeader';
 import MetricCard from '../components/ui/MetricCard';
 import EmptyState from '../components/ui/EmptyState';
 import { toLocalISODate } from '../utils/dateRanges';
+import { getExpiryWarningDays } from '../utils/expiry';
 import { exportReportToPDF } from '../utils/pdfExport';
 
 function formatBs(amount) {
@@ -34,6 +35,7 @@ export default function Compras() {
   const { businessId, user, hasPermission } = useAuth();
   const { settings, sectorConfig } = useBusiness();
   const scannerEnabled = sectorConfig?.features?.scanner !== false;
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [products, setProducts] = useState([]);
@@ -280,7 +282,7 @@ export default function Compras() {
         today.setHours(0, 0, 0, 0);
         const daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
         const label = expiry.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-        const color = daysLeft < 0 ? 'text-[var(--mg-danger)]' : daysLeft <= 30 ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-text-secondary)]';
+        const color = daysLeft < 0 ? 'text-[var(--mg-danger)]' : daysLeft <= expiryWarningDays ? 'text-[var(--mg-gold-text)]' : 'text-[var(--mg-text-secondary)]';
         return <span className={`font-mono text-xs font-semibold ${color}`}>{label}</span>;
       },
     },

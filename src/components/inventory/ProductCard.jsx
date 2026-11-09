@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatBs } from '../../utils/currency';
+import { useBusiness } from '../../context/BusinessContext';
+import { getExpiryWarningDays } from '../../utils/expiry';
 
 export function ProductCard({ product, nearestExpiry, onSelect, categoryColor }) {
   const [isHovered, setIsHovered] = useState(false);
+  const { sectorConfig } = useBusiness();
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
 
   // Stock Status checks
   const isOut = product.stock === 0;
@@ -17,7 +21,7 @@ export function ProductCard({ product, nearestExpiry, onSelect, categoryColor })
     const daysLeft = Math.ceil((nearestExpiry.date - today) / (1000 * 60 * 60 * 24));
     if (daysLeft < 0) {
       expiryStatus = { type: 'expired', label: 'Vencido' };
-    } else if (daysLeft <= 30) {
+    } else if (daysLeft <= expiryWarningDays) {
       expiryStatus = { type: 'expiring', label: `${daysLeft}d vencer` };
     }
   }

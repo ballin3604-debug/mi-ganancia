@@ -23,6 +23,7 @@ import {
 import { useImageUpload } from '../hooks/useImageUpload';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
 import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
+import { getExpiryWarningDays } from '../utils/expiry';
 
 // Inventory Subcomponents
 import { formatBs } from '../utils/currency';
@@ -75,7 +76,6 @@ const EMPTY_FORM = {
   licorExtraPresentations: [],
 };
 
-const EXPIRY_WARNING_DAYS = 30;
 const RECENT_PURCHASE_DAYS = 14;
 
 function getNearestExpiry(replenishments, productId) {
@@ -264,6 +264,8 @@ export default function Inventory() {
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   // Licorería: catálogo fijo de categorías y precios por presentación.
   const isLicoreria = tipoNegocio === 'licorera';
+  // Licorería avisa con 3 meses; el resto de rubros, con 30 días.
+  const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
   const showStock = sectorConfig?.features?.stock !== false;
   // El dueño puede activar o desactivar el escáner desde Ajustes.
@@ -998,13 +1000,13 @@ export default function Inventory() {
       const daysLeft = Math.ceil((exp.date - today) / (1000 * 60 * 60 * 24));
       if (daysLeft < 0) {
         vencidos += 1;
-      } else if (daysLeft <= EXPIRY_WARNING_DAYS) {
+      } else if (daysLeft <= expiryWarningDays) {
         porVencer += 1;
       }
     });
 
     return { porVencer, vencidos };
-  }, [products, productExpiry]);
+  }, [products, productExpiry, expiryWarningDays]);
 
   const recentlyPurchasedIds = useMemo(() => {
     const cutoff = new Date();
@@ -1048,11 +1050,11 @@ export default function Inventory() {
         today.setHours(0, 0, 0, 0);
         const daysLeft = Math.ceil((exp.date - today) / (1000 * 60 * 60 * 24));
         if (filterExpiry === 'vencidos') return daysLeft < 0;
-        return daysLeft >= 0 && daysLeft <= EXPIRY_WARNING_DAYS;
+        return daysLeft >= 0 && daysLeft <= expiryWarningDays;
       })
       .filter((p) => !filterRecent || recentlyPurchasedIds.has(p.id))
       .filter((p) => !filterLowStock || !showStock || (Number(p.stock) || 0) <= (Number(p.minStock) || 5));
-  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters, showStock]);
+  }, [viewProducts, search, filterCategory, filterExpiry, filterRecent, filterLowStock, productExpiry, recentlyPurchasedIds, showExpiryFilters, showStock, expiryWarningDays]);
 
   const lowStockCount = useMemo(() => (
     showStock
