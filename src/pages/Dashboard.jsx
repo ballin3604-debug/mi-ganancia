@@ -368,6 +368,12 @@ export default function Dashboard() {
       const d = new Date(`${r.expiryDate}T00:00:00`);
       if (!nearest[r.productId] || d < nearest[r.productId]) nearest[r.productId] = d;
     });
+    products.forEach((p) => {
+      if (!p.expiryDate) return;
+      const d = new Date(`${p.expiryDate}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return;
+      if (!nearest[p.id] || d < nearest[p.id]) nearest[p.id] = d;
+    });
     const byId = Object.fromEntries(products.map((p) => [p.id, p]));
     const rows = Object.entries(nearest)
       .map(([pid, date]) => {

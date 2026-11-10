@@ -626,12 +626,17 @@ export default function Inventory() {
     setForm(nextForm);
 
     const nearest = getNearestExpiry(replenishments, product.id);
-    if (nearest) {
+    const productExpiry = product.expiryDate ? new Date(`${product.expiryDate}T00:00:00`) : null;
+    const hasProductExpiry = productExpiry && !Number.isNaN(productExpiry.getTime());
+    if (nearest && (!hasProductExpiry || nearest.date <= productExpiry)) {
       const y = nearest.date.getFullYear();
       const m = String(nearest.date.getMonth() + 1).padStart(2, '0');
       const d = String(nearest.date.getDate()).padStart(2, '0');
       setExpiryDate(`${y}-${m}-${d}`);
       setExpiryReplenishmentId(nearest.id);
+    } else if (hasProductExpiry) {
+      setExpiryDate(product.expiryDate);
+      setExpiryReplenishmentId(null);
     } else {
       setExpiryDate('');
       setExpiryReplenishmentId(null);
@@ -763,6 +768,7 @@ export default function Inventory() {
       delete data.presentations;
     }
     delete data.sellPack;
+    data.expiryDate = form.isDish ? null : (expiryDate || null);
     if (isLicoreria) {
       delete data.licorPrices;
       delete data.licorFactors;
@@ -983,7 +989,16 @@ export default function Inventory() {
       if (!cur || date < cur.date) nearest[r.productId] = { id: r.id, date };
     }
     const map = {};
-    for (const p of products) map[p.id] = nearest[p.id] || null;
+    for (const p of products) {
+      let best = nearest[p.id] || null;
+      if (p.expiryDate) {
+        const date = new Date(`${p.expiryDate}T00:00:00`);
+        if (!Number.isNaN(date.getTime()) && (!best || date < best.date)) {
+          best = { id: null, date };
+        }
+      }
+      map[p.id] = best;
+    }
     return map;
   }, [products, replenishments]);
 
@@ -2269,10 +2284,10 @@ export default function Inventory() {
                 ))}
 
                 {/* Expiry Date */}
-                {expiryReplenishmentId && !form.isDish && (
+                {(!practical || showAdvanced) && !form.isDish && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                      Fecha de Vencimiento
+                      Fecha de Vencimiento (opcional)
                     </label>
                     <input
                       type="date"

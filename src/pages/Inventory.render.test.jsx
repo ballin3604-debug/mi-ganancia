@@ -379,6 +379,70 @@ describe('Inventario', () => {
     expect(screen.getByRole('button', { name: /Por vencer/ }).textContent).not.toContain('1');
   });
 
+  it('licorería: usa el vencimiento cargado en el producto aunque no tenga compras', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      expiryWarningDays: 90,
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    state.products = [{
+      id: 'p-cerveza',
+      name: 'Pilsener',
+      category: 'Cervezas',
+      price: 8,
+      stock: 24,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      presentations: [],
+      expiryDate: dateInDays(60),
+    }];
+    state.replenishments = [];
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Pilsener').length).toBeGreaterThan(0));
+
+    expect((await screen.findAllByText(/\d+d para vencer/)).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Por vencer/ }).textContent).toContain('1');
+  });
+
+  it('permite cargar el vencimiento desde la ficha sin registrar una compra', async () => {
+    state.products = [{
+      id: 'p-casino',
+      name: 'CASINO CHICO',
+      category: 'Cigarros',
+      price: 6,
+      stock: 10,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      presentations: [],
+    }];
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('CASINO CHICO').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('CASINO CHICO')[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Producto' }));
+
+    const expiryField = screen.getByText('Fecha de Vencimiento (opcional)').parentElement.querySelector('input');
+    const expiry = dateInDays(60);
+    fireEvent.change(expiryField, { target: { value: expiry } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Cambios' }));
+
+    await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+    expect(updateProduct).toHaveBeenCalledWith('p-casino', expect.objectContaining({
+      expiryDate: expiry,
+    }));
+  });
+
   it('al recargar mientras se edita, actualiza el producto y no crea un duplicado', async () => {
     state.products = [{
       id: 'p-casino',

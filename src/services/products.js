@@ -18,6 +18,7 @@ function mapProduct(p) {
     isDish: !!p.is_dish,
     isAvailable: p.is_available !== false,
     presentations: Array.isArray(p.presentations) ? p.presentations : [],
+    expiryDate: p.expiry_date || '',
     createdAt: p.created_at ? { toDate: () => new Date(p.created_at) } : null,
     updatedAt: p.updated_at ? { toDate: () => new Date(p.updated_at) } : null,
   };
@@ -144,6 +145,7 @@ export async function addProduct(businessId, data) {
     is_dish: !!data.isDish,
     is_available: data.isAvailable !== false,
     package_size: data.packageSize !== undefined && data.packageSize !== '' ? Number(data.packageSize) : null,
+    expiry_date: data.expiryDate || null,
     created_at: now,
     updated_at: now,
   };
@@ -220,6 +222,9 @@ export function buildProductUpdateData(existing, data, now) {
   }
   if (data.packageSize !== undefined) {
     updateData.package_size = data.packageSize !== '' ? Number(data.packageSize) : null;
+  }
+  if (data.expiryDate !== undefined) {
+    updateData.expiry_date = data.expiryDate || null;
   }
 
   return updateData;
