@@ -6,6 +6,7 @@ import { subscribeToProducts, subscribeToReplenishments } from '../services/prod
 import { subscribeToCategories } from '../services/categories';
 import { getPurchaseDraft } from '../services/purchaseDraft';
 import PurchaseForm from '../components/PurchaseForm';
+import PurchaseProformas from './PurchaseProformas';
 import DataTable from '../components/DataTable';
 import ProductCatalogCard, { StockLabel } from '../components/ProductCatalogCard';
 import { AuditPurchasesList } from '../components/AuditPurchasesList';
@@ -43,7 +44,8 @@ export default function Compras() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const activeTab = searchParams.get('tab') === 'historial' ? 'historial' : 'comprar'; // 'comprar' | 'historial'
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'historial' ? 'historial' : tabParam === 'proformas' ? 'proformas' : 'comprar'; // 'comprar' | 'historial' | 'proformas'
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('Todas');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -350,6 +352,16 @@ export default function Compras() {
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--mg-brand-border)] border-t-transparent" />
       </div>
+    );
+  }
+
+  if (activeTab === 'proformas') {
+    return (
+      <PurchaseProformas
+        products={products}
+        replenishments={replenishments}
+        categories={categories}
+      />
     );
   }
 
