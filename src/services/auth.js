@@ -86,7 +86,13 @@ export async function resendPhoneCode(phone) {
 export async function signInWithGoogle() {
   const { data, error } = await assertSupabase().auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin },
+    options: {
+      redirectTo: window.location.origin,
+      // Fuerza el selector de cuentas de Google: sin esto, si el navegador ya
+      // tiene una sesión de Google, entra directo con esa cuenta y no deja
+      // elegir otro correo.
+      queryParams: { prompt: 'select_account' },
+    },
   });
   if (error) throw error;
   return data;
