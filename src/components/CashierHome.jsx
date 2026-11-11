@@ -3,15 +3,17 @@
 // Ve: vender, sus recibos de hoy (con reimpresión) y avisos de stock.
 // NO ve: totales del negocio, otros vendedores, costos, reportes ni ajustes.
 // ─────────────────────────────────────────────────────────────
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { formatBs } from '../utils/currency';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useBranches } from '../context/BranchContext';
+import { useAuth } from '../context/AuthContext';
 import CashierCashSessionPanel from './CashierCashSessionPanel';
 import { AppIcon } from './icons';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import OrderChangesCard from './OrderChangesCard';
+import { describeShiftStatus, formatShiftDays, formatShiftRange, getShiftStatus } from '../utils/shifts';
 
 function prettyName(raw) {
   const name = (raw || '').trim();
@@ -110,6 +112,13 @@ export function CashierHome({
     () => user?.displayName || user?.email || ''
   );
   const { branches, activeBranch, selectBranch } = useBranches();
+  const { memberShift } = useAuth();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const shiftStatus = memberShift ? getShiftStatus(memberShift, now) : null;
   const inWarehouse = activeBranch?.type === 'almacen';
   const sellBranches = branches.filter((b) => b.type !== 'almacen');
   const firstName = prettyName(displayName);
@@ -250,6 +259,34 @@ export function CashierHome({
           <span className="w-1 h-3.5 rounded-full bg-[var(--mg-brand)]" />
           Mi turno hoy
         </h2>
+        <div className={`mb-2.5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-3 ${
+          !memberShift
+            ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)]'
+            : shiftStatus?.active
+              ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]'
+              : 'border-[var(--mg-border)] bg-[var(--mg-bg-surface)]'
+        }`}>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white ${
+              !memberShift ? 'bg-[var(--mg-gold)]' : shiftStatus?.active ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-text-faint)]'
+            }`}>
+              <AppIcon name={memberShift ? 'reloj' : 'alerta'} size={15} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black text-[var(--mg-text-primary)]">
+                {memberShift ? `${memberShift.label} · ${formatShiftRange(memberShift)}` : 'Sin turno asignado'}
+              </p>
+              <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                {memberShift ? `${formatShiftDays(memberShift.days)} · ${describeShiftStatus(shiftStatus, now)}` : 'El dueño debe asignarte un horario en Equipo.'}
+              </p>
+            </div>
+          </div>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${
+            !memberShift ? 'bg-[var(--mg-gold)] text-white' : shiftStatus?.active ? 'bg-[var(--mg-success)] text-white' : 'bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]'
+          }`}>
+            {!memberShift ? 'Sin turno' : shiftStatus?.active ? 'En turno' : 'Fuera de turno'}
+          </span>
+        </div>
         {sales.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="bg-[var(--mg-bg-surface)] rounded-2xl p-3.5 text-center border border-[var(--mg-border)]">

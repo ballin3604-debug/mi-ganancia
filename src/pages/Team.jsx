@@ -15,6 +15,8 @@ import {
   updateMemberPermissions,
   updateMemberName,
   updateMemberBranches,
+  updateMemberShift,
+  clearMemberShift,
 } from '../services/cashier';
 import { TeamSection } from '../components/settings/TeamSection';
 import CashSessionPanel from '../components/CashSessionPanel';
@@ -207,6 +209,30 @@ export default function Team() {
     }
   }
 
+  async function handleSaveShift(member, shift) {
+    setMemberBusy(member.id);
+    try {
+      const saved = await updateMemberShift(member.id, shift);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, shift: saved } : m)));
+    } catch (err) {
+      throw err;
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
+  async function handleClearShift(member) {
+    setMemberBusy(member.id);
+    try {
+      await clearMemberShift(member.id);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, shift: null } : m)));
+    } catch (err) {
+      throw err;
+    } finally {
+      setMemberBusy(null);
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 pb-28">
       <PageHeader
@@ -240,6 +266,8 @@ export default function Team() {
         onRemoveMember={handleRemoveMember}
         onSavePermissions={handleSavePermissions}
         onRenameMember={handleRenameMember}
+        onSaveShift={handleSaveShift}
+        onClearShift={handleClearShift}
         businessName={business?.name || ''}
         planId={planId}
         planName={plan.name}

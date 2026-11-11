@@ -7,6 +7,7 @@ import { calculateCashMovements, getCashSessions, subscribeCashSessions } from '
 import CashArqueoModal from './CashArqueoModal';
 import { AppIcon } from './icons';
 import { formatBs } from '../utils/currency';
+import { describeShiftStatus, formatShiftRange, getShiftStatus } from '../utils/shifts';
 
 function toDate(value) {
   if (!value) return null;
@@ -15,7 +16,7 @@ function toDate(value) {
 }
 
 export default function CashierCashSessionPanel() {
-  const { businessId, user, sellerName } = useAuth();
+  const { businessId, user, sellerName, memberShift } = useAuth();
   const { activeBranch, activeBranchId } = useBranches();
   const [sessions, setSessions] = useState([]);
   const [sales, setSales] = useState([]);
@@ -57,6 +58,7 @@ export default function CashierCashSessionPanel() {
     session.branch_id === activeBranchId && session.status === 'open'
   )) || null;
   const assignedSession = branchSession?.cashier_id === user?.uid ? branchSession : null;
+  const shiftStatus = memberShift ? getShiftStatus(memberShift, now) : null;
   const periodStart = toDate(assignedSession?.opened_at) || now;
   const isMainBranch = !!(activeBranch?.isMain || activeBranch?.is_main);
   const movements = useMemo(() => calculateCashMovements({
@@ -92,6 +94,11 @@ export default function CashierCashSessionPanel() {
                 <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[var(--mg-success-text)]">Mi caja abierta</p>
                 <p className="truncate text-xs font-black text-[var(--mg-text-primary)]">{activeBranch?.name || 'Sucursal'} · desde {assignedSession.opened_at ? new Date(assignedSession.opened_at).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                 <p className="mt-0.5 text-[10px] font-semibold text-[var(--mg-text-muted)]">Fondo {formatBs(assignedSession.opening_cash)} · caja compartida · QR separado</p>
+                {memberShift ? (
+                  <p className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">
+                    <AppIcon name="reloj" size={11} /> {memberShift.label} · {formatShiftRange(memberShift)} · {shiftStatus?.active ? 'en turno' : 'fuera de turno'}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
@@ -106,11 +113,17 @@ export default function CashierCashSessionPanel() {
           </div>
         </section>
       ) : (
-        <section className="flex items-center gap-2.5 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3.5 py-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--mg-gold)] text-white"><AppIcon name="caja" size={15} /></span>
-          <p className="text-[11px] font-bold leading-relaxed text-[var(--mg-gold-text)]">
-            {branchSession ? 'La caja de esta sucursal está asignada a otro cajero.' : 'No tienes una caja abierta asignada. Solicita al dueño que la abra desde Equipo.'}
-          </p>
+        <section className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3.5 py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--mg-gold)] text-white"><AppIcon name="caja" size={15} /></span>
+            <p className="text-[11px] font-bold leading-relaxed text-[var(--mg-gold-text)]">
+              {branchSession ? 'La caja de esta sucursal está asignada a otro cajero.' : 'No tienes una caja abierta asignada. Solicita al dueño que la abra desde Equipo.'}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--mg-gold-border)] bg-[var(--mg-bg-surface)] px-2 py-1 text-[10px] font-black text-[var(--mg-text-secondary)]">
+            <AppIcon name="reloj" size={11} />
+            {memberShift ? `${memberShift.label} · ${describeShiftStatus(shiftStatus, now)}` : 'Sin turno asignado'}
+          </span>
         </section>
       )}
 

@@ -1,4 +1,44 @@
 import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient';
+import { db } from './localDb';
+import { normalizeShift, normalizeShiftDays, normalizeTime, validateShift } from '../utils/shifts';
+
+function mapMember(row) {
+  if (!row) return row;
+  const shiftStart = normalizeTime(row.shift_start);
+  const shiftEnd = normalizeTime(row.shift_end);
+  const shiftDays = Array.isArray(row.shift_days) ? normalizeShiftDays(row.shift_days) : [];
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    displayName: row.name,
+    email: row.email || null,
+    photoURL: row.photo_url || null,
+    role: row.role,
+    status: row.status,
+    customPermissions: Array.isArray(row.custom_permissions) ? row.custom_permissions : null,
+    branchIds: Array.isArray(row.branch_ids) ? row.branch_ids : null,
+    shift: shiftStart && shiftEnd && shiftDays.length > 0
+      ? { label: row.shift_label || 'Turno', start: shiftStart, end: shiftEnd, days: shiftDays }
+      : null,
+  };
+}
+
+async function cacheTeamMembers(businessId, rows) {
+  try {
+    await db.transaction('rw', db.team_members, async () => {
+      await db.team_members.where('business_id').equals(businessId).delete();
+      if (rows.length > 0) await db.team_members.bulkPut(rows);
+    });
+  } catch { /* la caché es opcional: no bloquea la operación */ }
+}
+
+async function patchCachedMember(memberId, patch) {
+  try {
+    await db.team_members.update(memberId, patch);
+  } catch { /* la caché es opcional */ }
+}
+
+const MISSING_SHIFT_COLUMNS = /column|PGRST204|does not exist|schema cache/i;
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -48,6 +88,7 @@ export async function updateMemberPermissions(memberId, permissions) {
     }
     throw error;
   }
+  await patchCachedMember(memberId, { custom_permissions: clean });
   return clean;
 }
 
@@ -56,6 +97,7 @@ export async function updateMemberName(memberId, name) {
   if (clean.length < 2) throw new Error('El nombre debe tener al menos 2 letras.');
   const { error } = await assertSupabase().from('profiles').update({ name: clean }).eq('id', memberId);
   if (error) throw error;
+  await patchCachedMember(memberId, { name: clean });
   return clean;
 }
 
@@ -71,26 +113,69 @@ export async function updateMemberBranches(memberId, branchIds) {
     }
     throw error;
   }
+  await patchCachedMember(memberId, { branch_ids: clean.length > 0 ? clean : null });
   return clean.length > 0 ? clean : null;
 }
 
 export async function getBusinessMembers(businessId) {
-  const { data, error } = await assertSupabase()
-    .from('profiles')
-    .select('*')
-    .eq('business_id', businessId);
-  if (error) throw error;
-  return data.map((m) => ({
-    id: m.id,
-    businessId: m.business_id,
-    displayName: m.name,
-    email: m.email || null,
-    photoURL: m.photo_url || null,
-    role: m.role,
-    status: m.status,
-    customPermissions: Array.isArray(m.custom_permissions) ? m.custom_permissions : null,
-    branchIds: Array.isArray(m.branch_ids) ? m.branch_ids : null,
-  }));
+  if (!businessId) return [];
+  try {
+    const { data, error } = await assertSupabase()
+      .from('profiles')
+      .select('*')
+      .eq('business_id', businessId);
+    if (error) throw error;
+    const rows = data || [];
+    await cacheTeamMembers(businessId, rows);
+    return rows.map(mapMember);
+  } catch (error) {
+    // Sin internet: se usa la última plantilla conocida (incluye turnos) para
+    // que el arqueo siga funcionando y respete el horario asignado.
+    try {
+      const cached = await db.team_members.where('business_id').equals(businessId).toArray();
+      if (cached.length > 0) return cached.map(mapMember);
+    } catch { /* sin caché disponible */ }
+    throw error;
+  }
+}
+
+export async function updateMemberShift(memberId, shift) {
+  const clean = normalizeShift(shift);
+  const validation = validateShift(clean);
+  if (validation) throw new Error(validation);
+  const payload = {
+    shift_label: clean.label || null,
+    shift_start: clean.start,
+    shift_end: clean.end,
+    shift_days: clean.days,
+  };
+  const { error } = await assertSupabase().from('profiles').update(payload).eq('id', memberId);
+  if (error) {
+    if (MISSING_SHIFT_COLUMNS.test(error.message || '')) {
+      throw new Error('Falta aplicar el SQL de turnos en Supabase (20261111000000_staff_shifts.sql).');
+    }
+    throw error;
+  }
+  await patchCachedMember(memberId, payload);
+  return clean;
+}
+
+export async function clearMemberShift(memberId) {
+  const payload = {
+    shift_label: null,
+    shift_start: null,
+    shift_end: null,
+    shift_days: null,
+  };
+  const { error } = await assertSupabase().from('profiles').update(payload).eq('id', memberId);
+  if (error) {
+    if (MISSING_SHIFT_COLUMNS.test(error.message || '')) {
+      throw new Error('Falta aplicar el SQL de turnos en Supabase (20261111000000_staff_shifts.sql).');
+    }
+    throw error;
+  }
+  await patchCachedMember(memberId, payload);
+  return null;
 }
 
 export async function getMemberCount(businessId) {
@@ -335,11 +420,13 @@ export async function setMemberStatus(memberId, status) {
   if (!['active', 'suspended'].includes(status)) throw new Error('Estado inválido.');
   const { error } = await assertSupabase().from('profiles').update({ status }).eq('id', memberId);
   if (error) throw error;
+  await patchCachedMember(memberId, { status });
 }
 
 export async function removeMember(memberId) {
   const { error } = await assertSupabase().from('profiles').delete().eq('id', memberId);
   if (error) throw error;
+  try { await db.team_members.delete(memberId); } catch { /* caché opcional */ }
 }
 
 export async function updateMemberRole(members, targetUserId, newRole) {
@@ -354,4 +441,5 @@ export async function updateMemberRole(members, targetUserId, newRole) {
     .update({ role: newRole })
     .eq('id', targetUserId);
   if (error) throw error;
+  await patchCachedMember(targetUserId, { role: newRole });
 }

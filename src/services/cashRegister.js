@@ -1,5 +1,6 @@
 import { db, generateUUID } from './localDb';
 import { buildOutboxOp, refreshOutboxState } from './syncEngine';
+import { formatShiftMoment, getShiftStatus, isShiftConfigured, normalizeShift } from '../utils/shifts';
 
 export const CASH_DENOMINATIONS = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
 
@@ -128,6 +129,21 @@ export async function openCashSession(businessId, userId, userName, data) {
     throw new Error('El fondo inicial debe ser un monto válido mayor o igual a cero.');
   }
 
+  const shift = data.shift ? normalizeShift(data.shift) : null;
+  if (data.shift) {
+    if (!isShiftConfigured(shift)) {
+      throw new Error('El cajero no tiene un turno válido asignado. Asigna su horario en Equipo.');
+    }
+    const validationNow = data.now instanceof Date ? data.now : new Date();
+    const shiftStatus = getShiftStatus(shift, validationNow);
+    if (!shiftStatus.active) {
+      const next = shiftStatus.nextStart
+        ? ` Próximo turno: ${formatShiftMoment(shiftStatus.nextStart, validationNow)}.`
+        : '';
+      throw new Error(`${String(data.cashierName || 'El cajero')} está fuera de su turno (${shift.start} a ${shift.end}).${next}`);
+    }
+  }
+
   const openedAt = new Date().toISOString();
   const row = {
     id: generateUUID(),
@@ -140,6 +156,9 @@ export async function openCashSession(businessId, userId, userName, data) {
     opened_at: openedAt,
     opened_by: userId,
     opened_by_name: String(userName || 'Dueño').slice(0, 100),
+    shift_label: shift?.label || null,
+    shift_start: shift?.start || null,
+    shift_end: shift?.end || null,
     closed_at: null,
     closed_by: null,
     closed_by_name: '',
@@ -209,6 +228,9 @@ export async function createCashArqueo(businessId, userId, userName, data) {
     difference,
     denominations: data.denominations || {},
     notes,
+    shift_label: null,
+    shift_start: null,
+    shift_end: null,
     closed_by: userId,
     closed_by_name: String(userName || 'Usuario').slice(0, 100),
     created_at: closedAt,
@@ -235,9 +257,15 @@ export async function createCashArqueo(businessId, userId, userName, data) {
       row.cashier_id = session.cashier_id;
       row.cashier_name = session.cashier_name || '';
       row.period_start = new Date(session.opened_at).toISOString();
+      row.shift_label = session.shift_label || null;
+      row.shift_start = session.shift_start || null;
+      row.shift_end = session.shift_end || null;
       payload.cashier_id = row.cashier_id;
       payload.cashier_name = row.cashier_name;
       payload.period_start = row.period_start;
+      payload.shift_label = row.shift_label;
+      payload.shift_start = row.shift_start;
+      payload.shift_end = row.shift_end;
     }
     await db.cash_arqueos.add(row);
     await db.pending_operations.add(operation);

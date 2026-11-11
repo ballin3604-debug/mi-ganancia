@@ -15,6 +15,7 @@ import { AppIcon } from '../components/icons';
 import { BranchSelect } from '../components/BranchSelect';
 import CashArqueoModal from '../components/CashArqueoModal';
 import { formatBs } from '../utils/currency';
+import { formatShiftRange } from '../utils/shifts';
 
 function toDate(value) {
   if (!value) return null;
@@ -192,6 +193,11 @@ export default function CashRegister() {
                   ? `Caja abierta para ${activeCashSession.cashier_name} · desde ${formatDate(activeCashSession.opened_at)}`
                   : 'Caja cerrada · abre el turno desde Equipo'}
               </p>
+              {activeCashSession?.shift_label ? (
+                <p className="mt-0.5 text-[10px] font-semibold text-white/70">
+                  Turno {activeCashSession.shift_label} · {formatShiftRange({ start: activeCashSession.shift_start, end: activeCashSession.shift_end })}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -289,6 +295,11 @@ export default function CashRegister() {
                         {formatDate(arqueo.period_start)} → {formatDate(arqueo.closed_at)}
                         {arqueo.cashier_name ? ` · Caja de ${arqueo.cashier_name}` : ''} · Cerró {arqueo.closed_by_name || 'Equipo'}
                       </p>
+                      {arqueo.shift_label ? (
+                        <p className="mt-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
+                          Turno {arqueo.shift_label} · {formatShiftRange({ start: arqueo.shift_start, end: arqueo.shift_end })}
+                        </p>
+                      ) : null}
                       {arqueo.notes ? <p className="mt-1 line-clamp-2 text-[11px] font-medium text-[var(--mg-text-secondary)]">{arqueo.notes}</p> : null}
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-right text-[10px]">
@@ -330,6 +341,9 @@ export default function CashRegister() {
             </div>
             <div className="mt-3 space-y-2 border-t border-[var(--mg-separator)] pt-3 text-[11px]">
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Inicio</span><span className="font-bold text-[var(--mg-text-secondary)]">{formatDate(periodStart)}</span></div>
+              {activeCashSession?.shift_label ? (
+                <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Turno</span><span className="font-bold text-[var(--mg-text-secondary)]">{activeCashSession.shift_label} · {formatShiftRange({ start: activeCashSession.shift_start, end: activeCashSession.shift_end })}</span></div>
+              ) : null}
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Fondo inicial</span><span className="font-black tabular-nums text-[var(--mg-brand-text)]">{formatBs(openingCash)}</span></div>
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Ventas vigentes</span><span className="font-bold tabular-nums text-[var(--mg-text-secondary)]">{branchSalesCount}</span></div>
               <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Último arqueo</span><span className="font-bold text-[var(--mg-text-secondary)]">{lastArqueo ? formatDate(lastArqueo.closed_at) : 'Todavía ninguno'}</span></div>

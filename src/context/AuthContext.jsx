@@ -6,6 +6,7 @@ import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
 import { initializeSyncEngine, syncCacheFromServer, triggerSync, isNetworkError } from '../services/syncEngine';
 import { saveLastAuthUser, getOfflineAuthUser, clearLastAuthUser, isOfflineNow } from '../services/offlineSession';
 import { withTimeout } from '../utils/withTimeout';
+import { isShiftConfigured, normalizeShift } from '../utils/shifts';
 
 const AuthContext = createContext(null);
 
@@ -19,6 +20,7 @@ export function AuthProvider({ children }) {
   const [sellerName, setSellerName] = useState(''); // nombre que aparece en ventas
   const [memberPermissions, setMemberPermissions] = useState(null); // null = defecto por rol
   const [memberBranches, setMemberBranches] = useState(null); // null = todas las sedes
+  const [memberShift, setMemberShift] = useState(null);
   const [authError, setAuthError] = useState(null);
 
   const activeSessionIdRef = useRef(0);
@@ -66,12 +68,20 @@ export function AuthProvider({ children }) {
           setSellerName(userObj.displayName || '');
           setMemberPermissions(null);
           setMemberBranches(null);
+          setMemberShift(null);
         } else {
           setUserStatus(resolvedUserData.status || 'active');
           setRole(resolvedUserData.role === 'cashier' ? 'cashier' : 'owner');
           setSellerName(resolvedUserData.name || userObj.displayName || '');
           setMemberPermissions(Array.isArray(resolvedUserData.custom_permissions) ? resolvedUserData.custom_permissions : null);
           setMemberBranches(Array.isArray(resolvedUserData.branch_ids) ? resolvedUserData.branch_ids : null);
+          const shift = normalizeShift({
+            label: resolvedUserData.shift_label,
+            start: resolvedUserData.shift_start,
+            end: resolvedUserData.shift_end,
+            days: resolvedUserData.shift_days,
+          });
+          setMemberShift(isShiftConfigured(shift) ? shift : null);
           if (resolvedUserData.business_id) {
             setBusinessId(resolvedUserData.business_id);
             setNeedsSetup(false);
@@ -100,6 +110,7 @@ export function AuthProvider({ children }) {
       setSellerName('');
       setMemberPermissions(null);
       setMemberBranches(null);
+      setMemberShift(null);
       setAuthError(null);
     }
 
@@ -294,7 +305,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, businessId, loading, needsSetup,
       userStatus, admin, role, sellerName, authError,
-      memberPermissions, hasPermission, memberBranches,
+      memberPermissions, hasPermission, memberBranches, memberShift,
       completeSetup, setRequestSent, refreshSession,
       // Para cuando el usuario cambia su PROPIO rol desde Ajustes (p.ej. un
       // dueño se autodegrada a cajero, o viceversa) — sin esto, el rol de la

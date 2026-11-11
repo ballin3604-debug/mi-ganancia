@@ -105,6 +105,46 @@ describe('cash register arqueos', () => {
     })).rejects.toThrow('Ya hay una caja abierta');
   });
 
+  it('solo abre la caja dentro del turno asignado al cajero', async () => {
+    const businessId = generateUUID();
+    const ownerId = generateUUID();
+    const branchId = generateUUID();
+    const cashierId = generateUUID();
+    const shift = { label: 'Mañana', start: '08:00', end: '14:00', days: [1] };
+
+    await expect(openCashSession(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashierId,
+      cashierName: 'Mayorly',
+      openingCash: 50,
+      shift,
+      now: new Date(2026, 10, 9, 15, 0),
+    })).rejects.toThrow('fuera de su turno');
+
+    const session = await openCashSession(businessId, ownerId, 'Dueño Test', {
+      branchId,
+      cashierId,
+      cashierName: 'Mayorly',
+      openingCash: 50,
+      shift,
+      now: new Date(2026, 10, 9, 10, 0),
+    });
+
+    expect(session.shift_label).toBe('Mañana');
+    expect(session.shift_start).toBe('08:00');
+    expect(session.shift_end).toBe('14:00');
+  });
+
+  it('no permite abrir la caja si el cajero tiene un turno incompleto', async () => {
+    await expect(openCashSession(generateUUID(), generateUUID(), 'Dueño Test', {
+      branchId: generateUUID(),
+      cashierId: generateUUID(),
+      cashierName: 'Mayorly',
+      openingCash: 10,
+      shift: { start: '08:00', end: '', days: [1] },
+    })).rejects.toThrow('turno válido');
+  });
+
   it('cierra la sesión asignada junto con el arqueo', async () => {
     const businessId = generateUUID();
     const ownerId = generateUUID();

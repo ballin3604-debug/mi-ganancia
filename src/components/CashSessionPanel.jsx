@@ -5,6 +5,13 @@ import { useBranches } from '../context/BranchContext';
 import { getCashSessions, openCashSession, subscribeCashSessions } from '../services/cashRegister';
 import { AppIcon } from './icons';
 import { formatBs } from '../utils/currency';
+import {
+  describeShiftStatus,
+  formatShiftDays,
+  formatShiftRange,
+  getShiftStatus,
+  isShiftConfigured,
+} from '../utils/shifts';
 
 function formatOpenedAt(value) {
   if (!value) return '—';
@@ -24,6 +31,12 @@ export default function CashSessionPanel({ members = [] }) {
   const [selectedCashierId, setSelectedCashierId] = useState('');
   const [openingCash, setOpeningCash] = useState('0');
   const [error, setError] = useState('');
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!businessId) {
@@ -63,10 +76,13 @@ export default function CashSessionPanel({ members = [] }) {
     session.branch_id === activeBranchId && session.status === 'open'
   )) || null;
   const selectedCashier = cashiers.find((cashier) => cashier.id === selectedCashierId) || null;
+  const selectedShift = isShiftConfigured(selectedCashier?.shift) ? selectedCashier.shift : null;
+  const shiftStatus = selectedShift ? getShiftStatus(selectedShift, now) : null;
+  const shiftBlocked = !selectedShift || !shiftStatus?.active;
   const isWarehouse = activeBranch?.type === 'almacen';
 
   async function handleOpenCash() {
-    if (saving || activeSession || !activeBranchId || !selectedCashier) return;
+    if (saving || activeSession || !activeBranchId || !selectedCashier || shiftBlocked) return;
     setError('');
     const amount = Number(String(openingCash).replace(',', '.'));
     if (!Number.isFinite(amount) || amount < 0) {
@@ -80,6 +96,8 @@ export default function CashSessionPanel({ members = [] }) {
         cashierId: selectedCashier.id,
         cashierName: selectedCashier.displayName || selectedCashier.email || 'Cajero',
         openingCash: amount,
+        shift: selectedShift,
+        now: new Date(),
       });
       setSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)]);
     } catch (openError) {
@@ -128,6 +146,11 @@ export default function CashSessionPanel({ members = [] }) {
                 <p className="mt-0.5 text-[10px] font-semibold text-[var(--mg-text-secondary)]">
                   Fondo {formatBs(activeSession.opening_cash)} · desde {formatOpenedAt(activeSession.opened_at)} · abrió {activeSession.opened_by_name || 'Dueño'}
                 </p>
+                {activeSession.shift_label && activeSession.shift_start && activeSession.shift_end ? (
+                  <p className="mt-0.5 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                    Turno {activeSession.shift_label} · {formatShiftRange({ start: activeSession.shift_start, end: activeSession.shift_end })}
+                  </p>
+                ) : null}
               </div>
             </div>
             <button type="button" onClick={() => navigate('/equipo/arqueo')} className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--mg-success)] px-3.5 text-[10px] font-black text-white transition-all hover:brightness-110 active:scale-95">
@@ -146,21 +169,65 @@ export default function CashSessionPanel({ members = [] }) {
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-end">
-            <label className="block min-w-0">
-              <span className="mb-1 block text-[9px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Cajero responsable</span>
-              <select value={selectedCashierId} onChange={(event) => setSelectedCashierId(event.target.value)} className="mg-input min-h-[42px] !rounded-xl py-2 text-sm">
-                {cashiers.map((cashier) => <option key={cashier.id} value={cashier.id}>{cashier.displayName || cashier.email || 'Cajero'}</option>)}
-              </select>
-            </label>
-            <label className="block min-w-0">
-              <span className="mb-1 block text-[9px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Fondo inicial (Bs)</span>
-              <input type="number" min="0" step="0.01" value={openingCash} onChange={(event) => setOpeningCash(event.target.value)} className="mg-input min-h-[42px] !rounded-xl py-2 text-sm font-black tabular-nums" />
-            </label>
-            <button type="button" onClick={handleOpenCash} disabled={saving || !activeBranchId || !selectedCashier} className="mg-orders-tile inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black text-[var(--mg-brand-contrast)] transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
-              <AppIcon name="agregar" size={15} /> {saving ? 'Abriendo…' : 'Abrir caja'}
-            </button>
-            {error ? <p role="alert" className="text-[11px] font-bold text-[var(--mg-danger)] md:col-span-3">{error}</p> : null}
+          <div className="space-y-3">
+            <div className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-3 ${
+              !selectedShift
+                ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)]'
+                : shiftStatus.active
+                  ? 'border-[var(--mg-success-border)] bg-[var(--mg-success-bg)]'
+                  : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)]'
+            }`}>
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white ${
+                  !selectedShift ? 'bg-[var(--mg-gold)]' : shiftStatus.active ? 'bg-[var(--mg-success)]' : 'bg-[var(--mg-danger)]'
+                }`}>
+                  <AppIcon name={selectedShift ? 'reloj' : 'alerta'} size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-black uppercase tracking-wider ${
+                    !selectedShift ? 'text-[var(--mg-gold-text)]' : shiftStatus.active ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-danger)]'
+                  }`}>
+                    Turno del cajero
+                  </p>
+                  <p className="mt-0.5 text-xs font-black text-[var(--mg-text-primary)]">
+                    {selectedShift
+                      ? `${selectedShift.label} · ${formatShiftRange(selectedShift)}`
+                      : 'Sin turno asignado'}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-semibold text-[var(--mg-text-secondary)]">
+                    {selectedShift
+                      ? `${formatShiftDays(selectedShift.days)} · ${describeShiftStatus(shiftStatus, now)}`
+                      : 'Asígnale un horario desde el equipo para habilitar la apertura de caja.'}
+                  </p>
+                </div>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${
+                !selectedShift
+                  ? 'bg-[var(--mg-gold)] text-white'
+                  : shiftStatus.active
+                    ? 'bg-[var(--mg-success)] text-white'
+                    : 'bg-[var(--mg-danger)] text-white'
+              }`}>
+                {!selectedShift ? 'Bloqueado' : shiftStatus.active ? 'Puede abrir' : 'Fuera de turno'}
+              </span>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-end">
+              <label className="block min-w-0">
+                <span className="mb-1 block text-[9px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Cajero responsable</span>
+                <select value={selectedCashierId} onChange={(event) => { setSelectedCashierId(event.target.value); setError(''); }} className="mg-input min-h-[42px] !rounded-xl py-2 text-sm">
+                  {cashiers.map((cashier) => <option key={cashier.id} value={cashier.id}>{cashier.displayName || cashier.email || 'Cajero'}</option>)}
+                </select>
+              </label>
+              <label className="block min-w-0">
+                <span className="mb-1 block text-[9px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Fondo inicial (Bs)</span>
+                <input type="number" min="0" step="0.01" value={openingCash} onChange={(event) => setOpeningCash(event.target.value)} className="mg-input min-h-[42px] !rounded-xl py-2 text-sm font-black tabular-nums" />
+              </label>
+              <button type="button" onClick={handleOpenCash} disabled={saving || !activeBranchId || !selectedCashier || shiftBlocked} className="mg-orders-tile inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black text-[var(--mg-brand-contrast)] transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
+                <AppIcon name={shiftBlocked ? 'seguro' : 'agregar'} size={15} /> {saving ? 'Abriendo…' : !selectedShift ? 'Sin turno' : shiftStatus.active ? 'Abrir caja' : 'Fuera de turno'}
+              </button>
+              {error ? <p role="alert" className="text-[11px] font-bold text-[var(--mg-danger)] md:col-span-3">{error}</p> : null}
+            </div>
           </div>
         )}
       </div>

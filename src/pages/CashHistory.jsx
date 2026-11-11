@@ -6,6 +6,7 @@ import { getCashArqueos, subscribeCashArqueos } from '../services/cashRegister';
 import { AppIcon } from '../components/icons';
 import { BranchSelect } from '../components/BranchSelect';
 import { formatBs } from '../utils/currency';
+import { formatShiftRange } from '../utils/shifts';
 
 function toDate(value) {
   if (!value) return null;
@@ -357,6 +358,7 @@ export default function CashHistory() {
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 pl-1.5">
                     <span className={`text-[9px] font-semibold ${selected ? 'opacity-70' : 'text-[var(--mg-text-muted)]'}`}>
                       Periodo {formatDate(arqueo.period_start)}
+                      {arqueo.shift_label ? ` · Turno ${arqueo.shift_label} (${formatShiftRange({ start: arqueo.shift_start, end: arqueo.shift_end })})` : ''}
                     </span>
                     {selected ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[9px] font-black">
@@ -393,6 +395,12 @@ export default function CashHistory() {
                     <span className="inline-flex items-center gap-1"><AppIcon name="equipo" size={12} /> Caja de {selectedArqueo.cashier_name || 'cajero no asignado'} · cerró {selectedArqueo.closed_by_name || 'Equipo'}</span>
                     <span className="h-1 w-1 rounded-full bg-current opacity-40" />
                     <span>{branchNames[selectedArqueo.branch_id] || 'Sucursal'}</span>
+                    {selectedArqueo.shift_label ? (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-current opacity-40" />
+                        <span className="inline-flex items-center gap-1"><AppIcon name="reloj" size={12} /> Turno {selectedArqueo.shift_label} · {formatShiftRange({ start: selectedArqueo.shift_start, end: selectedArqueo.shift_end })}</span>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-2 sm:items-end">
