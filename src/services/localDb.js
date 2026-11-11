@@ -315,6 +315,50 @@ db.version(16).stores({
   team_members: 'id, business_id, role, status'
 });
 
+// Version 17: limpieza local tras reiniciar cajas, arqueos y turnos.
+db.version(17).stores({
+  products: 'id, name, category, stock, business_id',
+  sales: 'id, payment_method, total, created_at, business_id, client_generated_id, sync_status, status',
+  sale_items: 'id, sale_id, product_id, business_id',
+  debts: 'id, client_name, status, created_at, business_id',
+  expenses: 'id, category, amount, created_at, business_id',
+  replenishments: 'id, product_id, created_at, business_id',
+  clientes: 'id, name, nit, business_id',
+  pending_operations: 'id, operation_type, status, created_at, retry_count, last_attempt_at, business_id, created_by, branch_id, device_id, [status+business_id]',
+  business_settings: 'business_id',
+  profiles: 'id',
+  cart_drafts: 'id, business_id, user_id',
+  purchase_drafts: 'id, business_id, user_id',
+  branch_stock: 'id, business_id, branch_id, product_id',
+  transfers: 'id, business_id, product_id, created_at',
+  sync_state: 'business_id',
+  branches: 'id, business_id, is_main, name',
+  businesses: 'id, name',
+  sale_changes: 'id, business_id, sale_id, event_type, created_at, [business_id+created_at]',
+  cash_arqueos: 'id, business_id, branch_id, closed_at, [business_id+branch_id+closed_at]',
+  cash_sessions: 'id, business_id, branch_id, cashier_id, status, opened_at, [business_id+branch_id+status]',
+  team_members: 'id, business_id, role, status'
+}).upgrade(async (tx) => {
+  await tx.table('cash_sessions').clear();
+  await tx.table('cash_arqueos').clear();
+  await tx.table('team_members').clear();
+  await tx.table('profiles').toCollection().modify({
+    shift_label: null,
+    shift_start: null,
+    shift_end: null,
+    shift_days: null,
+  });
+  const pending = await tx.table('pending_operations').toArray();
+  const stale = pending.filter((op) => (
+    op.operation_type === 'OPEN_CASH_SESSION'
+    || op.operation_type === 'CLOSE_CASH_SESSION'
+    || op.operation_type === 'ADD_CASH_ARQUEO'
+  ));
+  if (stale.length > 0) {
+    await tx.table('pending_operations').bulkDelete(stale.map((op) => op.id));
+  }
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
