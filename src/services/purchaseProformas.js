@@ -78,6 +78,22 @@ export function getProformaItemUnitCost(item) {
   return packagePrice;
 }
 
+export function getProductCurrentPackagePrice(product, factor = 1) {
+  const safeFactor = Number(factor) > 0 ? Number(factor) : 1;
+  const unitCost = Number(product?.supplier_price ?? product?.supplierPrice ?? 0);
+  if (unitCost > 0) return Math.round(unitCost * safeFactor);
+
+  const lastPrice = Number(product?.last_purchase_package_price ?? product?.lastPurchasePackagePrice ?? 0);
+  if (lastPrice > 0) {
+    const lastFactor = Number(product?.last_purchase_package_factor ?? product?.lastPurchasePackageFactor ?? 0);
+    const normalized = lastFactor > 0 && lastFactor !== safeFactor
+      ? (lastPrice / lastFactor) * safeFactor
+      : lastPrice;
+    return Math.round(normalized);
+  }
+  return 0;
+}
+
 export function computeProformaItem(item, extraShare = 0, discountShare = 0) {
   const factor = getProformaItemFactor(item);
   const packageQty = getProformaItemPackageQty(item);
@@ -497,8 +513,8 @@ export async function savePurchaseProforma(businessId, payload) {
 
       if (!previousPurchaseByProduct.has(current.id)) {
         previousPurchaseByProduct.set(current.id, {
-          price: Number(current.last_purchase_package_price || 0),
-          factor: Number(current.last_purchase_package_factor || 0),
+          price: getProductCurrentPackagePrice(current, computed.factor),
+          factor: computed.factor,
           salePrice: Number(current.price || 0),
         });
       }

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { AppIcon } from '../icons';
-import { createProformaItemFromProduct } from './proformaUi';
+import { createProformaItemFromProduct, getProductCurrentPackagePrice } from './proformaUi';
 
 function normalize(value) {
   return String(value || '')
@@ -201,7 +201,8 @@ export default function PhysicalImportModal({ products = [], onClose, onImport }
         packageFactor: factor,
         presentationName: presentation?.name || (factor > 1 ? 'Caja' : 'Unidad'),
         packageQty: String(qty),
-        packagePrice: String(price),
+        packagePrice: String(Math.round(price)),
+        currentPackagePrice: getProductCurrentPackagePrice(product, factor),
         expiryDate: date.expiryDate,
         noExpiry: date.noExpiry,
       });

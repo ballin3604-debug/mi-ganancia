@@ -533,7 +533,10 @@ export default function Dashboard() {
         />
       </section>
 
-      {/* 2 — PAGOS FIJOS */}
+      {/* 2 — ALTERACIONES DE PRECIOS DE COMPRA */}
+      <PurchasePriceAlerts products={products} onNavigate={navigate} />
+
+      {/* 3 — PAGOS FIJOS */}
       <FixedExpenseAlerts
         alerts={fixedAlerts}
         onOpen={() => navigate('/egresos?tipo=fixed')}
@@ -542,10 +545,7 @@ export default function Dashboard() {
         busyId={alertBusyId}
       />
 
-      {/* 2b — ALTERACIONES DE PRECIOS DE COMPRA */}
-      <PurchasePriceAlerts products={products} onNavigate={navigate} />
-
-      {/* 3 — PEDIDOS CON CAMBIOS (solo restaurante) */}
+      {/* 4 — PEDIDOS CON CAMBIOS (solo restaurante) */}
       {isRestaurantMode && (
         <OrderChangesCard
           changes={homeOrderChanges}
@@ -555,7 +555,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 4 — ALERTAS OPERATIVAS: stock y vencimientos */}
+      {/* 5 — ALERTAS OPERATIVAS: stock y vencimientos */}
       {((showStock && lowStock.length > 0) || !isRestaurantMode) && (
         <div className="mg-grid-auto">
           {showStock && (
@@ -576,7 +576,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 5 — DESEMPEÑO POR SUCURSAL */}
+      {/* 6 — DESEMPEÑO POR SUCURSAL */}
       {!isRestaurantMode && canBranches ? <OwnerPulse businessId={businessId} /> : null}
 
       {/* 6 — ANÁLISIS DETALLADO (siempre visible) */}

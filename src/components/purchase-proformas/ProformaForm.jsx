@@ -25,10 +25,40 @@ import BarcodeScanner from '../BarcodeScanner';
 import EmptyState from '../ui/EmptyState';
 import NewProformaProductModal from './NewProformaProductModal';
 import PhysicalImportModal from './PhysicalImportModal';
-import { createProformaItemFromNewProduct, createProformaItemFromProduct } from './proformaUi';
+import {
+  createProformaItemFromNewProduct,
+  createProformaItemFromProduct,
+  getProductCurrentPackagePrice,
+  getProformaItemCurrentPackagePrice,
+  roundPurchasePrice,
+} from './proformaUi';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
+}
+
+function formatBsInteger(amount) {
+  return `Bs ${Math.round(Number(amount) || 0)}`;
+}
+
+function ProductThumb({ imageData, name, compact = false }) {
+  const sizeClass = compact ? 'h-10 w-10 rounded-lg' : 'h-12 w-12 rounded-xl';
+  if (!imageData) {
+    return (
+      <div className={`flex ${sizeClass} shrink-0 items-center justify-center border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]`}>
+        <AppIcon name="paquete" size={compact ? 17 : 20} />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={imageData}
+      alt={name || 'Producto'}
+      loading="lazy"
+      decoding="async"
+      className={`${sizeClass} shrink-0 border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] object-cover`}
+    />
+  );
 }
 
 function formatQty(value) {
@@ -59,10 +89,20 @@ function draftHasContent(draft) {
   );
 }
 
+function normalizePurchasePrice(value) {
+  if (value === undefined || value === null || value === '') return '';
+  const rounded = roundPurchasePrice(value);
+  return rounded > 0 ? String(rounded) : '';
+}
+
 function normalizeDraftItem(item) {
   if (!item || typeof item !== 'object') return item;
   if (item.packageQty !== undefined && item.packageQty !== null && item.packageQty !== '') {
-    return { ...item, noExpiry: !!item.noExpiry };
+    return {
+      ...item,
+      packagePrice: normalizePurchasePrice(item.packagePrice),
+      noExpiry: !!item.noExpiry,
+    };
   }
   const factor = getProformaItemFactor(item);
   const unitCost = getProformaItemUnitCost(item);
@@ -70,7 +110,7 @@ function normalizeDraftItem(item) {
     ...item,
     factor,
     packageQty: String(getProformaItemPackageQty(item)),
-    packagePrice: unitCost > 0 ? String(roundMoney(unitCost * factor)) : '',
+    packagePrice: unitCost > 0 ? String(roundPurchasePrice(unitCost * factor)) : '',
     presentationName: item.presentationName || (factor > 1 ? 'Caja' : 'Unidad'),
     noExpiry: !!item.noExpiry,
   };
@@ -224,10 +264,29 @@ export default function ProformaForm({
       .slice(0, 8);
   }, [products, searchTerm]);
 
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
+
   const computedItems = useMemo(
     () => items.map((item) => computeProformaItem(item)),
     [items],
   );
+
+  function currentPackagePriceForItem(item) {
+    const stored = getProformaItemCurrentPackagePrice(item);
+    if (stored > 0) return stored;
+    const product = item.productId ? productsById.get(item.productId) : null;
+    return product ? getProductCurrentPackagePrice(product, getProformaItemFactor(item)) : 0;
+  }
+
+  function imageForItem(item) {
+    if (item.imageData) return item.imageData;
+    const product = item.productId ? productsById.get(item.productId) : null;
+    return product?.imageData || product?.image_url || '';
+  }
+
   const merchandiseTotal = roundMoney(computedItems.reduce((sum, computed) => sum + computed.baseCost, 0));
   const totalPackages = roundMoney(items.reduce((sum, item) => sum + getProformaItemPackageQty(item), 0));
   const discountAmount = getProformaDiscountAmount(items, discount);
@@ -634,14 +693,15 @@ export default function ProformaForm({
           {items.length > 0 ? (
             <>
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[900px] text-left text-[11px]">
+                <table className="w-full min-w-[1120px] text-left text-[11px]">
                   <thead>
                     <tr className="border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] text-[9px] uppercase tracking-wider text-[var(--mg-text-muted)]">
                       <th className="w-10 px-2 py-2.5 text-center font-black">Ítem</th>
                       <th className="w-24 px-2 py-2.5 font-black">Código</th>
                       <th className="px-2 py-2.5 font-black">Producto / Descripción</th>
-                      <th className="w-32 px-2 py-2.5 text-center font-black">Cant. paquetes / cajas</th>
-                      <th className="w-32 px-2 py-2.5 text-right font-black">Precio compra caja (Bs)</th>
+                      <th className="w-28 px-2 py-2.5 text-center font-black">Cant. paquetes / cajas</th>
+                      <th className="w-28 px-2 py-2.5 text-right font-black">Precio compra actual (Bs)</th>
+                      <th className="w-32 px-2 py-2.5 text-right font-black">Precio compra del momento (Bs)</th>
                       <th className="w-36 px-2 py-2.5 font-black">F. Vencimiento</th>
                       <th className="w-24 px-2 py-2.5 text-right font-black">Total (Bs)</th>
                       <th className="w-9 px-1 py-2.5" />
@@ -650,6 +710,10 @@ export default function ProformaForm({
                   <tbody className="divide-y divide-[var(--mg-separator)]">
                     {items.map((item, index) => {
                       const computed = computedItems[index];
+                      const currentPrice = currentPackagePriceForItem(item);
+                      const priceDifference = computed.packagePrice > 0 && currentPrice > 0
+                        ? roundMoney(computed.packagePrice - currentPrice)
+                        : 0;
                       return (
                         <tr key={item.key} className="align-top">
                           <td className="px-2 py-3 text-center text-xs font-black text-[var(--mg-text-muted)]">{index + 1}</td>
@@ -657,28 +721,33 @@ export default function ProformaForm({
                             {item.barcode || '—'}
                           </td>
                           <td className="px-2 py-3">
-                            <p className="text-xs font-black text-[var(--mg-text-primary)]">{item.productName}</p>
-                            <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                              {item.description || [item.productBrand, item.category].filter(Boolean).join(' · ') || 'Sin descripción'}
-                            </p>
-                            <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--mg-text-muted)]">
-                              <span className="rounded bg-[var(--mg-bg-elevated)] px-1.5 py-0.5">
-                                {getProformaItemFactor(item) > 1 ? (item.presentationName || 'Caja') : 'Unidad'}
-                              </span>
-                              <span>x</span>
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                max="9999"
-                                step="1"
-                                value={item.factor}
-                                onChange={(event) => updateItemFactor(item.key, event.target.value)}
-                                onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
-                                aria-label={`Unidades por caja de ${item.productName}`}
-                                className="w-12 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
-                              />
-                              <span>und.</span>
+                            <div className="flex items-start gap-2.5">
+                              <ProductThumb imageData={imageForItem(item)} name={item.productName} compact />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-black text-[var(--mg-text-primary)]">{item.productName}</p>
+                                <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                                  {item.description || [item.productBrand, item.category].filter(Boolean).join(' · ') || 'Sin descripción'}
+                                </p>
+                                <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--mg-text-muted)]">
+                                  <span className="rounded bg-[var(--mg-bg-elevated)] px-1.5 py-0.5">
+                                    {getProformaItemFactor(item) > 1 ? (item.presentationName || 'Caja') : 'Unidad'}
+                                  </span>
+                                  <span>x</span>
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="1"
+                                    max="9999"
+                                    step="1"
+                                    value={item.factor}
+                                    onChange={(event) => updateItemFactor(item.key, event.target.value)}
+                                    onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                                    aria-label={`Unidades por caja de ${item.productName}`}
+                                    className="w-12 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
+                                  />
+                                  <span>und.</span>
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="px-2 py-3">
@@ -698,25 +767,44 @@ export default function ProformaForm({
                               className="mg-input !px-2 !py-2 text-center text-sm font-black"
                             />
                           </td>
+                          <td className="px-2 py-3 text-right">
+                            {currentPrice > 0 ? (
+                              <>
+                                <p className="text-sm font-black text-[var(--mg-text-secondary)]">{formatBsInteger(currentPrice)}</p>
+                                <p className="mt-0.5 text-[9px] font-semibold text-[var(--mg-text-muted)]">
+                                  {formatBs(currentPrice / getProformaItemFactor(item))} / und.
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-xs font-bold text-[var(--mg-text-faint)]">—</p>
+                            )}
+                          </td>
                           <td className="px-2 py-3">
                             <input
                               type="number"
-                              inputMode="decimal"
+                              inputMode="numeric"
                               min="0"
                               max="9999999"
-                              step="0.01"
+                              step="1"
                               value={item.packagePrice}
                               onChange={(event) => updateItem(item.key, {
-                                packagePrice: clampNumberInput(event.target.value, { max: 9999999 }),
+                                packagePrice: clampIntegerInput(event.target.value, { max: 9999999 }),
                               })}
-                              onKeyDown={blockInvalidNumberKeys}
-                              placeholder="0.00"
-                              aria-label={`Precio de compra por caja de ${item.productName}`}
+                              onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                              placeholder="0"
+                              aria-label={`Precio de compra del momento por caja de ${item.productName}`}
                               className="mg-input !px-2 !py-2 text-right text-sm font-black text-[var(--mg-accent-text)]"
                             />
                             {computed.unitCost > 0 && (
                               <p className="mt-0.5 text-right text-[9px] font-semibold text-[var(--mg-text-muted)]">
                                 {formatBs(computed.unitCost)} / und.
+                              </p>
+                            )}
+                            {priceDifference !== 0 && (
+                              <p className={`mt-0.5 text-right text-[9px] font-black ${
+                                priceDifference > 0 ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'
+                              }`}>
+                                {priceDifference > 0 ? '↑' : '↓'} {formatBs(Math.abs(priceDifference))} vs actual
                               </p>
                             )}
                           </td>
@@ -746,12 +834,19 @@ export default function ProformaForm({
               <div className="space-y-2 p-3 md:hidden">
                 {items.map((item, index) => {
                   const computed = computedItems[index];
+                  const currentPrice = currentPackagePriceForItem(item);
+                  const priceDifference = computed.packagePrice > 0 && currentPrice > 0
+                    ? roundMoney(computed.packagePrice - currentPrice)
+                    : 0;
                   return (
                     <article key={item.key} className="rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3">
-                      <div className="flex items-start gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[var(--mg-brand-bg)] text-[10px] font-black text-[var(--mg-brand-text)]">
-                          {index + 1}
-                        </span>
+                      <div className="flex items-start gap-2.5">
+                        <div className="relative shrink-0">
+                          <ProductThumb imageData={imageForItem(item)} name={item.productName} />
+                          <span className="absolute -left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[9px] font-black text-[var(--mg-brand-contrast)]">
+                            {index + 1}
+                          </span>
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-black text-[var(--mg-text-primary)]">{item.productName}</p>
                           <p className="truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">
@@ -806,22 +901,45 @@ export default function ProformaForm({
                         </div>
                         <div>
                           <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                            Precio compra caja (Bs)
+                            Precio compra actual (Bs)
                           </label>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            max="9999999"
-                            step="0.01"
-                            value={item.packagePrice}
-                            onChange={(event) => updateItem(item.key, {
-                              packagePrice: clampNumberInput(event.target.value, { max: 9999999 }),
-                            })}
-                            onKeyDown={blockInvalidNumberKeys}
-                            className="mg-input !px-2 !py-2 text-right text-sm font-black text-[var(--mg-accent-text)]"
-                          />
+                          <div className="flex min-h-[38px] items-center justify-end rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2.5">
+                            <span className="text-sm font-black text-[var(--mg-text-secondary)]">
+                              {currentPrice > 0 ? formatBsInteger(currentPrice) : '—'}
+                            </span>
+                          </div>
                         </div>
+                      </div>
+
+                      <div className="mt-2">
+                        <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                          Precio compra del momento (Bs)
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          max="9999999"
+                          step="1"
+                          value={item.packagePrice}
+                          onChange={(event) => updateItem(item.key, {
+                            packagePrice: clampIntegerInput(event.target.value, { max: 9999999 }),
+                          })}
+                          onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                          className="mg-input !px-2 !py-2 text-right text-sm font-black text-[var(--mg-accent-text)]"
+                        />
+                        {computed.unitCost > 0 && (
+                          <p className="mt-0.5 text-right text-[9px] font-semibold text-[var(--mg-text-muted)]">
+                            {formatBs(computed.unitCost)} / und.
+                          </p>
+                        )}
+                        {priceDifference !== 0 && (
+                          <p className={`mt-0.5 text-right text-[9px] font-black ${
+                            priceDifference > 0 ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'
+                          }`}>
+                            {priceDifference > 0 ? '↑' : '↓'} {formatBs(Math.abs(priceDifference))} vs actual
+                          </p>
+                        )}
                       </div>
 
                       <div className="mt-2">

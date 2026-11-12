@@ -20,6 +20,34 @@ function formatDate(value) {
   return date.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
 }
 
+function suggestSalePrice(alert) {
+  const factor = Number(alert?.packageFactor || 1);
+  const previousSale = Number(alert?.previousSalePrice || 0);
+  if (!(previousSale > 0) || !(factor > 0)) return 0;
+  const oldUnitCost = Number(alert?.oldPackagePrice || 0) / factor;
+  const newUnitCost = Number(alert?.newPackagePrice || 0) / factor;
+  return Math.max(0, Math.round((previousSale + (newUnitCost - oldUnitCost)) * 100) / 100);
+}
+
+function ProductThumb({ imageData, name }) {
+  if (!imageData) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] text-[var(--mg-text-muted)]">
+        <AppIcon name="paquete" size={16} />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={imageData}
+      alt={name || 'Producto'}
+      loading="lazy"
+      decoding="async"
+      className="h-9 w-9 shrink-0 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] object-cover"
+    />
+  );
+}
+
 export function PurchasePriceAlerts({ products = [], onNavigate }) {
   const { businessId, user } = useAuth();
   const [alerts, setAlerts] = useState([]);
@@ -36,6 +64,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
   }, [businessId]);
 
   const groups = useMemo(() => groupPurchasePriceAlerts(alerts), [alerts]);
+  const suggestedPrice = priceModal ? suggestSalePrice(priceModal.latest) : 0;
 
   if (groups.length === 0) return null;
 
@@ -104,7 +133,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
           </span>
         </div>
         <p className="mb-3 text-[11px] text-[var(--mg-text-muted)]">
-          El precio por caja o paquete cambió respecto a la última compra. Revisalo antes de vender.
+          El precio por caja o paquete cambió respecto al precio de compra actual del producto. Revisalo antes de vender.
         </p>
 
         {notice && (
@@ -116,6 +145,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
         <ul className="space-y-2.5">
           {groups.slice(0, 6).map((group) => {
             const latest = group.latest;
+            const product = products.find((row) => row.id === group.productId);
             const isUp = latest.differenceAmount > 0;
             const direction = isUp ? '↑' : '↓';
             const tone = isUp ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]';
@@ -126,9 +156,12 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
             return (
               <li key={group.key} className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3">
                 <div className="flex items-start gap-2.5">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-lg font-black ${bgTone} ${tone}`}>
-                    {direction}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-center gap-1">
+                    <ProductThumb imageData={product?.imageData || product?.image_url} name={group.productName} />
+                    <span className={`flex h-6 w-6 items-center justify-center rounded-lg border text-sm font-black ${bgTone} ${tone}`}>
+                      {direction}
+                    </span>
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-xs font-black text-[var(--mg-text-primary)]">{group.productName}</p>
@@ -143,22 +176,29 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
-                      <span className="font-semibold text-[var(--mg-text-muted)]">
-                        {formatBs(latest.oldPackagePrice)} → <strong className="font-black text-[var(--mg-text-primary)]">{formatBs(latest.newPackagePrice)}</strong>
-                      </span>
-                      <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-black ${bgTone} ${tone}`}>
+
+                    <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                      <div className="rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2 py-1">
+                        <p className="text-[8px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Precio compra anterior</p>
+                        <p className="text-[11px] font-black text-[var(--mg-text-secondary)]">{formatBs(latest.oldPackagePrice)}</p>
+                      </div>
+                      <div className={`rounded-lg border px-2 py-1 ${bgTone}`}>
+                        <p className={`text-[8px] font-extrabold uppercase tracking-wider ${tone}`}>Precio compra actual</p>
+                        <p className={`text-[11px] font-black ${tone}`}>{formatBs(latest.newPackagePrice)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px]">
+                      <span className={`rounded-full border px-1.5 py-0.5 font-black ${bgTone} ${tone}`}>
                         {isUp ? '+' : ''}{formatBs(latest.differenceAmount)} · {isUp ? '+' : ''}{latest.differencePct.toFixed(1)}%
                       </span>
                       {latest.createdAt && (
-                        <span className="text-[9px] font-semibold text-[var(--mg-text-faint)]">{formatDate(latest.createdAt)}</span>
+                        <span className="font-semibold text-[var(--mg-text-faint)]">{formatDate(latest.createdAt)}</span>
+                      )}
+                      {latest.proformaNumber && (
+                        <span className="font-semibold text-[var(--mg-text-faint)]">Proforma {latest.proformaNumber}</span>
                       )}
                     </div>
-                    {latest.proformaNumber && (
-                      <p className="mt-0.5 text-[9px] font-semibold text-[var(--mg-text-faint)]">
-                        Proforma {latest.proformaNumber}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -179,7 +219,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
                     className="mg-btn-primary inline-flex min-h-[38px] items-center justify-center gap-1.5 px-3 text-[11px] disabled:opacity-50"
                   >
                     <AppIcon name="editar" size={14} />
-                    Actualizar precio unitario
+                    Actualizar precio de venta
                   </button>
                 </div>
               </li>
@@ -210,7 +250,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Actualizar precio unitario"
+            aria-label="Actualizar precio de venta"
             className="w-full max-w-md overflow-hidden rounded-t-3xl bg-[var(--mg-bg-surface)] shadow-2xl mg-slide-up sm:rounded-3xl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -219,7 +259,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
                 <AppIcon name="etiqueta" size={18} />
               </span>
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-base font-black text-[var(--mg-brand-text)]">Actualizar precio unitario</h3>
+                <h3 className="truncate text-base font-black text-[var(--mg-brand-text)]">Actualizar precio de venta</h3>
                 <p className="truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">{priceModal.productName}</p>
               </div>
               <button
@@ -234,11 +274,40 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
 
             <form onSubmit={handleUpdatePrice} className="p-4">
               <div className="rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3 text-[11px] font-semibold text-[var(--mg-text-secondary)]">
-                Precio de compra anterior: <strong>{formatBs(priceModal.latest.oldPackagePrice)}</strong>
-                {' → '}
-                nuevo: <strong>{formatBs(priceModal.latest.newPackagePrice)}</strong>
-                {priceModal.latest.packageFactor > 1 ? ` por caja x${priceModal.latest.packageFactor}` : ''}.
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Precio compra anterior</p>
+                    <p className="text-sm font-black text-[var(--mg-text-secondary)]">{formatBs(priceModal.latest.oldPackagePrice)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">Precio compra actual</p>
+                    <p className="text-sm font-black text-[var(--mg-text-primary)]">{formatBs(priceModal.latest.newPackagePrice)}</p>
+                  </div>
+                </div>
+                <p className="mt-1.5 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                  {priceModal.latest.packageFactor > 1
+                    ? `Compra por caja x${priceModal.latest.packageFactor}. Costo actual por unidad: ${formatBs(priceModal.latest.newPackagePrice / priceModal.latest.packageFactor)}.`
+                    : `Costo actual por unidad: ${formatBs(priceModal.latest.newPackagePrice)}.`}
+                  {Number(priceModal.latest.previousSalePrice) > 0
+                    ? ` Precio de venta actual: ${formatBs(priceModal.latest.previousSalePrice)}.`
+                    : ''}
+                </p>
               </div>
+
+              {suggestedPrice > 0 && (
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3 py-2">
+                  <p className="text-[10px] font-bold text-[var(--mg-success-text)]">
+                    Para conservar tu ganancia anterior por unidad: <strong>{formatBs(suggestedPrice)}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSalePrice(String(suggestedPrice))}
+                    className="shrink-0 rounded-lg border border-[var(--mg-success-border)] bg-[var(--mg-bg-surface)] px-2 py-1 text-[10px] font-black text-[var(--mg-success-text)]"
+                  >
+                    Usar
+                  </button>
+                </div>
+              )}
 
               {priceError && (
                 <p className="mt-2 rounded-xl border border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] px-3 py-2 text-[11px] font-bold text-[var(--mg-danger)]">

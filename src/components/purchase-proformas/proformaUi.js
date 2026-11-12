@@ -1,5 +1,3 @@
-import { roundMoney } from '../../services/purchaseProformas';
-
 let itemCounter = 0;
 
 export function newProformaItemKey() {
@@ -64,16 +62,47 @@ export function resolvePurchasePresentation(product) {
   return packaged[0] || valid.find((option) => option.factor === 1) || { key: 'unit', name: 'Unidad', factor: 1 };
 }
 
-function initialPackagePrice(supplierPrice, factor) {
-  const unitCost = Number(supplierPrice || 0);
-  if (!(unitCost > 0)) return '';
-  return String(roundMoney(unitCost * (factor > 1 ? factor : 1)));
+export function roundPurchasePrice(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? Math.round(number) : 0;
+}
+
+export function getProductCurrentUnitCost(product) {
+  const unitCost = Number(product?.supplierPrice ?? product?.supplier_price ?? 0);
+  if (unitCost > 0) return unitCost;
+  const lastPrice = Number(product?.lastPurchasePackagePrice ?? product?.last_purchase_package_price ?? 0);
+  const lastFactor = Number(product?.lastPurchasePackageFactor ?? product?.last_purchase_package_factor ?? 0);
+  if (lastPrice > 0 && lastFactor > 0) return lastPrice / lastFactor;
+  return 0;
+}
+
+export function getProductCurrentPackagePrice(product, factor = 1) {
+  const safeFactor = Number(factor) > 0 ? Number(factor) : 1;
+  const unitCost = Number(product?.supplierPrice ?? product?.supplier_price ?? 0);
+  if (unitCost > 0) return roundPurchasePrice(unitCost * safeFactor);
+
+  const lastPrice = Number(product?.lastPurchasePackagePrice ?? product?.last_purchase_package_price ?? 0);
+  if (lastPrice > 0) {
+    const lastFactor = Number(product?.lastPurchasePackageFactor ?? product?.last_purchase_package_factor ?? 0);
+    const normalized = lastFactor > 0 && lastFactor !== safeFactor
+      ? (lastPrice / lastFactor) * safeFactor
+      : lastPrice;
+    return roundPurchasePrice(normalized);
+  }
+  return 0;
+}
+
+export function getProformaItemCurrentPackagePrice(item) {
+  const factor = Number(item?.packageFactor ?? item?.factor ?? 1) || 1;
+  const unitCost = Number(item?.currentUnitCost || 0);
+  if (unitCost > 0) return roundPurchasePrice(unitCost * (factor > 1 ? factor : 1));
+  const stored = Number(item?.currentPackagePrice || 0);
+  return stored > 0 ? roundPurchasePrice(stored) : 0;
 }
 
 function purchasePriceForProduct(product, factor) {
-  const lastPrice = Number(product?.lastPurchasePackagePrice || 0);
-  if (factor > 1 && lastPrice > 0) return String(roundMoney(lastPrice));
-  return initialPackagePrice(product?.supplierPrice, factor);
+  const currentPrice = getProductCurrentPackagePrice(product, factor);
+  return currentPrice > 0 ? String(currentPrice) : '';
 }
 
 export function createProformaItemFromProduct(product) {
@@ -95,6 +124,8 @@ export function createProformaItemFromProduct(product) {
     factor,
     packageQty: '1',
     packagePrice: purchasePriceForProduct(product, factor),
+    currentUnitCost: getProductCurrentUnitCost(product),
+    currentPackagePrice: getProductCurrentPackagePrice(product, factor),
     salePrice: String(product.price || ''),
     lotCode: '',
     expiryDate: '',
@@ -122,6 +153,8 @@ export function createProformaItemFromNewProduct(newProduct, preferredFactor = 0
     factor,
     packageQty: '1',
     packagePrice: '',
+    currentUnitCost: getProductCurrentUnitCost(newProduct),
+    currentPackagePrice: getProductCurrentPackagePrice(newProduct, factor),
     salePrice: String(newProduct.price || ''),
     lotCode: '',
     expiryDate: '',

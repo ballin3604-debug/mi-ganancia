@@ -5,6 +5,7 @@ import {
   buildProformaExtraShares,
   clearProformaDraft,
   computeProformaItem,
+  getProductCurrentPackagePrice,
   getProformaDraft,
   groupReplenishmentsByProforma,
   saveProformaDraft,
@@ -130,6 +131,15 @@ describe('cálculo de líneas de proforma', () => {
     expect(totals.factor).toBe(1);
     expect(totals.quantity).toBe(4);
     expect(totals.baseCost).toBe(10);
+  });
+
+  it('calcula el precio de compra actual en bolivianos enteros', () => {
+    expect(getProductCurrentPackagePrice({ supplier_price: 1.92 }, 12)).toBe(23);
+    expect(getProductCurrentPackagePrice({ supplierPrice: 10 }, 1)).toBe(10);
+    expect(getProductCurrentPackagePrice({
+      last_purchase_package_price: 100,
+      last_purchase_package_factor: 12,
+    }, 6)).toBe(50);
   });
 });
 
@@ -524,12 +534,53 @@ describe('guardado de proformas', () => {
     const alert = await db.purchase_price_alerts.where('business_id').equals(businessId).first();
     expect(alert.product_id).toBe(productId);
     expect(alert.product_code).toBe('123456');
-    expect(alert.old_package_price).toBe(100);
+    expect(alert.old_package_price).toBe(96);
     expect(alert.new_package_price).toBe(150);
-    expect(alert.difference_amount).toBe(50);
-    expect(alert.difference_pct).toBe(50);
+    expect(alert.difference_amount).toBe(54);
+    expect(alert.difference_pct).toBe(56.25);
     expect(alert.package_factor).toBe(12);
     expect(alert.status).toBe('pending');
+  });
+
+  it('no alerta si el precio de compra coincide con el actual del producto', async () => {
+    const businessId = generateUUID();
+    const productId = generateUUID();
+
+    await db.products.add({
+      id: productId,
+      business_id: businessId,
+      name: 'Papas',
+      barcode: '777',
+      price: 30,
+      stock: 0,
+      min_stock: 5,
+      category: 'Snacks',
+      supplier_price: 12.5,
+      package_size: 12,
+      last_purchase_package_price: 100,
+      last_purchase_package_factor: 12,
+      is_dish: false,
+      is_available: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const result = await savePurchaseProforma(businessId, {
+      header: { number: 'PRF-202611-0084', date: '2026-11-11' },
+      items: [{
+        productId,
+        productName: 'Papas',
+        factor: 12,
+        packageQty: '1',
+        packagePrice: '150',
+        salePrice: '30',
+        presentationName: 'Caja',
+        noExpiry: true,
+      }],
+    });
+
+    expect(result.alerts).toBe(0);
+    expect(await db.purchase_price_alerts.count()).toBe(0);
   });
 
   it('no escribe nada si la proforma no es válida', async () => {
