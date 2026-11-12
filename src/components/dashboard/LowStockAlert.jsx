@@ -1,6 +1,6 @@
 import { AppIcon } from '../icons';
 
-export function LowStockAlert({ items = [], onNavigate, reorderPath = '/compras' }) {
+export function LowStockAlert({ items = [], onNavigate, reorderPath = '/compras?tab=proformas' }) {
   if (items.length === 0) return null;
 
   return (

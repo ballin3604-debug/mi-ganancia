@@ -120,6 +120,8 @@ export default function ProformaForm({
   products = [],
   categories = [],
   replenishments = [],
+  initialProductId = null,
+  onInitialProductAdded,
   onCancel,
   onSaved,
 }) {
@@ -155,6 +157,7 @@ export default function ProformaForm({
   const searchRef = useRef(null);
   const restoreStartedRef = useRef(false);
   const draftPayloadRef = useRef(null);
+  const initialProductAddedRef = useRef(false);
 
   const selectedBranchId = activeBranchId
     || branches.find((branch) => branch.isMain)?.id
@@ -208,6 +211,20 @@ export default function ProformaForm({
 
     return () => { active = false; };
   }, [businessId, user?.uid, replenishments, sellerName]);
+
+  useEffect(() => {
+    if (!ready || !initialProductId || initialProductAddedRef.current) return;
+    const product = products.find((row) => row.id === initialProductId);
+    if (!product) return;
+    initialProductAddedRef.current = true;
+    setItems((current) => (
+      current.some((item) => item.productId === product.id)
+        ? current
+        : [...current, createProformaItemFromProduct(product)]
+    ));
+    setError([]);
+    onInitialProductAdded?.();
+  }, [ready, initialProductId, products, onInitialProductAdded]);
 
   useEffect(() => {
     if (!businessId) return undefined;

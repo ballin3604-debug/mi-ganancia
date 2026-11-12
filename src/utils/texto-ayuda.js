@@ -54,16 +54,16 @@ export const AYUDA = {
   },
 
   compras: {
-    emoji: '🛍️',
-    titulo: 'Compras: reponer mercadería',
-    linea: 'Registra lo que compras para que el stock suba solo.',
+    emoji: '🧾',
+    titulo: 'Compras: proformas',
+    linea: 'Registra la proforma del proveedor y el stock sube solo.',
     explicacion:
-      'Cuando te llega mercadería del proveedor, la registras aquí: cantidad, lo que pagaste, gastos extra (pasaje, hielo) y vencimiento. El stock sube automáticamente y la app aprende si compras por unidad o por caja.',
+      'Cuando te llega mercadería, copias la proforma física una sola vez: producto, paquetes o cajas, precio de compra del momento, lote y vencimiento. El stock sube automáticamente y la app compara el precio nuevo con el actual para avisarte si conviene actualizar el precio de venta.',
     pasos: [
-      'Busca el producto y tócalo.',
-      'Escribe cantidad, costo unitario y proveedor.',
-      'Si tiene vencimiento, anótalo para que te avise.',
-      'Guarda y el stock se actualiza solo.',
+      'Toca "Nueva proforma".',
+      'Agrega los productos y ajusta la cantidad de paquetes o cajas.',
+      'Revisa el precio de compra actual y escribí el precio del momento.',
+      'Completa lote y vencimiento si corresponde, y guarda.',
     ],
     ejemplo: 'Compras 12 leches a Bs 7 c/u. El stock pasa de 5 a 17 sin que hagas cuentas.',
     tip: 'Anota siempre el precio de compra: así tu ganancia sale real.',

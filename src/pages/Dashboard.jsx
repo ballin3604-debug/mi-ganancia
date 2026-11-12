@@ -562,7 +562,7 @@ export default function Dashboard() {
             <LowStockAlert
               items={lowStock}
               onNavigate={(path, opts) => navigate(path, opts)}
-              reorderPath={isRestaurantMode ? '/inventario' : '/compras'}
+              reorderPath={isRestaurantMode ? '/inventario' : '/compras?tab=proformas'}
             />
           )}
           {!isRestaurantMode && (

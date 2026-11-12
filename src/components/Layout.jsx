@@ -94,7 +94,6 @@ const NAV_ITEMS = [
   {
     label: 'Compras', Icon: BagIcon, ownerOnly: false, key: 'purchases', basePath: '/compras',
     children: [
-      { to: '/compras?tab=comprar', label: 'Comprar', key: 'purchases-new' },
       { to: '/compras?tab=proformas', label: 'Proformas', key: 'purchases-proformas' },
       { to: '/compras?tab=historial', label: 'Reporte de Compras', key: 'purchases-report' },
     ],

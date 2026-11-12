@@ -235,7 +235,7 @@ export function PurchasePriceAlerts({ products = [], onNavigate }) {
 
         <button
           type="button"
-          onClick={() => onNavigate && onNavigate('/compras')}
+          onClick={() => onNavigate && onNavigate('/compras?tab=proformas')}
           className="mt-3 min-h-[44px] w-full rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] py-2.5 text-xs font-bold text-[var(--mg-text-secondary)] transition-colors hover:bg-[var(--mg-bg-section)]"
         >
           Ver proformas de compra →

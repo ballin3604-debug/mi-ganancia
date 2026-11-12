@@ -70,12 +70,18 @@ function itemMargin(item) {
   return { realCost, pct, danger: pct < 0 };
 }
 
-export default function PurchaseProformas({ products = [], replenishments = [], categories = [] }) {
+export default function PurchaseProformas({
+  products = [],
+  replenishments = [],
+  categories = [],
+  initialProductId = null,
+}) {
   const { settings, sectorConfig } = useBusiness();
   const { branches } = useBranches();
   const expiryWarningDays = getExpiryWarningDays(sectorConfig);
 
-  const [view, setView] = useState('list');
+  const [view, setView] = useState(() => (initialProductId ? 'form' : 'list'));
+  const [pendingProductId, setPendingProductId] = useState(initialProductId);
   const [success, setSuccess] = useState(null);
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -118,6 +124,11 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
     extras: roundMoney(filteredGroups.reduce((sum, group) => sum + group.extraTotal, 0)),
   }), [filteredGroups]);
 
+  function openForm() {
+    setPendingProductId(null);
+    setView('form');
+  }
+
   function handleSaved(result) {
     setSuccess(result);
     setView('success');
@@ -145,6 +156,8 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
           products={products}
           categories={categories}
           replenishments={replenishments}
+          initialProductId={pendingProductId}
+          onInitialProductAdded={() => setPendingProductId(null)}
           onCancel={() => setView('list')}
           onSaved={handleSaved}
         />
@@ -193,7 +206,7 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
             <button type="button" onClick={() => openHistory(success.proformaId)} className="mg-btn-primary w-full text-sm">
               Ver historial de proformas
             </button>
-            <button type="button" onClick={() => { setSuccess(null); setView('form'); }} className="mg-btn-tertiary w-full text-sm">
+            <button type="button" onClick={() => { setSuccess(null); openForm(); }} className="mg-btn-tertiary w-full text-sm">
               Registrar otra proforma
             </button>
           </div>
@@ -212,7 +225,7 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
         actions={(
           <button
             type="button"
-            onClick={() => setView('form')}
+            onClick={openForm}
             className="mg-btn-primary inline-flex min-h-[40px] items-center gap-1.5 px-3.5 text-xs"
           >
             <AppIcon name="agregar" size={15} />
@@ -432,7 +445,7 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
             ? 'Probá con otro número, proveedor, producto o lote.'
             : 'Registrá la primera proforma física para controlar lotes, vencimientos y el costo real de cada producto.'}
           action={!search ? (
-            <button type="button" onClick={() => setView('form')} className="mg-btn-primary inline-flex items-center gap-1.5 px-4 text-xs">
+            <button type="button" onClick={openForm} className="mg-btn-primary inline-flex items-center gap-1.5 px-4 text-xs">
               <AppIcon name="agregar" size={14} />
               Nueva proforma
             </button>
