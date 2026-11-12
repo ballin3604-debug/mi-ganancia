@@ -359,6 +359,13 @@ db.version(17).stores({
   }
 });
 
+// Version 18: alertas de alteración del precio de compra por paquete/caja.
+// Se guardan localmente para que el Inicio las muestre aun sin conexión y se
+// sincronizan con la tabla purchase_price_alerts.
+db.version(18).stores({
+  purchase_price_alerts: 'id, business_id, product_id, status, created_at, updated_at, [business_id+status]'
+});
+
 export function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

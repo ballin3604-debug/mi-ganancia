@@ -155,8 +155,8 @@ describe('validación de la proforma', () => {
     });
 
     expect(errors).toContain('Ron: elegí un producto.');
-    expect(errors).toContain('Ron: la cantidad debe ser mayor a 0.');
-    expect(errors).toContain('Ron: el costo debe ser mayor a 0.');
+    expect(errors).toContain('Ron: la cantidad de paquetes/cajas debe ser mayor a 0.');
+    expect(errors).toContain('Ron: el precio de compra por caja debe ser mayor a 0.');
     expect(errors).toContain('Ron: el precio de venta debe ser mayor a 0.');
   });
 
@@ -190,14 +190,16 @@ describe('validación de la proforma', () => {
 });
 
 describe('numeración y agrupación de proformas', () => {
-  it('sugiere el siguiente correlativo ignorando otros formatos', () => {
-    expect(suggestProformaNumber()).toBe('P-0001');
+  it('sugiere el siguiente correlativo mensual con formato PRF', () => {
+    const date = new Date(2026, 10, 11);
+    expect(suggestProformaNumber([], date)).toBe('PRF-202611-0001');
     expect(suggestProformaNumber([
-      { proformaNumber: 'P-0003' },
-      { proformaNumber: 'P-0007' },
+      { proformaNumber: 'PRF-202611-0003' },
+      { proformaNumber: 'PRF-202611-0007' },
+      { proformaNumber: 'PRF-202610-0099' },
       { proformaNumber: 'FAC-0099' },
       { proformaNumber: '' },
-    ])).toBe('P-0008');
+    ], date)).toBe('PRF-202611-0008');
   });
 
   it('agrupa por proforma, ordena líneas y suma los totales', () => {
@@ -431,6 +433,103 @@ describe('guardado de proformas', () => {
       { id: 'base-unit', name: 'Unidad', factor: 1, price: 30, isBase: true },
     ]);
     expect(await db.branch_stock.get(`${branchId}:${vodka.id}`)).toMatchObject({ stock: 13 });
+  });
+
+  it('suma stock por cajas decimales, aplica descuento y alerta el cambio de precio', async () => {
+    const businessId = generateUUID();
+    const branchId = generateUUID();
+    const mainBranchId = generateUUID();
+    const productId = generateUUID();
+
+    await db.products.add({
+      id: productId,
+      business_id: businessId,
+      name: 'Cerveza Paceña',
+      barcode: '123456',
+      price: 25,
+      stock: 0,
+      min_stock: 5,
+      brand: 'Paceña',
+      category: 'Cervezas',
+      description: '',
+      image_url: '',
+      supplier_price: 8,
+      unit: 'Unidad',
+      unit_label: 'Unidad',
+      package_size: 12,
+      presentations: [
+        { id: 'base-unit', name: 'Unidad', factor: 1, price: 25, isBase: true },
+        { id: 'caja-12', name: 'Caja', factor: 12, price: 240, isBase: false },
+      ],
+      last_purchase_package_price: 100,
+      last_purchase_package_factor: 12,
+      last_purchase_supplier: 'Distribuidora',
+      is_dish: false,
+      is_available: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const result = await savePurchaseProforma(businessId, {
+      header: {
+        number: 'PRF-202611-0083',
+        date: '2026-11-11',
+        supplier: 'Distribuidora',
+        receivedBy: 'Ana',
+      },
+      items: [{
+        productId,
+        productName: 'Cerveza Paceña',
+        factor: 12,
+        packageQty: '1.5',
+        packagePrice: '150',
+        salePrice: '25',
+        presentationName: 'Caja',
+        noExpiry: true,
+        expiryDate: '',
+      }],
+      discount: 15,
+      branchId,
+      branchName: 'Centro',
+      mainBranchId,
+      requireExpiry: true,
+    });
+
+    expect(result.packages).toBe(1.5);
+    expect(result.units).toBe(18);
+    expect(result.discount).toBe(15);
+    expect(result.total).toBe(210);
+    expect(result.alerts).toBe(1);
+
+    const line = await db.replenishments.where('business_id').equals(businessId).first();
+    expect(line.purchase_unit_type).toBe('package');
+    expect(line.package_size).toBe(12);
+    expect(line.package_count).toBe(1.5);
+    expect(line.package_price).toBe(150);
+    expect(line.quantity).toBe(18);
+    expect(line.supplier_price).toBe(12.5);
+    expect(line.total_cost).toBe(210);
+    expect(line.proforma_discount).toBe(15);
+    expect(line.proforma_received_by).toBe('Ana');
+    expect(line.expiry_date).toBeNull();
+    expect(line.lot_code).toBe('PRF-202611-0083-01');
+
+    const product = await db.products.get(productId);
+    expect(product.stock).toBe(18);
+    expect(product.last_purchase_package_price).toBe(150);
+    expect(product.last_purchase_package_factor).toBe(12);
+    expect(product.last_purchase_proforma_number).toBe('PRF-202611-0083');
+    expect(product.supplier_price).toBeCloseTo(11.666667, 6);
+
+    const alert = await db.purchase_price_alerts.where('business_id').equals(businessId).first();
+    expect(alert.product_id).toBe(productId);
+    expect(alert.product_code).toBe('123456');
+    expect(alert.old_package_price).toBe(100);
+    expect(alert.new_package_price).toBe(150);
+    expect(alert.difference_amount).toBe(50);
+    expect(alert.difference_pct).toBe(50);
+    expect(alert.package_factor).toBe(12);
+    expect(alert.status).toBe('pending');
   });
 
   it('no escribe nada si la proforma no es válida', async () => {

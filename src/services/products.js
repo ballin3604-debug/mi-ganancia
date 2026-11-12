@@ -19,6 +19,15 @@ function mapProduct(p) {
     isAvailable: p.is_available !== false,
     presentations: Array.isArray(p.presentations) ? p.presentations : [],
     expiryDate: p.expiry_date || '',
+    lastPurchasePackagePrice: p.last_purchase_package_price !== undefined && p.last_purchase_package_price !== null
+      ? Number(p.last_purchase_package_price)
+      : null,
+    lastPurchasePackageFactor: p.last_purchase_package_factor !== undefined && p.last_purchase_package_factor !== null
+      ? Number(p.last_purchase_package_factor)
+      : null,
+    lastPurchaseSupplier: p.last_purchase_supplier || '',
+    lastPurchaseProformaNumber: p.last_purchase_proforma_number || '',
+    lastPurchaseAt: p.last_purchase_at || null,
     createdAt: p.created_at ? { toDate: () => new Date(p.created_at) } : null,
     updatedAt: p.updated_at ? { toDate: () => new Date(p.updated_at) } : null,
   };
@@ -67,6 +76,9 @@ function mapReplenishment(r) {
     purchaseUnitType: r.purchase_unit_type,
     packageSize: r.package_size,
     packageCount: r.package_count,
+    packagePrice: r.package_price !== undefined && r.package_price !== null ? Number(r.package_price) : null,
+    proformaReceivedBy: r.proforma_received_by || '',
+    proformaDiscount: Number(r.proforma_discount || 0),
     proformaId: r.proforma_id || null,
     proformaNumber: r.proforma_number || '',
     proformaDate: r.proforma_date || '',
@@ -158,6 +170,15 @@ export async function addProduct(businessId, data) {
     is_available: data.isAvailable !== false,
     package_size: data.packageSize !== undefined && data.packageSize !== '' ? Number(data.packageSize) : null,
     expiry_date: data.expiryDate || null,
+    last_purchase_package_price: data.lastPurchasePackagePrice !== undefined && data.lastPurchasePackagePrice !== null
+      ? Number(data.lastPurchasePackagePrice)
+      : null,
+    last_purchase_package_factor: data.lastPurchasePackageFactor !== undefined && data.lastPurchasePackageFactor !== null
+      ? Number(data.lastPurchasePackageFactor)
+      : null,
+    last_purchase_supplier: (data.lastPurchaseSupplier || '').trim() || null,
+    last_purchase_proforma_number: (data.lastPurchaseProformaNumber || '').trim() || null,
+    last_purchase_at: data.lastPurchaseAt || null,
     created_at: now,
     updated_at: now,
   };
@@ -238,6 +259,31 @@ export function buildProductUpdateData(existing, data, now) {
   if (data.expiryDate !== undefined) {
     updateData.expiry_date = data.expiryDate || null;
   }
+  if (data.lastPurchasePackagePrice !== undefined) {
+    updateData.last_purchase_package_price = data.lastPurchasePackagePrice !== null
+      && data.lastPurchasePackagePrice !== ''
+      ? Number(data.lastPurchasePackagePrice)
+      : null;
+  }
+  if (data.lastPurchasePackageFactor !== undefined) {
+    updateData.last_purchase_package_factor = data.lastPurchasePackageFactor !== null
+      && data.lastPurchasePackageFactor !== ''
+      ? Number(data.lastPurchasePackageFactor)
+      : null;
+  }
+  if (data.lastPurchaseSupplier !== undefined) {
+    updateData.last_purchase_supplier = data.lastPurchaseSupplier
+      ? String(data.lastPurchaseSupplier).trim() || null
+      : null;
+  }
+  if (data.lastPurchaseProformaNumber !== undefined) {
+    updateData.last_purchase_proforma_number = data.lastPurchaseProformaNumber
+      ? String(data.lastPurchaseProformaNumber).trim() || null
+      : null;
+  }
+  if (data.lastPurchaseAt !== undefined) {
+    updateData.last_purchase_at = data.lastPurchaseAt || null;
+  }
 
   return updateData;
 }
@@ -258,6 +304,31 @@ export async function updateProduct(productId, data) {
 
   const updated = { ...existing, ...updateData };
   return mapProduct(updated);
+}
+
+export async function updateProductSalePrice(productId, price) {
+  const value = Number(price);
+  if (!(value > 0)) throw new Error('Ingresá un precio de venta mayor a 0.');
+  const now = new Date().toISOString();
+  const existing = await db.products.get(productId);
+  if (!existing) throw new Error('No encontramos el producto en la caché local.');
+
+  const updateData = { price: value, updated_at: now };
+  if (Array.isArray(existing.presentations) && existing.presentations.length > 0) {
+    updateData.presentations = existing.presentations.map((presentation) => (
+      presentation?.isBase ? { ...presentation, price: value } : presentation
+    ));
+  }
+
+  const outboxOp = buildOutboxOp('UPDATE_PRODUCT', { id: productId, ...updateData }, existing.business_id);
+  await db.transaction('rw', db.products, db.pending_operations, async () => {
+    await db.products.update(productId, updateData);
+    await db.pending_operations.add(outboxOp);
+  });
+  notifyProductChanges(existing.business_id);
+  await refreshOutboxState(existing.business_id);
+
+  return mapProduct({ ...existing, ...updateData });
 }
 
 export async function deleteProduct(productId) {
@@ -306,7 +377,7 @@ export async function addReplenishment(businessId, data) {
   const legacyCommission = extraCosts.filter((i) => i.concept.toLowerCase() === 'comisión' || i.concept.toLowerCase() === 'comision').reduce((s, i) => s + i.amount, 0);
   const legacyOthers = extraCosts.filter((i) => i.concept.toLowerCase() !== 'transporte' && i.concept.toLowerCase() !== 'comisión' && i.concept.toLowerCase() !== 'comision').reduce((s, i) => s + i.amount, 0);
 
-  const totalCost = (baseSupplierPrice * qty) + totalExtra;
+  const totalCost = Math.max(0, (baseSupplierPrice * qty) + totalExtra - Math.max(0, Number(data.discountAmount || 0)));
   const unitCostReal = qty > 0 ? totalCost / qty : baseSupplierPrice;
 
   const replenishmentObj = {
@@ -318,6 +389,9 @@ export async function addReplenishment(businessId, data) {
     quantity: qty,
     sale_price: Number(data.salePrice),
     supplier_price: baseSupplierPrice,
+    package_price: data.packagePrice !== undefined && data.packagePrice !== null && data.packagePrice !== ''
+      ? Number(data.packagePrice)
+      : null,
     extra_costs: extraCosts,
     additional_expenses: totalExtra,
     cost_transport: legacyTransport,
@@ -327,12 +401,16 @@ export async function addReplenishment(businessId, data) {
     expiry_date: data.expiryDate || null,
     purchase_unit_type: data.purchaseUnitType || 'unit',
     package_size: data.purchaseUnitType === 'package' && data.packageSize ? Number(data.packageSize) : null,
-    package_count: data.purchaseUnitType === 'package' && data.packageCount ? Number(data.packageCount) : null,
+    package_count: data.purchaseUnitType === 'package' && data.packageQty !== undefined && data.packageQty !== null
+      ? Number(data.packageQty)
+      : (data.purchaseUnitType === 'package' && data.packageCount ? Number(data.packageCount) : null),
     proforma_id: data.proformaId || null,
     proforma_number: data.proformaNumber || null,
     proforma_date: data.proformaDate || null,
     proforma_doc_type: data.proformaDocType || null,
     proforma_notes: data.proformaNotes || null,
+    proforma_received_by: data.proformaReceivedBy || null,
+    proforma_discount: data.proformaDiscount !== undefined ? Number(data.proformaDiscount) : 0,
     proforma_extra_costs: data.proformaExtraCosts || [],
     proforma_extra_total: data.proformaExtraTotal !== undefined ? Number(data.proformaExtraTotal) : 0,
     lot_code: data.lotCode || null,

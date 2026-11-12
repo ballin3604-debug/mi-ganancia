@@ -10,6 +10,7 @@ import { buildFixedExpenseAlerts } from '../services/expenseAlerts';
 import { ExpiryAlert } from '../components/dashboard/ExpiryAlert';
 import { FixedExpenseAlerts } from '../components/dashboard/FixedExpenseAlerts';
 import { LowStockAlert } from '../components/dashboard/LowStockAlert';
+import { PurchasePriceAlerts } from '../components/dashboard/PurchasePriceAlerts';
 import { TopProductsCard } from '../components/dashboard/TopProductsCard';
 import { printReceipt } from '../components/Receipt';
 
@@ -540,6 +541,9 @@ export default function Dashboard() {
         onDismiss={handleDismissAlert}
         busyId={alertBusyId}
       />
+
+      {/* 2b — ALTERACIONES DE PRECIOS DE COMPRA */}
+      <PurchasePriceAlerts products={products} onNavigate={navigate} />
 
       {/* 3 — PEDIDOS CON CAMBIOS (solo restaurante) */}
       {isRestaurantMode && (

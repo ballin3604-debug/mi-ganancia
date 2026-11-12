@@ -14,6 +14,13 @@ function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
 }
 
+function formatQty(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return '0';
+  if (Number.isInteger(number)) return String(number);
+  return number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
 function formatDate(value) {
   if (!value) return '—';
   const date = value instanceof Date ? value : new Date(`${String(value).slice(0, 10)}T00:00:00`);
@@ -49,9 +56,9 @@ function quantityLabel(item) {
   const size = Number(item.packageSize || 0);
   if (item.purchaseUnitType === 'package' && packs > 0 && size > 0) {
     const loose = quantity - packs * size;
-    return `${packs} × ${size}${loose > 0 ? ` + ${loose}` : ''} = ${quantity} und.`;
+    return `${formatQty(packs)} × ${size}${loose > 0 ? ` + ${formatQty(loose)}` : ''} = ${formatQty(quantity)} und.`;
   }
-  return `${quantity} und.`;
+  return `${formatQty(quantity)} und.`;
 }
 
 function itemMargin(item) {
@@ -163,8 +170,20 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
             </div>
             <div className="mt-1.5 flex justify-between gap-2">
               <span className="font-semibold text-[var(--mg-text-muted)]">Productos</span>
-              <span className="font-bold text-[var(--mg-text-primary)]">{success.itemCount} · {success.units} und.</span>
+              <span className="font-bold text-[var(--mg-text-primary)]">{success.itemCount} · {formatQty(success.units)} und.</span>
             </div>
+            {success.receivedBy && (
+              <div className="mt-1.5 flex justify-between gap-2">
+                <span className="font-semibold text-[var(--mg-text-muted)]">Recibe</span>
+                <span className="font-bold text-[var(--mg-text-primary)]">{success.receivedBy}</span>
+              </div>
+            )}
+            {Number(success.discount || 0) > 0 && (
+              <div className="mt-1.5 flex justify-between gap-2">
+                <span className="font-semibold text-[var(--mg-text-muted)]">Descuento</span>
+                <span className="font-bold text-[var(--mg-danger)]">− {formatBs(success.discount)}</span>
+              </div>
+            )}
             <div className="mt-1.5 flex justify-between gap-2">
               <span className="font-semibold text-[var(--mg-text-muted)]">Total</span>
               <span className="font-black text-[var(--mg-brand-text)]">{formatBs(success.total)}</span>
@@ -279,6 +298,7 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
                     </div>
                     <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">
                       {formatDate(group.date)} · {group.supplier || 'Sin proveedor'} · {group.itemCount} {group.itemCount === 1 ? 'producto' : 'productos'}
+                      {group.receivedBy ? ` · Recibe: ${group.receivedBy}` : ''}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -361,8 +381,20 @@ export default function PurchaseProformas({ products = [], replenishments = [], 
                       })}
                     </div>
 
-                    {(group.extraCosts.length > 0 || group.notes) && (
+                    {(group.extraCosts.length > 0 || group.notes || group.discount > 0 || group.receivedBy) && (
                       <div className="space-y-2 rounded-xl bg-[var(--mg-bg-elevated)] p-3">
+                        {group.discount > 0 && (
+                          <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                            <span className="text-[var(--mg-text-muted)]">Descuento aplicado</span>
+                            <span className="text-[var(--mg-danger)]">− {formatBs(group.discount)}</span>
+                          </div>
+                        )}
+                        {group.receivedBy && (
+                          <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                            <span className="text-[var(--mg-text-muted)]">Recibió</span>
+                            <span className="text-[var(--mg-text-secondary)]">{group.receivedBy}</span>
+                          </div>
+                        )}
                         {group.extraCosts.length > 0 && (
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Gastos de la proforma</p>

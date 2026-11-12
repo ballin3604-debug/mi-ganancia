@@ -50,15 +50,35 @@ export function getProformaPresentationLabel(item) {
   return factor > 1 ? `Paquete x${factor}` : 'Unidad';
 }
 
-function initialCostInput(supplierPrice, factor) {
+export function resolvePurchasePresentation(product) {
+  const options = buildPresentationOptions(product);
+  const valid = options.filter((option) => option.key !== 'custom');
+  const preferred = Number(product?.packageSize || 0);
+  if (preferred > 1) {
+    const match = valid.find((option) => option.factor === preferred);
+    if (match) return match;
+  }
+  const packaged = valid
+    .filter((option) => option.factor > 1)
+    .sort((a, b) => b.factor - a.factor);
+  return packaged[0] || valid.find((option) => option.factor === 1) || { key: 'unit', name: 'Unidad', factor: 1 };
+}
+
+function initialPackagePrice(supplierPrice, factor) {
   const unitCost = Number(supplierPrice || 0);
   if (!(unitCost > 0)) return '';
   return String(roundMoney(unitCost * (factor > 1 ? factor : 1)));
 }
 
+function purchasePriceForProduct(product, factor) {
+  const lastPrice = Number(product?.lastPurchasePackagePrice || 0);
+  if (factor > 1 && lastPrice > 0) return String(roundMoney(lastPrice));
+  return initialPackagePrice(product?.supplierPrice, factor);
+}
+
 export function createProformaItemFromProduct(product) {
-  const options = buildPresentationOptions(product);
-  const option = chooseDefaultPresentation(options, product?.packageSize);
+  const option = resolvePurchasePresentation(product);
+  const factor = Number(option.factor || 1);
   return {
     key: newProformaItemKey(),
     productId: product.id,
@@ -66,25 +86,26 @@ export function createProformaItemFromProduct(product) {
     productBrand: product.brand || '',
     category: product.category || 'Otros',
     barcode: product.barcode || '',
+    description: product.description || '',
     isNewProduct: false,
     newProduct: null,
-    presentationOptions: options,
+    presentationOptions: buildPresentationOptions(product),
     presentationKey: option.key,
     presentationName: option.name,
-    factor: option.factor,
-    packCount: '1',
-    looseUnits: '',
-    costMode: option.factor > 1 ? 'package' : 'unit',
-    costInput: initialCostInput(product.supplierPrice, option.factor),
+    factor,
+    packageQty: '1',
+    packagePrice: purchasePriceForProduct(product, factor),
     salePrice: String(product.price || ''),
     lotCode: '',
     expiryDate: '',
+    noExpiry: false,
   };
 }
 
 export function createProformaItemFromNewProduct(newProduct, preferredFactor = 0) {
   const options = buildPresentationOptions({ presentations: newProduct?.presentations });
   const option = chooseDefaultPresentation(options, preferredFactor);
+  const factor = Number(option.factor || 1);
   return {
     key: newProformaItemKey(),
     productId: null,
@@ -92,18 +113,18 @@ export function createProformaItemFromNewProduct(newProduct, preferredFactor = 0
     productBrand: newProduct.brand || '',
     category: newProduct.category || 'Otros',
     barcode: newProduct.barcode || '',
+    description: '',
     isNewProduct: true,
     newProduct,
     presentationOptions: options,
     presentationKey: option.key,
     presentationName: option.name,
-    factor: option.factor,
-    packCount: '1',
-    looseUnits: '',
-    costMode: option.factor > 1 ? 'package' : 'unit',
-    costInput: '',
+    factor,
+    packageQty: '1',
+    packagePrice: '',
     salePrice: String(newProduct.price || ''),
     lotCode: '',
     expiryDate: '',
+    noExpiry: false,
   };
 }

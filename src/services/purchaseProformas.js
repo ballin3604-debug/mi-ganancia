@@ -1,5 +1,6 @@
 import { db, generateUUID } from './localDb';
 import { addProduct, addReplenishment } from './products';
+import { addPurchasePriceAlert } from './purchasePriceAlerts';
 import { applyPurchaseStock, setBranchStock } from './branchStock';
 
 export const PROFORMA_DOC_TYPES = ['Proforma', 'Factura', 'Recibo', 'Nota de entrega'];
@@ -33,45 +34,76 @@ export function cleanProformaExtraCosts(extraCosts) {
 }
 
 export function getProformaItemFactor(item) {
-  const factor = Number(item?.factor || 0);
+  const factor = Number(item?.packageFactor ?? item?.factor ?? 0);
   return Number.isFinite(factor) && factor >= 1 ? factor : 1;
+}
+
+function hasPackageQuantity(item) {
+  return item?.packageQty !== undefined && item?.packageQty !== null && item?.packageQty !== '';
+}
+
+export function getProformaItemPackageQty(item) {
+  if (hasPackageQuantity(item)) {
+    const quantity = Number(item.packageQty);
+    return Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
+  }
+  return Math.max(0, Math.floor(Number(item?.packCount || 0)));
+}
+
+export function getProformaItemLooseUnits(item) {
+  const loose = Number(item?.looseUnits || 0);
+  return Number.isFinite(loose) ? Math.max(0, loose) : 0;
 }
 
 export function getProformaItemQuantity(item) {
   const factor = getProformaItemFactor(item);
-  const packs = Math.max(0, Math.floor(Number(item?.packCount || 0)));
-  const loose = Math.max(0, Math.floor(Number(item?.looseUnits || 0)));
-  return packs * factor + loose;
+  return getProformaItemPackageQty(item) * factor + getProformaItemLooseUnits(item);
+}
+
+export function getProformaItemPackagePrice(item) {
+  if (item?.packagePrice !== undefined && item?.packagePrice !== null && item?.packagePrice !== '') {
+    const price = Number(item.packagePrice);
+    return Number.isFinite(price) ? Math.max(0, price) : 0;
+  }
+  const factor = getProformaItemFactor(item);
+  const input = Number(item?.costInput || 0);
+  if (!Number.isFinite(input) || input <= 0) return 0;
+  return item?.costMode === 'package' ? input : input * factor;
 }
 
 export function getProformaItemUnitCost(item) {
   const factor = getProformaItemFactor(item);
-  const input = Number(item?.costInput || 0);
-  if (!Number.isFinite(input) || input <= 0) return 0;
-  return item?.costMode === 'package' && factor > 1 ? input / factor : input;
+  const packagePrice = getProformaItemPackagePrice(item);
+  if (factor > 0) return packagePrice / factor;
+  return packagePrice;
 }
 
-export function computeProformaItem(item, extraShare = 0) {
+export function computeProformaItem(item, extraShare = 0, discountShare = 0) {
   const factor = getProformaItemFactor(item);
-  const packCount = Math.max(0, Math.floor(Number(item?.packCount || 0)));
-  const looseUnits = Math.max(0, Math.floor(Number(item?.looseUnits || 0)));
-  const quantity = packCount * factor + looseUnits;
-  const unitCost = getProformaItemUnitCost(item);
-  const baseCost = roundMoney(quantity * unitCost);
+  const packageQty = getProformaItemPackageQty(item);
+  const looseUnits = getProformaItemLooseUnits(item);
+  const quantity = packageQty * factor + looseUnits;
+  const packagePrice = getProformaItemPackagePrice(item);
+  const unitCost = factor > 0 ? packagePrice / factor : packagePrice;
+  const baseCost = roundMoney(packageQty * packagePrice + looseUnits * unitCost);
   const extra = roundMoney(extraShare);
-  const totalCost = roundMoney(baseCost + extra);
+  const discount = roundMoney(discountShare);
+  const totalCost = Math.max(0, roundMoney(baseCost + extra - discount));
   const unitRealCost = quantity > 0 ? totalCost / quantity : 0;
   const salePrice = Number(item?.salePrice || 0);
   const marginAmount = salePrice - unitRealCost;
   const marginPct = salePrice > 0 ? (marginAmount / salePrice) * 100 : 0;
   return {
     factor,
-    packCount,
+    packCount: packageQty,
+    packageQty,
     looseUnits,
     quantity,
     unitCost,
+    packagePrice,
     baseCost,
     extra,
+    discount,
     totalCost,
     unitRealCost,
     salePrice,
@@ -122,6 +154,21 @@ export function buildProformaExtraShares(extraCosts, baseCosts) {
   }));
 }
 
+export function buildProformaDiscountShares(discount, baseCosts = []) {
+  const amount = roundMoney(discount);
+  if (!(amount > 0)) return baseCosts.map(() => 0);
+  return allocateAmountByWeights(amount, baseCosts);
+}
+
+export function getProformaMerchandiseTotal(items = []) {
+  return roundMoney((items || []).reduce((sum, item) => sum + computeProformaItem(item).baseCost, 0));
+}
+
+export function getProformaDiscountAmount(items = [], discount = 0) {
+  const merchandiseTotal = getProformaMerchandiseTotal(items);
+  return roundMoney(Math.min(Math.max(0, Number(discount) || 0), merchandiseTotal));
+}
+
 export function validateProformaDraft({ header, items, requireExpiry = false }) {
   const errors = [];
   if (!String(header?.number || '').trim()) errors.push('Escribí el número de la proforma.');
@@ -134,22 +181,29 @@ export function validateProformaDraft({ header, items, requireExpiry = false }) 
     if (item?.presentationKey === 'custom' && getProformaItemFactor(item) <= 1) {
       errors.push(`${label}: indicá cuántas unidades trae la presentación.`);
     }
-    if (getProformaItemQuantity(item) <= 0) errors.push(`${label}: la cantidad debe ser mayor a 0.`);
-    if (!(getProformaItemUnitCost(item) > 0)) errors.push(`${label}: el costo debe ser mayor a 0.`);
+    if (getProformaItemFactor(item) <= 0) errors.push(`${label}: las unidades por caja deben ser mayores a 0.`);
+    if (getProformaItemPackageQty(item) <= 0) errors.push(`${label}: la cantidad de paquetes/cajas debe ser mayor a 0.`);
+    if (!(getProformaItemPackagePrice(item) > 0)) errors.push(`${label}: el precio de compra por caja debe ser mayor a 0.`);
     if (!(Number(item?.salePrice) > 0)) errors.push(`${label}: el precio de venta debe ser mayor a 0.`);
-    if (requireExpiry && !item?.expiryDate) errors.push(`${label}: cargá la fecha de vencimiento del lote.`);
+    const noExpiry = !!item?.noExpiry || !!item?.withoutExpiry;
+    if (requireExpiry && !noExpiry && !item?.expiryDate) errors.push(`${label}: cargá la fecha de vencimiento del lote.`);
   });
 
   return errors;
 }
 
-export function suggestProformaNumber(replenishments = []) {
+export function suggestProformaNumber(replenishments = [], date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const period = `${year}${month}`;
   let max = 0;
   (replenishments || []).forEach((row) => {
-    const match = /^P-(\d+)$/i.exec(String(row?.proformaNumber || '').trim());
-    if (match) max = Math.max(max, Number(match[1]));
+    const match = /^PRF-(\d{4})(\d{2})-(\d+)$/i.exec(String(row?.proformaNumber || '').trim());
+    if (match && `${match[1]}${match[2]}` === period) {
+      max = Math.max(max, Number(match[3]));
+    }
   });
-  return `P-${String(max + 1).padStart(4, '0')}`;
+  return `PRF-${period}-${String(max + 1).padStart(4, '0')}`;
 }
 
 export function groupReplenishmentsByProforma(replenishments = []) {
@@ -170,6 +224,8 @@ export function groupReplenishmentsByProforma(replenishments = []) {
         branchName: '',
         extraCosts: [],
         extraTotal: 0,
+        discount: 0,
+        receivedBy: '',
         createdAt: null,
         items: [],
       };
@@ -188,6 +244,12 @@ export function groupReplenishmentsByProforma(replenishments = []) {
     }
     if (!group.extraTotal && Number(row.proformaExtraTotal || 0) > 0) {
       group.extraTotal = Number(row.proformaExtraTotal || 0);
+    }
+    if (!group.discount && Number(row.proformaDiscount || 0) > 0) {
+      group.discount = Number(row.proformaDiscount || 0);
+    }
+    if (!group.receivedBy && row.proformaReceivedBy) {
+      group.receivedBy = row.proformaReceivedBy;
     }
     if (!group.createdAt && row.createdAt) {
       group.createdAt = row.createdAt?.toDate ? row.createdAt.toDate() : new Date(row.createdAt);
@@ -208,6 +270,7 @@ export function groupReplenishmentsByProforma(replenishments = []) {
       });
 
     const units = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const packages = items.reduce((sum, item) => sum + Number(item.packageCount || 0), 0);
     const baseTotal = items.reduce((sum, item) => sum + Number(item.supplierPrice || 0) * Number(item.quantity || 0), 0);
     const total = items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
     const extraTotal = group.extraTotal > 0
@@ -222,7 +285,9 @@ export function groupReplenishmentsByProforma(replenishments = []) {
       extraTotal: roundMoney(extraTotal),
       baseTotal: roundMoney(baseTotal),
       total: roundMoney(total),
+      beforeDiscount: roundMoney(total + Number(group.discount || 0)),
       units,
+      packages: roundMoney(packages),
       itemCount: items.length,
       items,
     };
@@ -234,7 +299,7 @@ export function groupReplenishmentsByProforma(replenishments = []) {
   });
 }
 
-function buildNewProductPayload(item, computed) {
+function buildNewProductPayload(item, computed, purchaseMeta = null) {
   const draft = item.newProduct || {};
   const basePrice = Number(computed.salePrice || 0);
   const presentations = Array.isArray(draft.presentations) && draft.presentations.length > 0
@@ -268,13 +333,18 @@ function buildNewProductPayload(item, computed) {
     expiryDate: null,
     presentations,
     imageData: '',
+    lastPurchasePackagePrice: purchaseMeta?.packagePrice ?? null,
+    lastPurchasePackageFactor: purchaseMeta?.packagePrice ? computed.factor : null,
+    lastPurchaseSupplier: purchaseMeta?.supplier || '',
+    lastPurchaseProformaNumber: purchaseMeta?.proformaNumber || '',
+    lastPurchaseAt: purchaseMeta?.purchasedAt || null,
   };
 }
 
-function buildExistingProductFields(product, computed) {
+function buildExistingProductFields(product, computed, purchaseMeta = null) {
   const presentations = Array.isArray(product.presentations) ? product.presentations : [];
 
-  return {
+  const fields = {
     name: product.name,
     price: computed.salePrice,
     minStock: product.min_stock ?? 5,
@@ -292,6 +362,16 @@ function buildExistingProductFields(product, computed) {
       : undefined,
     packageSize: computed.factor > 1 ? computed.factor : (product.package_size || null),
   };
+
+  if (purchaseMeta?.packagePrice) {
+    fields.lastPurchasePackagePrice = purchaseMeta.packagePrice;
+    fields.lastPurchasePackageFactor = computed.factor;
+    fields.lastPurchaseSupplier = purchaseMeta.supplier || '';
+    fields.lastPurchaseProformaNumber = purchaseMeta.proformaNumber || '';
+    fields.lastPurchaseAt = purchaseMeta.purchasedAt || null;
+  }
+
+  return fields;
 }
 
 export async function savePurchaseProforma(businessId, payload) {
@@ -299,6 +379,7 @@ export async function savePurchaseProforma(businessId, payload) {
     number: String(payload?.header?.number || '').trim(),
     date: payload?.header?.date || '',
     supplier: String(payload?.header?.supplier || '').trim(),
+    receivedBy: String(payload?.header?.receivedBy || '').trim(),
     docType: payload?.header?.docType || 'Proforma',
     notes: String(payload?.header?.notes || '').trim(),
   };
@@ -355,17 +436,32 @@ export async function savePurchaseProforma(businessId, payload) {
   const baseCosts = prepared.map(({ computed }) => computed.baseCost);
   const extraShares = buildProformaExtraShares(extraCosts, baseCosts);
   const totalExtra = roundMoney(extraCosts.reduce((sum, extra) => sum + extra.amount, 0));
+  const discount = getProformaDiscountAmount(items, payload?.discount);
+  const discountShares = buildProformaDiscountShares(discount, baseCosts);
   const proformaId = generateUUID();
   const newProductCache = new Map();
+  const previousPurchaseByProduct = new Map();
+  const alertedProductIds = new Set();
+  const pendingAlerts = [];
   const savedItems = [];
+  const purchasedAt = new Date().toISOString();
   let total = 0;
   let units = 0;
+  let packages = 0;
 
   for (let index = 0; index < prepared.length; index += 1) {
     const { item } = prepared[index];
     const share = extraShares[index] || { costs: [], total: 0 };
-    const computed = computeProformaItem(item, share.total);
-    const usePackage = computed.factor > 1 && computed.packCount > 0;
+    const computed = computeProformaItem(item, share.total, discountShares[index] || 0);
+    const usePackage = computed.factor > 1 && computed.packageQty > 0;
+    const purchaseMeta = usePackage
+      ? {
+        packagePrice: roundMoney(computed.packagePrice),
+        supplier: header.supplier,
+        proformaNumber: header.number,
+        purchasedAt,
+      }
+      : null;
     let product = null;
 
     if (item.isNewProduct) {
@@ -382,33 +478,72 @@ export async function savePurchaseProforma(businessId, payload) {
           branchId,
           mainBranchId,
           qty: computed.quantity,
-          fields: buildExistingProductFields(product, computed),
+          fields: buildExistingProductFields(product, computed, purchaseMeta),
         });
         product = await db.products.get(product.id);
       } else {
-        product = await addProduct(businessId, buildNewProductPayload(item, computed));
+        product = await addProduct(businessId, buildNewProductPayload(item, computed, purchaseMeta));
         if (branchId) {
           await setBranchStock(businessId, product, branchId, computed.quantity);
         }
         newProductCache.set(cacheKey, product);
+        previousPurchaseByProduct.set(product.id, { price: 0, factor: 0 });
       }
     } else {
       const current = await db.products.get(item.productId);
       if (!current || current.business_id !== businessId) {
         throw new Error(`No encontramos "${item.productName || 'el producto'}". Actualizá la lista y volvé a intentar.`);
       }
+
+      if (!previousPurchaseByProduct.has(current.id)) {
+        previousPurchaseByProduct.set(current.id, {
+          price: Number(current.last_purchase_package_price || 0),
+          factor: Number(current.last_purchase_package_factor || 0),
+          salePrice: Number(current.price || 0),
+        });
+      }
+
       await applyPurchaseStock({
         businessId,
         product: current,
         branchId,
         mainBranchId,
         qty: computed.quantity,
-        fields: buildExistingProductFields(current, computed),
+        fields: buildExistingProductFields(current, computed, purchaseMeta),
       });
       product = await db.products.get(current.id);
     }
 
     if (!product) throw new Error('No pudimos guardar uno de los productos de la proforma.');
+
+    if (usePackage && !alertedProductIds.has(product.id)) {
+      const previous = previousPurchaseByProduct.get(product.id);
+      if (previous && previous.price > 0) {
+        const previousFactor = previous.factor > 0 ? previous.factor : computed.factor;
+        const oldComparable = previousFactor !== computed.factor
+          ? roundMoney((previous.price / previousFactor) * computed.factor)
+          : roundMoney(previous.price);
+        const newPackagePrice = roundMoney(computed.packagePrice);
+        const differenceAmount = roundMoney(newPackagePrice - oldComparable);
+        if (Math.abs(differenceAmount) >= 0.01) {
+          alertedProductIds.add(product.id);
+          pendingAlerts.push({
+            productId: product.id,
+            productCode: product.barcode || '',
+            productName: product.name,
+            supplier: header.supplier,
+            oldPackagePrice: oldComparable,
+            newPackagePrice,
+            differenceAmount,
+            packageFactor: computed.factor,
+            previousSalePrice: previous.salePrice || Number(product.price || 0),
+            proformaId,
+            proformaNumber: header.number,
+            proformaDate: header.date,
+          });
+        }
+      }
+    }
 
     const replenishment = await addReplenishment(businessId, {
       productId: product.id,
@@ -417,19 +552,24 @@ export async function savePurchaseProforma(businessId, payload) {
       quantity: computed.quantity,
       salePrice: computed.salePrice,
       supplierPrice: roundUnitCost(computed.baseCost / computed.quantity),
+      discountAmount: computed.discount,
+      packagePrice: usePackage ? roundMoney(computed.packagePrice) : null,
       extraCosts: share.costs,
-      expiryDate: item.expiryDate || null,
+      expiryDate: item.noExpiry || item.withoutExpiry ? null : (item.expiryDate || null),
       purchaseUnitType: usePackage ? 'package' : 'unit',
       packageSize: usePackage ? computed.factor : null,
-      packageCount: usePackage ? computed.packCount : null,
+      packageQty: usePackage ? computed.packageQty : null,
+      packageCount: usePackage ? computed.packageQty : null,
       proformaId,
       proformaNumber: header.number,
       proformaDate: header.date,
       proformaDocType: header.docType,
       proformaNotes: header.notes,
+      proformaReceivedBy: header.receivedBy,
+      proformaDiscount: discount,
       proformaExtraCosts: extraCosts,
       proformaExtraTotal: totalExtra,
-      lotCode: String(item.lotCode || '').trim(),
+      lotCode: String(item.lotCode || '').trim() || `${header.number}-${String(index + 1).padStart(2, '0')}`,
       lineNumber: index + 1,
       presentationName: usePackage
         ? String(item.presentationName || 'Paquete').trim() || 'Paquete'
@@ -440,17 +580,32 @@ export async function savePurchaseProforma(businessId, payload) {
 
     total = roundMoney(total + Number(replenishment.totalCost || 0));
     units += computed.quantity;
+    packages += computed.packageQty;
     savedItems.push(replenishment);
+  }
+
+  for (const alert of pendingAlerts) {
+    try {
+      await addPurchasePriceAlert(businessId, alert);
+    } catch (alertError) {
+      console.warn('No se pudo registrar la alerta de cambio de precio:', alertError);
+    }
   }
 
   return {
     proformaId,
     number: header.number,
     date: header.date,
+    supplier: header.supplier,
+    receivedBy: header.receivedBy,
     itemCount: savedItems.length,
-    units,
+    units: roundMoney(units),
+    packages: roundMoney(packages),
     total,
     totalExtra,
+    discount,
+    beforeDiscount: roundMoney(total + discount),
+    alerts: pendingAlerts.length,
     items: savedItems,
   };
 }

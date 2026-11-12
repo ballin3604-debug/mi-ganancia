@@ -415,6 +415,9 @@ async function getServerCaps() {
   if (serverCaps) return serverCaps;
   serverCaps = {
     productPres: true, productBarcode: true, productPresentations: true, productDish: true, productAvailable: true, productExpiry: true, itemPres: true, salesBranch: true,
+    productPurchaseInfo: true,
+    replenishmentPurchaseInfo: true,
+    priceAlerts: true,
     branchTables: true,
     businessSettings: null, // null = aún no probado; objeto {col: true/false}
     expenseExtra: null,
@@ -459,6 +462,24 @@ async function getServerCaps() {
     serverCaps.productExpiry = false;
   }
   try {
+    const { error } = await assertSupabase().from('products').select('last_purchase_package_price').limit(0);
+    if (error) serverCaps.productPurchaseInfo = false;
+  } catch {
+    serverCaps.productPurchaseInfo = false;
+  }
+  try {
+    const { error } = await assertSupabase().from('replenishments').select('package_price').limit(0);
+    if (error) serverCaps.replenishmentPurchaseInfo = false;
+  } catch {
+    serverCaps.replenishmentPurchaseInfo = false;
+  }
+  try {
+    const { error } = await assertSupabase().from('purchase_price_alerts').select('id').limit(0);
+    if (error) serverCaps.priceAlerts = false;
+  } catch {
+    serverCaps.priceAlerts = false;
+  }
+  try {
     const { error } = await assertSupabase().from('sale_items').select('presentation').limit(0);
     if (error) serverCaps.itemPres = false;
   } catch {
@@ -500,7 +521,7 @@ async function getServerCaps() {
   } catch {
     serverCaps.expenseExtra = null;
   }
-  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.productPresentations || !serverCaps.productDish || !serverCaps.productAvailable || !serverCaps.productExpiry || !serverCaps.itemPres || !serverCaps.salesBranch || serverCaps.branchTables === false) {
+  if (!serverCaps.productPres || !serverCaps.productBarcode || !serverCaps.productPresentations || !serverCaps.productDish || !serverCaps.productAvailable || !serverCaps.productExpiry || !serverCaps.itemPres || !serverCaps.salesBranch || !serverCaps.productPurchaseInfo || !serverCaps.replenishmentPurchaseInfo || !serverCaps.priceAlerts || serverCaps.branchTables === false) {
     console.warn('syncEngine: columnas/tablas nuevas ausentes en el servidor, se sincroniza sin ellas. Corre el SQL de migración para fidelidad total.', serverCaps);
   }
   return serverCaps;
@@ -521,11 +542,18 @@ async function probeOptionalColumns(table, cols) {
 }
 
 const NEW_PRES_KEYS = ['unit_label', 'pack_label', 'pack_price', 'pack_price_hot'];
+const PURCHASE_INFO_KEYS = [
+  'last_purchase_package_price',
+  'last_purchase_package_factor',
+  'last_purchase_supplier',
+  'last_purchase_proforma_number',
+  'last_purchase_at',
+];
 
 async function stripUnknownProductKeys(obj) {
   const caps = await getServerCaps();
   if (!obj || typeof obj !== 'object') return obj;
-  if (caps.productPres && caps.productBarcode && caps.productPresentations && caps.productDish && caps.productAvailable && caps.productExpiry) return obj;
+  if (caps.productPres && caps.productBarcode && caps.productPresentations && caps.productDish && caps.productAvailable && caps.productExpiry && caps.productPurchaseInfo) return obj;
   const copy = { ...obj };
   if (!caps.productPres) NEW_PRES_KEYS.forEach((k) => { delete copy[k]; });
   if (!caps.productBarcode) delete copy.barcode;
@@ -533,6 +561,22 @@ async function stripUnknownProductKeys(obj) {
   if (!caps.productDish) delete copy.is_dish;
   if (!caps.productAvailable) delete copy.is_available;
   if (!caps.productExpiry) delete copy.expiry_date;
+  if (!caps.productPurchaseInfo) PURCHASE_INFO_KEYS.forEach((k) => { delete copy[k]; });
+  return copy;
+}
+
+const REPLENISHMENT_PURCHASE_KEYS = [
+  'package_price',
+  'proforma_received_by',
+  'proforma_discount',
+];
+
+async function stripUnknownReplenishmentKeys(obj) {
+  const caps = await getServerCaps();
+  if (!obj || typeof obj !== 'object') return obj;
+  if (caps.replenishmentPurchaseInfo) return obj;
+  const copy = { ...obj };
+  REPLENISHMENT_PURCHASE_KEYS.forEach((k) => { delete copy[k]; });
   return copy;
 }
 
@@ -1144,14 +1188,73 @@ async function processOperation(op, businessId) {
       break;
     }
     case 'ADD_REPLENISHMENT': {
-      const { error } = await assertSupabase().from('replenishments').insert(payload);
-      if (error) throw error;
+      const body = await stripUnknownReplenishmentKeys(payload);
+      const { error } = await assertSupabase().from('replenishments').insert(body);
+      if (error) {
+        if (isMissingColumnError(error)) {
+          (await getServerCaps()).replenishmentPurchaseInfo = false;
+          const fallback = await stripUnknownReplenishmentKeys(payload);
+          const { error: retryError } = await assertSupabase().from('replenishments').insert(fallback);
+          if (retryError) throw retryError;
+        } else throw error;
+      }
       break;
     }
     case 'UPDATE_REPLENISHMENT': {
       const { id, ...updateData } = payload;
-      const { error } = await assertSupabase().from('replenishments').update(updateData).eq('id', id);
+      const body = await stripUnknownReplenishmentKeys(updateData);
+      const { error } = await assertSupabase().from('replenishments').update(body).eq('id', id);
       if (error) throw error;
+      break;
+    }
+    case 'ADD_PURCHASE_PRICE_ALERT': {
+      const capsA = await getServerCaps();
+      if (!capsA.priceAlerts) break;
+      try {
+        const { error } = await assertSupabase()
+          .from('purchase_price_alerts')
+          .upsert(payload, { onConflict: 'id', ignoreDuplicates: true });
+        if (error) {
+          if (isMissingColumnError(error) || String(error?.code || '') === '42P01') {
+            capsA.priceAlerts = false;
+            break;
+          }
+          throw error;
+        }
+      } catch (alertErr) {
+        if (isMissingColumnError(alertErr) || String(alertErr?.code || '') === '42P01') {
+          capsA.priceAlerts = false;
+          break;
+        }
+        throw alertErr;
+      }
+      break;
+    }
+    case 'REVIEW_PURCHASE_PRICE_ALERTS': {
+      const capsA = await getServerCaps();
+      if (!capsA.priceAlerts) break;
+      const { ids, business_id, ...updateData } = payload;
+      if (!Array.isArray(ids) || ids.length === 0) break;
+      try {
+        const { error } = await assertSupabase()
+          .from('purchase_price_alerts')
+          .update(updateData)
+          .in('id', ids)
+          .eq('business_id', businessId);
+        if (error) {
+          if (isMissingColumnError(error) || String(error?.code || '') === '42P01') {
+            capsA.priceAlerts = false;
+            break;
+          }
+          throw error;
+        }
+      } catch (alertErr) {
+        if (isMissingColumnError(alertErr) || String(alertErr?.code || '') === '42P01') {
+          capsA.priceAlerts = false;
+          break;
+        }
+        throw alertErr;
+      }
       break;
     }
     case 'ADD_DEBT': {
@@ -1390,6 +1493,15 @@ export async function syncCacheFromServer(businessId) {
           if (op.payload.id) pendingIds.add(op.payload.id);
           if (op.payload.product_id) pendingIds.add(op.payload.product_id);
           break;
+        case 'ADD_PURCHASE_PRICE_ALERT':
+          if (op.payload.id) pendingIds.add(op.payload.id);
+          if (op.payload.product_id) pendingIds.add(op.payload.product_id);
+          break;
+        case 'REVIEW_PURCHASE_PRICE_ALERTS':
+          (op.payload.ids || []).forEach((id) => {
+            if (id) pendingIds.add(id);
+          });
+          break;
         case 'ADD_DEBT':
         case 'DELETE_DEBT':
           if (op.payload.id) pendingIds.add(op.payload.id);
@@ -1525,6 +1637,24 @@ export async function syncCacheFromServer(businessId) {
       }
     }
 
+    // ── ALERTAS DE PRECIOS DE COMPRA: incrementales por updated_at. ──
+    if (db.purchase_price_alerts && caps.priceAlerts) {
+      try {
+        const wm = state.purchase_price_alerts || null;
+        const rows = await fetchAll((from, to) => {
+          let q = assertSupabase().from('purchase_price_alerts').select('*').eq('business_id', businessId);
+          if (wm) q = q.gt('updated_at', wm);
+          return q.order('updated_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
+        });
+        await upsertRows(db.purchase_price_alerts, rows, (item) => pendingIds.has(item.id));
+        const m = maxStamp(rows, 'updated_at');
+        if (m) stampPatch.purchase_price_alerts = m;
+      } catch (err) {
+        caps.priceAlerts = false;
+        console.warn('syncEngine: no se pudieron sincronizar las alertas de precios:', err);
+      }
+    }
+
     // ── TRANSFERS: últimos 200 (barato, se baja en cada ciclo). ──
     if (caps.branchTables !== false) {
       try {
@@ -1654,6 +1784,9 @@ export async function syncCacheFromServer(businessId) {
         { table: db.expenses, name: 'expenses' },
         { table: db.debts, name: 'debts' },
         { table: db.replenishments, name: 'replenishments' },
+        ...(db.purchase_price_alerts && caps.priceAlerts
+          ? [{ table: db.purchase_price_alerts, name: 'purchase_price_alerts' }]
+          : []),
       ];
       for (const t of smallTables) {
         try {
