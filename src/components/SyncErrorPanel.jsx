@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db } from '../services/localDb';
-import { retryOperation, discardOperation } from '../services/syncEngine';
+import { retryOperation, discardOperation, triggerSync, refreshSyncStatus } from '../services/syncEngine';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { AppIcon } from './icons';
 
@@ -20,10 +20,22 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
   };
 
   useEffect(() => {
-    if (isOpen) {
-      loadOperations();
-    }
-  }, [isOpen, pendingCount, errorCount]);
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      // El contador en memoria puede venir viejo de otra pestaña que ya
+      // procesó la cola. Al abrir el panel se relee IndexedDB de verdad.
+      if (businessId) {
+        try {
+          await refreshSyncStatus(businessId);
+        } catch (err) {
+          console.warn('No se pudo refrescar el estado de sincronización:', err);
+        }
+      }
+      if (!cancelled) await loadOperations();
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, businessId, pendingCount, errorCount]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,6 +71,21 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setLoading(true);
+    try {
+      if (businessId) {
+        await triggerSync(businessId);
+        await refreshSyncStatus(businessId);
+      }
+      await loadOperations();
+    } catch (err) {
+      console.error('Error syncing now:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,7 +225,16 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-5 sm:p-6">
+        <div className="flex flex-col-reverse items-stretch gap-3 border-t border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <button
+            type="button"
+            onClick={handleSyncNow}
+            disabled={loading}
+            className="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-5 py-2.5 text-sm font-bold text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent-bg-soft)] disabled:opacity-50"
+          >
+            <AppIcon name="sincronizar" size={16} color="var(--mg-accent)" />
+            {loading ? 'Sincronizando…' : 'Sincronizar ahora'}
+          </button>
           <button
             type="button"
             onClick={onClose}

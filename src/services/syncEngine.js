@@ -94,9 +94,19 @@ export function attachSaleItemBusinessIds(sales, saleItems) {
 async function updatePendingCount(businessId) {
   const allOps = await db.pending_operations.toArray();
   const scoped = businessId ? allOps.filter((op) => belongsToBusiness(op, businessId)) : allOps;
-  pendingCount = scoped.filter((op) => op.status === 'pending').length;
-  errorCount = scoped.filter((op) => op.status === 'error').length;
-  notifyListeners();
+  const nextPending = scoped.filter((op) => op.status === 'pending').length;
+  const nextError = scoped.filter((op) => op.status === 'error').length;
+  const changed = nextPending !== pendingCount || nextError !== errorCount;
+  pendingCount = nextPending;
+  errorCount = nextError;
+  if (changed) notifyListeners();
+}
+
+// Fuerza a releer la cola real de IndexedDB y actualiza el badge. Sirve para
+// cuando otra pestaña/dispositivo ya procesó la cola y este contador quedó
+// viejo en memoria (el panel mostraba "32 por sincronizar" con la cola vacía).
+export async function refreshSyncStatus(businessId) {
+  await updatePendingCount(businessId);
 }
 
 function notifyListeners() {
@@ -355,6 +365,15 @@ async function runSyncOnce(businessId) {
     await syncCacheFromServer(businessId);
   } catch (err) {
     console.error('Error during synchronization run:', err);
+  } finally {
+    // Cada pase (incluso el periódico, que antes no lo hacía) deja el badge
+    // al día con la cola real. Si otra pestaña vació la cola, este contador
+    // en memoria se corregía recién al agregar otra operación.
+    try {
+      await updatePendingCount(businessId);
+    } catch (countErr) {
+      console.warn('syncEngine: no se pudo refrescar el contador de pendientes:', countErr);
+    }
   }
 }
 
@@ -1705,6 +1724,41 @@ export async function syncCacheFromServer(businessId) {
       }
     } catch (err) {
       console.warn('syncEngine: no se pudo sincronizar sales:', err);
+    }
+
+    // Ventas borradas definitivamente en el servidor: se eliminan también de
+    // la caché local de todos los dispositivos. Sin esto, un borrado duro
+    // dejaba la venta visible para siempre en los equipos que ya la tenían,
+    // porque la sincronización de ventas es incremental y no borra.
+    try {
+      const deletedSales = await fetchAll((from, to) => assertSupabase()
+        .from('deleted_sales')
+        .select('id')
+        .eq('business_id', businessId)
+        .order('deleted_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to));
+      if (deletedSales.length > 0) {
+        const deletedIds = new Set(
+          deletedSales.map((row) => row.id).filter((id) => id && !pendingIds.has(id))
+        );
+        if (deletedIds.size > 0) {
+          const localSales = await db.sales.where('business_id').equals(businessId).toArray();
+          const saleIds = localSales.filter((sale) => deletedIds.has(sale.id)).map((sale) => sale.id);
+          const localItems = await db.sale_items.where('business_id').equals(businessId).toArray();
+          const itemIds = localItems.filter((item) => deletedIds.has(item.sale_id)).map((item) => item.id);
+          if (saleIds.length > 0 || itemIds.length > 0) {
+            await db.transaction('rw', db.sales, db.sale_items, async () => {
+              if (saleIds.length > 0) await db.sales.bulkDelete(saleIds);
+              if (itemIds.length > 0) await db.sale_items.bulkDelete(itemIds);
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // Si la migración de tombstones aún no se aplicó, la tabla no existe:
+      // se ignora y el resto del sync sigue normal.
+      console.warn('syncEngine: no se pudieron aplicar ventas eliminadas:', err?.message || err);
     }
 
     if (db.cash_arqueos) {
