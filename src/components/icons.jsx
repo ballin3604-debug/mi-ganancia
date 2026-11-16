@@ -75,6 +75,7 @@ import {
   Mail,
   Smartphone,
   Zap,
+  Dog,
 } from 'lucide-react';
 // Colores semánticos opcionales (variables del tema) para pasar a `color`.
 // Por defecto AppIcon usa currentColor y hereda el color del contenedor.
@@ -161,6 +162,7 @@ const ICONS = {
   correo: { Component: Mail },
   celular: { Component: Smartphone },
   rayo: { Component: Zap },
+  perro: { Component: Dog },
 };
 
 export function AppIcon({ name, size = 18, color = 'currentColor', strokeWidth = 2, className = '' }) {

@@ -2,7 +2,7 @@ import { assertSupabase, isSupabaseConfigured } from './supabaseClient';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/environment';
 import { db, generateUUID } from './localDb';
 
-function getDeviceId() {
+export function getDeviceId() {
   try {
     if (typeof localStorage === 'undefined') return null;
     let deviceId = localStorage.getItem('mg-device-id');
@@ -292,6 +292,26 @@ export async function getPendingOperations(businessId, status = null) {
   const allOps = await db.pending_operations.orderBy('created_at').toArray();
   const scoped = businessId ? allOps.filter((op) => belongsToBusiness(op, businessId)) : allOps;
   return status === null ? scoped : scoped.filter((op) => op.status === status);
+}
+
+// Estado resumido para el latido del Vigía: cola real de IndexedDB y último
+// error, sin exponer los payloads de las operaciones.
+export async function getSyncHealthSnapshot(businessId) {
+  const allOps = await db.pending_operations.toArray();
+  const scoped = businessId ? allOps.filter((op) => belongsToBusiness(op, businessId)) : allOps;
+  const errors = scoped
+    .filter((op) => op.status === 'error')
+    .sort((a, b) => new Date(b.last_attempt_at || b.created_at || 0) - new Date(a.last_attempt_at || a.created_at || 0));
+  const latestError = errors[0] || null;
+  const state = businessId ? await db.sync_state.get(businessId) : null;
+
+  return {
+    pendingCount: scoped.filter((op) => op.status === 'pending' || op.status === 'syncing').length,
+    errorCount: errors.length,
+    lastError: latestError?.error_details || null,
+    lastErrorAt: latestError?.last_attempt_at || latestError?.created_at || null,
+    lastSyncAt: state?.last_sync_at || null,
+  };
 }
 
 async function runSyncOnce(businessId) {
@@ -1863,7 +1883,7 @@ export async function syncCacheFromServer(businessId) {
       stampPatch.full_at = new Date().toISOString();
     }
 
-    await saveSyncState(businessId, stampPatch);
+    await saveSyncState(businessId, { ...stampPatch, last_sync_at: new Date().toISOString() });
 
     // Broadcast cache sync event to refresh local service views without circular imports
     if (typeof window !== 'undefined') {

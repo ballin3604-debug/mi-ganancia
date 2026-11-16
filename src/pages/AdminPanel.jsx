@@ -16,6 +16,7 @@ import { useImageUpload } from '../hooks/useImageUpload';
 import { DEFAULT_CATEGORIES } from '../services/categories';
 import ProductCatalogCard from '../components/ProductCatalogCard';
 import PaymentsTab from '../components/admin/PaymentsTab';
+import HealthTab from '../components/admin/HealthTab';
 import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
 import { AppIcon } from '../components/icons';
 
@@ -576,6 +577,7 @@ export default function AdminPanel() {
           {[
             { key: 'requests', label: `Solicitudes (${pending.length})` },
             { key: 'businesses', label: `Negocios (${businesses.length})` },
+            { key: 'health', label: 'Vigía' },
             { key: 'payments', label: 'Pagos' },
             { key: 'catalog', label: `Catálogo (${masterProducts.length})` },
             { key: 'history', label: 'Historial' },
@@ -897,6 +899,9 @@ export default function AdminPanel() {
                 </div>
               </div>
             )}
+
+            {/* ── VIGÍA ── */}
+            {tab === 'health' && <HealthTab />}
 
             {/* ── PAGOS ── */}
             {tab === 'payments' && <PaymentsTab />}

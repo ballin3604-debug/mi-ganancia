@@ -4,6 +4,7 @@ import { getUserData } from '../services/auth';
 import { isAdmin } from '../services/admin';
 import { findInviteForEmail, joinBusinessWithCode } from '../services/cashier';
 import { initializeSyncEngine, syncCacheFromServer, triggerSync, isNetworkError } from '../services/syncEngine';
+import { startClientHealthReporter } from '../services/healthWatchdog';
 import { saveLastAuthUser, getOfflineAuthUser, clearLastAuthUser, isOfflineNow } from '../services/offlineSession';
 import { withTimeout } from '../utils/withTimeout';
 import { isShiftConfigured, normalizeShift } from '../utils/shifts';
@@ -288,6 +289,14 @@ export function AuthProvider({ children }) {
       }
     };
   }, [businessId]);
+
+  // Latido del Vigía: cada equipo reporta su cola de sincronización y las
+  // latencias reales hacia Supabase y Firebase Hosting. Es silencioso: si la
+  // migración no está aplicada o no hay red, la app sigue funcionando igual.
+  useEffect(() => {
+    if (!businessId || !user?.id) return undefined;
+    return startClientHealthReporter({ businessId });
+  }, [businessId, user?.id]);
 
   const admin = user ? isAdmin(user.id) : false;
 
