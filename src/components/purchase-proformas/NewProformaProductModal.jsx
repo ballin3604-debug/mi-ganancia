@@ -24,18 +24,20 @@ export default function NewProformaProductModal({
   onAdd,
 }) {
   const categoryOptions = useMemo(() => {
-    const list = [...(categories || []), ...(isLicoreria ? LICOR_CATEGORIES : [])];
+    const list = [...(categories || []), ...(isLicoreria ? LICOR_CATEGORIES : []), 'Otros'];
     return [...new Set(list.filter(Boolean))];
   }, [categories, isLicoreria]);
 
   const [form, setForm] = useState({
     name: initialName,
-    category: categoryOptions[0] || 'Cervezas',
+    category: isLicoreria ? (categoryOptions[0] || 'Otros') : 'Otros',
     barcode: initialBarcode,
     brand: '',
     price: '',
   });
   const [presetValues, setPresetValues] = useState({});
+  const [showExtra, setShowExtra] = useState(() => !!String(initialBarcode || '').trim());
+  const [showPresentations, setShowPresentations] = useState(false);
   const [error, setError] = useState('');
 
   const presets = getLicorSellPresets(form.category).filter((preset) => preset.key !== 'unidad');
@@ -154,9 +156,9 @@ export default function NewProformaProductModal({
             <AppIcon name="nuevoProducto" size={19} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-black tracking-tight text-[var(--mg-brand-text)]">Nuevo producto</h2>
+            <h2 className="text-base font-black tracking-tight text-[var(--mg-brand-text)]">Producto nuevo</h2>
             <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
-              Se creará al guardar la proforma, con sus presentaciones y stock.
+              Solo nombre y precio de venta. Se crea al guardar la proforma.
             </p>
           </div>
           <button
@@ -184,6 +186,7 @@ export default function NewProformaProductModal({
               <input
                 type="text"
                 autoFocus
+                aria-label="Nombre del producto"
                 value={form.name}
                 onChange={(event) => setField('name', event.target.value)}
                 placeholder="Ej: Cerveza Paceña 620 ml"
@@ -194,10 +197,32 @@ export default function NewProformaProductModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                  Precio de venta (Bs) *
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="999999"
+                  step="0.01"
+                  aria-label="Precio de venta de la unidad"
+                  value={form.price}
+                  onChange={(event) => setField('price', clampNumberInput(event.target.value, { max: 999999 }))}
+                  onKeyDown={blockInvalidNumberKeys}
+                  placeholder="0.00"
+                  className="mg-input !px-3 text-sm font-black text-[var(--mg-accent-text)]"
+                />
+                <p className="mt-1 text-[10px] font-semibold leading-tight text-[var(--mg-text-muted)]">
+                  Precio de la unidad suelta.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
                   Categoría
                 </label>
                 <select
                   value={form.category}
+                  aria-label="Categoría"
                   onChange={(event) => setField('category', event.target.value)}
                   className="mg-input !px-3 text-xs font-bold"
                 >
@@ -206,104 +231,117 @@ export default function NewProformaProductModal({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                  Marca
-                </label>
-                <input
-                  type="text"
-                  value={form.brand}
-                  onChange={(event) => setField('brand', event.target.value)}
-                  placeholder="Opcional"
-                  className="mg-input !px-3 text-xs font-bold"
-                />
-              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                  Código de barras
-                </label>
-                <input
-                  type="text"
-                  value={form.barcode}
-                  onChange={(event) => setField('barcode', event.target.value)}
-                  placeholder="Opcional"
-                  className="mg-input !px-3 text-xs font-bold"
-                />
+            <button
+              type="button"
+              onClick={() => setShowExtra((current) => !current)}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 py-2.5 text-left"
+            >
+              <span className="text-[11px] font-bold text-[var(--mg-text-secondary)]">
+                Marca y código de barras (opcional)
+              </span>
+              <AppIcon name={showExtra ? 'ocultar' : 'agregar'} size={14} />
+            </button>
+
+            {showExtra && (
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3">
+                <div>
+                  <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                    Marca
+                  </label>
+                  <input
+                    type="text"
+                    aria-label="Marca"
+                    value={form.brand}
+                    onChange={(event) => setField('brand', event.target.value)}
+                    placeholder="Opcional"
+                    className="mg-input !px-3 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                    Código de barras
+                  </label>
+                  <input
+                    type="text"
+                    aria-label="Código de barras"
+                    value={form.barcode}
+                    onChange={(event) => setField('barcode', event.target.value)}
+                    placeholder="Opcional"
+                    className="mg-input !px-3 text-xs font-bold"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                  Precio venta unidad (Bs) *
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max="999999"
-                  step="0.01"
-                  value={form.price}
-                  onChange={(event) => setField('price', clampNumberInput(event.target.value, { max: 999999 }))}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                  className="mg-input !px-3 text-sm font-black text-[var(--mg-accent-text)]"
-                />
-              </div>
-            </div>
+            )}
 
             {presentationsEnabled && (
-              <div className="space-y-2.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3">
-                <div>
-                  <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>
-                  <p className="mt-0.5 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-                    Cargá solo las que vendés. El stock siempre se cuenta en unidades sueltas.
-                  </p>
-                </div>
-                {presets.map((preset) => {
-                  const row = presetValues[preset.key] || {};
-                  return (
-                    <div key={preset.key} className="grid grid-cols-[1fr_72px_1fr] items-end gap-2">
-                      <div>
-                        <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                          {preset.name} (Bs)
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          min="0"
-                          max="999999"
-                          step="0.01"
-                          value={row.price ?? ''}
-                          onChange={(event) => setPresetValue(preset.key, 'price', clampNumberInput(event.target.value, { max: 999999 }))}
-                          onKeyDown={blockInvalidNumberKeys}
-                          placeholder="0.00"
-                          className="mg-input !px-2.5 !py-2 text-xs font-black"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                          x und.
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min="1"
-                          max="9999"
-                          step="1"
-                          value={row.factor ?? (preset.factor || '')}
-                          onChange={(event) => setPresetValue(preset.key, 'factor', clampIntegerInput(event.target.value, { min: 1, max: 9999 }))}
-                          onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
-                          placeholder={preset.factor ? String(preset.factor) : '6'}
-                          className="mg-input !px-2 !py-2 text-center text-xs font-bold"
-                        />
-                      </div>
-                      <p className="pb-2 text-[10px] font-semibold leading-tight text-[var(--mg-text-muted)]">
-                        Se suma como presentación de venta.
-                      </p>
-                    </div>
-                  );
-                })}
+              <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]">
+                <button
+                  type="button"
+                  onClick={() => setShowPresentations((current) => !current)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+                >
+                  <span>
+                    <span className="block text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</span>
+                    <span className="block text-[10px] font-semibold text-[var(--mg-text-muted)]">Opcional: chipa, caja, paquete.</span>
+                  </span>
+                  <AppIcon name={showPresentations ? 'ocultar' : 'agregar'} size={14} />
+                </button>
+
+                {showPresentations && (
+                  <div className="space-y-2.5 border-t border-[var(--mg-separator)] p-3">
+                    <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                      Cargá solo las que vendés. El stock siempre se cuenta en unidades sueltas.
+                    </p>
+                    {presets.map((preset) => {
+                      const row = presetValues[preset.key] || {};
+                      return (
+                        <div key={preset.key} className="grid grid-cols-[1fr_72px_1fr] items-end gap-2">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                              {preset.name} (Bs)
+                            </label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              max="999999"
+                              step="0.01"
+                              aria-label={`Precio de ${preset.name}`}
+                              value={row.price ?? ''}
+                              onChange={(event) => setPresetValue(preset.key, 'price', clampNumberInput(event.target.value, { max: 999999 }))}
+                              onKeyDown={blockInvalidNumberKeys}
+                              placeholder="0.00"
+                              className="mg-input !px-2.5 !py-2 text-xs font-black"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                              x und.
+                            </label>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min="1"
+                              max="9999"
+                              step="1"
+                              aria-label={`Unidades de ${preset.name}`}
+                              value={row.factor ?? (preset.factor || '')}
+                              onChange={(event) => setPresetValue(preset.key, 'factor', clampIntegerInput(event.target.value, { min: 1, max: 9999 }))}
+                              onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                              placeholder={preset.factor ? String(preset.factor) : '6'}
+                              className="mg-input !px-2 !py-2 text-center text-xs font-bold"
+                            />
+                          </div>
+                          <p className="pb-2 text-[10px] font-semibold leading-tight text-[var(--mg-text-muted)]">
+                            Se suma como presentación de venta.
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

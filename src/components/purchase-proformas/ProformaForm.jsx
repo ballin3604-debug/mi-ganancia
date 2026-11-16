@@ -664,6 +664,20 @@ export default function ProformaForm({
             </button>
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--mg-separator)] bg-[var(--mg-bg-elevated)] px-3 py-2">
+            <p className="min-w-0 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+              ¿Producto nuevo? Creálo acá y seguí cargando la proforma.
+            </p>
+            <button
+              type="button"
+              onClick={() => openNewProduct()}
+              className="mg-btn-secondary inline-flex min-h-[32px] shrink-0 items-center gap-1 px-2.5 text-[10px]"
+            >
+              <AppIcon name="nuevoProducto" size={13} />
+              NUEVO PRODUCTO
+            </button>
+          </div>
+
           {searchTerm && (
             <div className="border-b border-[var(--mg-separator)] p-2">
               {searchResults.length > 0 ? (
@@ -981,7 +995,7 @@ export default function ProformaForm({
             <EmptyState
               icon="paquete"
               title="Todavía no agregaste productos"
-              description="Usá AGREGAR PRODUCTO (F2), el buscador rápido o IMPORTAR FÍSICA para cargar la proforma."
+              description="Usá AGREGAR PRODUCTO (F2), el buscador rápido, NUEVO PRODUCTO o IMPORTAR FÍSICA para cargar la proforma."
               className="m-3 border-0 bg-[var(--mg-bg-elevated)] px-3 py-5 shadow-none"
             />
           )}
