@@ -182,21 +182,26 @@ export async function getProbeHistory(limit = HISTORY_LIMIT) {
 }
 
 export async function getWatchdogSnapshot() {
-  let probes;
-  let businesses;
-  let platform;
-  try {
-    [probes, businesses, platform] = await Promise.all([
-      runInfraProbes(),
-      getBusinessHealth(),
-      getPlatformHealth(),
-    ]);
-  } catch (err) {
-    if (isMissingMigrationError(err)) {
-      throw new Error('Falta aplicar la migración del Vigía en Supabase (npx supabase db push).');
-    }
-    throw err;
+  const [probesResult, businessesResult, platformResult] = await Promise.allSettled([
+    runInfraProbes(),
+    getBusinessHealth(),
+    getPlatformHealth(),
+  ]);
+
+  const failures = [probesResult, businessesResult, platformResult]
+    .filter((result) => result.status === 'rejected')
+    .map((result) => result.reason);
+
+  if (failures.some(isMissingMigrationError)) {
+    throw new Error('Falta aplicar la migración del Vigía en Supabase (npx supabase db push).');
   }
+  if (failures.length === 3) {
+    throw failures[0];
+  }
+
+  const probes = probesResult.status === 'fulfilled' ? probesResult.value : [];
+  const businesses = businessesResult.status === 'fulfilled' ? businessesResult.value : [];
+  const platform = platformResult.status === 'fulfilled' ? platformResult.value : null;
 
   let history = [];
   try {
@@ -210,6 +215,7 @@ export async function getWatchdogSnapshot() {
     businesses,
     platform,
     history,
+    warning: failures.map(cleanError).filter(Boolean).join(' · '),
     fetchedAt: new Date().toISOString(),
   };
 }

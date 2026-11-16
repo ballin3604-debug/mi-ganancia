@@ -366,6 +366,20 @@ export default function HealthTab() {
         </div>
       )}
 
+      {!error && data?.warning && (
+        <div
+          className="rounded-2xl border-2 p-3"
+          style={{
+            background: 'var(--mg-warning-bg)',
+            borderColor: 'var(--mg-warning-border)',
+            color: 'var(--mg-warning-text)',
+          }}
+        >
+          <p className="text-xs font-black">Algunas métricas no se pudieron leer</p>
+          <p className="mt-0.5 break-words text-[11px]">{data.warning}</p>
+        </div>
+      )}
+
       {/* Semáforo general */}
       {data && (
         <div

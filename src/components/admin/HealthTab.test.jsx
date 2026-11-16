@@ -97,4 +97,21 @@ describe('HealthTab', () => {
     expect(screen.getByText('No se pudo sincronizar una venta.')).toBeTruthy();
     expect(screen.getAllByText('Crítico').length).toBeGreaterThan(0);
   });
+
+  it('avisa cuando una métrica no se pudo leer pero mantiene el panel', async () => {
+    getWatchdogSnapshot.mockResolvedValueOnce({
+      fetchedAt: new Date().toISOString(),
+      probes: [],
+      platform: null,
+      history: [],
+      businesses: [],
+      warning: 'column reference "pending_ops" is ambiguous',
+    });
+
+    render(<HealthTab />);
+
+    expect(await screen.findByText('Algunas métricas no se pudieron leer')).toBeTruthy();
+    expect(screen.getByText(/pending_ops/)).toBeTruthy();
+    expect(screen.getByText('Rendimiento por negocio')).toBeTruthy();
+  });
 });
