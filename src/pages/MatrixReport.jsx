@@ -1873,7 +1873,9 @@ function DayDetailModal({ day, sales, saleItems, expenses, onClose }) {
                                         ? { icon: 'cash', label: 'Efectivo' }
                                         : sale.paymentMethod === 'qr'
                                             ? { icon: 'qr', label: 'QR' }
-                                            : { icon: 'mixto', label: 'Mixto' };
+                                            : sale.paymentMethod === 'fiado'
+                                                ? { icon: 'fiado', label: 'Fiado' }
+                                                : { icon: 'mixto', label: 'Mixto' };
                                     const saleTime = (() => {
                                         const d = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.created_at || sale.createdAt);
                                         return d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });

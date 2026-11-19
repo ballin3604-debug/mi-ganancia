@@ -23,6 +23,15 @@ export const SECTOR_FEATURES = {
   scanner: true,
 };
 
+const LICORERA_SECTOR = {
+  unitLabels: ['Unidad', 'Lata', 'Botella', 'Six-pack', 'Caja', 'Litro'],
+  defaultUnit: 'Unidad',
+  optionalFields: ['volume_ml', 'alcohol_degree', 'origin'],
+  // En licorería los lotes rotan lento: avisa con 3 meses de anticipación.
+  expiryWarningDays: 90,
+  features: { ...SECTOR_FEATURES, configurablePresentations: true },
+};
+
 export const SECTOR_CONFIG_DEFAULTS = {
   default: {
     unitLabels: ['Unidad', 'Paquete', 'Caja'],
@@ -31,13 +40,19 @@ export const SECTOR_CONFIG_DEFAULTS = {
     expiryWarningDays: 30,
     features: { ...SECTOR_FEATURES },
   },
-  licorera: {
-    unitLabels: ['Unidad', 'Lata', 'Botella', 'Six-pack', 'Caja', 'Litro'],
-    defaultUnit: 'Unidad',
-    optionalFields: ['volume_ml', 'alcohol_degree', 'origin'],
-    // En licorería los lotes rotan lento: avisa con 3 meses de anticipación.
-    expiryWarningDays: 90,
-    features: { ...SECTOR_FEATURES, configurablePresentations: true },
+  licorera: LICORERA_SECTOR,
+  agencia_licoreria: {
+    ...LICORERA_SECTOR,
+    // La agencia vende al por mayor: además del catálogo de licorería,
+    // habilita clientes, cuentas por cobrar y recibo A4 por defecto.
+    defaultReceiptFormat: 'sheet',
+    features: {
+      ...LICORERA_SECTOR.features,
+      wholesale: true,
+      customers: true,
+      receivables: true,
+      sheetReceipt: true,
+    },
   },
   restaurante: {
     unitLabels: ['Plato', 'Porción', 'Unidad'],
@@ -47,6 +62,10 @@ export const SECTOR_CONFIG_DEFAULTS = {
     features: { ...SECTOR_FEATURES, dishes: true },
   },
 };
+
+export function isLicorSector(businessCategory) {
+  return businessCategory === 'licorera' || businessCategory === 'agencia_licoreria';
+}
 
 /**
  * Devuelve la configuración de sector para un rubro, mezclando overrides.

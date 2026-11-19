@@ -10,6 +10,7 @@ import { AppIcon } from '../components/icons';
 function getPaymentMethodShort(method) {
   if (method === 'qr') return 'QR';
   if (method === 'mixto') return 'Mixto';
+  if (method === 'fiado') return 'Fiado';
   return 'Efectivo';
 }
 
@@ -20,7 +21,7 @@ export default function ReceiptView() {
   const location = useLocation();
   const navigate = useNavigate();
   const { businessId } = useAuth();
-  const { business, settings } = useBusiness();
+  const { business, settings, sectorConfig, tipoNegocio } = useBusiness();
   const [sale, setSale] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,8 @@ export default function ReceiptView() {
       paymentMethod: sale.paymentMethod || 'cash',
       montoRecibido: sale.montoRecibido,
       cambio: sale.cambio,
+      defaultFormat: sectorConfig?.defaultReceiptFormat,
+      formatCategory: tipoNegocio,
     });
   }
 

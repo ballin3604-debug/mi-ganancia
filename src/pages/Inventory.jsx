@@ -47,6 +47,7 @@ import {
   getLicorCategoryConfig,
   getLicorPurchaseFactorFromProduct,
 } from '../config/licorCatalog';
+import { isLicorSector } from '../config/sectorConfig';
 
 const EMPTY_FORM = {
   name: '',
@@ -263,7 +264,7 @@ export default function Inventory() {
   // Restaurante: sin vencimiento, sin código de barras, sin compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   // Licorería: catálogo fijo de categorías y precios por presentación.
-  const isLicoreria = tipoNegocio === 'licorera';
+  const isLicoreria = isLicorSector(tipoNegocio);
   // Licorería avisa con 3 meses; el resto de rubros, con 30 días.
   const expiryWarningDays = getExpiryWarningDays(sectorConfig);
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.

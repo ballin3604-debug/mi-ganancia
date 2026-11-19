@@ -556,6 +556,8 @@ export function printReceipt({
   settings,
   type = 'sale',
   format,
+  defaultFormat,
+  formatCategory,
   saleId,
   items,
   total,
@@ -585,7 +587,7 @@ export function printReceipt({
     ? saleId.replace(/-/g, '').slice(-8).toUpperCase()
     : String(d.getTime()).slice(-6);
 
-  const payLabels = { qr: 'QR / Transferencia', mixto: 'Mixto', cash: 'Efectivo' };
+  const payLabels = { qr: 'QR / Transferencia', mixto: 'Mixto', cash: 'Efectivo', fiado: 'Fiado (a cuenta)' };
   const payLabel = payLabels[paymentMethod] || 'Efectivo';
 
   const cleanExtraRows = Array.isArray(extraCostRows) ? extraCostRows.filter((r) => Number(r.amount) > 0) : [];
@@ -599,7 +601,7 @@ export function printReceipt({
     montoRecibido, cambio, cleanExtraRows, productsSubtotal,
   };
 
-  const chosen = format || getReceiptFormat();
+  const chosen = format || getReceiptFormat(defaultFormat, formatCategory);
   const isSheet = chosen === RECEIPT_FORMATS.SHEET;
 
   const html = isSheet ? buildSheetHtml(ctx) : buildThermalHtml(ctx);

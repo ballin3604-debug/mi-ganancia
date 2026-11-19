@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSaleItems } from '../../services/sales';
+import { useBusiness } from '../../context/BusinessContext';
 import { formatBs } from '../../utils/currency';
 import { printReceipt } from '../Receipt';
 import { AppIcon } from '../icons';
@@ -8,12 +9,14 @@ function getPaymentMethodLabel(method) {
   if (method === 'qr') return '📲 QR';
   if (method === 'cash') return '💵 Efectivo';
   if (method === 'mixto') return '🔀 Mixto';
+  if (method === 'fiado') return '📒 Fiado';
   return '💵 Efectivo';
 }
 
 function getPaymentMethodShort(method) {
   if (method === 'qr') return 'QR';
   if (method === 'mixto') return 'Mixto';
+  if (method === 'fiado') return 'Fiado';
   return 'Efectivo';
 }
 
@@ -35,6 +38,7 @@ function ProductThumb({ imageData }) {
 }
 
 export function SaleDetailModal({ sale, businessId, business, settings, saleNumber, onClose }) {
+  const { sectorConfig, tipoNegocio } = useBusiness();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -98,6 +102,8 @@ export function SaleDetailModal({ sale, businessId, business, settings, saleNumb
       paymentMethod: sale.paymentMethod || 'cash',
       montoRecibido: sale.montoRecibido,
       cambio: sale.cambio,
+      defaultFormat: sectorConfig?.defaultReceiptFormat,
+      formatCategory: tipoNegocio,
     });
   }
 

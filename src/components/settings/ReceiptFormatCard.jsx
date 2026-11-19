@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { useBusiness } from '../../context/BusinessContext';
 import { getReceiptFormat, setReceiptFormat, RECEIPT_FORMATS } from '../../utils/receiptFormat';
 import { AppIcon } from '../icons';
 
@@ -21,10 +22,12 @@ const OPCIONES = [
 ];
 
 export function ReceiptFormatCard() {
-  const [format, setFormat] = useState(() => getReceiptFormat());
+  const { sectorConfig, tipoNegocio } = useBusiness();
+  const defaultFormat = sectorConfig?.defaultReceiptFormat || RECEIPT_FORMATS.THERMAL;
+  const [format, setFormat] = useState(() => getReceiptFormat(defaultFormat, tipoNegocio));
 
   function choose(id) {
-    setReceiptFormat(id);
+    setReceiptFormat(id, tipoNegocio);
     setFormat(id);
   }
 

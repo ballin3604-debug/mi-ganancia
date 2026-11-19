@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppIcon } from '../icons';
 import { getReceiptFormat } from '../../utils/receiptFormat';
 import { amountToWords } from '../../utils/numberToWords';
@@ -10,11 +10,17 @@ import { printReceipt } from '../Receipt';
 export function TicketPreview({
   businessName, slogan, phone, address, city,
   legalName, nit, footerMessage, showQrOnTicket = true,
-  logoData, qrData,
+  logoData, qrData, format,
 }) {
   const [mode, setMode] = useState(() => {
+    if (format) return format === 'sheet' ? 'a4' : 'ticket';
     try { return getReceiptFormat() === 'sheet' ? 'a4' : 'ticket'; } catch { return 'ticket'; }
   });
+
+  useEffect(() => {
+    if (!format) return;
+    setMode(format === 'sheet' ? 'a4' : 'ticket');
+  }, [format]);
 
   const demoTotal = 445;
   const footer = (footerMessage || '').trim() || '¡Gracias por su compra! Conserve su recibo.';

@@ -19,6 +19,8 @@ import ReceiptView from './pages/ReceiptView';
 import PendingApproval from './pages/PendingApproval';
 import Branches from './pages/Branches';
 import Team from './pages/Team';
+import Customers from './pages/Customers';
+import Debts from './pages/Debts';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AppIcon } from './components/icons';
 import SplashScreen from './components/SplashScreen';
@@ -242,6 +244,8 @@ export default function App() {
               <Route path="equipo" element={<Team />} />
               <Route path="equipo/arqueo" element={<CashRegister />} />
               <Route path="equipo/arqueo/historial" element={<CashHistory />} />
+              <Route path="clientes" element={<Customers />} />
+              <Route path="cxc" element={<Debts />} />
               <Route path="recibo/:saleId" element={<ReceiptView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
@@ -283,6 +287,8 @@ export default function App() {
             <Route path="equipo" element={<Team />} />
             <Route path="equipo/arqueo" element={<CashRegister />} />
             <Route path="equipo/arqueo/historial" element={<CashHistory />} />
+            <Route path="clientes" element={<Customers />} />
+            <Route path="cxc" element={<Debts />} />
             <Route path="recibo/:saleId" element={<ReceiptView />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

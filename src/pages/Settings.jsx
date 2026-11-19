@@ -128,8 +128,12 @@ export default function Settings() {
   const [nameDraft, setNameDraft] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
 
-  // Formato recibo (por dispositivo, inmediato)
-  const [receiptFormat, setReceiptFormatState] = useState(() => getReceiptFormat());
+  // Formato recibo (por dispositivo, inmediato). El rubro define el default:
+  // la agencia de licorería arranca en hoja A4.
+  const [receiptFormat, setReceiptFormatState] = useState(() => getReceiptFormat(
+    getBusinessSectorConfig(settings)?.defaultReceiptFormat,
+    savedCategory
+  ));
 
   // Guardado / respaldo
   const [saving, setSaving] = useState(false);
@@ -186,7 +190,7 @@ export default function Settings() {
   }, [hasChanges]);
 
   const currentCat = getCategoryById(businessCategory);
-  const sectorConfig = getBusinessSectorConfig(settings);
+  const sectorConfig = getBusinessSectorConfig({ ...settings, businessCategory });
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
 
   function toggle(id) {
@@ -312,6 +316,13 @@ export default function Settings() {
         sector_config: nextSectorConfig,
       };
       await saveBusinessSettings(businessId, data);
+      // Si el rubro nuevo imprime en hoja A4 por defecto, se aplica de una vez
+      // en este dispositivo (una preferencia vieja de ticket no debe impedirlo).
+      const nextSector = getBusinessSectorConfig({ ...settings, ...data, businessCategory });
+      if (businessCategory !== savedCategory && nextSector?.defaultReceiptFormat === RECEIPT_FORMATS.SHEET) {
+        setReceiptFormat(RECEIPT_FORMATS.SHEET, businessCategory);
+        setReceiptFormatState(RECEIPT_FORMATS.SHEET);
+      }
       refreshSettings(data);
       setSaved(true);
       setOpenId(null);
@@ -337,7 +348,7 @@ export default function Settings() {
     }
   }
   function chooseFormat(id) {
-    setReceiptFormat(id);
+    setReceiptFormat(id, businessCategory);
     setReceiptFormatState(id);
   }
 
@@ -872,6 +883,7 @@ export default function Settings() {
                   slogan={slogan} phone={phone} address={address} city={city}
                   legalName={legalName} nit={nit} footerMessage={footerMessage}
                   showQrOnTicket={showQrOnTicket} logoData={logoData} qrData={qrData}
+                  format={receiptFormat}
                 />
               </div>
             </motion.div>

@@ -4,6 +4,7 @@ import { supabase, assertSupabase, isSupabaseConfigured } from './supabaseClient
 import { notifyProductChanges } from './products';
 import { getCategoryById } from '../config/businessCategories';
 import { LICOR_CATEGORIES, normalizeLicorCategory } from '../config/licorCatalog';
+import { isLicorSector } from '../config/sectorConfig';
 
 export const DEFAULT_CATEGORIES = [
   'Bebidas', 'Lácteos', 'Panadería', 'Carnes', 'Frutas y Verduras',
@@ -120,7 +121,7 @@ export async function getCategories(businessId, businessCategory) {
   // Read local first
   const local = await db.business_settings.get(businessId);
   const categoryHint = businessCategory || local?.business_category || local?.businessCategory;
-  if (categoryHint === 'licorera') {
+  if (isLicorSector(categoryHint)) {
     return ensureLicorCategories(businessId, local);
   }
   if (local && local.categories) {
@@ -139,7 +140,7 @@ export async function getCategories(businessId, businessCategory) {
       const existing = await db.business_settings.get(businessId);
       const updated = { business_id: businessId, ...existing, categories: data.categories, business_category: data.business_category || existing?.business_category };
       await db.business_settings.put(updated);
-      if (updated.business_category === 'licorera') {
+      if (isLicorSector(updated.business_category)) {
         return ensureLicorCategories(businessId, updated);
       }
       return data.categories;

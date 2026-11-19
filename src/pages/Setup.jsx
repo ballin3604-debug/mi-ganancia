@@ -17,12 +17,14 @@ import {
   KeyRound,
   ArrowRight,
   Check,
+  Truck,
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
   tienda: Store,
   panaderia: Croissant,
   licorera: Wine,
+  agencia_licoreria: Truck,
   ferreteria: Wrench,
   farmacia: Pill,
   ropa: Shirt,

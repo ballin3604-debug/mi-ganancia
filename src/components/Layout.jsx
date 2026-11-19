@@ -113,6 +113,16 @@ const NAV_ITEMS = [
     ],
   },
   {
+    label: 'Clientes', Icon: UsersIcon, ownerOnly: true, key: 'customers', basePath: '/clientes', section: 'Gestión',
+    agencyOnly: true,
+    matchPaths: ['/clientes', '/cxc'],
+    children: [
+      { to: '/clientes', label: 'Directorio', key: 'customers-list' },
+      { to: '/cxc?tab=pending', label: 'Por cobrar', key: 'cxc-pending' },
+      { to: '/cxc?tab=paid', label: 'Cobros realizados', key: 'cxc-paid' },
+    ],
+  },
+  {
     label: 'Sucursales', Icon: StoreIcon, ownerOnly: true, key: 'branches', basePath: '/sucursales', section: 'Administración',
     children: [
       { to: '/sucursales', label: 'Sedes y almacenes', key: 'branches-list' },
@@ -147,6 +157,13 @@ const NAV_ITEMS = [
   },
 ];
 
+function isItemActive(item, pathname) {
+  const paths = item.matchPaths || [item.basePath];
+  return paths.some((base) => (
+    base === '/' ? pathname === '/' : pathname === base || pathname.startsWith(`${base}/`)
+  ));
+}
+
 function isChildActive(location, childTo) {
   const [childPath, childQuery] = childTo.split('?');
   if (location.pathname !== childPath) return false;
@@ -167,6 +184,8 @@ export default function Layout() {
   const businessLogoAlt = business?.name ? `Logo de ${business.name}` : 'Logo Mi Ganancia';
   // Restaurante: sin compras ni sucursales; sin reportes de inventario/compras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
+  // Agencia de licorería: módulo de clientes y cuentas por cobrar.
+  const hasReceivables = !!sectorConfig?.features?.receivables;
   const { online, pendingCount, errorCount } = useSyncStatus();
   const { can } = usePlan();
   const location = useLocation();
@@ -190,8 +209,7 @@ export default function Layout() {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const initial = {};
     NAV_ITEMS.forEach((item) => {
-      if (item.children) initial[item.key] = location.pathname === item.basePath
-        || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`));
+      if (item.children) initial[item.key] = isItemActive(item, location.pathname);
     });
     return initial;
   });
@@ -215,10 +233,7 @@ export default function Layout() {
   }, [showMenuDrawer]);
 
   useEffect(() => {
-    const activeGroup = NAV_ITEMS.find((item) => item.children && (
-      location.pathname === item.basePath
-      || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`))
-    ));
+    const activeGroup = NAV_ITEMS.find((item) => item.children && isItemActive(item, location.pathname));
     if (activeGroup) {
       setExpandedGroups((prev) => (prev[activeGroup.key] ? prev : { ...prev, [activeGroup.key]: true }));
     }
@@ -230,16 +245,20 @@ export default function Layout() {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes', '/sucursales', '/equipo', '/arqueo', '/arqueo/historial', '/equipo/arqueo', '/equipo/arqueo/historial'];
+  const OWNER_ONLY_PATHS = ['/configuracion', '/egresos', '/inventario', '/reportes', '/sucursales', '/equipo', '/arqueo', '/arqueo/historial', '/equipo/arqueo', '/equipo/arqueo/historial', '/clientes', '/cxc'];
   if (isCashier && OWNER_ONLY_PATHS.includes(location.pathname)) {
     return <Navigate to="/" replace />;
   }
   if (isRestaurantMode && (location.pathname.startsWith('/compras') || location.pathname.startsWith('/sucursales'))) {
     return <Navigate to="/" replace />;
   }
+  if (!hasReceivables && (location.pathname.startsWith('/clientes') || location.pathname.startsWith('/cxc'))) {
+    return <Navigate to="/" replace />;
+  }
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || !isCashier)
     .filter((item) => !(isRestaurantMode && (item.key === 'purchases' || item.key === 'branches')))
+    .filter((item) => !item.agencyOnly || hasReceivables)
     .filter((item) => item.key !== 'branches' || can('branches'))
     .map((item) => (
       item.children
@@ -247,6 +266,7 @@ export default function Layout() {
           ...item,
           children: item.children.filter((child) => {
             if (child.restaurantOnly && !isRestaurantMode) return false;
+            if (child.agencyOnly && !hasReceivables) return false;
             if (isRestaurantMode && (
               child.key === 'inventory-report'
               || child.key === 'reports-purchases'
@@ -323,8 +343,7 @@ export default function Layout() {
         <nav aria-label="Navegación principal" className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {visibleItems.map((item, index) => {
             const isOpen = !!item.children && !!expandedGroups[item.key];
-            const isGroupActive = location.pathname === item.basePath
-              || (item.basePath !== '/' && location.pathname.startsWith(`${item.basePath}/`));
+            const isGroupActive = isItemActive(item, location.pathname);
             const GroupIcon = item.Icon;
             const prevItem = visibleItems[index - 1];
             const showSection = sidebarOpen && item.section && item.section !== prevItem?.section;

@@ -45,7 +45,7 @@ function SectionHeader({ title }) {
 export default function Dashboard() {
   const { businessId, user, role } = useAuth();
   const isOwner = role === 'owner';
-  const { business, settings, sectorConfig } = useBusiness();
+  const { business, settings, sectorConfig, tipoNegocio } = useBusiness();
   // Restaurante: sin compras ni vencimientos en el inicio.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   // El dueño puede ocultar existencias y alertas de stock desde Ajustes.
@@ -429,6 +429,9 @@ export default function Dashboard() {
         clientName: sale.clientName || 'S/N',
         clientNit: sale.clientNit || '0',
         sellerName: sale.sellerName || '',
+        paymentMethod: sale.paymentMethod || 'cash',
+        defaultFormat: sectorConfig?.defaultReceiptFormat,
+        formatCategory: tipoNegocio,
       });
     } catch (err) {
       console.error(err);

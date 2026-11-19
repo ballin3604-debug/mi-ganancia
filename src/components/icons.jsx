@@ -76,6 +76,9 @@ import {
   Smartphone,
   Zap,
   Dog,
+  Truck,
+  HandCoins,
+  ChevronRight,
 } from 'lucide-react';
 // Colores semánticos opcionales (variables del tema) para pasar a `color`.
 // Por defecto AppIcon usa currentColor y hereda el color del contenedor.
@@ -119,6 +122,9 @@ const ICONS = {
   tienda: { Component: Store },
   panaderia: { Component: Croissant },
   licorera: { Component: Wine },
+  agencia_licoreria: { Component: Truck },
+  fiado: { Component: HandCoins },
+  siguiente: { Component: ChevronRight },
   restaurante: { Component: UtensilsCrossed },
   ferreteria: { Component: Wrench },
   farmacia: { Component: Pill },

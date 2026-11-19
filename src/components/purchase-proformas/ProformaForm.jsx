@@ -19,6 +19,7 @@ import {
   validateProformaDraft,
 } from '../../services/purchaseProformas';
 import { toLocalISODate } from '../../utils/dateRanges';
+import { isLicorSector } from '../../config/sectorConfig';
 import { clampIntegerInput, clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';
 import { AppIcon } from '../icons';
 import BarcodeScanner from '../BarcodeScanner';
@@ -128,7 +129,7 @@ export default function ProformaForm({
   const { businessId, user, sellerName, hasPermission } = useAuth();
   const { sectorConfig, tipoNegocio } = useBusiness();
   const { branches, activeBranchId } = useBranches();
-  const isLicoreria = tipoNegocio === 'licorera';
+  const isLicoreria = isLicorSector(tipoNegocio);
   const scannerEnabled = sectorConfig?.features?.scanner !== false;
 
   const [header, setHeader] = useState(() => ({

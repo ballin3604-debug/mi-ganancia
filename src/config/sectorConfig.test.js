@@ -32,4 +32,33 @@ describe('getSectorConfig', () => {
     expect(getSectorConfig('tienda').expiryWarningDays).toBe(30);
     expect(getSectorConfig('restaurante').expiryWarningDays).toBe(30);
   });
+
+  it('la agencia de licorería hereda el catálogo y las presentaciones de licorería', () => {
+    const agencia = getSectorConfig('agencia_licoreria');
+    const licorera = getSectorConfig('licorera');
+    expect(agencia.features.configurablePresentations).toBe(true);
+    expect(agencia.expiryWarningDays).toBe(90);
+    expect(agencia.unitLabels).toEqual(licorera.unitLabels);
+  });
+
+  it('la agencia habilita clientes, cuentas por cobrar y recibo A4', () => {
+    const agencia = getSectorConfig('agencia_licoreria');
+    expect(agencia.features.wholesale).toBe(true);
+    expect(agencia.features.customers).toBe(true);
+    expect(agencia.features.receivables).toBe(true);
+    expect(agencia.defaultReceiptFormat).toBe('sheet');
+  });
+
+  it('la licorería minorista no recibe funciones mayoristas', () => {
+    const licorera = getSectorConfig('licorera');
+    expect(licorera.features.receivables).toBeFalsy();
+    expect(licorera.features.customers).toBeFalsy();
+    expect(licorera.defaultReceiptFormat).toBeUndefined();
+  });
+
+  it('los overrides del dueño no apagan las funciones base de la agencia', () => {
+    const agencia = getSectorConfig('agencia_licoreria', { features: { stock: false } });
+    expect(agencia.features.stock).toBe(false);
+    expect(agencia.features.receivables).toBe(true);
+  });
 });

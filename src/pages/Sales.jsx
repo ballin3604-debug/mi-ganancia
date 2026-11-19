@@ -14,6 +14,7 @@ import {
 } from '../services/sales';
 import { getBusinessMembers } from '../services/cashier';
 import { getCustomers, addCustomer } from '../services/customers';
+import { addDebt } from '../services/debts';
 import { subscribeToCategories } from '../services/categories';
 import { printReceipt } from '../components/Receipt';
 import DataTable from '../components/DataTable';
@@ -369,11 +370,17 @@ export default function Sales() {
   const isOwner = role !== 'cashier';
   const canSeeCosts = isOwner || hasPermission('ver_costos');
   const canExport = hasPermission('exportar');
-  const { business, settings, sectorConfig } = useBusiness();
+  const { business, settings, sectorConfig, tipoNegocio } = useBusiness();
   // Restaurante: tickets sin cliente ni código de barras.
   const isRestaurantMode = !!sectorConfig?.features?.dishes;
   const showStock = sectorConfig?.features?.stock !== false;
   const scannerEnabled = sectorConfig?.features?.scanner !== false;
+  // Agencia de licorería: venta al fiado y recibo A4 por defecto.
+  const hasReceivables = !!sectorConfig?.features?.receivables;
+  const receiptDefaults = {
+    defaultFormat: sectorConfig?.defaultReceiptFormat,
+    formatCategory: tipoNegocio,
+  };
   const { branches, activeBranchId, activeBranch, selectBranch } = useBranches();
   // Un almacén custodia y distribuye: no vende al público en ningún caso.
   const sellingBlocked = activeBranch?.type === 'almacen';
@@ -1075,6 +1082,7 @@ export default function Sales() {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]' },
     qr: { label: 'QR', icon: 'qr', pill: 'bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)] border-[var(--mg-accent-border)]' },
     mixto: { label: 'Mixto', icon: 'mixto', pill: 'bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)] border-[var(--mg-brand-border)]' },
+    fiado: { label: 'Fiado', icon: 'fiado', pill: 'bg-[var(--mg-warning-bg)] text-[var(--mg-warning-text)] border-[var(--mg-warning-border)]' },
   };
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
@@ -1619,7 +1627,7 @@ export default function Sales() {
     try {
       if (isCustomClient && finalClientName !== 'S/N' &&
         !customers.some((c) => c.name.toLowerCase() === finalClientName.toLowerCase())) {
-        await addCustomer(businessId, { name: finalClientName });
+        await addCustomer(businessId, { name: finalClientName, phone: clientPhone });
       }
 
       const extraFields = {};
@@ -1667,7 +1675,30 @@ export default function Sales() {
           ? (Number(cashReceived) - total) 
           : (paymentMethod === 'mixto' ? Math.max(0, (Number(mixedCash || 0) + Number(mixedQr || 0)) - total) : null),
       };
-      
+
+      // Venta al fiado: la venta ya descontó stock; acá nace la cuenta por
+      // cobrar con el saldo completo. Si falla, la venta queda registrada y se
+      // avisa para no perder el cobro.
+      if (paymentMethod === 'fiado') {
+        const description = cartItems
+          .map((it) => `${it.quantity} × ${it.product.name}${it.factor > 1 ? ` (${it.presLabel})` : ''}`)
+          .join(', ');
+        try {
+          await addDebt(businessId, {
+            clientName: finalClientName,
+            clientNit: finalClientNit === '0' ? '' : finalClientNit,
+            clientPhone,
+            dueDate,
+            amount: total,
+            description,
+            saleId,
+          });
+        } catch (debtErr) {
+          console.error('Error al registrar el fiado:', debtErr);
+          alert('La venta se registró, pero no se pudo crear la cuenta por cobrar. Regístrala desde CxC.');
+        }
+      }
+
       setShowSuccessModal(saleDetails);
 
       const updated = await getProducts(businessId);
@@ -1697,6 +1728,20 @@ export default function Sales() {
       const fresh = productsWithStock.find((p) => p.id === exceeded.product.id);
       const stock = fresh ? fresh.stock : exceeded.product.stock;
       alert(`"${exceeded.product.name}" ya no tiene stock suficiente (quedan ${stock || 0} und.). Ajusta la cantidad.`);
+      return;
+    }
+    if (paymentMethod === 'fiado') {
+      if (!hasReceivables) {
+        alert('El fiado solo está disponible para agencias de licorería.');
+        setPaymentMethod('cash');
+        return;
+      }
+      const fiadoClient = (selectedCustomer?.name || typedClientName).trim();
+      if (!fiadoClient) {
+        alert('Selecciona o escribe el cliente para registrar el fiado.');
+        return;
+      }
+      handleRegister(false);
       return;
     }
     if (paymentMethod === 'cash' && cashReceived !== '' && Number(cashReceived) < total) {
@@ -1768,6 +1813,7 @@ export default function Sales() {
       paymentMethod: showSuccessModal.paymentMethod,
       montoRecibido: showSuccessModal.paymentMethod === 'cash' ? showSuccessModal.montoRecibido : showSuccessModal.montoEfectivo,
       cambio: showSuccessModal.cambio,
+      ...receiptDefaults,
     });
   }
 
@@ -1857,11 +1903,12 @@ export default function Sales() {
           {/* Método de pago */}
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Método de pago</p>
-            <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-1">
+            <div className={`grid gap-1.5 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-1 ${hasReceivables ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {[
                 { id: 'cash', label: 'Efectivo', icon: 'cash' },
                 { id: 'qr', label: 'QR', icon: 'qr' },
                 { id: 'mixto', label: 'Mixto', icon: 'mixto' },
+                ...(hasReceivables ? [{ id: 'fiado', label: 'Fiado', icon: 'fiado' }] : []),
               ].map((m) => (
                 <button
                   key={m.id}
@@ -1909,6 +1956,43 @@ export default function Sales() {
               </select>
             )}
           </div>
+          )}
+
+          {/* Datos del fiado: contacto y fecha límite de pago */}
+          {paymentMethod === 'fiado' && (
+            <div className="space-y-3 rounded-2xl border border-[var(--mg-warning-border)] bg-[var(--mg-warning-bg)] p-3.5">
+              <div className="flex items-start gap-2">
+                <AppIcon name="fiado" size={16} color="var(--mg-warning-text)" />
+                <p className="text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+                  Se registrará una cuenta por cobrar de {formatBs(total)} a nombre del cliente.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">
+                    Teléfono / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="Ej: 71234567"
+                    className="mg-input py-2 text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">
+                    Fecha límite
+                  </label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="mg-input py-2 text-sm font-medium"
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Calculadora de cambio para Efectivo */}
@@ -2697,8 +2781,12 @@ export default function Sales() {
               </div>
             </div>
 
-            <h3 className="text-lg font-black text-[var(--mg-text-primary)]">¡Cobro Exitoso!</h3>
-            <p className="my-2 text-3xl font-black text-[var(--mg-success-text)]">{formatBs(showSuccessModal.total)}</p>
+            <h3 className="text-lg font-black text-[var(--mg-text-primary)]">
+              {showSuccessModal.paymentMethod === 'fiado' ? '¡Fiado registrado!' : '¡Cobro Exitoso!'}
+            </h3>
+            <p className={`my-2 text-3xl font-black ${showSuccessModal.paymentMethod === 'fiado' ? 'text-[var(--mg-warning-text)]' : 'text-[var(--mg-success-text)]'}`}>
+              {formatBs(showSuccessModal.total)}
+            </p>
 
             {/* Datos Detallados */}
             <div className="bg-[var(--mg-bg-elevated)] rounded-2xl p-3 text-left text-xs space-y-1.5 border border-[var(--mg-border)] my-4 text-[var(--mg-text-secondary)]">
@@ -2714,9 +2802,16 @@ export default function Sales() {
                 <span className="text-[var(--mg-text-muted)] font-medium">Método de Pago:</span>
                 <span className="font-bold text-[var(--mg-text-primary)]">
                   {showSuccessModal.paymentMethod === 'qr' ? 'QR' :
-                   showSuccessModal.paymentMethod === 'cash' ? 'Efectivo' : 'Mixto'}
+                   showSuccessModal.paymentMethod === 'cash' ? 'Efectivo' :
+                   showSuccessModal.paymentMethod === 'fiado' ? 'Fiado (a cuenta)' : 'Mixto'}
                 </span>
               </div>
+              {showSuccessModal.paymentMethod === 'fiado' && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--mg-text-muted)] font-medium">Saldo pendiente:</span>
+                  <span className="font-black text-[var(--mg-warning-text)]">{formatBs(showSuccessModal.total)}</span>
+                </div>
+              )}
               {showSuccessModal.paymentMethod === 'cash' && showSuccessModal.montoRecibido !== null && showSuccessModal.montoRecibido !== undefined && (
                 <>
                   <div className="flex justify-between">
