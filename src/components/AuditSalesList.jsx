@@ -97,12 +97,14 @@ export function AuditSalesList({ sales, businessName = '', onSelectSale, showHea
                       <span className="text-sm sm:text-base font-black text-[var(--mg-success)] tracking-tight tabular-nums">
                         {formatBs(sale.total)}
                       </span>
-                      <CashBillIcon />
-                      {sale.paymentMethod === 'qr' && (
+                      {(sale.paymentMethod === 'cash' || sale.paymentMethod === 'mixto' || !['qr'].includes(sale.paymentMethod)) && (
+                        <CashBillIcon />
+                      )}
+                      {(sale.paymentMethod === 'qr' || sale.paymentMethod === 'mixto') && (
                         <span
                           className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]"
-                          title="Pago por QR"
-                          aria-label="Pago por QR"
+                          title={sale.paymentMethod === 'mixto' ? 'Pago mixto: efectivo + QR' : 'Pago por QR'}
+                          aria-label={sale.paymentMethod === 'mixto' ? 'Pago mixto: efectivo + QR' : 'Pago por QR'}
                         >
                           <AppIcon name="qr" size={14} />
                         </span>
