@@ -11,17 +11,19 @@ describe('catálogo de licorería', () => {
     const built = buildLicorPresentations({
       category: 'Cervezas',
       price: '8',
-      licorPrices: { chipa: '90', cajaFria: '170' },
-      licorFactors: { chipa: '12', cajaFria: '24' },
+      licorPrices: { chipaFria: '90', chipaCaliente: '85' },
+      licorFactors: { chipaFria: '12', chipaCaliente: '12' },
       supplierPrice: '144',
+      licorPurchaseFactor: '24',
     });
 
     expect(built.purchaseFactor).toBe(24);
     expect(built.purchaseCost).toBe(144);
     expect(built.presentations).toEqual([
       { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
-      { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 90, isBase: false },
-      { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 170, isBase: false },
+      { id: 'licor-chipaFria', name: 'Chipa fría', factor: 12, price: 90, isBase: false },
+      { id: 'licor-chipaCaliente', name: 'Chipa caliente', factor: 12, price: 85, isBase: false },
+      { id: 'licor-compra', name: 'Caja', factor: 24, price: 0, isBase: false, purchaseOnly: true },
     ]);
     expect(getSellOptions({ id: 'p1', price: 8, presentations: built.presentations })).toHaveLength(3);
   });
@@ -123,24 +125,25 @@ describe('catálogo de licorería', () => {
     })).toThrow('Indicá cuántas unidades trae la caja.');
   });
 
-  it('permite cervezas con chipa y caja de otros tamaños y compra según la caja', () => {
-    // Chipa de 6 y caja fría de 30: la compra por caja usa las 30 unidades.
+  it('permite cervezas con chipas de otros tamaños y compra según la caja', () => {
+    // Chipas de 6: la compra por caja usa el factor explícito de 30 unidades.
     const built = buildLicorPresentations({
       category: 'Cervezas',
       price: '8',
-      licorPrices: { chipa: '50', cajaFria: '205' },
-      licorFactors: { chipa: '6', cajaFria: '30' },
+      licorPrices: { chipaFria: '50', chipaCaliente: '48' },
+      licorFactors: { chipaFria: '6', chipaCaliente: '6' },
       supplierPrice: '150',
+      licorPurchaseFactor: '30',
     });
 
     expect(built.purchaseFactor).toBe(30);
     expect(built.purchaseCost).toBe(150);
     expect(built.unitPrice).toBe(8);
     expect(built.presentations).toContainEqual({
-      id: 'licor-cajaFria',
-      name: 'Caja fría',
-      factor: 30,
-      price: 205,
+      id: 'licor-chipaFria',
+      name: 'Chipa fría',
+      factor: 6,
+      price: 50,
       isBase: false,
     });
   });

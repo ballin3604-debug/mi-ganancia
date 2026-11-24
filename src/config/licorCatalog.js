@@ -28,11 +28,10 @@ export const LICOR_CATALOG = {
     emoji: '🍺',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'chipa', name: 'Chipa', factor: 12 },
-      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24 },
-      { key: 'cajaFria', name: 'Caja fría', factor: 24 },
+      { key: 'chipaFria', name: 'Chipa fría', factor: 12 },
+      { key: 'chipaCaliente', name: 'Chipa caliente', factor: 12 },
     ],
-    purchase: { unit: 'caja', label: 'Caja', factorFrom: ['cajaFria', 'cajaCaliente'] },
+    purchase: { unit: 'caja', label: 'Caja', askFactor: true, defaultFactor: 24 },
   },
   'Vinos y tragos': {
     emoji: '🍷',
@@ -189,6 +188,8 @@ export function getLicorPurchaseFactorFromProduct(product, category) {
 // presentaciones ni packageSize guardado.
 export function getLicorDefaultPurchaseFactor(category) {
   const config = getLicorCategoryConfig(category);
+  const explicitDefault = Number(config.purchase.defaultFactor || 0);
+  if (explicitDefault > 1) return explicitDefault;
   for (const key of config.purchase.factorFrom || []) {
     const preset = config.sell.find((item) => item.key === key);
     const factor = Number(preset?.factor || 0);
