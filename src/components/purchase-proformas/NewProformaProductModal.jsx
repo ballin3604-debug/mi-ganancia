@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LICOR_CATEGORIES, getLicorCategoryConfig, getLicorSellPresets } from '../../config/licorCatalog';
+import { LICOR_CATEGORIES, getLicorCategoryConfig, getLicorSellPresets, isLicorPricingCategory } from '../../config/licorCatalog';
 import { clampIntegerInput, clampNumberInput, blockInvalidNumberKeys } from '../../utils/numberInput';
 import { validatePresentationDefinitions } from '../../utils/presentations';
 import { AppIcon } from '../icons';
@@ -41,6 +41,7 @@ export default function NewProformaProductModal({
   const [error, setError] = useState('');
 
   const presets = getLicorSellPresets(form.category).filter((preset) => preset.key !== 'unidad');
+  const canConfigurePresentations = presentationsEnabled || isLicorPricingCategory(form.category);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -93,7 +94,7 @@ export default function NewProformaProductModal({
       isBase: true,
     }];
 
-    if (presentationsEnabled) {
+    if (canConfigurePresentations) {
       for (const preset of presets) {
         const row = presetValues[preset.key] || {};
         const price = Number(row.price || 0);
@@ -275,7 +276,7 @@ export default function NewProformaProductModal({
               </div>
             )}
 
-            {presentationsEnabled && (
+            {canConfigurePresentations && (
               <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)]">
                 <button
                   type="button"

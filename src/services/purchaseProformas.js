@@ -1,7 +1,7 @@
 import { db, generateUUID } from './localDb';
-import { addProduct, addReplenishment } from './products';
+import { addProduct, addReplenishment, updateReplenishment } from './products';
 import { addPurchasePriceAlert } from './purchasePriceAlerts';
-import { applyPurchaseStock, setBranchStock } from './branchStock';
+import { adjustPurchaseStock, applyPurchaseStock, setBranchStock } from './branchStock';
 
 export const PROFORMA_DOC_TYPES = ['Proforma', 'Factura', 'Recibo', 'Nota de entrega'];
 
@@ -623,6 +623,120 @@ export async function savePurchaseProforma(businessId, payload) {
     beforeDiscount: roundMoney(total + discount),
     alerts: pendingAlerts.length,
     items: savedItems,
+  };
+}
+
+// Corrige una línea ya guardada (por ejemplo, se cargó "2 unidades" cuando
+// eran "2 chipas"). Ajusta el stock por la diferencia de unidades, actualiza
+// el costo del producto y deja la proforma y el inventario cuadrados.
+export async function updatePurchaseProformaLine(businessId, lineId, changes = {}) {
+  const line = await db.replenishments.get(lineId);
+  if (!line || line.business_id !== businessId) {
+    throw new Error('No encontramos esa línea de la proforma.');
+  }
+  const product = await db.products.get(line.product_id);
+  if (!product || product.business_id !== businessId) {
+    throw new Error('No encontramos el producto de esa línea.');
+  }
+
+  const factor = Math.max(1, Math.round(Number(changes.factor || 1)));
+  const packageQty = Number(changes.packageQty || 0);
+  const packagePrice = Number(changes.packagePrice || 0);
+  if (!(packageQty > 0)) throw new Error('La cantidad debe ser mayor a 0.');
+  if (!(packagePrice > 0)) throw new Error('El precio de compra debe ser mayor a 0.');
+  const newQty = packageQty * factor;
+  if (!(newQty > 0)) throw new Error('La cantidad de unidades debe ser mayor a 0.');
+
+  const oldQty = Number(line.quantity || 0);
+  const oldBase = line.package_price && line.package_count
+    ? roundMoney(Number(line.package_price) * Number(line.package_count))
+    : roundMoney(Number(line.supplier_price || 0) * oldQty);
+  const extraCosts = Array.isArray(line.extra_costs) ? line.extra_costs : [];
+  const extraTotal = Number.isFinite(Number(line.additional_expenses))
+    ? roundMoney(line.additional_expenses)
+    : roundMoney(extraCosts.reduce((sum, row) => sum + Number(row.amount || 0), 0));
+  const oldDiscount = Math.max(0, roundMoney(oldBase + extraTotal - Number(line.total_cost || 0)));
+  const newBase = roundMoney(packageQty * packagePrice);
+  const newTotal = Math.max(0, roundMoney(newBase + extraTotal - oldDiscount));
+  const usePackage = factor > 1;
+  const presentationName = usePackage
+    ? String(changes.presentationName || '').trim() || 'Paquete'
+    : 'Unidad';
+
+  const lineUpdate = {
+    quantity: newQty,
+    supplier_price: roundUnitCost(newBase / newQty),
+    package_price: usePackage ? roundMoney(packagePrice) : null,
+    package_size: usePackage ? factor : null,
+    package_count: usePackage ? packageQty : null,
+    purchase_unit_type: usePackage ? 'package' : 'unit',
+    presentation_name: presentationName,
+    total_cost: newTotal,
+    lot_code: changes.lotCode !== undefined
+      ? (String(changes.lotCode || '').trim() || null)
+      : line.lot_code,
+    expiry_date: changes.expiryDate !== undefined
+      ? (changes.expiryDate || null)
+      : line.expiry_date,
+  };
+
+  const productPresentations = Array.isArray(product.presentations) ? product.presentations : [];
+  const basePresentation = productPresentations.find((presentation) => presentation?.isBase);
+  const canAddPresentation = !!basePresentation
+    && Number(basePresentation.price) === Number(product.price);
+  let presentations = productPresentations;
+  let presentationsChanged = false;
+  if (usePackage
+    && canAddPresentation
+    && !productPresentations.some((presentation) => Number(presentation.factor) === factor)) {
+    presentations = [...productPresentations, {
+      id: `purchase-${factor}`,
+      name: presentationName,
+      factor,
+      price: 0,
+      isBase: false,
+      purchaseOnly: true,
+    }];
+    presentationsChanged = true;
+  }
+
+  const fields = {
+    name: product.name,
+    price: Number(product.price || 0),
+    minStock: product.min_stock ?? 5,
+    brand: product.brand || '',
+    category: product.category || 'Otros',
+    description: product.description || '',
+    imageData: product.image_url || '',
+    supplierPrice: lineUpdate.supplier_price,
+    unit: product.unit || 'Unidad',
+    unitLabel: product.unit_label || 'Unidad',
+  };
+  if (presentationsChanged) fields.presentations = presentations;
+  if (usePackage) {
+    fields.packageSize = factor;
+    fields.lastPurchasePackagePrice = roundMoney(packagePrice);
+    fields.lastPurchasePackageFactor = factor;
+    fields.lastPurchaseSupplier = line.supplier || '';
+    fields.lastPurchaseProformaNumber = line.proforma_number || '';
+    fields.lastPurchaseAt = line.created_at || null;
+  }
+
+  await adjustPurchaseStock({
+    businessId,
+    product,
+    branchId: line.branch_id || null,
+    delta: newQty - oldQty,
+    fields,
+  });
+  await updateReplenishment(line.id, lineUpdate);
+
+  return {
+    line: { ...line, ...lineUpdate },
+    previousQuantity: oldQty,
+    quantity: newQty,
+    delta: newQty - oldQty,
+    totalCost: newTotal,
   };
 }
 

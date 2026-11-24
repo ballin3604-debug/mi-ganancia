@@ -27,10 +27,13 @@ import EmptyState from '../ui/EmptyState';
 import NewProformaProductModal from './NewProformaProductModal';
 import PhysicalImportModal from './PhysicalImportModal';
 import {
+  buildPresentationOptions,
   createProformaItemFromNewProduct,
   createProformaItemFromProduct,
+  findPresentationOption,
   getProductCurrentPackagePrice,
   getProformaItemCurrentPackagePrice,
+  presentationOptionLabel,
   roundPurchasePrice,
 } from './proformaUi';
 
@@ -292,6 +295,40 @@ export default function ProformaForm({
     [items],
   );
 
+  function presentationOptionsFor(item) {
+    const base = item.presentationOptions?.length
+      ? item.presentationOptions
+      : buildPresentationOptions(
+        (item.productId ? productsById.get(item.productId) : null)
+        || { presentations: item.newProduct?.presentations || [] }
+      );
+    const options = [...base];
+    const factor = Number(item.factor || 0);
+    const name = String(item.presentationName || '').trim();
+    if (factor > 1 && name && !options.some((option) => (
+      Number(option.factor) === factor
+      && String(option.name || '').trim().toLowerCase() === name.toLowerCase()
+    ))) {
+      const customIndex = options.findIndex((option) => option.key === 'custom');
+      const current = { key: `line-${factor}`, name, factor };
+      if (customIndex >= 0) options.splice(customIndex, 0, current);
+      else options.push(current);
+    }
+    return options;
+  }
+
+  function presentationValueFor(item, options) {
+    if (item.presentationKey && options.some((option) => option.key === item.presentationKey)) {
+      return item.presentationKey;
+    }
+    const match = findPresentationOption(options, {
+      factor: item.factor,
+      name: item.presentationName,
+    });
+    if (match) return match.key;
+    return Number(item.factor || 0) > 1 ? 'custom' : 'unit';
+  }
+
   function currentPackagePriceForItem(item) {
     const stored = getProformaItemCurrentPackagePrice(item);
     if (stored > 0) return stored;
@@ -373,6 +410,39 @@ export default function ProformaForm({
     setItems((current) => current.map((item) => (
       item.key === key ? { ...item, ...patch } : item
     )));
+  }
+
+  function updateItemPresentation(key, value) {
+    setItems((current) => current.map((item) => {
+      if (item.key !== key) return item;
+      const options = presentationOptionsFor(item);
+      const option = options.find((row) => row.key === value);
+      if (!option) return item;
+
+      if (value === 'custom') {
+        const factor = Number(item.factor || 0);
+        return {
+          ...item,
+          presentationKey: 'custom',
+          presentationName: factor > 1 ? (item.presentationName || '') : '',
+          factor: factor > 1 ? factor : '',
+          packageFactor: factor > 1 ? factor : '',
+        };
+      }
+
+      const nextFactor = Number(option.factor || 1);
+      const unitCost = getProformaItemUnitCost(item) || Number(item.currentUnitCost || 0);
+      return {
+        ...item,
+        presentationKey: option.key,
+        presentationName: option.name,
+        factor: nextFactor,
+        packageFactor: nextFactor,
+        packagePrice: unitCost > 0
+          ? String(roundPurchasePrice(unitCost * nextFactor))
+          : '',
+      };
+    }));
   }
 
   function updateItemFactor(key, value) {
@@ -731,7 +801,7 @@ export default function ProformaForm({
                       <th className="w-10 px-2 py-2.5 text-center font-black">Ítem</th>
                       <th className="w-24 px-2 py-2.5 font-black">Código</th>
                       <th className="px-2 py-2.5 font-black">Producto / Descripción</th>
-                      <th className="w-28 px-2 py-2.5 text-center font-black">Cant. paquetes / cajas</th>
+                      <th className="w-28 px-2 py-2.5 text-center font-black">Cantidad</th>
                       <th className="w-28 px-2 py-2.5 text-right font-black">Precio compra actual (Bs)</th>
                       <th className="w-32 px-2 py-2.5 text-right font-black">Precio compra del momento (Bs)</th>
                       <th className="w-36 px-2 py-2.5 font-black">F. Vencimiento</th>
@@ -746,6 +816,9 @@ export default function ProformaForm({
                       const priceDifference = computed.packagePrice > 0 && currentPrice > 0
                         ? roundMoney(computed.packagePrice - currentPrice)
                         : 0;
+                      const options = presentationOptionsFor(item);
+                      const presentationValue = presentationValueFor(item, options);
+                      const presentationLabel = computed.factor > 1 ? (item.presentationName || 'Caja') : 'Unidad';
                       return (
                         <tr key={item.key} className="align-top">
                           <td className="px-2 py-3 text-center text-xs font-black text-[var(--mg-text-muted)]">{index + 1}</td>
@@ -760,29 +833,59 @@ export default function ProformaForm({
                                 <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
                                   {item.description || [item.productBrand, item.category].filter(Boolean).join(' · ') || 'Sin descripción'}
                                 </p>
-                                <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--mg-text-muted)]">
-                                  <span className="rounded bg-[var(--mg-bg-elevated)] px-1.5 py-0.5">
-                                    {getProformaItemFactor(item) > 1 ? (item.presentationName || 'Caja') : 'Unidad'}
-                                  </span>
-                                  <span>x</span>
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    min="1"
-                                    max="9999"
-                                    step="1"
-                                    value={item.factor}
-                                    onChange={(event) => updateItemFactor(item.key, event.target.value)}
-                                    onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
-                                    aria-label={`Unidades por caja de ${item.productName}`}
-                                    className="w-12 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
-                                  />
-                                  <span>und.</span>
+                                <div className="mt-1.5">
+                                  <select
+                                    value={presentationValue}
+                                    onChange={(event) => updateItemPresentation(item.key, event.target.value)}
+                                    aria-label={`Presentación de compra de ${item.productName}`}
+                                    className="w-full rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[10px] font-bold text-[var(--mg-text-primary)]"
+                                  >
+                                    {options.map((option) => (
+                                      <option key={option.key} value={option.key}>
+                                        {presentationOptionLabel(option)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {presentationValue === 'custom' && (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        value={item.presentationName}
+                                        onChange={(event) => updateItem(item.key, {
+                                          presentationName: event.target.value,
+                                        })}
+                                        placeholder="Ej: Chipa"
+                                        aria-label={`Nombre de la presentación de ${item.productName}`}
+                                        className="min-w-0 flex-1 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1.5 py-1 text-[10px] font-bold"
+                                      />
+                                      <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        min="1"
+                                        max="9999"
+                                        step="1"
+                                        value={item.factor}
+                                        onChange={(event) => updateItemFactor(item.key, event.target.value)}
+                                        onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                                        aria-label={`Unidades por presentación de ${item.productName}`}
+                                        className="w-12 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1 py-1 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
+                                      />
+                                      <span className="text-[9px] font-bold text-[var(--mg-text-muted)]">und.</span>
+                                    </div>
+                                  )}
+                                  <p className="mt-1 text-[9px] font-semibold text-[var(--mg-text-muted)]">
+                                    {computed.factor > 1
+                                      ? `1 ${presentationLabel.toLowerCase()} = ${computed.factor} unidades`
+                                      : 'Se compra por unidad suelta'}
+                                  </p>
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-2 py-3">
+                            <p className="mb-1 text-center text-[9px] font-bold text-[var(--mg-text-muted)]">
+                              Cant. {presentationLabel.toLowerCase()}
+                            </p>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -795,9 +898,12 @@ export default function ProformaForm({
                               })}
                               onKeyDown={blockInvalidNumberKeys}
                               placeholder="1"
-                              aria-label={`Cantidad de paquetes o cajas de ${item.productName}`}
+                              aria-label={`Cantidad de ${presentationLabel.toLowerCase()} de ${item.productName}`}
                               className="mg-input !px-2 !py-2 text-center text-sm font-black"
                             />
+                            <p className="mt-1 text-center text-[9px] font-bold text-[var(--mg-text-muted)]">
+                              = {formatQty(computed.quantity)} und. base
+                            </p>
                           </td>
                           <td className="px-2 py-3 text-right">
                             {currentPrice > 0 ? (
@@ -812,6 +918,9 @@ export default function ProformaForm({
                             )}
                           </td>
                           <td className="px-2 py-3">
+                            <p className="mb-1 text-right text-[9px] font-bold text-[var(--mg-text-muted)]">
+                              Precio por {presentationLabel.toLowerCase()}
+                            </p>
                             <input
                               type="number"
                               inputMode="numeric"
@@ -824,7 +933,7 @@ export default function ProformaForm({
                               })}
                               onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
                               placeholder="0"
-                              aria-label={`Precio de compra del momento por caja de ${item.productName}`}
+                              aria-label={`Precio de compra del momento por ${presentationLabel.toLowerCase()} de ${item.productName}`}
                               className="mg-input !px-2 !py-2 text-right text-sm font-black text-[var(--mg-accent-text)]"
                             />
                             {computed.unitCost > 0 && (
@@ -870,6 +979,9 @@ export default function ProformaForm({
                   const priceDifference = computed.packagePrice > 0 && currentPrice > 0
                     ? roundMoney(computed.packagePrice - currentPrice)
                     : 0;
+                  const options = presentationOptionsFor(item);
+                  const presentationValue = presentationValueFor(item, options);
+                  const presentationLabel = computed.factor > 1 ? (item.presentationName || 'Caja') : 'Unidad';
                   return (
                     <article key={item.key} className="rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3">
                       <div className="flex items-start gap-2.5">
@@ -895,27 +1007,60 @@ export default function ProformaForm({
                         </button>
                       </div>
 
-                      <div className="mt-2 flex items-center gap-1 text-[9px] font-bold text-[var(--mg-text-muted)]">
-                        <span>{getProformaItemFactor(item) > 1 ? (item.presentationName || 'Caja') : 'Unidad'} x</span>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min="1"
-                          max="9999"
-                          step="1"
-                          value={item.factor}
-                          onChange={(event) => updateItemFactor(item.key, event.target.value)}
-                          onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
-                          aria-label={`Unidades por caja de ${item.productName}`}
-                          className="w-12 rounded border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1 py-0.5 text-center text-[10px] font-black"
-                        />
-                        <span>und. por caja</span>
+                      <div className="mt-2">
+                        <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+                          Presentación de compra
+                        </label>
+                        <select
+                          value={presentationValue}
+                          onChange={(event) => updateItemPresentation(item.key, event.target.value)}
+                          aria-label={`Presentación de compra de ${item.productName}`}
+                          className="mg-input !px-2 !py-2 text-xs font-bold"
+                        >
+                          {options.map((option) => (
+                            <option key={option.key} value={option.key}>
+                              {presentationOptionLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                        {presentationValue === 'custom' && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={item.presentationName}
+                              onChange={(event) => updateItem(item.key, {
+                                presentationName: event.target.value,
+                              })}
+                              placeholder="Ej: Chipa"
+                              aria-label={`Nombre de la presentación de ${item.productName}`}
+                              className="min-w-0 flex-1 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-2 py-1.5 text-[10px] font-bold"
+                            />
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min="1"
+                              max="9999"
+                              step="1"
+                              value={item.factor}
+                              onChange={(event) => updateItemFactor(item.key, event.target.value)}
+                              onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                              aria-label={`Unidades por presentación de ${item.productName}`}
+                              className="w-14 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1.5 py-1.5 text-center text-[10px] font-black"
+                            />
+                            <span className="text-[9px] font-bold text-[var(--mg-text-muted)]">und.</span>
+                          </div>
+                        )}
+                        <p className="mt-1 text-[9px] font-semibold text-[var(--mg-text-muted)]">
+                          {computed.factor > 1
+                            ? `1 ${presentationLabel.toLowerCase()} = ${computed.factor} unidades`
+                            : 'Se compra por unidad suelta'}
+                        </p>
                       </div>
 
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <div>
                           <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                            Cant. paquetes / cajas
+                            Cant. {presentationLabel.toLowerCase()}
                           </label>
                           <input
                             type="number"
@@ -928,8 +1073,12 @@ export default function ProformaForm({
                               packageQty: clampNumberInput(event.target.value, { max: 999999 }),
                             })}
                             onKeyDown={blockInvalidNumberKeys}
+                            aria-label={`Cantidad de ${presentationLabel.toLowerCase()} de ${item.productName}`}
                             className="mg-input !px-2 !py-2 text-center text-sm font-black"
                           />
+                          <p className="mt-0.5 text-center text-[9px] font-bold text-[var(--mg-text-muted)]">
+                            = {formatQty(computed.quantity)} und. base
+                          </p>
                         </div>
                         <div>
                           <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
@@ -945,7 +1094,7 @@ export default function ProformaForm({
 
                       <div className="mt-2">
                         <label className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                          Precio compra del momento (Bs)
+                          Precio compra del momento por {presentationLabel.toLowerCase()} (Bs)
                         </label>
                         <input
                           type="number"
@@ -958,6 +1107,7 @@ export default function ProformaForm({
                             packagePrice: clampIntegerInput(event.target.value, { max: 9999999 }),
                           })}
                           onKeyDown={(event) => blockInvalidNumberKeys(event, { allowDecimal: false })}
+                          aria-label={`Precio de compra del momento por ${presentationLabel.toLowerCase()} de ${item.productName}`}
                           className="mg-input !px-2 !py-2 text-right text-sm font-black text-[var(--mg-accent-text)]"
                         />
                         {computed.unitCost > 0 && (

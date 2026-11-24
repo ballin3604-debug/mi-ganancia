@@ -11,6 +11,7 @@ import {
   saveProformaDraft,
   savePurchaseProforma,
   suggestProformaNumber,
+  updatePurchaseProformaLine,
   validateProformaDraft,
 } from './purchaseProformas';
 
@@ -662,5 +663,121 @@ describe('guardado de proformas', () => {
 
     expect(await getProformaDraft(businessId, userId)).toBeNull();
     expect(await db.purchase_drafts.get(id)).toBeUndefined();
+  });
+});
+
+describe('corrección de líneas de proforma', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('corrige presentación/cantidad, ajusta stock por diferencia y actualiza costo', async () => {
+    const businessId = generateUUID();
+    const branchId = generateUUID();
+    const productId = generateUUID();
+    const now = new Date().toISOString();
+
+    await db.products.add({
+      id: productId,
+      business_id: businessId,
+      name: 'BLUE LATA',
+      barcode: null,
+      price: 17,
+      stock: 2,
+      min_stock: 5,
+      brand: 'Blue',
+      category: 'Cervezas',
+      description: '',
+      image_url: '',
+      supplier_price: 82,
+      unit: 'Unidad',
+      unit_label: 'Unidad',
+      package_size: 1,
+      presentations: [
+        { id: 'base', name: 'Unidad', factor: 1, price: 17, isBase: true },
+        { id: 'chipa', name: 'Chipa', factor: 6, price: 95, isBase: false },
+      ],
+      is_dish: false,
+      is_available: true,
+      created_at: now,
+      updated_at: now,
+    });
+
+    await db.branch_stock.put({
+      id: `${branchId}:${productId}`,
+      business_id: businessId,
+      branch_id: branchId,
+      product_id: productId,
+      stock: 2,
+      updated_at: now,
+    });
+
+    const lineId = generateUUID();
+    await db.replenishments.add({
+      id: lineId,
+      business_id: businessId,
+      product_id: productId,
+      product_name: 'BLUE LATA',
+      supplier: 'Proveedor',
+      quantity: 2,
+      sale_price: 17,
+      supplier_price: 82,
+      additional_expenses: 0,
+      extra_costs: [],
+      total_cost: 164,
+      expiry_date: null,
+      purchase_unit_type: 'unit',
+      package_size: null,
+      package_count: null,
+      package_price: null,
+      proforma_id: 'pf-1',
+      proforma_number: 'PRF-202611-0006',
+      proforma_date: '2026-11-11',
+      proforma_doc_type: 'Proforma',
+      proforma_notes: '',
+      proforma_received_by: '',
+      proforma_discount: 0,
+      proforma_extra_costs: [],
+      proforma_extra_total: 0,
+      lot_code: 'PRF-202611-0006-01',
+      line_number: 1,
+      presentation_name: 'Unidad',
+      branch_id: branchId,
+      branch_name: 'Casa matriz',
+      created_at: now,
+    });
+
+    const result = await updatePurchaseProformaLine(businessId, lineId, {
+      factor: 6,
+      presentationName: 'Chipa',
+      packageQty: 2,
+      packagePrice: 82,
+      lotCode: 'PRF-202611-0006-01',
+      expiryDate: '',
+    });
+
+    expect(result.delta).toBe(10);
+    expect(result.quantity).toBe(12);
+    expect(result.totalCost).toBe(164);
+
+    const line = await db.replenishments.get(lineId);
+    expect(line.quantity).toBe(12);
+    expect(line.package_size).toBe(6);
+    expect(line.package_count).toBe(2);
+    expect(line.package_price).toBe(82);
+    expect(line.presentation_name).toBe('Chipa');
+    expect(line.purchase_unit_type).toBe('package');
+    expect(line.supplier_price).toBeCloseTo(13.666667, 6);
+    expect(line.total_cost).toBe(164);
+
+    const product = await db.products.get(productId);
+    expect(product.stock).toBe(12);
+    expect(product.supplier_price).toBeCloseTo(13.666667, 6);
+    expect(product.last_purchase_package_factor).toBe(6);
+    expect(product.last_purchase_package_price).toBe(82);
+
+    const branchStock = await db.branch_stock.get(`${branchId}:${productId}`);
+    expect(branchStock.stock).toBe(12);
   });
 });

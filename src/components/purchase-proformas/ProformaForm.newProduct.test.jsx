@@ -100,9 +100,8 @@ describe('producto nuevo desde la proforma', () => {
 
     expect((await screen.findAllByText('Cerveza Nueva 620 ml')).length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText('Precio de compra del momento por caja de Cerveza Nueva 620 ml'), {
-      target: { value: '20' },
-    });
+    const priceInputs = screen.getAllByLabelText('Precio de compra del momento por unidad de Cerveza Nueva 620 ml');
+    fireEvent.change(priceInputs[0], { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: /GUARDAR Y PROCESAR/ }));
 
     await waitFor(() => expect(state.saved).toBeTruthy());

@@ -9,6 +9,7 @@ import EmptyState from '../components/ui/EmptyState';
 import MetricCard from '../components/ui/MetricCard';
 import PageHeader from '../components/ui/PageHeader';
 import ProformaForm from '../components/purchase-proformas/ProformaForm';
+import ProformaLineEditModal from '../components/purchase-proformas/ProformaLineEditModal';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -86,6 +87,8 @@ export default function PurchaseProformas({
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
+  const [editingLine, setEditingLine] = useState(null);
+  const [lineMessage, setLineMessage] = useState('');
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 30);
@@ -94,6 +97,10 @@ export default function PurchaseProformas({
   const [endDate, setEndDate] = useState(() => toLocalISODate(new Date()));
 
   const groups = useMemo(() => groupReplenishmentsByProforma(replenishments), [replenishments]);
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
 
   const filteredGroups = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
@@ -147,6 +154,16 @@ export default function PurchaseProformas({
     setSuccess(null);
     if (proformaId) setExpandedId(proformaId);
     setSearch('');
+  }
+
+  function handleLineSaved(result) {
+    setEditingLine(null);
+    const delta = Number(result?.delta || 0);
+    const deltaLabel = delta === 0
+      ? 'sin cambio de unidades'
+      : `${delta > 0 ? '+' : ''}${formatQty(delta)} und.`;
+    setLineMessage(`Línea corregida: ${deltaLabel}. Inventario y costo actualizados.`);
+    setTimeout(() => setLineMessage(''), 5000);
   }
 
   if (view === 'form') {
@@ -233,6 +250,13 @@ export default function PurchaseProformas({
           </button>
         )}
       />
+
+      {lineMessage && (
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-3 py-2 text-[11px] font-bold text-[var(--mg-success-text)]">
+          <AppIcon name="ok" size={14} />
+          {lineMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-2 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <div className="relative min-w-0">
@@ -337,7 +361,8 @@ export default function PurchaseProformas({
                             <th className="px-2 py-2 text-right font-black">Costo und.</th>
                             <th className="px-2 py-2 text-right font-black">Venta</th>
                             <th className="px-2 py-2 text-right font-black">Margen</th>
-                            <th className="py-2 pl-2 text-right font-black">Subtotal</th>
+                            <th className="px-2 py-2 text-right font-black">Subtotal</th>
+                            <th className="py-2 pl-2 text-right font-black">Editar</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--mg-separator)]">
@@ -359,7 +384,18 @@ export default function PurchaseProformas({
                                 <td className={`px-2 py-2.5 text-right font-black ${margin.danger ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-success-text)]'}`}>
                                   {margin.pct.toFixed(1)}%
                                 </td>
-                                <td className="py-2.5 pl-2 text-right font-black text-[var(--mg-brand-text)]">{formatBs(item.totalCost)}</td>
+                                <td className="px-2 py-2.5 text-right font-black text-[var(--mg-brand-text)]">{formatBs(item.totalCost)}</td>
+                                <td className="py-2.5 pl-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingLine(item)}
+                                    aria-label={`Corregir ${item.productName}`}
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--mg-border)] text-[var(--mg-text-muted)] transition-colors hover:border-[var(--mg-brand-border)] hover:text-[var(--mg-brand-text)]"
+                                    title="Corregir presentación o cantidad"
+                                  >
+                                    <AppIcon name="editar" size={14} />
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })}
@@ -378,7 +414,18 @@ export default function PurchaseProformas({
                                 <p className="truncate text-xs font-black text-[var(--mg-text-primary)]">{item.productName}</p>
                                 <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">{presentationLabel(item)} · {quantityLabel(item)}</p>
                               </div>
-                              <p className="shrink-0 text-xs font-black text-[var(--mg-brand-text)]">{formatBs(item.totalCost)}</p>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <p className="text-xs font-black text-[var(--mg-brand-text)]">{formatBs(item.totalCost)}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingLine(item)}
+                                  aria-label={`Corregir ${item.productName}`}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--mg-border)] text-[var(--mg-text-muted)]"
+                                  title="Corregir presentación o cantidad"
+                                >
+                                  <AppIcon name="editar" size={13} />
+                                </button>
+                              </div>
                             </div>
                             <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-semibold text-[var(--mg-text-secondary)]">
                               <span>Lote: <strong className="font-mono uppercase">{item.lotCode || '—'}</strong></span>
@@ -457,6 +504,15 @@ export default function PurchaseProformas({
         <p className="pb-2 text-center text-[10px] font-semibold text-[var(--mg-text-faint)]">
           {settings.businessName} · Historial de compras por proforma
         </p>
+      )}
+
+      {editingLine && (
+        <ProformaLineEditModal
+          line={editingLine}
+          product={productsById.get(editingLine.productId) || null}
+          onClose={() => setEditingLine(null)}
+          onSaved={handleLineSaved}
+        />
       )}
     </div>
   );

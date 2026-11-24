@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createProformaItemFromProduct,
   getProformaItemCurrentPackagePrice,
+  resolvePurchasePresentation,
 } from './proformaUi';
 
 describe('precio de compra actual en la proforma', () => {
@@ -50,5 +51,24 @@ describe('precio de compra actual en la proforma', () => {
 
     expect(item.packagePrice).toBe('100');
     expect(getProformaItemCurrentPackagePrice(item)).toBe(100);
+  });
+
+  it('prioriza la última presentación comprada y si no hay historial elige el empaque más chico', () => {
+    const product = {
+      id: 'cerveza-1',
+      price: 17,
+      packageSize: 12,
+      presentations: [
+        { id: 'base', name: 'Unidad', factor: 1, price: 17, isBase: true },
+        { id: 'chipa', name: 'Chipa', factor: 6, price: 95, isBase: false },
+        { id: 'caja', name: 'Caja caliente', factor: 12, price: 180, isBase: false },
+      ],
+    };
+
+    expect(resolvePurchasePresentation(product)).toMatchObject({ name: 'Chipa', factor: 6 });
+    expect(resolvePurchasePresentation({
+      ...product,
+      lastPurchasePackageFactor: 12,
+    })).toMatchObject({ name: 'Caja caliente', factor: 12 });
   });
 });

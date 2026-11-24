@@ -41,6 +41,48 @@ export function chooseDefaultPresentation(options, preferredFactor = 0) {
   return valid.find((option) => option.factor === 1) || valid[0];
 }
 
+export function presentationOptionLabel(option) {
+  if (!option) return '';
+  if (option.key === 'custom') return 'Otra presentación';
+  const factor = Number(option.factor || 0);
+  return factor > 1 ? `${option.name} x${factor}` : option.name;
+}
+
+// Opciones de presentación de una línea ya guardada. Incluye la presentación
+// actual aunque el producto haya cambiado después, para no perder el dato.
+export function buildLinePresentationOptions(product, line = {}) {
+  const options = buildPresentationOptions(product || { presentations: [] });
+  const factor = Number(line.packageSize ?? line.package_size ?? line.factor ?? 0);
+  const name = String(line.presentationName ?? line.presentation_name ?? '').trim();
+  if (factor > 1 && name && !options.some((option) => (
+    Number(option.factor) === factor
+    && String(option.name || '').trim().toLowerCase() === name.toLowerCase()
+  ))) {
+    const customIndex = options.findIndex((option) => option.key === 'custom');
+    const current = { key: `line-${factor}`, name, factor };
+    if (customIndex >= 0) {
+      options.splice(customIndex, 0, current);
+    } else {
+      options.push(current);
+    }
+  }
+  return options;
+}
+
+export function findPresentationOption(options, { key, factor, name } = {}) {
+  const list = options || [];
+  if (key) {
+    const byKey = list.find((option) => option.key === key);
+    if (byKey) return byKey;
+  }
+  const numericFactor = Number(factor || 0);
+  const normalizedName = String(name || '').trim().toLowerCase();
+  return list.find((option) => (
+    Number(option.factor) === numericFactor
+    && String(option.name || '').trim().toLowerCase() === normalizedName
+  )) || list.find((option) => Number(option.factor) === numericFactor) || null;
+}
+
 export function getProformaPresentationLabel(item) {
   const name = String(item?.presentationName || '').trim();
   if (name) return name;
@@ -51,15 +93,24 @@ export function getProformaPresentationLabel(item) {
 export function resolvePurchasePresentation(product) {
   const options = buildPresentationOptions(product);
   const valid = options.filter((option) => option.key !== 'custom');
-  const preferred = Number(product?.packageSize || 0);
-  if (preferred > 1) {
-    const match = valid.find((option) => option.factor === preferred);
+  // Primero la última presentación empaquetada que se compró. Si no hay
+  // historial, el empaque más chico (chipa antes que caja) para no cargar una
+  // caja entera por error; el tamaño configurado queda como última pista.
+  const lastPurchased = Number(product?.lastPurchasePackageFactor || 0);
+  if (lastPurchased > 1) {
+    const match = valid.find((option) => option.factor === lastPurchased);
     if (match) return match;
   }
   const packaged = valid
     .filter((option) => option.factor > 1)
-    .sort((a, b) => b.factor - a.factor);
-  return packaged[0] || valid.find((option) => option.factor === 1) || { key: 'unit', name: 'Unidad', factor: 1 };
+    .sort((a, b) => a.factor - b.factor);
+  if (packaged.length > 0) return packaged[0];
+  const configured = Number(product?.packageSize || 0);
+  if (configured > 1) {
+    const match = valid.find((option) => option.factor === configured);
+    if (match) return match;
+  }
+  return valid.find((option) => option.factor === 1) || { key: 'unit', name: 'Unidad', factor: 1 };
 }
 
 export function roundPurchasePrice(value) {

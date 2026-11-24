@@ -192,6 +192,89 @@ export async function getTransfers(businessId, productId = null, limit = 20) {
     .slice(0, limit);
 }
 
+// Ajusta una COMPRA ya registrada: aplica un delta de unidades (puede ser
+// negativo si se corrigió una presentación) y actualiza la ficha del producto
+// en la misma transacción. Se usa al corregir una línea de proforma.
+export async function adjustPurchaseStock({ businessId, product, branchId, mainBranchId = null, delta, fields }) {
+  const amount = Number(delta || 0);
+  if (!businessId || !product?.id || !Number.isFinite(amount)) {
+    throw new Error('No pudimos ajustar el stock de la compra.');
+  }
+
+  const now = new Date().toISOString();
+  await db.transaction('rw', db.products, db.branch_stock, db.pending_operations, async () => {
+    const existing = await db.products.get(product.id);
+    if (!existing || existing.business_id !== businessId) {
+      throw new Error('El producto no pertenece a este negocio.');
+    }
+    const globalCur = Number(existing.stock || 0);
+    const nextGlobal = Math.max(0, globalCur + amount);
+    const applied = nextGlobal - globalCur;
+    const productUpdate = buildProductUpdateData(existing, {
+      ...fields,
+      stock: nextGlobal,
+      expectedStock: globalCur,
+    }, now);
+    await db.products.update(product.id, productUpdate);
+    await db.pending_operations.add(buildOutboxOp('UPDATE_PRODUCT', {
+      id: product.id,
+      ...productUpdate,
+    }, businessId));
+
+    if (branchId) {
+      const productRows = await db.branch_stock.where('business_id').equals(businessId)
+        .and((row) => row.product_id === product.id).toArray();
+      const currentRow = productRows.find((row) => row.branch_id === branchId);
+
+      let oldBranch;
+      if (currentRow) {
+        oldBranch = Number(currentRow.stock || 0);
+      } else if (productRows.length > 0) {
+        oldBranch = 0;
+      } else if (mainBranchId && mainBranchId !== branchId) {
+        const mainId = branchStockId(mainBranchId, product.id);
+        await db.branch_stock.put({
+          id: mainId,
+          business_id: businessId,
+          branch_id: mainBranchId,
+          product_id: product.id,
+          stock: globalCur,
+          updated_at: now,
+        });
+        await db.pending_operations.add(buildOutboxOp('SET_BRANCH_STOCK', {
+          branch_id: mainBranchId,
+          product_id: product.id,
+          stock: globalCur,
+        }, businessId));
+        oldBranch = 0;
+      } else {
+        oldBranch = globalCur;
+      }
+
+      const newBranchStock = Math.max(0, oldBranch + applied);
+      await db.branch_stock.put({
+        id: branchStockId(branchId, product.id),
+        business_id: businessId,
+        branch_id: branchId,
+        product_id: product.id,
+        stock: newBranchStock,
+        updated_at: now,
+      });
+      await db.pending_operations.add(buildOutboxOp('SET_BRANCH_STOCK', {
+        branch_id: branchId,
+        product_id: product.id,
+        stock: newBranchStock,
+      }, businessId));
+    }
+  });
+
+  notifyBranchStock(businessId);
+  notifyProductChanges(businessId);
+  try {
+    await refreshOutboxState(businessId);
+  } catch { /* offline: queda encolado */ }
+}
+
 // Aplica una COMPRA: suma a la sede elegida y al total, con los demás
 // campos de la ficha. Si aún no hay filas por sede, inicializa la principal
 // con el stock global previo antes de agregar la compra.

@@ -432,6 +432,25 @@ export async function addReplenishment(businessId, data) {
   return mapReplenishment(replenishmentObj);
 }
 
+export async function updateReplenishment(replenishmentId, data) {
+  const existing = await db.replenishments.get(replenishmentId);
+  if (!existing) throw new Error('No encontramos esa compra.');
+
+  const updateData = { ...data };
+  delete updateData.id;
+  delete updateData.business_id;
+
+  const outboxOp = buildOutboxOp('UPDATE_REPLENISHMENT', { id: replenishmentId, ...updateData }, existing.business_id);
+  await db.transaction('rw', db.replenishments, db.pending_operations, async () => {
+    await db.replenishments.update(replenishmentId, updateData);
+    await db.pending_operations.add(outboxOp);
+  });
+  notifyReplenishmentChanges(existing.business_id);
+  await refreshOutboxState(existing.business_id);
+
+  return { ...existing, ...updateData };
+}
+
 // Corrige la fecha de vencimiento de un lote de compra ya registrado —
 // usado desde Inventario cuando el vencimiento que se cargó al comprar (o
 // importar del catálogo) estaba mal y hay que arreglarlo sin tener que
