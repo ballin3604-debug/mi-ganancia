@@ -194,11 +194,10 @@ describe('Inventario', () => {
     fireEvent.change(screen.getByLabelText('Precio por chipa fría'), { target: { value: '90' } });
     fireEvent.change(screen.getByLabelText('Precio por chipa caliente'), { target: { value: '85' } });
     fireEvent.change(screen.getByLabelText('Costo por caja'), { target: { value: '144' } });
-    fireEvent.change(screen.getByLabelText('Unidades por caja'), { target: { value: '24' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Unidades por caja' }), { target: { value: '24' } });
     fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '24' } });
 
-    expect(screen.getByLabelText('Unidades por chipa fría').value).toBe('12');
-    expect(screen.getByLabelText('Unidades por chipa caliente').value).toBe('12');
+    expect(screen.getByRole('spinbutton', { name: 'Unidades por chipa de venta' }).value).toBe('12');
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar producto' }));
     await waitFor(() => expect(addProduct).toHaveBeenCalled());
@@ -231,7 +230,7 @@ describe('Inventario', () => {
     fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Paceña' } });
     fireEvent.change(screen.getByLabelText('Precio de venta por unidad'), { target: { value: '8' } });
     fireEvent.change(screen.getByLabelText('Precio por chipa fría'), { target: { value: '42' } });
-    fireEvent.change(screen.getByLabelText('Unidades por chipa fría'), { target: { value: '6' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Unidades por chipa de venta' }), { target: { value: '6' } });
     fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '12' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar producto' }));
@@ -271,7 +270,7 @@ describe('Inventario', () => {
 
     expect(screen.getByLabelText('Precio de venta por unidad').value).toBe('7');
     expect(screen.getByLabelText('Costo por caja').value).toBe('120');
-    expect(screen.getByLabelText('Unidades por caja').value).toBe('24');
+    expect(screen.getByRole('spinbutton', { name: 'Unidades por caja' }).value).toBe('24');
     expect(screen.getByLabelText('Precio por chipa fría')).toBeTruthy();
     expect(screen.getByLabelText('Precio por chipa caliente')).toBeTruthy();
     expect(screen.getByLabelText('Precio por caja caliente')).toBeTruthy();
@@ -386,7 +385,7 @@ describe('Inventario', () => {
     expect(screen.getByLabelText('Precio por caja fría')).toBeTruthy();
     expect(screen.queryByLabelText('Precio por chipa')).toBeNull();
     expect(screen.getByLabelText('Costo por caja')).toBeTruthy();
-    expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
+    expect(screen.getByRole('spinbutton', { name: 'Unidades por caja' })).toBeTruthy();
   });
 
   it('licorería: prellena el costo por caja en bolivianos enteros', async () => {
@@ -426,7 +425,7 @@ describe('Inventario', () => {
     expect(costField.value).toBe('146');
     fireEvent.change(costField, { target: { value: '145.92' } });
     expect(costField.value).toBe('146');
-    expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
+    expect(screen.getByRole('spinbutton', { name: 'Unidades por caja' })).toBeTruthy();
   });
 
   it('licorería: avisa vencimientos dentro de 3 meses', async () => {

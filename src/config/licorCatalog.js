@@ -28,10 +28,10 @@ export const LICOR_CATALOG = {
     emoji: '🍺',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'chipaFria', name: 'Chipa fría', factor: 12 },
-      { key: 'chipaCaliente', name: 'Chipa caliente', factor: 12 },
-      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24 },
-      { key: 'cajaFria', name: 'Caja fría', factor: 24 },
+      { key: 'chipaFria', name: 'Chipa fría', factor: 12, factorGroup: 'chipa' },
+      { key: 'chipaCaliente', name: 'Chipa caliente', factor: 12, factorGroup: 'chipa' },
+      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24, factorGroup: 'caja' },
+      { key: 'cajaFria', name: 'Caja fría', factor: 24, factorGroup: 'caja' },
     ],
     purchase: { unit: 'caja', label: 'Caja', askFactor: true, defaultFactor: 24 },
   },
@@ -39,8 +39,8 @@ export const LICOR_CATALOG = {
     emoji: '🍷',
     sell: [
       UNIT_PRESENTATION,
-      { key: 'cajaCaliente', name: 'Caja caliente', factor: '' },
-      { key: 'cajaFria', name: 'Caja fría', factor: '' },
+      { key: 'cajaCaliente', name: 'Caja caliente', factor: '', factorGroup: 'caja' },
+      { key: 'cajaFria', name: 'Caja fría', factor: '', factorGroup: 'caja' },
     ],
     purchase: { unit: 'caja', label: 'Caja', factorFrom: ['cajaFria', 'cajaCaliente'] },
   },
@@ -224,7 +224,13 @@ export function buildLicorPresentations(form, extraPresentations = []) {
     if (preset.key === 'unidad') continue;
     const price = Number(prices[preset.key] || 0);
     if (!Number.isFinite(price) || price <= 0) continue;
-    const factor = Number(factors[preset.key] || preset.factor || 0);
+    const groupMembers = preset.factorGroup
+      ? config.sell.filter((p) => p.factorGroup === preset.factorGroup)
+      : [preset];
+    const groupFactor = groupMembers
+      .map((member) => Number(factors[member.key] || 0))
+      .find((value) => Number.isFinite(value) && value > 1);
+    const factor = Number(groupFactor || factors[preset.key] || preset.factor || 0);
     if (!Number.isFinite(factor) || factor <= 1) {
       throw new Error(`Indicá cuántas unidades trae ${preset.name}.`);
     }

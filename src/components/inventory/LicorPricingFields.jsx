@@ -121,9 +121,27 @@ export function LicorPricingFields({ form, setField, category }) {
           </div>
 
           {extras.map((preset) => {
-            const factor = Number(factors[preset.key] || preset.factor || 0);
+            const group = preset.factorGroup || null;
+            const groupMembers = group ? extras.filter((p) => p.factorGroup === group) : [preset];
+            const isFirstInGroup = !group || groupMembers[0]?.key === preset.key;
+            const groupLabel = group === 'chipa' ? 'chipa' : group === 'caja' ? 'caja' : preset.name.toLowerCase();
+            const groupFactorValue = group
+              ? (groupMembers.map((member) => factors[member.key]).find((value) => value !== '' && value != null) ?? '')
+              : (factors[preset.key] ?? '');
+            const factor = Number(groupFactorValue || preset.factor || 0);
             const price = Number(prices[preset.key] || 0);
             const perUnit = factor > 1 && price > 0 ? price / factor : 0;
+
+            function setGroupFactor(value) {
+              if (!group) {
+                setFactor(preset.key, value);
+                return;
+              }
+              const next = { ...factors };
+              groupMembers.forEach((member) => { next[member.key] = value; });
+              setField('licorFactors', next);
+            }
+
             return (
               <div
                 key={preset.key}
@@ -136,13 +154,19 @@ export function LicorPricingFields({ form, setField, category }) {
                   onChange={(value) => setPrice(preset.key, value)}
                 />
                 <div className="mt-2">
-                  <UnitsField
-                    label={`Unidades por ${preset.name.toLowerCase()}`}
-                    ariaLabel={`Unidades por ${preset.name.toLowerCase()}`}
-                    value={factors[preset.key] ?? ''}
-                    onChange={(value) => setFactor(preset.key, value)}
-                    placeholder={preset.factor ? String(preset.factor) : 'Ej: 6'}
-                  />
+                  {isFirstInGroup ? (
+                    <UnitsField
+                      label={`Unidades por ${groupLabel}`}
+                      ariaLabel={group ? `Unidades por ${groupLabel} de venta` : `Unidades por ${groupLabel}`}
+                      value={groupFactorValue}
+                      onChange={setGroupFactor}
+                      placeholder={preset.factor ? String(preset.factor) : 'Ej: 6'}
+                    />
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 py-2 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                      Misma cantidad que {groupLabel}: {groupFactorValue || preset.factor || '—'} und.
+                    </p>
+                  )}
                 </div>
                 {perUnit > 0 && (
                   <p className="mt-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
