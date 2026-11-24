@@ -1048,12 +1048,17 @@ export default function Sales() {
     [cashierRows],
   );
 
-  // Auditoría: todos los tickets, sin filtros (el cajero solo ve los suyos).
+  // Auditoría: tickets por período (el cajero solo ve los suyos).
   const auditTickets = useMemo(() => {
     const list = (!isOwner && user?.uid
       ? salesList.filter((s) => (s.createdBy || s.created_by) === user.uid)
       : salesList.slice()
-    ).filter((s) => s.status !== 'cancelled').sort((a, b) => {
+    ).filter((s) => {
+      if (s.status === 'cancelled') return false;
+      const d = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+      if (!d || Number.isNaN(d.getTime())) return false;
+      return d >= reportStart && d <= reportEnd;
+    }).sort((a, b) => {
       const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
       const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
       return db - da;
@@ -1074,9 +1079,10 @@ export default function Sales() {
         dateLabel: `${day} ${month} ${year} · ${time}`.trim(),
         total: Number(s.total || 0),
         sync_status: s.sync_status || 'confirmed',
+        paymentMethod: s.paymentMethod || 'cash',
       };
     });
-  }, [salesList, saleNumberById, isOwner, user?.uid]);
+  }, [salesList, saleNumberById, isOwner, user?.uid, reportStart, reportEnd]);
 
   const METHOD_META = {
     cash: { label: 'Efectivo', icon: 'cash', pill: 'bg-[var(--mg-success-bg)] text-[var(--mg-success-text)] border-[var(--mg-success-border)]' },
@@ -2522,10 +2528,20 @@ export default function Sales() {
               )}
             </div>
           ) : activeTab === 'auditoria' ? (
-            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
+            <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6 space-y-4">
+              <ReportHeader
+                icon={<AppIcon name="recibo" size={21} />}
+                title="Auditoría de ventas"
+                subtitle={`${auditTickets.length} ${auditTickets.length === 1 ? 'ticket' : 'tickets'} · Total ${formatBs(auditTickets.reduce((sum, t) => sum + t.total, 0))}`}
+                startDate={reportStartDate}
+                endDate={reportEndDate}
+                onStartDateChange={setReportStartDate}
+                onEndDateChange={setReportEndDate}
+              />
               <AuditSalesList
                 sales={auditTickets}
                 businessName={business?.name || ''}
+                showHeader={false}
                 onSelectSale={(t) => navigate(`/recibo/${t.raw.id}`, {
                   state: { saleNumber: saleNumberById[t.raw.id] },
                 })}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { formatBs } from '../utils/currency';
+import { AppIcon } from './icons';
 import { CashBillIcon } from './CashBillIcon';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import EmptyState from './ui/EmptyState';
@@ -7,7 +8,7 @@ import EmptyState from './ui/EmptyState';
 // Auditoría de ventas: lista completa de tickets agrupada por cajero,
 // sin filtros. A la izquierda N° de ticket + fecha y hora,
 // a la derecha el monto con icono de billete.
-export function AuditSalesList({ sales, businessName = '', onSelectSale }) {
+export function AuditSalesList({ sales, businessName = '', onSelectSale, showHeader = true }) {
   const groups = useMemo(() => {
     const map = new Map();
     (sales || []).forEach((s) => {
@@ -28,20 +29,22 @@ export function AuditSalesList({ sales, businessName = '', onSelectSale }) {
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Encabezado minimalista */}
-      <div className="px-1 mb-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <h1 className="text-sm font-black tracking-tight text-[var(--mg-text-primary)] uppercase">
-            Auditoría de ventas
-          </h1>
-          <p className="text-sm font-black text-[var(--mg-success-text)] tabular-nums shrink-0">
-            {formatBs(grandTotal)}
+      {showHeader && (
+        <div className="px-1 mb-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h1 className="text-sm font-black tracking-tight text-[var(--mg-text-primary)] uppercase">
+              Auditoría de ventas
+            </h1>
+            <p className="text-sm font-black text-[var(--mg-success-text)] tabular-nums shrink-0">
+              {formatBs(grandTotal)}
+            </p>
+          </div>
+          <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-0.5">
+            {(sales || []).length} {(sales || []).length === 1 ? 'ticket' : 'tickets'}
+            {businessName ? ` · ${businessName}` : ''}
           </p>
         </div>
-        <p className="text-[11px] font-semibold text-[var(--mg-text-muted)] mt-0.5">
-          {(sales || []).length} {(sales || []).length === 1 ? 'ticket' : 'tickets'}
-          {businessName ? ` · ${businessName}` : ''}
-        </p>
-      </div>
+      )}
 
       {(sales || []).length === 0 ? (
         <EmptyState
@@ -95,6 +98,15 @@ export function AuditSalesList({ sales, businessName = '', onSelectSale }) {
                         {formatBs(sale.total)}
                       </span>
                       <CashBillIcon />
+                      {sale.paymentMethod === 'qr' && (
+                        <span
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]"
+                          title="Pago por QR"
+                          aria-label="Pago por QR"
+                        >
+                          <AppIcon name="qr" size={14} />
+                        </span>
+                      )}
                       <span className="text-lg font-black text-[var(--mg-text-faint)]">›</span>
                     </div>
                   </div>
