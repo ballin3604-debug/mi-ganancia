@@ -5,10 +5,17 @@ import {
   getLicorPurchaseLabel,
 } from '../../config/licorCatalog';
 
+function formatBs(value) {
+  return Number(value || 0).toLocaleString('es-BO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function NumberField({ label, value, onChange, placeholder = '0.00', className = '', ariaLabel, integer = false }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
+      <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-wider leading-tight text-[var(--mg-text-muted)]">
         {label}
       </label>
       <input
@@ -31,8 +38,30 @@ function NumberField({ label, value, onChange, placeholder = '0.00', className =
   );
 }
 
-// Precios de venta/compra específicos de licorería. Las presentaciones y la
-// unidad de compra salen del catálogo fijo de la categoría elegida.
+function UnitsField({ label, ariaLabel, value, onChange, placeholder }) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider leading-tight text-[var(--mg-text-muted)]">
+        {label}
+      </label>
+      <input
+        type="number"
+        aria-label={ariaLabel || label}
+        value={value}
+        onChange={(e) => onChange(clampIntegerInput(e.target.value, { min: 0, max: 9999 }))}
+        onKeyDown={(e) => blockInvalidNumberKeys(e, { allowDecimal: false })}
+        placeholder={placeholder}
+        min="0"
+        max="9999"
+        step="1"
+        className="mg-input text-xs font-black"
+      />
+    </div>
+  );
+}
+
+// Precios de venta/compra específicos de licorería. La categoría define qué
+// presentaciones se venden y en qué empaque se compra.
 export function LicorPricingFields({ form, setField, category }) {
   const config = getLicorCategoryConfig(category);
   const prices = form.licorPrices || {};
@@ -43,6 +72,10 @@ export function LicorPricingFields({ form, setField, category }) {
     : config.purchase.unit;
   const purchaseLabel = getLicorPurchaseLabel(category, purchaseUnit);
   const purchaseFactor = getLicorPurchaseFactorFromForm(form, category);
+  const purchaseCost = Number(form.supplierPrice || 0);
+  const saleUnitPrice = Number(form.price || 0);
+  const unitCost = purchaseFactor > 1 && purchaseCost > 0 ? purchaseCost / purchaseFactor : 0;
+  const margin = unitCost > 0 && saleUnitPrice > unitCost ? saleUnitPrice - unitCost : 0;
 
   function setPrice(key, value) {
     setField('licorPrices', { ...prices, [key]: value });
@@ -52,66 +85,77 @@ export function LicorPricingFields({ form, setField, category }) {
     setField('licorFactors', { ...factors, [key]: value });
   }
 
+  const purchaseHelp = !form.licorPurchaseFactor && purchaseFactor > 1
+    ? `Tomamos las ${purchaseFactor} unidades que cargaste arriba. Podés cambiarlo acá.`
+    : purchaseFactor > 1
+      ? `Se usan ${purchaseFactor} unidades por ${purchaseLabel.toLowerCase()}.`
+      : `Indicá cuántas unidades trae la ${purchaseLabel.toLowerCase()}.`;
+  const extraNames = extras.map((preset) => preset.name.toLowerCase());
+  const extrasText = extraNames.length > 1
+    ? `${extraNames.slice(0, -1).join(', ')} o ${extraNames[extraNames.length - 1]}`
+    : extraNames[0];
+
   return (
     <div className="space-y-3">
       <div className="space-y-3 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-3.5">
         <div>
           <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Precios de venta</h3>
           <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-            Cargá solo las presentaciones que vendés. El stock siempre se cuenta en unidades sueltas.
+            {extras.length > 0
+              ? `Primero el precio de la unidad suelta. Al lado, lo que cobrás por ${extrasText}.`
+              : 'Precio de la unidad suelta.'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <NumberField
-            label="Unidad (Bs) *"
-            ariaLabel="Precio Unidad"
-            value={form.price}
-            onChange={(value) => setField('price', value)}
-            placeholder="0.00"
-          />
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className={`rounded-xl border-2 border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg-soft)] p-2.5 ${extras.length === 0 ? 'col-span-2' : ''}`}>
+            <NumberField
+              label="Precio de venta por unidad *"
+              ariaLabel="Precio de venta por unidad"
+              value={form.price}
+              onChange={(value) => setField('price', value)}
+            />
+            <p className="mt-1.5 text-[10px] font-bold text-[var(--mg-accent-text)]">
+              Unidad suelta
+            </p>
+          </div>
 
-          {extras.map((preset) => (
-            <div key={preset.key}>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-                  {preset.name} (Bs)
-                </label>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-[var(--mg-text-muted)]">
-                  x
-                  <input
-                    type="number"
-                    aria-label={`Unidades por ${preset.name}`}
+          {extras.map((preset) => {
+            const factor = Number(factors[preset.key] || preset.factor || 0);
+            const price = Number(prices[preset.key] || 0);
+            const perUnit = factor > 1 && price > 0 ? price / factor : 0;
+            return (
+              <div
+                key={preset.key}
+                className="rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-2.5"
+              >
+                <NumberField
+                  label={`Precio por ${preset.name.toLowerCase()} (Bs)`}
+                  ariaLabel={`Precio por ${preset.name.toLowerCase()}`}
+                  value={prices[preset.key] ?? ''}
+                  onChange={(value) => setPrice(preset.key, value)}
+                />
+                <div className="mt-2">
+                  <UnitsField
+                    label={`Unidades por ${preset.name.toLowerCase()}`}
+                    ariaLabel={`Unidades por ${preset.name.toLowerCase()}`}
                     value={factors[preset.key] ?? ''}
-                    onChange={(e) => setFactor(preset.key, clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
-                    onKeyDown={blockInvalidNumberKeys}
-                    placeholder={preset.factor ? String(preset.factor) : '6'}
-                    min="0"
-                    max="9999"
-                    step="1"
-                    className="w-14 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] px-1.5 py-0.5 text-center text-[10px] font-black text-[var(--mg-text-primary)]"
+                    onChange={(value) => setFactor(preset.key, value)}
+                    placeholder={preset.factor ? String(preset.factor) : 'Ej: 6'}
                   />
-                  und.
-                </label>
+                </div>
+                {perUnit > 0 && (
+                  <p className="mt-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
+                    Bs {formatBs(perUnit)} por unidad
+                  </p>
+                )}
               </div>
-              <input
-                type="number"
-                aria-label={`Precio ${preset.name}`}
-                value={prices[preset.key] ?? ''}
-                onChange={(e) => setPrice(preset.key, clampNumberInput(e.target.value, { max: 999999 }))}
-                onKeyDown={blockInvalidNumberKeys}
-                placeholder="0.00"
-                min="0"
-                max="999999"
-                step="0.01"
-                className="mg-input text-sm font-black text-[var(--mg-accent-text)]"
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
-          Dejá en blanco lo que no vendas. La unidad es obligatoria.
+          Dejá en blanco lo que no vendas. El precio de la unidad es obligatorio.
         </p>
       </div>
 
@@ -119,7 +163,7 @@ export function LicorPricingFields({ form, setField, category }) {
         <div>
           <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Precio de compra</h3>
           <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-muted)]">
-            Se compra por {purchaseLabel.toLowerCase()}. Guardamos el costo por unidad para calcular la ganancia.
+            Comprás por {purchaseLabel.toLowerCase()}. Anotá cuánto pagás y cuántas unidades trae.
           </p>
         </div>
 
@@ -143,7 +187,7 @@ export function LicorPricingFields({ form, setField, category }) {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <NumberField
             label={`Costo por ${purchaseLabel.toLowerCase()} (Bs)`}
             ariaLabel={`Costo por ${purchaseLabel.toLowerCase()}`}
@@ -152,29 +196,43 @@ export function LicorPricingFields({ form, setField, category }) {
             placeholder="0"
             integer
           />
-          <div>
-            <label className="mb-1 block text-xs font-extrabold uppercase tracking-wider text-[var(--mg-text-muted)]">
-              Unidades por {purchaseLabel.toLowerCase()}
-            </label>
-            <input
-              type="number"
-              aria-label={`Unidades por ${purchaseLabel.toLowerCase()}`}
-              value={form.licorPurchaseFactor ?? ''}
-              onChange={(e) => setField('licorPurchaseFactor', clampNumberInput(e.target.value, { min: 0, max: 9999 }))}
-              onKeyDown={blockInvalidNumberKeys}
-              placeholder={purchaseFactor > 1 ? String(purchaseFactor) : 'Ej: 10'}
-              min="0"
-              max="9999"
-              step="1"
-              className="mg-input text-sm font-black"
-            />
-          </div>
+          <UnitsField
+            label={`Unidades por ${purchaseLabel.toLowerCase()}`}
+            ariaLabel={`Unidades por ${purchaseLabel.toLowerCase()}`}
+            value={form.licorPurchaseFactor ?? ''}
+            onChange={(value) => setField('licorPurchaseFactor', value)}
+            placeholder={purchaseFactor > 1 ? String(purchaseFactor) : 'Ej: 10'}
+          />
+        </div>
+
+        <div className="rounded-xl border border-[var(--mg-gold-border)] bg-[var(--mg-bg-surface)] px-3 py-2">
+          {unitCost > 0 ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-[var(--mg-text-secondary)]">Costo por unidad</span>
+                <span className="text-sm font-black text-[var(--mg-gold-text)]">Bs {formatBs(unitCost)}</span>
+              </div>
+              {margin > 0 && (
+                <div className="mt-1 flex items-center justify-between gap-2 border-t border-[var(--mg-border)] pt-1">
+                  <span className="text-[10px] font-semibold text-[var(--mg-text-muted)]">Ganancia por unidad</span>
+                  <span className="text-xs font-black text-[var(--mg-accent-text)]">Bs {formatBs(margin)}</span>
+                </div>
+              )}
+              {saleUnitPrice > 0 && unitCost > saleUnitPrice && (
+                <p className="mt-1 border-t border-[var(--mg-border)] pt-1 text-[10px] font-bold text-[var(--mg-danger)]">
+                  Ojo: el costo por unidad es mayor que el precio de venta.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
+              Completá el costo y las unidades para ver cuánto te sale cada unidad.
+            </p>
+          )}
         </div>
 
         <p className="text-[11px] font-semibold text-[var(--mg-text-muted)]">
-          {purchaseFactor > 1
-            ? `Se usan ${purchaseFactor} unidades por ${purchaseLabel.toLowerCase()}. Cambialo si tu proveedor usa otro empaque.`
-            : `Indicá cuántas unidades trae la ${purchaseLabel.toLowerCase()}.`}
+          {purchaseHelp}
         </p>
       </div>
     </div>

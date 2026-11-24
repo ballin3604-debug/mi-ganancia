@@ -190,11 +190,14 @@ describe('Inventario', () => {
     expect(screen.getByRole('button', { name: /Vinos y tragos/ })).toBeTruthy();
 
     fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Amstel' } });
-    fireEvent.change(screen.getByLabelText('Precio Unidad'), { target: { value: '8' } });
-    fireEvent.change(screen.getByLabelText('Precio Chipa'), { target: { value: '90' } });
-    fireEvent.change(screen.getByLabelText('Precio Caja fría'), { target: { value: '170' } });
+    fireEvent.change(screen.getByLabelText('Precio de venta por unidad'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Precio por chipa'), { target: { value: '90' } });
+    fireEvent.change(screen.getByLabelText('Precio por caja fría'), { target: { value: '170' } });
     fireEvent.change(screen.getByLabelText('Costo por caja'), { target: { value: '144' } });
     fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '24' } });
+
+    expect(screen.getByLabelText('Unidades por chipa').value).toBe('12');
+    expect(screen.getByLabelText('Unidades por caja fría').value).toBe('24');
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar producto' }));
     await waitFor(() => expect(addProduct).toHaveBeenCalled());
@@ -210,6 +213,34 @@ describe('Inventario', () => {
         { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
         { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 90, isBase: false },
         { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 170, isBase: false },
+      ],
+    }));
+  });
+
+  it('licorería: guarda las unidades cargadas en el subcampo de chipa', async () => {
+    state.tipoNegocio = 'licorera';
+    state.sectorConfig = {
+      defaultUnit: 'Unidad',
+      unitLabels: ['Unidad', 'Chipa', 'Caja'],
+      features: { dishes: false, stock: true, configurablePresentations: true },
+    };
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
+
+    fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Paceña' } });
+    fireEvent.change(screen.getByLabelText('Precio de venta por unidad'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Precio por chipa'), { target: { value: '42' } });
+    fireEvent.change(screen.getByLabelText('Unidades por chipa'), { target: { value: '6' } });
+    fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '12' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar producto' }));
+    await waitFor(() => expect(addProduct).toHaveBeenCalled());
+    expect(addProduct).toHaveBeenCalledWith('b1', expect.objectContaining({
+      name: 'Paceña',
+      price: 8,
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+        { id: 'licor-chipa', name: 'Chipa', factor: 6, price: 42, isBase: false },
       ],
     }));
   });
@@ -254,10 +285,10 @@ describe('Inventario', () => {
       .find((button) => button.hasAttribute('aria-pressed') && !button.closest('[role="group"]'));
     fireEvent.click(customButton);
 
-    expect(screen.getByLabelText('Precio Unidad')).toBeTruthy();
-    expect(screen.getByLabelText('Precio Caja caliente')).toBeTruthy();
-    expect(screen.getByLabelText('Precio Caja fría')).toBeTruthy();
-    expect(screen.queryByLabelText('Precio Chipa')).toBeNull();
+    expect(screen.getByLabelText('Precio de venta por unidad')).toBeTruthy();
+    expect(screen.getByLabelText('Precio por caja caliente')).toBeTruthy();
+    expect(screen.getByLabelText('Precio por caja fría')).toBeTruthy();
+    expect(screen.queryByLabelText('Precio por chipa')).toBeNull();
     expect(screen.getByLabelText('Costo por caja')).toBeTruthy();
     expect(screen.getByLabelText('Unidades por caja')).toBeTruthy();
   });
