@@ -30,6 +30,8 @@ export const LICOR_CATALOG = {
       UNIT_PRESENTATION,
       { key: 'chipaFria', name: 'Chipa fría', factor: 12 },
       { key: 'chipaCaliente', name: 'Chipa caliente', factor: 12 },
+      { key: 'cajaCaliente', name: 'Caja caliente', factor: 24 },
+      { key: 'cajaFria', name: 'Caja fría', factor: 24 },
     ],
     purchase: { unit: 'caja', label: 'Caja', askFactor: true, defaultFactor: 24 },
   },

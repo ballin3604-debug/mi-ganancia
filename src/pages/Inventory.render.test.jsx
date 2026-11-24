@@ -274,7 +274,8 @@ describe('Inventario', () => {
     expect(screen.getByLabelText('Unidades por caja').value).toBe('24');
     expect(screen.getByLabelText('Precio por chipa fría')).toBeTruthy();
     expect(screen.getByLabelText('Precio por chipa caliente')).toBeTruthy();
-    expect(screen.queryByLabelText('Precio por caja fría')).toBeNull();
+    expect(screen.getByLabelText('Precio por caja caliente')).toBeTruthy();
+    expect(screen.getByLabelText('Precio por caja fría')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Precio por chipa fría'), { target: { value: '60' } });
     fireEvent.change(screen.getByLabelText('Precio por chipa caliente'), { target: { value: '58' } });
