@@ -102,6 +102,14 @@ export function isLicorCategory(category) {
   return LICOR_CATEGORIES.includes(category);
 }
 
+// Categorías que, incluso en una tienda, se venden por unidad/chipa/caja y
+// necesitan el formulario de precios de licorería.
+const LICOR_PRICING_PATTERN = /\b(cervezas?|vinos?|licores?|tragos?|whiskys?|whiskeys?|vodkas?|tequilas?|destilados?|singanis?|aguardientes?|champan|champana|rones)\b/i;
+
+export function isLicorPricingCategory(category) {
+  return LICOR_PRICING_PATTERN.test(String(category || '').trim());
+}
+
 export function getLicorCategoryConfig(category) {
   if (isLicorCategory(category)) return LICOR_CATALOG[category];
   const normalized = normalizeLicorCategory(category);
@@ -174,6 +182,21 @@ export function getLicorPurchaseFactorFromProduct(product, category) {
   if (matchingSale) return Number(matchingSale.factor);
 
   return 0;
+}
+
+// Empaque de compra sugerido por la categoría (ej: caja de 24 en cervezas).
+// Sirve para conservar el costo por unidad de productos viejos que no tenían
+// presentaciones ni packageSize guardado.
+export function getLicorDefaultPurchaseFactor(category) {
+  const config = getLicorCategoryConfig(category);
+  for (const key of config.purchase.factorFrom || []) {
+    const preset = config.sell.find((item) => item.key === key);
+    const factor = Number(preset?.factor || 0);
+    if (factor > 1) return factor;
+  }
+  // Vinos, whiskies y similares suelen venir en cajas de 6. Es solo el valor
+  // inicial para no perder el costo por unidad de productos viejos.
+  return isLicorPricingCategory(category) ? 6 : 0;
 }
 
 export function buildLicorPresentations(form, extraPresentations = []) {

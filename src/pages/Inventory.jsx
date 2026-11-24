@@ -45,7 +45,10 @@ import {
   LICOR_CATEGORIES,
   buildLicorPresentations,
   getLicorCategoryConfig,
+  getLicorDefaultPurchaseFactor,
+  getLicorPurchaseFactorFromForm,
   getLicorPurchaseFactorFromProduct,
+  isLicorPricingCategory,
 } from '../config/licorCatalog';
 import { isLicorSector } from '../config/sectorConfig';
 
@@ -141,6 +144,44 @@ function changeLicorCategory(form, category) {
   return licorFormDefaults(category, form);
 }
 
+// En una tienda, una categoría de cervezas o licores usa el mismo formulario
+// de presentaciones que una licorería, sin cambiar el rubro del negocio.
+function changeTiendaCategory(form, category, { supplierIsPerUnit = false } = {}) {
+  const currentUses = isLicorPricingCategory(form?.category);
+  const nextUses = isLicorPricingCategory(category);
+
+  if (!nextUses) {
+    if (!currentUses) return { ...form, category };
+    // Al volver al formulario genérico, el costo vuelve a ser por unidad.
+    const factor = getLicorPurchaseFactorFromForm(form, form.category);
+    const purchaseCost = Number(form.supplierPrice || 0);
+    return {
+      ...form,
+      category,
+      supplierPrice: factor > 1 && purchaseCost > 0
+        ? String(Math.round((purchaseCost / factor) * 1e6) / 1e6)
+        : form.supplierPrice,
+      licorPrices: {},
+      licorFactors: {},
+      licorPurchaseUnit: 'caja',
+      licorPurchaseFactor: '',
+      licorExtraPresentations: [],
+    };
+  }
+
+  if (currentUses && getLicorCategoryConfig(form?.category) === getLicorCategoryConfig(category)) {
+    return { ...form, category };
+  }
+
+  const next = licorFormDefaults(category, form);
+  if (supplierIsPerUnit) {
+    const factor = getLicorPurchaseFactorFromForm(next, category);
+    const unitCost = Number(form.supplierPrice || 0);
+    if (factor > 1 && unitCost > 0) next.supplierPrice = String(Math.round(unitCost * factor));
+  }
+  return next;
+}
+
 function readLicorProductForm(product) {
   const category = String(product.category || '').trim() || LICOR_CATEGORIES[0];
   const config = getLicorCategoryConfig(category);
@@ -180,7 +221,8 @@ function readLicorProductForm(product) {
   }
 
   const purchaseOnly = presentations.find((presentation) => presentation?.purchaseOnly);
-  const purchaseFactor = getLicorPurchaseFactorFromProduct(product, category);
+  const purchaseFactor = getLicorPurchaseFactorFromProduct(product, category)
+    || getLicorDefaultPurchaseFactor(category);
   const purchaseUnit = config.purchase.askUnit
     ? (String(purchaseOnly?.name || '').toLowerCase().startsWith('paquete') ? 'paquete' : 'caja')
     : config.purchase.unit;
@@ -315,6 +357,9 @@ export default function Inventory() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingProductId, setEditingProductId] = useState(() => loadProductDraft()?.editingId || null);
   const [form, setForm] = useState(() => loadProductDraft()?.form || EMPTY_FORM);
+  // El formulario de precios por presentación se usa en licorerías y también
+  // en una tienda cuando el producto está en una categoría de cervezas/licores.
+  const usesLicorPricing = isLicoreria || (!form.isDish && isLicorPricingCategory(form.category));
   const [expiryDate, setExpiryDate] = useState(() => loadProductDraft()?.expiryDate || '');
   const [expiryReplenishmentId, setExpiryReplenishmentId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -325,7 +370,7 @@ export default function Inventory() {
   }, [showForm, sectorConfig?.features?.configurablePresentations, sectorConfig?.defaultUnit]);
 
   useEffect(() => {
-    if (!showForm || !isLicoreria) return;
+    if (!showForm || !usesLicorPricing) return;
     setForm((current) => {
       const category = String(current.category || '').trim() || LICOR_CATEGORIES[0];
       const config = getLicorCategoryConfig(category);
@@ -336,7 +381,7 @@ export default function Inventory() {
       if (current.category && !needsShape) return current;
       return licorFormDefaults(category, current);
     });
-  }, [showForm, isLicoreria]);
+  }, [showForm, usesLicorPricing, form.category]);
 
   // Category Manager modal state
   const [showCatManager, setShowCatManager] = useState(() => searchParams.get('action') === 'categorias');
@@ -452,6 +497,12 @@ export default function Inventory() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function handleCategoryChange(category) {
+    setForm((current) => (isLicoreria
+      ? changeLicorCategory(current, category)
+      : changeTiendaCategory(current, category, { supplierIsPerUnit: !!editingProductId })));
+  }
+
   function addPresentation() {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
@@ -536,15 +587,19 @@ export default function Inventory() {
     setStockMode('directo');
     setShowAdvanced(false);
     setCelebrate(false);
+    const useLicor = isLicoreria || (!prefill.isDish && isLicorPricingCategory(prefill.category));
     const nextForm = {
       ...EMPTY_FORM,
       ...prefill,
-      sellPack: isLicoreria ? false : !prefill.isDish,
+      sellPack: useLicor ? false : !prefill.isDish,
       packLabel: prefill.packLabel || 'Paquete',
       unitLabel: prefill.unitLabel || sectorConfig?.defaultUnit || 'Unidad',
     };
-    if (isLicoreria) {
-      Object.assign(nextForm, licorFormDefaults(prefill.category || LICOR_CATEGORIES[0], nextForm));
+    if (useLicor) {
+      Object.assign(nextForm, licorFormDefaults(
+        prefill.category || (isLicoreria ? LICOR_CATEGORIES[0] : nextForm.category),
+        nextForm
+      ));
     } else if (sectorConfig?.features?.configurablePresentations) {
       nextForm.unitLabel = nextForm.unitLabel || sectorConfig.defaultUnit || 'Unidad';
       nextForm.presentations = [{
@@ -621,7 +676,7 @@ export default function Inventory() {
           isBase: option.presId === 'unit',
         })),
     };
-    if (isLicoreria) {
+    if (isLicoreria || (!product.isDish && isLicorPricingCategory(product.category))) {
       Object.assign(nextForm, readLicorProductForm(product));
     }
     setForm(nextForm);
@@ -665,10 +720,11 @@ export default function Inventory() {
     if (e?.preventDefault) e.preventDefault();
     const editingId = editingProductId || editingProduct?.id || null;
     const productBeingEdited = editingProduct || (editingId ? products.find((p) => p.id === editingId) : null) || null;
-    const newPackageProduct = !isLicoreria && !editingId && !form.isDish;
+    const useLicorPricing = isLicoreria || (!form.isDish && isLicorPricingCategory(form.category));
+    const newPackageProduct = !useLicorPricing && !editingId && !form.isDish;
     const packageSize = Number(form.packageSize || 0);
     if (!form.name.trim()) return;
-    if (isLicoreria) {
+    if (useLicorPricing) {
       if (!form.price || Number(form.price) <= 0) {
         alert('Ingresá el precio de venta de la unidad.');
         return;
@@ -683,16 +739,16 @@ export default function Inventory() {
       return;
     }
     if (form.stock === '' && !newPackageProduct) return;
-    if (!isLicoreria && !form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
+    if (!useLicorPricing && !form.isDish && practical && stockMode === 'compra' && (!form.supplierPrice || Number(form.supplierPrice) <= 0)) {
       alert('Dinos cuánto te costó cada paquete: así tu ganancia se calcula sola.');
       return;
     }
-    if (!isLicoreria && !newPackageProduct && !form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
+    if (!useLicorPricing && !newPackageProduct && !form.isDish && !sectorConfig?.features?.configurablePresentations && form.sellPack && (Number(form.packageSize || 0) < 2 || !form.packPrice)) {
       alert('Para vender por paquete poné cuántas unidades trae y su precio.');
       return;
     }
     let data;
-    if (isLicoreria) {
+    if (useLicorPricing) {
       try {
         const built = buildLicorPresentations(form, form.licorExtraPresentations);
         const purchaseCostEntered = Math.round(Number(built.purchaseCost || 0));
@@ -770,13 +826,11 @@ export default function Inventory() {
     }
     delete data.sellPack;
     data.expiryDate = form.isDish ? null : (expiryDate || null);
-    if (isLicoreria) {
-      delete data.licorPrices;
-      delete data.licorFactors;
-      delete data.licorPurchaseUnit;
-      delete data.licorPurchaseFactor;
-      delete data.licorExtraPresentations;
-    }
+    delete data.licorPrices;
+    delete data.licorFactors;
+    delete data.licorPurchaseUnit;
+    delete data.licorPurchaseFactor;
+    delete data.licorExtraPresentations;
     const formStockVal = Number(data.stock || 0);
     const stockToSave = newPackageProduct ? formStockVal * packageSize : formStockVal;
     if (newPackageProduct) {
@@ -868,7 +922,7 @@ export default function Inventory() {
       if (showForm) {
         setForm((current) => (isLicoreria
           ? changeLicorCategory(current, name)
-          : { ...current, category: name }));
+          : changeTiendaCategory(current, name, { supplierIsPerUnit: !!editingProductId })));
       }
     } catch (err) {
       console.error('Error al agregar categoría:', err);
@@ -888,7 +942,7 @@ export default function Inventory() {
       if (showForm) {
         setForm((current) => (isLicoreria
           ? changeLicorCategory(current, name)
-          : { ...current, category: name }));
+          : changeTiendaCategory(current, name, { supplierIsPerUnit: !!editingProductId })));
       }
     } catch (err) {
       console.error('Error al agregar categoría sugerida:', err);
@@ -1082,7 +1136,7 @@ export default function Inventory() {
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount]
   );
-  const isNewPackageProduct = !editingProductId && !form.isDish;
+  const isNewPackageProduct = !editingProductId && !form.isDish && !usesLicorPricing;
 
   // Scroll infinito: al llegar al final de la grilla se cargan más
   useEffect(() => {
@@ -1654,7 +1708,7 @@ export default function Inventory() {
                 )}
 
                 {/* Categoría */}
-                {(!practical || showAdvanced || isLicoreria) && (
+                {(!practical || showAdvanced || usesLicorPricing) && (
                 <div>
                   {isLicoreria ? (
                     <>
@@ -1715,7 +1769,7 @@ export default function Inventory() {
                       </div>
                       <select
                         value={form.category}
-                        onChange={(e) => setField('category', e.target.value)}
+                        onChange={(e) => handleCategoryChange(e.target.value)}
                         className="mg-input text-xs font-bold"
                       >
                         {categories.map((cat) => (
@@ -1730,7 +1784,7 @@ export default function Inventory() {
                 )}
 
                 {/* Precios */}
-                {isLicoreria ? (
+                {usesLicorPricing ? (
                   <LicorPricingFields
                     form={form}
                     setField={setField}
@@ -1903,9 +1957,9 @@ export default function Inventory() {
                     </div>
                   </div>
                 ) : (
-                <div className={practical && !editingProductId && !isLicoreria ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
+                <div className={practical && !editingProductId && !usesLicorPricing ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
-                    {practical && !editingProductId && !isLicoreria ? (
+                    {practical && !editingProductId && !usesLicorPricing ? (
                       <div className="space-y-2.5">
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block">
                           ¿Cómo entra tu stock?
@@ -2026,7 +2080,7 @@ export default function Inventory() {
                     ) : (
                       <>
                         <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
-                          {isNewPackageProduct && !isLicoreria ? 'Paquetes actuales *' : 'Stock Actual *'}{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
+                          {isNewPackageProduct ? 'Paquetes actuales *' : 'Stock Actual *'}{hasBranchRows && targetBranchId ? ` · ${(branches.find((b) => b.id === targetBranchId)?.name) || ''}` : ''}
                         </label>
                         <input
                           type="number"
@@ -2044,12 +2098,12 @@ export default function Inventory() {
                     )}
                   </div>
 
-                  {(isLicoreria || !(practical && !editingProductId)) && (
+                  {(usesLicorPricing || !(practical && !editingProductId)) && (
                   <div>
                     <label className="text-xs font-extrabold text-[var(--mg-text-muted)] uppercase tracking-wider block mb-1">
                       Unidad de Medida
                     </label>
-                    {isLicoreria ? (
+                    {usesLicorPricing ? (
                       <div className="mg-input flex items-center text-xs font-bold text-[var(--mg-text-secondary)]">
                         Unidad (stock suelto)
                       </div>
@@ -2074,7 +2128,7 @@ export default function Inventory() {
                 </div>
                 )}
 
-                {!isLicoreria && (!practical || showAdvanced) && !form.isDish && (sectorConfig?.features?.configurablePresentations ? (
+                {!usesLicorPricing && (!practical || showAdvanced) && !form.isDish && (sectorConfig?.features?.configurablePresentations ? (
                   <div className="bg-[var(--mg-bg-elevated)] border border-[var(--mg-border)] rounded-2xl p-3.5 space-y-3">
                     <div>
                       <h3 className="text-xs font-extrabold text-[var(--mg-text-primary)]">Presentaciones de venta</h3>

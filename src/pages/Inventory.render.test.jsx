@@ -245,6 +245,100 @@ describe('Inventario', () => {
     }));
   });
 
+  it('tienda: edita una cerveza con precios por chipa y caja', async () => {
+    state.categories = ['Cervezas', 'Bebidas'];
+    state.products = [{
+      id: 'p-amstel',
+      name: 'AMSTEL GRANDE 310ml',
+      category: 'Cervezas',
+      price: 7,
+      stock: 192,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      supplierPrice: 5,
+      presentations: [],
+    }];
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('AMSTEL GRANDE 310ml').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('AMSTEL GRANDE 310ml')[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Producto' }));
+
+    expect(screen.getByLabelText('Precio de venta por unidad').value).toBe('7');
+    expect(screen.getByLabelText('Costo por caja').value).toBe('120');
+    expect(screen.getByLabelText('Unidades por caja').value).toBe('24');
+    expect(screen.getByLabelText('Precio por chipa')).toBeTruthy();
+    expect(screen.getByLabelText('Precio por caja caliente')).toBeTruthy();
+    expect(screen.getByLabelText('Precio por caja fría')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Precio por chipa'), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText('Precio por caja fría'), { target: { value: '150' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Cambios' }));
+
+    await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+    expect(updateProduct).toHaveBeenCalledWith('p-amstel', expect.objectContaining({
+      category: 'Cervezas',
+      price: 7,
+      supplierPrice: 5,
+      packageSize: '24',
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 7, isBase: true },
+        { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 60, isBase: false },
+        { id: 'licor-cajaFria', name: 'Caja fría', factor: 24, price: 150, isBase: false },
+      ],
+    }));
+  });
+
+  it('tienda: al elegir Cervezas muestra los precios por presentación', async () => {
+    state.categories = ['Otros', 'Bebidas', 'Cervezas'];
+    state.products = [{
+      id: 'p-agua',
+      name: 'Agua',
+      category: 'Bebidas',
+      price: 2,
+      stock: 10,
+      minStock: 5,
+      brand: '',
+      barcode: null,
+      isDish: false,
+      unit: 'Unidad',
+      unitLabel: 'Unidad',
+      presentations: [],
+    }];
+
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo Producto' }))[0]);
+
+    fireEvent.change(screen.getByDisplayValue('Otros'), { target: { value: 'Cervezas' } });
+
+    expect(screen.getByLabelText('Precio de venta por unidad')).toBeTruthy();
+    expect(screen.queryByText('Precio venta por paquete (Bs) *')).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText('Ej: Coca-Cola 2L'), { target: { value: 'Paceña' } });
+    fireEvent.change(screen.getByLabelText('Precio de venta por unidad'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Precio por chipa'), { target: { value: '42' } });
+    fireEvent.change(screen.getByText('Stock Actual *').parentElement.querySelector('input'), { target: { value: '12' } });
+
+    const submit = screen.getAllByRole('button', { name: 'Nuevo Producto' })
+      .find((button) => button.type === 'submit');
+    fireEvent.click(submit);
+    await waitFor(() => expect(addProduct).toHaveBeenCalled());
+    expect(addProduct).toHaveBeenCalledWith('b1', expect.objectContaining({
+      name: 'Paceña',
+      category: 'Cervezas',
+      price: 8,
+      stock: 12,
+      presentations: [
+        { id: 'licor-unidad', name: 'Unidad', factor: 1, price: 8, isBase: true },
+        { id: 'licor-chipa', name: 'Chipa', factor: 12, price: 42, isBase: false },
+      ],
+    }));
+  });
+
   it('muestra los paquetes disponibles calculados desde el stock', async () => {
     state.products = [{
       id: 'p-cuadro',
