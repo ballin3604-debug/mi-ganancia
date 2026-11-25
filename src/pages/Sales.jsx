@@ -937,6 +937,7 @@ export default function Sales() {
       const presLabel = item.presentation || '';
       return {
         rowKey: item.id,
+        saleId: s.id,
         createdAt: s.createdAt,
         saleNumber: saleNumberById[s.id],
         productName: presLabel ? `${item.productName} · ${presLabel}` : item.productName,
@@ -955,6 +956,9 @@ export default function Sales() {
   ), [orderFilteredSalesReport, itemsBySaleId, saleNumberById]);
 
   const [reportCashier, setReportCashier] = useState('Todos');
+  const [reportPaymentFilter, setReportPaymentFilter] = useState('Todos');
+  const [reportCategoryFilter, setReportCategoryFilter] = useState('Todas');
+  const [reportSort, setReportSort] = useState({ key: 'fecha', dir: 'desc' });
 
   function renderBranchPills() {
     if (branches.length <= 1) return null;
@@ -976,12 +980,49 @@ export default function Sales() {
     return [...set].sort((a, b) => a.localeCompare(b, 'es'));
   }, [orderFilteredSalesReport]);
 
+  const categoriesInReportRange = useMemo(() => {
+    const set = new Set();
+    salesReportRows.forEach((row) => set.add(row.category || 'Otros'));
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [salesReportRows]);
+
   function renderSalesReportFilters() {
     const branchSelector = renderBranchPills();
-    if (!branchSelector && !isOwner && !isRestaurantMode) return null;
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         {branchSelector}
+        <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
+          <AppIcon name="qr" size={14} color="var(--mg-accent-text)" />
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Pago</span>
+          <select
+            value={reportPaymentFilter}
+            onChange={(event) => setReportPaymentFilter(event.target.value)}
+            aria-label="Filtrar reporte por método de pago"
+            className="max-w-[160px] cursor-pointer truncate bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none"
+          >
+            <option value="Todos">Todos</option>
+            <option value="cash">Efectivo</option>
+            <option value="qr">QR</option>
+            <option value="mixto">Mixto</option>
+            <option value="fiado">Fiado</option>
+          </select>
+        </label>
+        <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
+          <AppIcon name="etiqueta" size={14} color="var(--mg-accent-text)" />
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Categoría</span>
+          <select
+            value={reportCategoryFilter}
+            onChange={(event) => setReportCategoryFilter(event.target.value)}
+            aria-label="Filtrar reporte por categoría"
+            className="max-w-[180px] cursor-pointer truncate bg-transparent text-xs font-black text-[var(--mg-text-primary)] focus:outline-none"
+          >
+            <option value="Todas">Todas</option>
+            {reportCategoryFilter !== 'Todas' && !categoriesInReportRange.includes(reportCategoryFilter) ? (
+              <option value={reportCategoryFilter}>{reportCategoryFilter}</option>
+            ) : null}
+            {categoriesInReportRange.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
         {isRestaurantMode ? (
           <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
             <AppIcon name="restaurante" size={14} color="var(--mg-accent-text)" />
@@ -1022,20 +1063,22 @@ export default function Sales() {
   }
 
   const isCancelledOrderReport = reportOrderFilter === 'cancelled';
-  const filteredCashierSales = useMemo(() => (
-    reportCashier === 'Todos'
-      ? orderFilteredSalesReport
-      : orderFilteredSalesReport.filter((sale) => (sale.seller_name || 'Sin nombre') === reportCashier)
-  ), [orderFilteredSalesReport, reportCashier]);
+  const filteredCashierSales = useMemo(() => {
+    const ids = new Set(cashierRows.map((row) => row.saleId).filter(Boolean));
+    return orderFilteredSalesReport.filter((sale) => ids.has(sale.id));
+  }, [cashierRows, orderFilteredSalesReport]);
   const filteredCashierCountHint = isCancelledOrderReport
     ? `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'pedido cancelado' : 'pedidos cancelados'}`
     : `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`;
 
   const cashierRows = useMemo(() => (
-    reportCashier === 'Todos'
-      ? salesReportRows
-      : salesReportRows.filter((row) => (row.sellerName || 'Sin nombre') === reportCashier)
-  ), [salesReportRows, reportCashier]);
+    salesReportRows.filter((row) => {
+      if (reportCashier !== 'Todos' && (row.sellerName || 'Sin nombre') !== reportCashier) return false;
+      if (reportPaymentFilter !== 'Todos' && row.paymentMethod !== reportPaymentFilter) return false;
+      if (reportCategoryFilter !== 'Todas' && (row.category || 'Otros') !== reportCategoryFilter) return false;
+      return true;
+    })
+  ), [salesReportRows, reportCashier, reportPaymentFilter, reportCategoryFilter]);
   const filteredCashierAmount = useMemo(
     () => cashierRows.reduce((sum, row) => sum + Number(row.subtotal || 0), 0),
     [cashierRows],
@@ -1103,50 +1146,61 @@ export default function Sales() {
   // Tabla de detalle del reporte de ventas.
   const detailColumns = [
     {
-      key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28',
+      key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28', sortable: true,
+      sortValue: (r) => { const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
       render: (r) => {
         const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
         return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleDateString('es-BO')}</span>;
       },
     },
     {
-      key: 'numeroVenta', label: 'N° Venta', align: 'center', width: 'w-24',
+      key: 'numeroVenta', label: 'N° Venta', align: 'center', width: 'w-24', sortable: true,
+      sortValue: (r) => Number(r.saleNumber || 0),
       render: (r) => <span className="font-mono text-xs font-bold whitespace-nowrap">{`#${String(r.saleNumber).padStart(4, '0')}`}</span>,
     },
     {
-      key: 'producto', label: 'Producto', align: 'left',
+      key: 'producto', label: 'Producto', align: 'left', sortable: true,
+      sortValue: (r) => String(r.productName || '').toLowerCase(),
       render: (r) => <span className="block max-w-[190px] font-semibold leading-snug">{r.productName}</span>,
     },
     {
-      key: 'categoria', label: 'Categoría', align: 'left', width: 'w-32',
+      key: 'categoria', label: 'Categoría', align: 'left', width: 'w-32', sortable: true,
+      sortValue: (r) => String(r.category || '').toLowerCase(),
       render: (r) => <span className="whitespace-nowrap">{r.category}</span>,
     },
     {
-      key: 'cantidad', label: 'Cantidad', align: 'center', width: 'w-20',
+      key: 'cantidad', label: 'Cantidad', align: 'center', width: 'w-20', sortable: true,
+      sortValue: (r) => Number(r.baseQty ?? r.quantity ?? 0),
       render: (r) => <span className="tabular-nums" title={`${r.baseQty ?? r.quantity} und. base`}>{r.quantityLabel ?? r.quantity}</span>,
     },
     {
-      key: 'pCompra', label: 'P. Compra', align: 'right', width: 'w-28',
+      key: 'pCompra', label: 'P. Compra', align: 'right', width: 'w-28', sortable: true,
+      sortValue: (r) => Number(r.supplierPrice || 0),
       render: (r) => <span className="tabular-nums whitespace-nowrap">{formatBs(r.supplierPrice)}</span>,
     },
     {
-      key: 'pVenta', label: 'P. Venta', align: 'right', width: 'w-28',
+      key: 'pVenta', label: 'P. Venta', align: 'right', width: 'w-28', sortable: true,
+      sortValue: (r) => Number(r.price || 0),
       render: (r) => <span className="tabular-nums whitespace-nowrap">{formatBs(r.price)}</span>,
     },
     {
-      key: 'metodoPago', label: 'Método de pago', align: 'center', width: 'w-36',
+      key: 'metodoPago', label: 'Método de pago', align: 'center', width: 'w-36', sortable: true,
+      sortValue: (r) => (METHOD_META[r.paymentMethod] || METHOD_META.cash).label,
       render: (r) => methodBadge(r.paymentMethod),
     },
     {
-      key: 'vendedor', label: 'Vendedor', align: 'left', width: 'w-32',
+      key: 'vendedor', label: 'Vendedor', align: 'left', width: 'w-32', sortable: true,
+      sortValue: (r) => String(r.sellerName || '').toLowerCase(),
       render: (r) => r.sellerName || <span className="text-[var(--mg-text-faint)]">—</span>,
     },
     {
-      key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32',
+      key: 'totalVenta', label: 'Total Venta', align: 'right', width: 'w-32', sortable: true,
+      sortValue: (r) => Number(r.subtotal || 0),
       render: (r) => <span className={`font-black tabular-nums whitespace-nowrap ${isCancelledOrderReport ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-brand-text)]'}`}>{formatBs(r.subtotal)}</span>,
     },
     {
-      key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28',
+      key: 'ganancia', label: 'Ganancia', align: 'right', width: 'w-28', sortable: true,
+      sortValue: (r) => Number(r.ganancia || 0),
       render: (r) => <span className="font-bold text-[var(--mg-success-text)] tabular-nums whitespace-nowrap">{formatBs(r.ganancia)}</span>,
     },
   ];
@@ -1175,6 +1229,8 @@ export default function Sales() {
         rows={rows}
         footer={visibleFooter}
         columns={visibleColumns}
+        sort={reportSort}
+        onSortChange={setReportSort}
       />
     );
   }
