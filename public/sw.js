@@ -73,8 +73,14 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() =>
-          // Offline fallback: serve cached HTML
-          caches.match('/index.html').then((r) => r || caches.match('/'))
+          // Offline fallback: serve cached HTML. Nunca devolver undefined:
+          // respondWith exige una Response o el navegador lanza TypeError.
+          caches.match('/index.html')
+            .then((r) => r || caches.match('/'))
+            .then((r) => r || new Response('Sin conexión', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            }))
         )
     );
     return;
@@ -99,7 +105,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => null);
+        .catch(() => Response.error());
     })
   );
 });
