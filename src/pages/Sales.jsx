@@ -1063,14 +1063,6 @@ export default function Sales() {
   }
 
   const isCancelledOrderReport = reportOrderFilter === 'cancelled';
-  const filteredCashierSales = useMemo(() => {
-    const ids = new Set(cashierRows.map((row) => row.saleId).filter(Boolean));
-    return orderFilteredSalesReport.filter((sale) => ids.has(sale.id));
-  }, [cashierRows, orderFilteredSalesReport]);
-  const filteredCashierCountHint = isCancelledOrderReport
-    ? `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'pedido cancelado' : 'pedidos cancelados'}`
-    : `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`;
-
   const cashierRows = useMemo(() => (
     salesReportRows.filter((row) => {
       if (reportCashier !== 'Todos' && (row.sellerName || 'Sin nombre') !== reportCashier) return false;
@@ -1079,6 +1071,13 @@ export default function Sales() {
       return true;
     })
   ), [salesReportRows, reportCashier, reportPaymentFilter, reportCategoryFilter]);
+  const filteredCashierSales = useMemo(() => {
+    const ids = new Set(cashierRows.map((row) => row.saleId).filter(Boolean));
+    return orderFilteredSalesReport.filter((sale) => ids.has(sale.id));
+  }, [cashierRows, orderFilteredSalesReport]);
+  const filteredCashierCountHint = isCancelledOrderReport
+    ? `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'pedido cancelado' : 'pedidos cancelados'}`
+    : `${filteredCashierSales.length} ${filteredCashierSales.length === 1 ? 'ticket' : 'tickets'}`;
   const filteredCashierAmount = useMemo(
     () => cashierRows.reduce((sum, row) => sum + Number(row.subtotal || 0), 0),
     [cashierRows],
