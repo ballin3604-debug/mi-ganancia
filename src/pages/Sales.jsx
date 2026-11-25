@@ -42,6 +42,34 @@ function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
 }
 
+const REPORT_FILTERS_PREFIX = 'mg-sales-report-filters';
+const REPORT_SORT_KEYS = new Set([
+  'fecha', 'hora', 'numeroVenta', 'producto', 'categoria', 'cantidad',
+  'pCompra', 'pVenta', 'metodoPago', 'vendedor', 'totalVenta', 'ganancia',
+]);
+
+function reportFiltersStorageKey(businessId, userId) {
+  if (!businessId) return null;
+  return `${REPORT_FILTERS_PREFIX}:${businessId}:${userId || 'anon'}`;
+}
+
+function readSavedReportFilters(businessId, userId) {
+  const key = reportFiltersStorageKey(businessId, userId);
+  if (!key) return {};
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function isValidISODate(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 function relativeOrderTime(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
@@ -386,6 +414,10 @@ export default function Sales() {
   // Un almacén custodia y distribuye: no vende al público en ningún caso.
   const sellingBlocked = activeBranch?.type === 'almacen';
   const [searchParams] = useSearchParams();
+  const savedReportFilters = useMemo(
+    () => readSavedReportFilters(businessId, user?.uid),
+    [businessId, user?.uid]
+  );
   const requestedTab = searchParams.get('tab') === 'reporte' ? 'reporte'
     : searchParams.get('tab') === 'cajeros' ? 'reporte'
     : searchParams.get('tab') === 'auditoria' ? 'auditoria'
@@ -417,12 +449,22 @@ export default function Sales() {
   const [reportStartDate, setReportStartDate] = useState(() => {
     const fromUrl = searchParams.get('start');
     if (fromUrl) return fromUrl;
+    if (isValidISODate(savedReportFilters.startDate)) return savedReportFilters.startDate;
     return toLocalISODate(new Date());
   });
-  const [reportEndDate, setReportEndDate] = useState(() => searchParams.get('end') || toLocalISODate(new Date()));
+  const [reportEndDate, setReportEndDate] = useState(() => {
+    const fromUrl = searchParams.get('end');
+    if (fromUrl) return fromUrl;
+    if (isValidISODate(savedReportFilters.endDate)) return savedReportFilters.endDate;
+    return toLocalISODate(new Date());
+  });
   const [reportOrderFilter, setReportOrderFilter] = useState(() => {
     const value = searchParams.get('pedido');
-    return ['all', 'regular', 'edited', 'cancelled'].includes(value) ? value : 'all';
+    if (['all', 'regular', 'edited', 'cancelled'].includes(value)) return value;
+    if (isRestaurantMode && ['all', 'regular', 'edited', 'cancelled'].includes(savedReportFilters.orderFilter)) {
+      return savedReportFilters.orderFilter;
+    }
+    return 'all';
   });
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState({});
@@ -704,7 +746,7 @@ export default function Sales() {
 
   // ── Filtro por sucursal (reportes) ───────────────────────────────
   // Ventas viejas sin sede se cuentan en la principal.
-  const [reportBranch, setReportBranch] = useState('all');
+  const [reportBranch, setReportBranch] = useState(() => savedReportFilters.branch || 'all');
   const mainBranchId = branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
   const saleBranchId = (s) => s.branchId || s.branch_id || mainBranchId;
   const scopedSalesReport = useMemo(() => {
@@ -955,10 +997,52 @@ export default function Sales() {
     })
   ), [orderFilteredSalesReport, itemsBySaleId, saleNumberById]);
 
-  const [reportCashier, setReportCashier] = useState('Todos');
-  const [reportPaymentFilter, setReportPaymentFilter] = useState('Todos');
-  const [reportCategoryFilter, setReportCategoryFilter] = useState('Todas');
-  const [reportSort, setReportSort] = useState({ key: 'fecha', dir: 'desc' });
+  const [reportCashier, setReportCashier] = useState(() => (
+    isOwner && typeof savedReportFilters.cashier === 'string' ? savedReportFilters.cashier : 'Todos'
+  ));
+  const [reportPaymentFilter, setReportPaymentFilter] = useState(() => (
+    ['cash', 'qr', 'mixto', 'fiado'].includes(savedReportFilters.payment) ? savedReportFilters.payment : 'Todos'
+  ));
+  const [reportCategoryFilter, setReportCategoryFilter] = useState(() => (
+    typeof savedReportFilters.category === 'string' && savedReportFilters.category
+      ? savedReportFilters.category
+      : 'Todas'
+  ));
+  const [reportSort, setReportSort] = useState(() => {
+    const saved = savedReportFilters.sort;
+    if (saved && REPORT_SORT_KEYS.has(saved.key) && (saved.dir === 'asc' || saved.dir === 'desc')) {
+      return { key: saved.key, dir: saved.dir };
+    }
+    return { key: 'fecha', dir: 'desc' };
+  });
+
+  useEffect(() => {
+    const key = reportFiltersStorageKey(businessId, user?.uid);
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        startDate: reportStartDate,
+        endDate: reportEndDate,
+        orderFilter: isRestaurantMode ? reportOrderFilter : 'all',
+        branch: reportBranch,
+        cashier: isOwner ? reportCashier : 'Todos',
+        payment: reportPaymentFilter,
+        category: reportCategoryFilter,
+        sort: reportSort,
+      }));
+    } catch {
+      // localStorage no disponible: se mantiene el filtro solo en memoria.
+    }
+  }, [
+    businessId, user?.uid, isRestaurantMode, isOwner,
+    reportStartDate, reportEndDate, reportOrderFilter, reportBranch,
+    reportCashier, reportPaymentFilter, reportCategoryFilter, reportSort,
+  ]);
+
+  useEffect(() => {
+    if (reportBranch === 'all' || branches.length === 0) return;
+    if (!branches.some((branch) => branch.id === reportBranch)) setReportBranch('all');
+  }, [branches, reportBranch]);
 
   function renderBranchPills() {
     if (branches.length <= 1) return null;
