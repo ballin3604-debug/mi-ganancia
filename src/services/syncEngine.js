@@ -1125,6 +1125,22 @@ async function processOperation(op, businessId) {
       }
       break;
     }
+    case 'UPDATE_SALE_PAYMENT': {
+      const { error } = await assertSupabase().rpc('actualizar_pago_venta', {
+        p_sale_id: payload.sale_id,
+        p_business_id: businessId,
+        p_payment_method: payload.payment_method,
+        p_monto_efectivo: payload.monto_efectivo ?? null,
+        p_monto_qr: payload.monto_qr ?? null,
+      });
+      if (error) throw error;
+      try {
+        await db.sales.update(payload.sale_id, { sync_status: 'confirmed' });
+      } catch (confirmErr) {
+        console.warn('syncEngine: no se pudo marcar el cambio de pago como confirmado:', confirmErr);
+      }
+      break;
+    }
     case 'ADD_EXPENSE': {
       // Recorte previo por capacidades (un intento); si el schema cambió a
       // mitad de sesión se refresca caps y se reintenta una vez.
@@ -1526,6 +1542,9 @@ export async function syncCacheFromServer(businessId) {
               if (productId) pendingIds.add(`${op.payload.branch_id}:${productId}`);
             });
           }
+          break;
+        case 'UPDATE_SALE_PAYMENT':
+          if (op.payload.sale_id) pendingIds.add(op.payload.sale_id);
           break;
         case 'ADD_REPLENISHMENT':
         case 'UPDATE_REPLENISHMENT':

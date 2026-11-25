@@ -11,6 +11,7 @@ import { AuditSalesList } from '../components/AuditSalesList';
 import {
   registerSale, subscribeToSales, subscribeToSaleItems,
   subscribeToSaleChanges, getSaleItems, updateSale, cancelSale,
+  updateSalePaymentMethod,
 } from '../services/sales';
 import { getBusinessMembers } from '../services/cashier';
 import { getCustomers, addCustomer } from '../services/customers';
@@ -1360,7 +1361,7 @@ export default function Sales() {
     setEditSaving(true);
     setEditError('');
     try {
-      const result = await cancelSale(businessId, user?.uid, editingOrder.id, { reason, restock });
+      await cancelSale(businessId, user?.uid, editingOrder.id, { reason, restock });
       const number = saleNumberById[editingOrder.id];
       setOrderFlash({
         tone: 'danger',
@@ -1377,6 +1378,37 @@ export default function Sales() {
       setEditError(err.message || 'No se pudo cancelar el pedido.');
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleChangeAuditPayment(ticket) {
+    const sale = ticket?.raw;
+    if (!sale || !businessId) return;
+    const current = sale.paymentMethod || 'cash';
+    const next = window.prompt('Nuevo método de pago: cash, qr o mixto', current);
+    if (next === null) return;
+    const method = String(next).trim().toLowerCase();
+    if (!['cash', 'qr', 'mixto'].includes(method)) {
+      alert('Método inválido. Usa: cash, qr o mixto.');
+      return;
+    }
+    if (method === current) return;
+
+    let amounts = {};
+    if (method === 'mixto') {
+      const total = Number(sale.total || 0);
+      const efectivoInput = window.prompt('Monto en efectivo (Bs):', String(sale.montoEfectivo ?? Math.max(0, total - Number(sale.montoQR || 0))));
+      if (efectivoInput === null) return;
+      const qrInput = window.prompt('Monto en QR (Bs):', String(sale.montoQR ?? Math.max(0, total - Number(efectivoInput || 0))));
+      if (qrInput === null) return;
+      amounts = { montoEfectivo: Number(efectivoInput || 0), montoQR: Number(qrInput || 0) };
+    }
+
+    try {
+      await updateSalePaymentMethod(businessId, user?.uid, sale.id, method, amounts);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || 'No se pudo cambiar el método de pago.');
     }
   }
 
@@ -2545,6 +2577,7 @@ export default function Sales() {
                 onSelectSale={(t) => navigate(`/recibo/${t.raw.id}`, {
                   state: { saleNumber: saleNumberById[t.raw.id] },
                 })}
+                onChangePayment={handleChangeAuditPayment}
               />
             </div>
           ) : (

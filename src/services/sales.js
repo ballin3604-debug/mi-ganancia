@@ -711,6 +711,69 @@ export async function cancelSale(businessId, userId, saleId, options = {}) {
   return result;
 }
 
+export async function updateSalePaymentMethod(businessId, userId, saleId, paymentMethod, amounts = {}) {
+  if (!businessId || !saleId) {
+    throw new Error('No se indicó qué venta actualizar.');
+  }
+  const method = String(paymentMethod || '').toLowerCase();
+  if (!['cash', 'qr', 'mixto'].includes(method)) {
+    throw new Error('Método de pago inválido.');
+  }
+
+  const now = new Date().toISOString();
+  let result;
+  await db.transaction('rw', db.sales, db.pending_operations, async () => {
+    const sale = await db.sales.get(saleId);
+    if (!sale || sale.business_id !== businessId) {
+      throw new Error('La venta no está disponible en este negocio.');
+    }
+    if (sale.status === 'cancelled') {
+      throw new Error('No se puede cambiar el pago de una venta cancelada.');
+    }
+
+    const total = Number(sale.total || 0);
+    const montoEfectivo = method === 'mixto'
+      ? Math.max(0, Number(amounts.montoEfectivo ?? 0))
+      : method === 'cash'
+        ? total
+        : null;
+    const montoQR = method === 'mixto'
+      ? Math.max(0, Number(amounts.montoQR ?? 0))
+      : method === 'qr'
+        ? total
+        : null;
+
+    if (method === 'mixto' && Math.abs((montoEfectivo + montoQR) - total) > 0.01) {
+      throw new Error('En pago mixto, efectivo + QR debe ser igual al total.');
+    }
+
+    await db.sales.update(saleId, {
+      payment_method: method,
+      monto_efectivo: montoEfectivo,
+      monto_qr: montoQR,
+      updated_at: now,
+      sync_status: 'local',
+    });
+
+    const outboxOp = buildOutboxOp('UPDATE_SALE_PAYMENT', {
+      sale_id: saleId,
+      business_id: businessId,
+      payment_method: method,
+      monto_efectivo: montoEfectivo,
+      monto_qr: montoQR,
+      actor: userId || null,
+    }, businessId, { userId, branchId: sale.branch_id || null, origin: 'offline' });
+    await db.pending_operations.add(outboxOp);
+
+    result = { saleId, paymentMethod: method, montoEfectivo, montoQR };
+  });
+
+  notifySaleChanges(businessId);
+  try { notifyIncomeChanges(businessId); } catch (err) { console.error('Error refreshing income local views:', err); }
+  await refreshOutboxState(businessId);
+  return result;
+}
+
 export async function getTodaySales(businessId) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

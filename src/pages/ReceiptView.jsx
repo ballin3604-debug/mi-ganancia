@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { getSaleById, getSaleItems, isSaleCancelled } from '../services/sales';
+import { getSaleById, getSaleItems, isSaleCancelled, updateSalePaymentMethod } from '../services/sales';
 import { formatBs } from '../utils/currency';
 import { printReceipt } from '../components/Receipt';
 import { AppIcon } from '../components/icons';
@@ -20,11 +20,12 @@ export default function ReceiptView() {
   const { saleId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { businessId } = useAuth();
+  const { businessId, user } = useAuth();
   const { business, settings, sectorConfig, tipoNegocio } = useBusiness();
   const [sale, setSale] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
 
   useEffect(() => {
     if (!businessId || !saleId) { setLoading(false); return; }
@@ -118,6 +119,29 @@ export default function ReceiptView() {
       defaultFormat: sectorConfig?.defaultReceiptFormat,
       formatCategory: tipoNegocio,
     });
+  }
+
+  async function handleChangePayment(nextMethod) {
+    if (!businessId || !sale?.id || updatingPayment) return;
+    if (sale.paymentMethod === nextMethod) return;
+    let amounts = {};
+    if (nextMethod === 'mixto') {
+      const efectivoInput = window.prompt('Monto en efectivo (Bs):', String(sale.montoEfectivo ?? Math.max(0, total - Number(sale.montoQR || 0))));
+      if (efectivoInput === null) return;
+      const qrInput = window.prompt('Monto en QR (Bs):', String(sale.montoQR ?? Math.max(0, total - Number(efectivoInput || 0))));
+      if (qrInput === null) return;
+      amounts = { montoEfectivo: Number(efectivoInput || 0), montoQR: Number(qrInput || 0) };
+    }
+    setUpdatingPayment(true);
+    try {
+      await updateSalePaymentMethod(businessId, user?.uid, sale.id, nextMethod, amounts);
+      const refreshed = await getSaleById(businessId, sale.id);
+      if (refreshed) setSale(refreshed);
+    } catch (err) {
+      alert(err?.message || 'No se pudo cambiar el método de pago.');
+    } finally {
+      setUpdatingPayment(false);
+    }
   }
 
   const showQr = (settings?.show_qr ?? settings?.showQrOnTicket ?? true) && !!settings?.qrData;
@@ -247,6 +271,39 @@ export default function ReceiptView() {
           {sale.sellerName ? <p className="text-[var(--mg-text-muted)]">Atendido por: {sale.sellerName}</p> : null}
         </div>
       </div>
+
+      {!isSaleCancelled(sale) && (
+        <div className="mx-4 rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 sm:mx-0">
+          <p className="text-xs font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Cambiar método de pago</p>
+          <p className="mt-1 text-[11px] font-semibold text-[var(--mg-text-secondary)]">
+            Si el cajero se equivocó, corrige el método aquí.
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              { id: 'cash', label: 'Efectivo' },
+              { id: 'qr', label: 'QR' },
+              { id: 'mixto', label: 'Mixto' },
+            ].map((option) => {
+              const active = sale.paymentMethod === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={updatingPayment}
+                  onClick={() => handleChangePayment(option.id)}
+                  className={`min-h-[42px] rounded-xl border px-2 py-2 text-xs font-extrabold transition-all ${
+                    active
+                      ? 'border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] text-[var(--mg-accent-text)]'
+                      : 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-border-hover)]'
+                  } ${updatingPayment ? 'opacity-60' : ''}`}
+                >
+                  {updatingPayment && active ? '...' : option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
