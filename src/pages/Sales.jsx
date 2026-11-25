@@ -1143,13 +1143,23 @@ export default function Sales() {
   }
 
   // Tabla de detalle del reporte de ventas.
+  const rowDate = (r) => (r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt));
   const detailColumns = [
     {
       key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28', sortable: true,
-      sortValue: (r) => { const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
+      sortValue: (r) => { const d = rowDate(r); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
       render: (r) => {
-        const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+        const d = rowDate(r);
         return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleDateString('es-BO')}</span>;
+      },
+    },
+    {
+      key: 'hora', label: 'Hora', align: 'center', width: 'w-20', sortable: true,
+      sortValue: (r) => { const d = rowDate(r); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
+      render: (r) => {
+        const d = rowDate(r);
+        if (!(d instanceof Date) || Number.isNaN(d.getTime())) return <span className="text-[var(--mg-text-faint)]">—</span>;
+        return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}</span>;
       },
     },
     {
@@ -1222,7 +1232,7 @@ export default function Sales() {
         ];
     return (
       <DataTable
-        storageKey="mg-reporte-ventas-items-columns"
+        storageKey="mg-reporte-ventas-items-columns-v2"
         getRowKey={(r) => r.rowKey}
         emptyMessage={emptyMessage}
         rows={rows}
