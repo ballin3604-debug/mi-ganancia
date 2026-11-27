@@ -47,6 +47,9 @@ const REPORT_SORT_KEYS = new Set([
   'fecha', 'hora', 'numeroVenta', 'producto', 'categoria', 'cantidad',
   'pCompra', 'pVenta', 'metodoPago', 'vendedor', 'totalVenta', 'ganancia',
 ]);
+const REPORT_TICKET_SORT_KEYS = new Set([
+  'fecha', 'hora', 'numeroVenta', 'cliente', 'vendedor', 'metodoPago', 'items', 'total',
+]);
 
 function reportFiltersStorageKey(businessId, userId) {
   if (!businessId) return null;
@@ -1015,6 +1018,16 @@ export default function Sales() {
     }
     return { key: 'fecha', dir: 'desc' };
   });
+  const [reportView, setReportView] = useState(() => (
+    savedReportFilters.view === 'ticket' ? 'ticket' : 'producto'
+  ));
+  const [reportTicketSort, setReportTicketSort] = useState(() => {
+    const saved = savedReportFilters.ticketSort;
+    if (saved && REPORT_TICKET_SORT_KEYS.has(saved.key) && (saved.dir === 'asc' || saved.dir === 'desc')) {
+      return { key: saved.key, dir: saved.dir };
+    }
+    return { key: 'fecha', dir: 'desc' };
+  });
 
   useEffect(() => {
     const key = reportFiltersStorageKey(businessId, user?.uid);
@@ -1029,6 +1042,8 @@ export default function Sales() {
         payment: reportPaymentFilter,
         category: reportCategoryFilter,
         sort: reportSort,
+        view: reportView,
+        ticketSort: reportTicketSort,
       }));
     } catch {
       // localStorage no disponible: se mantiene el filtro solo en memoria.
@@ -1037,6 +1052,7 @@ export default function Sales() {
     businessId, user?.uid, isRestaurantMode, isOwner,
     reportStartDate, reportEndDate, reportOrderFilter, reportBranch,
     reportCashier, reportPaymentFilter, reportCategoryFilter, reportSort,
+    reportView, reportTicketSort,
   ]);
 
   useEffect(() => {
@@ -1175,6 +1191,51 @@ export default function Sales() {
     [cashierRows],
   );
 
+  // Vista "Por ticket": una fila por venta (no por producto), con el total
+  // completo del ticket y acciones para ver o reimprimir el recibo.
+  const reportTickets = useMemo(() => orderFilteredSalesReport.filter((sale) => {
+    const seller = sale.seller_name || sale.sellerName || 'Sin nombre';
+    if (reportCashier !== 'Todos' && seller !== reportCashier) return false;
+    const method = sale.paymentMethod || sale.payment_method || 'cash';
+    if (reportPaymentFilter !== 'Todos' && method !== reportPaymentFilter) return false;
+    if (reportCategoryFilter !== 'Todas') {
+      const saleItems = itemsBySaleId[sale.id] || [];
+      if (!saleItems.some((item) => (item.category || 'Otros') === reportCategoryFilter)) return false;
+    }
+    return true;
+  }).map((sale) => {
+    const items = itemsBySaleId[sale.id] || [];
+    const units = items.length > 0
+      ? items.reduce((sum, item) => (
+        sum + Number(item.quantity || 0) * Number(item.presentation_factor ?? item.presentationFactor ?? 1)
+      ), 0)
+      : Number(sale.itemCount || 0);
+    return {
+      id: sale.id,
+      raw: sale,
+      saleNumber: saleNumberById[sale.id] || 0,
+      createdAt: sale.createdAt,
+      sellerName: sale.seller_name || sale.sellerName || 'Sin nombre',
+      clientName: sale.clientName || sale.client_name || 'Consumidor Final',
+      paymentMethod: sale.paymentMethod || sale.payment_method || 'cash',
+      itemCount: items.length,
+      units,
+      total: Number(sale.total || 0),
+      branchId: sale.branchId || sale.branch_id || mainBranchId,
+    };
+  }), [
+    orderFilteredSalesReport, reportCashier, reportPaymentFilter, reportCategoryFilter,
+    itemsBySaleId, saleNumberById, mainBranchId,
+  ]);
+  const reportTicketsTotal = useMemo(
+    () => reportTickets.reduce((sum, ticket) => sum + ticket.total, 0),
+    [reportTickets],
+  );
+  const reportTicketsUnits = useMemo(
+    () => reportTickets.reduce((sum, ticket) => sum + ticket.units, 0),
+    [reportTickets],
+  );
+
   // Auditoría: tickets por período (el cajero solo ve los suyos).
   const auditTickets = useMemo(() => {
     const list = (!isOwner && user?.uid
@@ -1298,6 +1359,85 @@ export default function Sales() {
     },
   ];
 
+  // Columnas de la vista "Por ticket": una fila por venta completa.
+  const ticketColumns = [
+    {
+      key: 'fecha', label: 'Fecha', align: 'center', width: 'w-28', sortable: true,
+      sortValue: (r) => { const d = rowDate(r); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
+      render: (r) => {
+        const d = rowDate(r);
+        return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleDateString('es-BO')}</span>;
+      },
+    },
+    {
+      key: 'hora', label: 'Hora', align: 'center', width: 'w-20', sortable: true,
+      sortValue: (r) => { const d = rowDate(r); return d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0; },
+      render: (r) => {
+        const d = rowDate(r);
+        if (!(d instanceof Date) || Number.isNaN(d.getTime())) return <span className="text-[var(--mg-text-faint)]">—</span>;
+        return <span className="font-mono text-xs whitespace-nowrap">{d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}</span>;
+      },
+    },
+    {
+      key: 'numeroVenta', label: 'Ticket', align: 'center', width: 'w-24', sortable: true,
+      sortValue: (r) => Number(r.saleNumber || 0),
+      render: (r) => <span className="font-mono text-xs font-bold whitespace-nowrap">{`#${String(r.saleNumber).padStart(4, '0')}`}</span>,
+    },
+    {
+      key: 'cliente', label: 'Cliente', align: 'left', sortable: true,
+      sortValue: (r) => String(r.clientName || '').toLowerCase(),
+      render: (r) => <span className="block max-w-[180px] truncate">{r.clientName}</span>,
+    },
+    {
+      key: 'vendedor', label: 'Vendedor', align: 'left', width: 'w-32', sortable: true,
+      sortValue: (r) => String(r.sellerName || '').toLowerCase(),
+      render: (r) => r.sellerName || <span className="text-[var(--mg-text-faint)]">—</span>,
+    },
+    {
+      key: 'metodoPago', label: 'Método de pago', align: 'center', width: 'w-36', sortable: true,
+      sortValue: (r) => (METHOD_META[r.paymentMethod] || METHOD_META.cash).label,
+      render: (r) => methodBadge(r.paymentMethod),
+    },
+    {
+      key: 'items', label: 'Ítems', align: 'center', width: 'w-24', sortable: true,
+      sortValue: (r) => Number(r.units || 0),
+      render: (r) => (
+        <div className="whitespace-nowrap">
+          <span className="font-bold tabular-nums">{r.itemCount} {r.itemCount === 1 ? 'ítem' : 'ítems'}</span>
+          <span className="block text-[10px] font-semibold text-[var(--mg-text-muted)] tabular-nums">{r.units} uds.</span>
+        </div>
+      ),
+    },
+    {
+      key: 'total', label: 'Total venta', align: 'right', width: 'w-32', sortable: true,
+      sortValue: (r) => Number(r.total || 0),
+      render: (r) => <span className={`font-black tabular-nums whitespace-nowrap ${isCancelledOrderReport ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-brand-text)]'}`}>{formatBs(r.total)}</span>,
+    },
+    {
+      key: 'acciones', label: 'Acciones', align: 'center', width: 'w-44',
+      render: (r) => (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate(`/recibo/${r.id}`, { state: { saleNumber: r.saleNumber } })}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 text-[10px] font-extrabold text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]"
+            title="Ver recibo"
+          >
+            <AppIcon name="recibo" size={12} /> Ver
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReprintTicket(r.raw)}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 text-[10px] font-extrabold text-[var(--mg-accent-text)] hover:brightness-105"
+            title="Reimprimir ticket"
+          >
+            <AppIcon name="recibo" size={12} /> Reimprimir
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   function renderDetailTable(rows, emptyMessage, footerLabel) {
     const showCosts = canSeeCosts && reportOrderFilter !== 'cancelled';
     const visibleColumns = (showCosts ? detailColumns : detailColumns.filter((c) => c.key !== 'pCompra' && c.key !== 'ganancia'))
@@ -1324,6 +1464,34 @@ export default function Sales() {
         columns={visibleColumns}
         sort={reportSort}
         onSortChange={setReportSort}
+      />
+    );
+  }
+
+  function renderTicketTable() {
+    const emptyMessage = isCancelledOrderReport
+      ? 'No se encontraron pedidos cancelados en el rango seleccionado.'
+      : reportCashier === 'Todos'
+        ? 'No se encontraron ventas en el rango seleccionado.'
+        : `Sin ventas de ${reportCashier} en este período.`;
+    const footer = [
+      {
+        key: 'items',
+        label: `${reportTickets.length} ${reportTickets.length === 1 ? 'ticket' : 'tickets'}`,
+        value: `${reportTicketsUnits} uds.`,
+      },
+      { key: 'total', value: formatBs(reportTicketsTotal) },
+    ];
+    return (
+      <DataTable
+        storageKey="mg-reporte-ventas-tickets-columns-v1"
+        getRowKey={(r) => r.id}
+        emptyMessage={emptyMessage}
+        rows={reportTickets}
+        footer={footer}
+        columns={ticketColumns}
+        sort={reportTicketSort}
+        onSortChange={setReportTicketSort}
       />
     );
   }
@@ -1559,6 +1727,41 @@ export default function Sales() {
       console.error(err);
       alert(err?.message || 'No se pudo cambiar el método de pago.');
     }
+  }
+
+  function handleReprintTicket(sale) {
+    if (!sale?.id) return;
+    const items = itemsBySaleId[sale.id] || [];
+    const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+    printReceipt({
+      business: { name: business?.name || settings?.businessName || 'Mi Negocio' },
+      settings: {
+        slogan: settings?.slogan || '',
+        phone: settings?.phone || '',
+        address: [settings?.address, settings?.city].filter(Boolean).join(' · '),
+        logoData: settings?.logoData || settings?.logo_data || '',
+        qrData: settings?.qrData,
+      },
+      type: 'sale',
+      saleId: sale.id,
+      items: items.map((it) => ({
+        productName: it.productName || 'Producto',
+        productBrand: it.productBrand || '',
+        quantity: Number(it.quantity || 0),
+        price: Number(it.price || 0),
+        subtotal: Number(it.subtotal || 0),
+      })),
+      total: Number(sale.total || 0),
+      date,
+      clientName: sale.clientName || sale.client_name || 'Consumidor Final',
+      clientNit: sale.clientNit || sale.client_nit || '0',
+      sellerName: sale.sellerName || sale.seller_name || '',
+      paymentMethod: sale.paymentMethod || sale.payment_method || 'cash',
+      montoRecibido: sale.montoRecibido ?? sale.monto_recibido,
+      cambio: sale.cambio,
+      defaultFormat: sectorConfig?.defaultReceiptFormat,
+      formatCategory: tipoNegocio,
+    });
   }
 
   // Productos vendidos recientemente (últimos 20, más reciente primero) —
@@ -2653,7 +2856,7 @@ export default function Sales() {
                 title={isCancelledOrderReport ? 'Pedidos Cancelados' : 'Reporte de Ventas'}
                 subtitle={isCancelledOrderReport
                   ? 'Importes de pedidos anulados; no se contabilizan como ventas netas.'
-                  : 'Historial detallado de ventas vigentes por producto y cajero.'}
+                  : 'Historial detallado de ventas vigentes por producto o por ticket.'}
                 startDate={reportStartDate}
                 endDate={reportEndDate}
                 onStartDateChange={setReportStartDate}
@@ -2662,6 +2865,44 @@ export default function Sales() {
                 exportDisabled={cashierRows.length === 0}
                 branchSelector={renderSalesReportFilters()}
               />
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div
+                  className="inline-flex rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] p-1 shadow-[var(--mg-shadow-sm)]"
+                  role="tablist"
+                  aria-label="Vista del reporte de ventas"
+                >
+                  {[
+                    { id: 'producto', label: 'Por producto', icon: 'paquete' },
+                    { id: 'ticket', label: 'Por ticket', icon: 'recibo' },
+                  ].map((option) => {
+                    const active = reportView === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setReportView(option.id)}
+                        className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-xl px-3 text-[11px] font-black transition-all ${
+                          active
+                            ? 'bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-sm'
+                            : 'text-[var(--mg-text-secondary)] hover:text-[var(--mg-text-primary)]'
+                        }`}
+                      >
+                        <AppIcon name={option.icon} size={13} />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {reportView === 'ticket' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--mg-success-text)]">
+                    {reportTickets.length} {reportTickets.length === 1 ? 'ticket' : 'tickets'}
+                    <b className="tabular-nums">· {formatBs(reportTicketsTotal)}</b>
+                  </span>
+                ) : null}
+              </div>
 
               <div className={`grid grid-cols-2 gap-3 ${isCancelledOrderReport || !canSeeCosts ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
                 <MetricCard
@@ -2696,7 +2937,7 @@ export default function Sales() {
                 ) : null}
               </div>
 
-              {renderDetailTable(
+              {reportView === 'ticket' ? renderTicketTable() : renderDetailTable(
                 cashierRows,
                 isCancelledOrderReport
                   ? 'No se encontraron pedidos cancelados en el rango seleccionado.'
@@ -2727,6 +2968,7 @@ export default function Sales() {
                   state: { saleNumber: saleNumberById[t.raw.id] },
                 })}
                 onChangePayment={handleChangeAuditPayment}
+                onReprint={handleReprintTicket}
               />
             </div>
           ) : (

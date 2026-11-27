@@ -8,7 +8,7 @@ import EmptyState from './ui/EmptyState';
 // Auditoría de ventas: lista completa de tickets agrupada por cajero,
 // sin filtros. A la izquierda N° de ticket + fecha y hora,
 // a la derecha el monto con icono de billete.
-export function AuditSalesList({ sales, businessName = '', onSelectSale, onChangePayment, showHeader = true }) {
+export function AuditSalesList({ sales, businessName = '', onSelectSale, onChangePayment, onReprint, showHeader = true }) {
   const groups = useMemo(() => {
     const map = new Map();
     (sales || []).forEach((s) => {
@@ -117,6 +117,16 @@ export function AuditSalesList({ sales, businessName = '', onSelectSale, onChang
                           title="Cambiar método de pago"
                         >
                           Cambiar
+                        </button>
+                      )}
+                      {onReprint && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onReprint(sale.raw || sale); }}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 text-[10px] font-extrabold text-[var(--mg-accent-text)] hover:brightness-105"
+                          title="Reimprimir ticket"
+                        >
+                          <AppIcon name="recibo" size={12} /> Reimprimir
                         </button>
                       )}
                       <span className="text-lg font-black text-[var(--mg-text-faint)]">›</span>
