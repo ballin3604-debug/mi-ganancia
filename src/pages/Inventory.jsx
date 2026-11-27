@@ -1401,8 +1401,8 @@ export default function Inventory() {
         isOpen={Boolean(confirmDeleteProduct)}
         onClose={() => setConfirmDeleteProduct(null)}
         onConfirm={confirmDelete}
-        title="¿Eliminar producto?"
-        message={confirmDeleteProduct ? `Se eliminará "${confirmDeleteProduct.name}" de tu inventario.` : ''}
+        title="Eliminar producto"
+        message={confirmDeleteProduct?.name ? `"${confirmDeleteProduct.name}"` : ''}
         confirmText="Eliminar"
         danger
         loading={deleting}

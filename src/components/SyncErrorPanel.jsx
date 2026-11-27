@@ -61,7 +61,7 @@ export function SyncErrorPanel({ businessId, isOpen, onClose }) {
   };
 
   const handleDiscard = async (id) => {
-    if (window.confirm('¿Estás seguro de descartar esta operación? Se perderán los datos locales que no se sincronizaron con el servidor.')) {
+    if (window.confirm('¿Descartar esta operación?')) {
       setLoading(true);
       try {
         await discardOperation(id, businessId);

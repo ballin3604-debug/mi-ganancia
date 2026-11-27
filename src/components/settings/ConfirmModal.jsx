@@ -20,7 +20,7 @@ export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confi
             </div>
             <div>
               <h3 className="font-extrabold text-[var(--mg-text-primary)] text-base">{title}</h3>
-              <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">{message}</p>
+              {message ? <p className="text-xs text-[var(--mg-text-muted)] mt-0.5">{message}</p> : null}
             </div>
           </div>
 

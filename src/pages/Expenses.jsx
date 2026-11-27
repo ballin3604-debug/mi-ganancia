@@ -417,11 +417,11 @@ export default function Expenses() {
         isOpen={!!deletingExpense}
         onClose={() => setDeletingExpense(null)}
         onConfirm={handleConfirmDelete}
-        title="¿Eliminar este egreso?"
-        message={`Se eliminará "${deletingExpense?.description}" por ${formatBs(deletingExpense?.amount)} y se recalcularán los reportes del período.`}
+        title="Eliminar egreso"
+        message={deletingExpense ? `"${deletingExpense.description}" · ${formatBs(deletingExpense.amount)}` : ''}
         danger={true}
         loading={deleting}
-        confirmText="Sí, Eliminar"
+        confirmText="Eliminar"
       />
     </div>
   );

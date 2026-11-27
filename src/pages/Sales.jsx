@@ -3399,8 +3399,8 @@ export default function Sales() {
           setShowClearCartConfirm(false);
         }}
         title="Vaciar carrito"
-        message="Se quitarán todos los productos y datos del cobro actual. Esta acción no se puede deshacer."
-        confirmText="Sí, vaciar"
+        message=""
+        confirmText="Vaciar"
         danger
       />
 

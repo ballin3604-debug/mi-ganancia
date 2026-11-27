@@ -381,11 +381,11 @@ export default function Debts() {
         isOpen={!!deletingDebt}
         onClose={() => setDeletingDebt(null)}
         onConfirm={handleConfirmDelete}
-        title="¿Eliminar registro de fiado?"
-        message={`¿Estás seguro de eliminar el registro de "${deletingDebt?.clientName}" por ${formatBs(deletingDebt?.amount)}? Esta acción es irreversible.`}
+        title="Eliminar fiado"
+        message={deletingDebt ? `"${deletingDebt.clientName}" · ${formatBs(deletingDebt.amount)}` : ''}
         danger={true}
         loading={deleting}
-        confirmText="Eliminar Registro"
+        confirmText="Eliminar"
       />
     </div>
   );
