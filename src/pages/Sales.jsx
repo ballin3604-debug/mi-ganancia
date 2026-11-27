@@ -1306,7 +1306,7 @@ export default function Sales() {
   function methodBadge(method) {
     const m = METHOD_META[method] || METHOD_META.cash;
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full border ${m.pill}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md border ${m.pill}`}>
         <AppIcon name={m.icon} size={12} /> {m.label}
       </span>
     );
