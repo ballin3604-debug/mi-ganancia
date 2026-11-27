@@ -3023,7 +3023,9 @@ export default function Sales() {
 
           <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
             {filtered.length > 0 ? (
-              <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-3 p-1 mg-stagger">
+              <div className={`grid grid-cols-1 gap-2 p-1 mg-stagger sm:grid-cols-2 sm:gap-5 md:grid-cols-3 ${
+                cartOpen ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+              }`}>
                 {filtered.map((product) => {
                   const options = getSellOptions(product);
                   const packOpt = options.find((option) => option.factor > 1);
@@ -3043,22 +3045,22 @@ export default function Sales() {
                     : formatBs(options[0]?.price ?? product.price);
                   const actionArea = inCart > 0 ? (
                     <div
-                      className="flex items-center gap-1 rounded-full bg-[var(--mg-brand)] px-1 py-1 shadow-md"
+                      className="flex items-center gap-1.5 rounded-full bg-[var(--mg-brand)] px-1.5 py-1 shadow-md"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         type="button"
                         onClick={() => removeFromCart(product.id)}
-                        className="w-5 h-5 rounded-full bg-white/20 text-[var(--mg-brand-contrast)] font-black text-xs flex items-center justify-center active:scale-90"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-base font-black text-[var(--mg-brand-contrast)] active:scale-90"
                       >
                         −
                       </button>
-                      <span className="text-[var(--mg-brand-contrast)] font-black text-xs w-3 text-center">{inCart}</span>
+                      <span className="w-5 text-center text-sm font-black text-[var(--mg-brand-contrast)]">{inCart}</span>
                       <button
                         type="button"
                         onClick={() => addToCart(product)}
                         disabled={maxed}
-                        className="w-5 h-5 rounded-full bg-white/20 text-[var(--mg-brand-contrast)] font-black text-xs flex items-center justify-center active:scale-90 disabled:opacity-40"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-base font-black text-[var(--mg-brand-contrast)] active:scale-90 disabled:opacity-40"
                       >
                         +
                       </button>
@@ -3086,16 +3088,18 @@ export default function Sales() {
                         <ProductCatalogCard
                           product={product}
                           priceLabel={priceLabel}
-                          metaLabel={<ProductAvailabilityMeta product={product} packageOption={packOpt} showStock={showStock} />}
+                          metaLabel={<ProductAvailabilityMeta product={product} packageOption={packOpt} showStock={showStock} size="md" />}
                           selected={usedBase > 0}
                           disabled={maxed}
                           onSelect={() => handleProductTap(product)}
+                          size="large"
+                          animateLayout
                           actionArea={
                             inCart > 0 ? actionArea : (
                               <button
                                 type="button"
                                 onClick={() => handleProductTap(product)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mg-brand)] text-base font-black leading-none text-[var(--mg-brand-contrast)] shadow-sm active:scale-90"
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mg-brand)] text-xl font-black leading-none text-[var(--mg-brand-contrast)] shadow-sm active:scale-90"
                               >
                                 +
                               </button>
