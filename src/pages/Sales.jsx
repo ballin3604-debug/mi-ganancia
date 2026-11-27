@@ -1037,6 +1037,9 @@ export default function Sales() {
       ? savedReportFilters.category
       : 'Todas'
   ));
+  const [reportProductSearch, setReportProductSearch] = useState(() => (
+    typeof savedReportFilters.product === 'string' ? savedReportFilters.product : ''
+  ));
   const [reportSort, setReportSort] = useState(() => {
     const saved = savedReportFilters.sort;
     if (saved && REPORT_SORT_KEYS.has(saved.key) && (saved.dir === 'asc' || saved.dir === 'desc')) {
@@ -1067,6 +1070,7 @@ export default function Sales() {
         cashier: isOwner ? reportCashier : 'Todos',
         payment: reportPaymentFilter,
         category: reportCategoryFilter,
+        product: reportProductSearch,
         sort: reportSort,
         view: reportView,
         ticketSort: reportTicketSort,
@@ -1077,7 +1081,7 @@ export default function Sales() {
   }, [
     businessId, user?.uid, isRestaurantMode, isOwner,
     reportStartDate, reportEndDate, reportOrderFilter, reportBranch,
-    reportCashier, reportPaymentFilter, reportCategoryFilter, reportSort,
+    reportCashier, reportPaymentFilter, reportCategoryFilter, reportProductSearch, reportSort,
     reportView, reportTicketSort,
   ]);
 
@@ -1149,6 +1153,18 @@ export default function Sales() {
             {categoriesInReportRange.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
+        <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-3 shadow-[var(--mg-shadow-sm)]">
+          <AppIcon name="search" size={14} color="var(--mg-accent-text)" />
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[var(--mg-text-muted)]">Producto</span>
+          <input
+            type="search"
+            value={reportProductSearch}
+            onChange={(event) => setReportProductSearch(event.target.value)}
+            placeholder="Buscar producto..."
+            aria-label="Filtrar reporte por producto"
+            className="w-36 max-w-[180px] bg-transparent text-xs font-black text-[var(--mg-text-primary)] placeholder:text-[var(--mg-text-faint)] focus:outline-none sm:w-44"
+          />
+        </label>
         {isRestaurantMode ? (
           <label className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] py-1.5 pl-3.5 pr-2 shadow-[var(--mg-shadow-sm)]">
             <AppIcon name="restaurante" size={14} color="var(--mg-accent-text)" />
@@ -1189,14 +1205,16 @@ export default function Sales() {
   }
 
   const isCancelledOrderReport = reportOrderFilter === 'cancelled';
+  const reportProductQuery = reportProductSearch.trim().toLowerCase();
   const cashierRows = useMemo(() => (
     salesReportRows.filter((row) => {
       if (reportCashier !== 'Todos' && (row.sellerName || 'Sin nombre') !== reportCashier) return false;
       if (reportPaymentFilter !== 'Todos' && row.paymentMethod !== reportPaymentFilter) return false;
       if (reportCategoryFilter !== 'Todas' && (row.category || 'Otros') !== reportCategoryFilter) return false;
+      if (reportProductQuery && !String(row.productName || '').toLowerCase().includes(reportProductQuery)) return false;
       return true;
     })
-  ), [salesReportRows, reportCashier, reportPaymentFilter, reportCategoryFilter]);
+  ), [salesReportRows, reportCashier, reportPaymentFilter, reportCategoryFilter, reportProductQuery]);
   const filteredCashierSales = useMemo(() => {
     const ids = new Set(cashierRows.map((row) => row.saleId).filter(Boolean));
     return orderFilteredSalesReport.filter((sale) => ids.has(sale.id));
@@ -1228,6 +1246,10 @@ export default function Sales() {
       const saleItems = itemsBySaleId[sale.id] || [];
       if (!saleItems.some((item) => (item.category || 'Otros') === reportCategoryFilter)) return false;
     }
+    if (reportProductQuery) {
+      const saleItems = itemsBySaleId[sale.id] || [];
+      if (!saleItems.some((item) => String(item.productName || '').toLowerCase().includes(reportProductQuery))) return false;
+    }
     return true;
   }).map((sale) => {
     const items = itemsBySaleId[sale.id] || [];
@@ -1250,7 +1272,7 @@ export default function Sales() {
       branchId: sale.branchId || sale.branch_id || mainBranchId,
     };
   }), [
-    orderFilteredSalesReport, reportCashier, reportPaymentFilter, reportCategoryFilter,
+    orderFilteredSalesReport, reportCashier, reportPaymentFilter, reportCategoryFilter, reportProductQuery,
     itemsBySaleId, saleNumberById, mainBranchId,
   ]);
   const reportTicketsTotal = useMemo(
