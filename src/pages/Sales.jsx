@@ -1008,6 +1008,7 @@ export default function Sales() {
       return {
         rowKey: item.id,
         saleId: s.id,
+        raw: s,
         createdAt: s.createdAt,
         saleNumber: saleNumberById[s.id],
         productName: presLabel ? `${item.productName} · ${presLabel}` : item.productName,
@@ -1382,6 +1383,20 @@ export default function Sales() {
       sortValue: (r) => Number(r.ganancia || 0),
       render: (r) => <span className="font-bold text-[var(--mg-success-text)] tabular-nums whitespace-nowrap">{formatBs(r.ganancia)}</span>,
     },
+    {
+      key: 'imprimir', label: 'Imprimir', align: 'center', width: 'w-24',
+      render: (r) => (
+        <button
+          type="button"
+          onClick={() => handleReprintTicket(r.raw)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]"
+          title="Reimprimir recibo"
+          aria-label={`Reimprimir recibo #${String(r.saleNumber || 0).padStart(4, '0')}`}
+        >
+          <AppIcon name="recibo" size={15} />
+        </button>
+      ),
+    },
   ];
 
   // Columnas de la vista "Por ticket": una fila por venta completa.
@@ -1439,26 +1454,30 @@ export default function Sales() {
       render: (r) => <span className={`font-black tabular-nums whitespace-nowrap ${isCancelledOrderReport ? 'text-[var(--mg-danger)]' : 'text-[var(--mg-brand-text)]'}`}>{formatBs(r.total)}</span>,
     },
     {
-      key: 'acciones', label: 'Acciones', align: 'center', width: 'w-44',
+      key: 'acciones', label: 'Ver', align: 'center', width: 'w-20',
       render: (r) => (
-        <div className="flex items-center justify-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => navigate(`/recibo/${r.id}`, { state: { saleNumber: r.saleNumber } })}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 text-[10px] font-extrabold text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]"
-            title="Ver recibo"
-          >
-            <AppIcon name="recibo" size={12} /> Ver
-          </button>
-          <button
-            type="button"
-            onClick={() => handleReprintTicket(r.raw)}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-2 text-[10px] font-extrabold text-[var(--mg-accent-text)] hover:brightness-105"
-            title="Reimprimir ticket"
-          >
-            <AppIcon name="recibo" size={12} /> Reimprimir
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate(`/recibo/${r.id}`, { state: { saleNumber: r.saleNumber } })}
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 text-[10px] font-extrabold text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]"
+          title="Ver recibo"
+        >
+          <AppIcon name="detalle" size={13} /> Ver
+        </button>
+      ),
+    },
+    {
+      key: 'imprimir', label: 'Imprimir', align: 'center', width: 'w-24',
+      render: (r) => (
+        <button
+          type="button"
+          onClick={() => handleReprintTicket(r.raw)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]"
+          title="Reimprimir recibo"
+          aria-label={`Reimprimir recibo #${String(r.saleNumber || 0).padStart(4, '0')}`}
+        >
+          <AppIcon name="recibo" size={15} />
+        </button>
       ),
     },
   ];
