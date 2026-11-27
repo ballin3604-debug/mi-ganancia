@@ -47,16 +47,15 @@ function StatCard({ label, value, hint, icon, tone = 'brand' }) {
     neutral: 'border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)]',
   };
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-3.5 shadow-[var(--mg-shadow-sm)]">
-      <span className={`absolute inset-x-0 top-0 h-1 ${tone === 'success' ? 'bg-[var(--mg-success)]' : tone === 'gold' ? 'bg-[var(--mg-gold)]' : tone === 'danger' ? 'bg-[var(--mg-danger)]' : 'bg-[var(--mg-brand)]'}`} />
-      <div className="flex items-start justify-between gap-2">
+    <div className="rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">{label}</p>
-          <p className="mt-1.5 truncate text-lg font-black tabular-nums text-[var(--mg-text-primary)] sm:text-xl">{value}</p>
-          <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--mg-text-muted)]">{hint}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">{label}</p>
+          <p className="mt-2 truncate text-xl font-black tabular-nums text-[var(--mg-text-primary)] sm:text-2xl">{value}</p>
+          <p className="mt-1 truncate text-[11px] font-semibold text-[var(--mg-text-muted)]">{hint}</p>
         </div>
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${tones[tone] || tones.brand}`}>
-          <AppIcon name={icon} size={16} />
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${tones[tone] || tones.brand}`}>
+          <AppIcon name={icon} size={18} />
         </span>
       </div>
     </div>
@@ -66,17 +65,34 @@ function StatCard({ label, value, hint, icon, tone = 'brand' }) {
 function Difference({ amount }) {
   const value = Number(amount || 0);
   if (Math.abs(value) < 0.01) {
-    return <span className="inline-flex items-center gap-1 rounded-full border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-success-text)]"><AppIcon name="check" size={11} /> Cuadró</span>;
+    return <span className="inline-flex items-center gap-1 rounded-md border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-success-text)]"><AppIcon name="check" size={11} /> Cuadró</span>;
   }
   const surplus = value > 0;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black ${surplus
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-black ${surplus
       ? 'border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] text-[var(--mg-gold-text)]'
       : 'border-[var(--mg-danger-border)] bg-[var(--mg-danger-bg)] text-[var(--mg-danger)]'
     }`}>
       <AppIcon name={surplus ? 'agregar' : 'alerta'} size={11} />
       {surplus ? 'Sobrante' : 'Faltante'} {formatBs(Math.abs(value))}
     </span>
+  );
+}
+
+function BreakdownRow({ label, value, tone = 'neutral', strong = false }) {
+  const tones = {
+    neutral: 'text-[var(--mg-text-primary)]',
+    success: 'text-[var(--mg-success-text)]',
+    danger: 'text-[var(--mg-danger)]',
+    gold: 'text-[var(--mg-gold-text)]',
+    brand: 'text-[var(--mg-brand-text)]',
+    muted: 'text-[var(--mg-text-muted)]',
+  };
+  return (
+    <div className={`flex items-center justify-between gap-3 ${strong ? 'pt-2' : ''}`}>
+      <span className={`${strong ? 'text-xs font-black text-[var(--mg-text-primary)]' : 'text-[11px] font-semibold text-[var(--mg-text-muted)]'}`}>{label}</span>
+      <span className={`tabular-nums ${strong ? 'text-base font-black' : 'text-xs font-bold'} ${tones[tone] || tones.neutral}`}>{value}</span>
+    </div>
   );
 }
 
@@ -170,54 +186,57 @@ export default function CashRegister() {
   const isWarehouse = activeBranch?.type === 'almacen';
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 px-4 pb-28 pt-4 lg:pb-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[var(--mg-brand)] p-5 text-[var(--mg-brand-contrast)] shadow-[var(--mg-shadow-lg)] sm:p-6">
-        <span className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full border-[20px] border-white/10" />
-        <span className="pointer-events-none absolute -bottom-20 right-36 h-44 w-44 rounded-full bg-white/5 blur-2xl" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3.5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
-              <AppIcon name="caja" size={24} color="currentColor" />
-            </span>
+    <div className="mx-auto max-w-7xl space-y-4 px-4 pb-28 pt-4 lg:pb-8">
+      <section className="overflow-hidden rounded-[28px] border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+        <div className="border-b border-[var(--mg-separator)] bg-[linear-gradient(135deg,var(--mg-brand)_0%,var(--mg-brand-hover)_100%)] px-5 py-5 text-[var(--mg-brand-contrast)] sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ring-1 ring-white/20">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
-                Control de efectivo
-              </span>
-              <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Arqueo de caja</h1>
-              <p className="mt-1 text-[11px] font-semibold text-white/70 sm:text-xs">
-                {activeBranch?.name || 'Selecciona una sucursal'} · {now.toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]">
+                  <span className={`h-1.5 w-1.5 rounded-full ${activeCashSession ? 'bg-emerald-300' : 'bg-white/60'}`} />
+                  {activeCashSession ? 'Caja abierta' : 'Caja cerrada'}
+                </span>
+                <span className="text-[11px] font-semibold text-white/75">{now.toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              </div>
+              <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">Arqueo de caja</h1>
+              <p className="mt-1 text-sm font-semibold text-white/80">
+                {activeBranch?.name || 'Selecciona una sucursal'}
+                {activeCashSession ? ` · ${activeCashSession.cashier_name}` : ''}
               </p>
-              <p className="mt-1 text-[10px] font-semibold text-white/70">
+              <p className="mt-1 text-[11px] font-medium text-white/70">
                 {activeCashSession
-                  ? `Caja abierta para ${activeCashSession.cashier_name} · desde ${formatDate(activeCashSession.opened_at)}`
-                  : 'Caja cerrada · abre el turno desde Equipo'}
+                  ? `Abierta desde ${formatDate(activeCashSession.opened_at)}`
+                  : 'Abre la caja desde Equipo para iniciar un turno.'}
+                {activeCashSession?.shift_label ? ` · Turno ${activeCashSession.shift_label} ${formatShiftRange({ start: activeCashSession.shift_start, end: activeCashSession.shift_end })}` : ''}
               </p>
-              {activeCashSession?.shift_label ? (
-                <p className="mt-0.5 text-[10px] font-semibold text-white/70">
-                  Turno {activeCashSession.shift_label} · {formatShiftRange({ start: activeCashSession.shift_start, end: activeCashSession.shift_end })}
-                </p>
-              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <BranchSelect
+                branches={branches}
+                value={activeBranchId || ''}
+                onChange={selectBranch}
+                label="Sucursal"
+                className="!justify-start sm:!justify-end"
+              />
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                disabled={!activeBranchId || isWarehouse || !loaded || !activeCashSession}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-[var(--mg-brand)] shadow-sm transition-all hover:bg-white/95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <AppIcon name="caja" size={16} color="currentColor" />
+                {activeCashSession ? 'Realizar arqueo' : 'Caja cerrada'}
+              </button>
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <BranchSelect
-              branches={branches}
-              value={activeBranchId || ''}
-              onChange={selectBranch}
-              label="Sucursal"
-              className="!justify-start sm:!justify-end"
-            />
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              disabled={!activeBranchId || isWarehouse || !loaded || !activeCashSession}
-              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--mg-brand-contrast)] px-4 text-xs font-black text-[var(--mg-brand)] shadow-sm transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <AppIcon name="cerrar" size={15} color="currentColor" />
-              {activeCashSession ? 'Realizar arqueo' : 'Caja cerrada'}
-            </button>
-          </div>
+        </div>
+
+        <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4 sm:px-6">
+          <StatCard label="Efectivo esperado" value={formatBs(movements.expectedCash)} hint="Fondo + efectivo − egresos" icon="cash" tone="brand" />
+          <StatCard label="Ventas efectivo" value={formatBs(movements.cashSales)} hint={`${branchSalesCount} ventas en el período`} icon="recibo" tone="success" />
+          <StatCard label="Egresos efectivo" value={formatBs(movements.cashExpenses)} hint="Pagados desde caja" icon="gastos" tone="danger" />
+          <StatCard label="Ventas QR" value={formatBs(movements.qrSales)} hint="Fuera del cajón" icon="qr" tone="gold" />
         </div>
       </section>
 
@@ -233,8 +252,8 @@ export default function CashRegister() {
 
       {!activeCashSession && !isWarehouse ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-4 py-3">
-          <p className="text-xs font-bold text-[var(--mg-gold-text)]">No hay una caja abierta en esta sucursal. Ábrela y asígnala a un cajero desde Equipo.</p>
-          <button type="button" onClick={() => navigate('/equipo')} className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl bg-[var(--mg-gold)] px-3 text-[10px] font-black text-white transition-all hover:brightness-110">
+          <p className="text-xs font-bold text-[var(--mg-gold-text)]">No hay una caja abierta en esta sucursal.</p>
+          <button type="button" onClick={() => navigate('/equipo')} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl bg-[var(--mg-gold)] px-3 text-[10px] font-black text-white">
             <AppIcon name="equipo" size={13} /> Ir a Equipo
           </button>
         </div>
@@ -242,125 +261,102 @@ export default function CashRegister() {
 
       {isWarehouse ? (
         <div className="rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] p-4 text-sm font-bold text-[var(--mg-gold-text)]">
-          El arqueo se realiza en una sucursal de venta. Cambia la sucursal seleccionada para continuar.
+          El arqueo se realiza en una sucursal de venta.
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Efectivo esperado" value={formatBs(movements.expectedCash)} hint="Fondo + efectivo − egresos" icon="cash" tone="brand" />
-        <StatCard label="Ventas en efectivo" value={formatBs(movements.cashSales)} hint={`${branchSalesCount} ventas en el período`} icon="recibo" tone="success" />
-        <StatCard label="Egresos en efectivo" value={formatBs(movements.cashExpenses)} hint="Pagados desde la caja" icon="gastos" tone="danger" />
-        <StatCard label="Pagos QR" value={formatBs(movements.qrSales)} hint="No forman parte del efectivo" icon="qr" tone="gold" />
-      </div>
-
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-4 py-3.5 sm:px-5">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+        <section className="overflow-hidden rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shadow-[var(--mg-shadow-sm)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--mg-separator)] px-4 py-4 sm:px-5">
             <div>
-              <h2 className="text-sm font-black tracking-tight text-[var(--mg-brand-text)]">Arqueos recientes</h2>
-              <p className="mt-0.5 text-[11px] font-medium text-[var(--mg-text-muted)]">Cierres guardados para {activeBranch?.name || 'esta sucursal'}.</p>
+              <h2 className="text-sm font-black tracking-tight text-[var(--mg-text-primary)]">Arqueos recientes</h2>
+              <p className="mt-0.5 text-[11px] font-medium text-[var(--mg-text-muted)]">{activeBranch?.name || 'Sucursal'}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-brand-text)]">{branchArqueos.length} registrados</span>
-              <button
-                type="button"
-                onClick={() => navigate('/equipo/arqueo/historial')}
-                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl border border-[var(--mg-accent-border)] bg-[var(--mg-accent-bg)] px-3 text-[10px] font-black text-[var(--mg-accent-text)] transition-colors hover:bg-[var(--mg-accent)] hover:text-white"
-              >
-                <AppIcon name="historial" size={12} /> Historial completo
+              <span className="rounded-md border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2.5 py-1 text-[10px] font-black text-[var(--mg-text-secondary)]">{branchArqueos.length}</span>
+              <button type="button" onClick={() => navigate('/equipo/arqueo/historial')} className="inline-flex min-h-[34px] items-center gap-1.5 rounded-xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-3 text-[10px] font-black text-[var(--mg-text-secondary)] hover:border-[var(--mg-accent-border)] hover:text-[var(--mg-accent-text)]">
+                <AppIcon name="historial" size={12} /> Historial
               </button>
             </div>
           </div>
 
           {branchArqueos.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]"><AppIcon name="caja" size={25} /></span>
-              <h3 className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Aún no hay arqueos</h3>
-              <p className="mx-auto mt-1 max-w-sm text-xs font-medium text-[var(--mg-text-muted)]">Primero abre una caja desde Equipo y asígnala al cajero que atenderá este turno.</p>
-              <button type="button" onClick={() => navigate('/equipo')} disabled={!activeBranchId || isWarehouse} className="mg-btn-primary mt-4 inline-flex min-h-[38px] items-center gap-1.5 px-4 text-xs disabled:opacity-50">
-                <AppIcon name="equipo" size={14} /> Abrir caja desde Equipo
-              </button>
+            <div className="px-5 py-12 text-center">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-muted)]"><AppIcon name="caja" size={24} /></span>
+              <h3 className="mt-3 text-sm font-black text-[var(--mg-text-primary)]">Sin arqueos registrados</h3>
+              <p className="mx-auto mt-1 max-w-sm text-xs font-medium text-[var(--mg-text-muted)]">Cuando cierres la caja, el arqueo aparecerá aquí.</p>
             </div>
           ) : (
             <ul className="divide-y divide-[var(--mg-separator)]">
-              {branchArqueos.slice(0, 12).map((arqueo) => (
-                <li key={arqueo.id} className="px-4 py-3.5 transition-colors hover:bg-[var(--mg-bg-elevated)]/60 sm:px-5">
+              {branchArqueos.slice(0, 10).map((arqueo) => (
+                <li key={arqueo.id} className="px-4 py-4 transition-colors hover:bg-[var(--mg-bg-elevated)]/50 sm:px-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-xs font-black text-[var(--mg-text-primary)]">{formatDate(arqueo.closed_at)}</p>
                         <Difference amount={arqueo.difference} />
                       </div>
-                      <p className="mt-1 text-[10px] font-semibold text-[var(--mg-text-muted)]">
-                        {formatDate(arqueo.period_start)} → {formatDate(arqueo.closed_at)}
-                        {arqueo.cashier_name ? ` · Caja de ${arqueo.cashier_name}` : ''} · Cerró {arqueo.closed_by_name || 'Equipo'}
+                      <p className="mt-1 text-[11px] font-medium text-[var(--mg-text-muted)]">
+                        {arqueo.cashier_name ? `Caja de ${arqueo.cashier_name}` : 'Caja'}
+                        {arqueo.closed_by_name ? ` · Cerró ${arqueo.closed_by_name}` : ''}
                       </p>
-                      {arqueo.shift_label ? (
-                        <p className="mt-0.5 text-[10px] font-bold text-[var(--mg-text-secondary)]">
-                          Turno {arqueo.shift_label} · {formatShiftRange({ start: arqueo.shift_start, end: arqueo.shift_end })}
-                        </p>
-                      ) : null}
-                      {arqueo.notes ? <p className="mt-1 line-clamp-2 text-[11px] font-medium text-[var(--mg-text-secondary)]">{arqueo.notes}</p> : null}
+                      {arqueo.notes ? <p className="mt-1 line-clamp-1 text-[11px] text-[var(--mg-text-secondary)]">{arqueo.notes}</p> : null}
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-right text-[10px]">
                       <span className="text-[var(--mg-text-muted)]">Esperado</span>
                       <span className="font-bold tabular-nums text-[var(--mg-text-secondary)]">{formatBs(arqueo.expected_cash)}</span>
                       <span className="text-[var(--mg-text-muted)]">Contado</span>
-                      <span className="font-black tabular-nums text-[var(--mg-brand-text)]">{formatBs(arqueo.counted_cash)}</span>
+                      <span className="font-black tabular-nums text-[var(--mg-text-primary)]">{formatBs(arqueo.counted_cash)}</span>
                     </div>
                   </div>
-                  {arqueo.denominations && Object.keys(arqueo.denominations).length > 0 ? (
-                    <details className="mt-2">
-                      <summary className="w-fit cursor-pointer text-[10px] font-bold text-[var(--mg-brand-text)]">Ver detalle del conteo</summary>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {Object.entries(arqueo.denominations)
-                          .filter(([, count]) => Number(count) > 0)
-                          .sort(([a], [b]) => Number(b) - Number(a))
-                          .map(([denomination, count]) => (
-                            <span key={denomination} className="rounded-lg border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] px-2 py-1 text-[10px] font-bold text-[var(--mg-text-secondary)]">
-                              {count} × {denomination} Bs
-                            </span>
-                          ))}
-                      </div>
-                    </details>
-                  ) : null}
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
 
-        <aside className="space-y-3">
-          <section className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)]">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--mg-success-border)] bg-[var(--mg-success-bg)] text-[var(--mg-success-text)]"><AppIcon name="permisos" size={17} /></span>
+        <aside className="space-y-4">
+          <section className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] text-[var(--mg-brand-text)]"><AppIcon name="detalle" size={17} /></span>
               <div>
-                <h2 className="text-xs font-black text-[var(--mg-text-primary)]">Período actual</h2>
-                <p className="text-[10px] font-semibold text-[var(--mg-text-muted)]">{activeCashSession ? `Asignada a ${activeCashSession.cashier_name}` : lastArqueo ? 'Desde el último arqueo' : 'Caja cerrada'}</p>
+                <h2 className="text-sm font-black text-[var(--mg-text-primary)]">Desglose del período</h2>
+                <p className="text-[11px] font-medium text-[var(--mg-text-muted)]">Desde {formatDate(periodStart)}</p>
               </div>
             </div>
-            <div className="mt-3 space-y-2 border-t border-[var(--mg-separator)] pt-3 text-[11px]">
-              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Inicio</span><span className="font-bold text-[var(--mg-text-secondary)]">{formatDate(periodStart)}</span></div>
-              {activeCashSession?.shift_label ? (
-                <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Turno</span><span className="font-bold text-[var(--mg-text-secondary)]">{activeCashSession.shift_label} · {formatShiftRange({ start: activeCashSession.shift_start, end: activeCashSession.shift_end })}</span></div>
-              ) : null}
-              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Fondo inicial</span><span className="font-black tabular-nums text-[var(--mg-brand-text)]">{formatBs(openingCash)}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Ventas vigentes</span><span className="font-bold tabular-nums text-[var(--mg-text-secondary)]">{branchSalesCount}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Último arqueo</span><span className="font-bold text-[var(--mg-text-secondary)]">{lastArqueo ? formatDate(lastArqueo.closed_at) : 'Todavía ninguno'}</span></div>
+            <div className="mt-4 space-y-2.5">
+              <BreakdownRow label="Fondo inicial" value={formatBs(openingCash)} />
+              <BreakdownRow label="Ventas en efectivo" value={`+ ${formatBs(movements.cashSales)}`} tone="success" />
+              <BreakdownRow label="Egresos en efectivo" value={`− ${formatBs(movements.cashExpenses)}`} tone="danger" />
+              <div className="border-t border-[var(--mg-separator)] pt-2.5">
+                <BreakdownRow label="Efectivo esperado en caja" value={formatBs(movements.expectedCash)} tone="brand" strong />
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-[var(--mg-gold-border)] bg-[var(--mg-gold-bg)] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] font-bold text-[var(--mg-gold-text)]">Pagos QR (separados)</span>
+                <span className="text-sm font-black tabular-nums text-[var(--mg-gold-text)]">{formatBs(movements.qrSales)}</span>
+              </div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[var(--mg-brand-border)] bg-[var(--mg-brand-bg)] p-4">
-            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-brand-text)]"><AppIcon name="detalle" size={14} /> Lectura rápida</p>
-            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-[var(--mg-text-secondary)]">
-              El dinero esperado contempla efectivo cobrado y egresos en efectivo de toda la sucursal. Los pagos QR quedan separados. Un faltante o sobrante pide una observación y queda asociado a quien guardó el arqueo.
-            </p>
-            <p className="mt-2 border-t border-[var(--mg-brand-border)] pt-2 text-[10px] font-bold text-[var(--mg-text-muted)]">
-              Guardar un arqueo no detiene las ventas. El próximo período empieza al guardar este conteo.
-            </p>
+          <section className="rounded-3xl border border-[var(--mg-border)] bg-[var(--mg-bg-surface)] p-4 shadow-[var(--mg-shadow-sm)] sm:p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mg-text-muted)]">Estado del turno</p>
+            <div className="mt-3 space-y-2 text-[11px]">
+              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Caja</span><span className={`font-bold ${activeCashSession ? 'text-[var(--mg-success-text)]' : 'text-[var(--mg-text-secondary)]'}`}>{activeCashSession ? 'Abierta' : 'Cerrada'}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Cajero</span><span className="font-bold text-[var(--mg-text-secondary)]">{activeCashSession?.cashier_name || '—'}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Ventas vigentes</span><span className="font-bold tabular-nums text-[var(--mg-text-secondary)]">{branchSalesCount}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[var(--mg-text-muted)]">Último arqueo</span><span className="font-bold text-[var(--mg-text-secondary)]">{lastArqueo ? formatDate(lastArqueo.closed_at) : 'Ninguno'}</span></div>
+            </div>
+            {lastArqueo ? (
+              <div className="mt-3 border-t border-[var(--mg-separator)] pt-3">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--mg-text-muted)]">Último resultado</p>
+                <Difference amount={lastArqueo.difference} />
+              </div>
+            ) : null}
           </section>
         </aside>
-      </section>
+      </div>
 
       <CashArqueoModal
         open={modalOpen && !!activeCashSession}
