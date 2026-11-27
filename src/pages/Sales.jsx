@@ -489,6 +489,18 @@ export default function Sales() {
   const [showCartModal, setShowCartModal] = useState(false);
   const [showQrConfirmModal, setShowQrConfirmModal] = useState(false);
   const [cartOpen, setCartOpen] = useState(true);
+  // En escritorio el panel del carrito vive a la derecha; en móvil se abre
+  // como modal. El botón flotante solo se oculta en escritorio con el panel
+  // abierto, para no tapar el carrito ni las tarjetas.
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  ));
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event) => setIsDesktopViewport(event.matches);
+    mq.addEventListener?.('change', handleChange);
+    return () => mq.removeEventListener?.('change', handleChange);
+  }, []);
   const [categories, setCategories] = useState([]);
   const [filterCategory, setFilterCategory] = useState(() => (
     readCategoryFilter('sales', businessId, user?.uid)
@@ -3034,7 +3046,7 @@ export default function Sales() {
             ))}
           </PillScroller>
 
-          <div className="flex-1 min-h-0 overflow-y-auto pb-24 lg:pb-6">
+          <div className="flex-1 min-h-0 overflow-y-auto pb-24">
             {filtered.length > 0 ? (
               <div className={`grid grid-cols-1 gap-2 p-1 mg-stagger sm:grid-cols-2 sm:gap-5 md:grid-cols-3 ${
                 cartOpen ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
@@ -3145,7 +3157,16 @@ export default function Sales() {
       <>
       {/* Columna Derecha (Desktop Sidebar): Carrito */}
       {cartOpen && (
-        <aside className="hidden lg:flex flex-col w-[380px] border-l border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shrink-0 h-full overflow-hidden">
+        <aside className="relative hidden lg:flex flex-col w-[380px] border-l border-[var(--mg-border)] bg-[var(--mg-bg-surface)] shrink-0 h-full overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCartOpen(false)}
+            title="Contraer carrito"
+            aria-label="Contraer carrito"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--mg-border)] bg-[var(--mg-bg-elevated)] text-[var(--mg-text-secondary)] shadow-sm transition-colors hover:border-[var(--mg-border-hover)] hover:text-[var(--mg-brand-text)]"
+          >
+            <AppIcon name="siguiente" size={16} />
+          </button>
           {cartItems.length > 0 ? (
             renderCartContent(false)
           ) : (
@@ -3174,8 +3195,10 @@ export default function Sales() {
           }}
           title="Carrito"
           aria-label="Abrir carrito"
-          className={`fixed z-40 bottom-24 right-4 lg:bottom-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[0_1px_4px_rgba(0,0,0,0.14)] transition-all duration-300 hover:bg-[var(--mg-brand-hover)] hover:scale-105 active:scale-95 ${
-            cartOpen ? 'lg:right-[404px]' : 'lg:right-6'
+          aria-hidden={isDesktopViewport && cartOpen ? true : undefined}
+          tabIndex={isDesktopViewport && cartOpen ? -1 : undefined}
+          className={`fixed z-40 bottom-24 right-4 lg:bottom-6 lg:right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mg-brand)] text-[var(--mg-brand-contrast)] shadow-[0_1px_4px_rgba(0,0,0,0.14)] transition-all duration-200 hover:bg-[var(--mg-brand-hover)] hover:scale-105 active:scale-95 ${
+            isDesktopViewport && cartOpen ? 'pointer-events-none scale-90 opacity-0' : 'scale-100 opacity-100'
           }`}
         >
           <AppIcon name="carrito" size={24} strokeWidth={2.2} />

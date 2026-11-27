@@ -20,9 +20,7 @@ function CardImage({ imageData, name, large = false }) {
     <img
       src={imageData}
       alt={name}
-      className={`h-full w-full transition-transform duration-300 group-hover:scale-105 ${
-        large ? 'object-cover' : 'object-contain'
-      }`}
+      className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
     />
   );
 }
@@ -83,9 +81,7 @@ export default function ProductCatalogCard({
         disabled={disabled}
         className="w-full text-left flex flex-col disabled:cursor-not-allowed"
       >
-        <div className={`w-full overflow-hidden bg-[var(--mg-bg-elevated)] border-b border-[var(--mg-separator)] flex items-center justify-center ${
-          large ? 'aspect-[16/10]' : 'aspect-[4/3] p-2'
-        }`}>
+        <div className="aspect-[4/3] w-full overflow-hidden bg-[var(--mg-bg-elevated)] border-b border-[var(--mg-separator)] flex items-center justify-center p-2">
           <CardImage imageData={product.imageData} name={product.name} large={large} />
         </div>
 
