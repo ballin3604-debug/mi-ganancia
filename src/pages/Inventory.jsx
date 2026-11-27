@@ -24,6 +24,7 @@ import { useImageUpload } from '../hooks/useImageUpload';
 import { ConfirmModal } from '../components/settings/ConfirmModal';
 import { clampNumberInput, clampIntegerInput, blockInvalidNumberKeys } from '../utils/numberInput';
 import { getExpiryWarningDays } from '../utils/expiry';
+import { readCategoryFilter, saveCategoryFilter } from '../utils/categoryPreference';
 
 // Inventory Subcomponents
 import { formatBs } from '../utils/currency';
@@ -275,7 +276,7 @@ function clearProductDraft() {
 }
 
 export default function Inventory() {
-  const { businessId, hasPermission } = useAuth();
+  const { businessId, user, hasPermission } = useAuth();
   const { sectorConfig, tipoNegocio } = useBusiness();
   const { pickImage } = useImageUpload();
   const location = useLocation();
@@ -290,7 +291,19 @@ export default function Inventory() {
 
   // Filter states
   const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState('Todas');
+  const [filterCategory, setFilterCategory] = useState(() => (
+    readCategoryFilter('inventory', businessId, user?.uid)
+  ));
+  useEffect(() => {
+    saveCategoryFilter('inventory', businessId, user?.uid, filterCategory);
+  }, [businessId, user?.uid, filterCategory]);
+  // Si la categoría guardada ya no existe (renombrada o eliminada),
+  // se vuelve a "Todas" cuando termina de cargar el catálogo.
+  useEffect(() => {
+    if (filterCategory === 'Todas') return;
+    if (!categories.length) return;
+    if (!categories.includes(filterCategory)) setFilterCategory('Todas');
+  }, [categories, filterCategory]);
   const [filterExpiry, setFilterExpiry] = useState(() => { // 'todos' | 'porVencer' | 'vencidos'
     const f = searchParams.get('filtro');
     return f === 'vencidos' || f === 'porVencer' ? f : 'todos';

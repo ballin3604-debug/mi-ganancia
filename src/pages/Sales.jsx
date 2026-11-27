@@ -30,6 +30,7 @@ import BarcodeScanner from '../components/BarcodeScanner';
 import PresentationPicker from '../components/PresentationPicker';
 import { useBranches } from '../context/BranchContext';
 import { getSellOptions, defaultSellOption, presShortLabel } from '../utils/presentations';
+import { readCategoryFilter, saveCategoryFilter } from '../utils/categoryPreference';
 import { AppIcon } from '../components/icons';
 import { BranchSelect } from '../components/BranchSelect';
 import MetricCard from '../components/ui/MetricCard';
@@ -489,7 +490,19 @@ export default function Sales() {
   const [showQrConfirmModal, setShowQrConfirmModal] = useState(false);
   const [cartOpen, setCartOpen] = useState(true);
   const [categories, setCategories] = useState([]);
-  const [filterCategory, setFilterCategory] = useState('Todas');
+  const [filterCategory, setFilterCategory] = useState(() => (
+    readCategoryFilter('sales', businessId, user?.uid)
+  ));
+  useEffect(() => {
+    saveCategoryFilter('sales', businessId, user?.uid, filterCategory);
+  }, [businessId, user?.uid, filterCategory]);
+  // Si la categoría guardada ya no existe (renombrada o eliminada),
+  // se vuelve a "Todas" en cuanto termina de cargar el catálogo.
+  useEffect(() => {
+    if (filterCategory === 'Todas' || filterCategory === RECENT_CATEGORY) return;
+    if (!categories.length) return;
+    if (!categories.includes(filterCategory)) setFilterCategory('Todas');
+  }, [categories, filterCategory]);
   // ── Escáner de códigos de barras ──
   const [showScanner, setShowScanner] = useState(false);
   const [scanMsg, setScanMsg] = useState(null); // { ok, text }
