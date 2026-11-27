@@ -38,6 +38,7 @@ import EmptyState from '../components/ui/EmptyState';
 import SectionCard from '../components/ui/SectionCard';
 import OrderEditModal from '../components/OrderEditModal';
 import { OrderChangeBadge, getOrderChangeMeta } from '../components/OrderChangeBadge';
+import { ConfirmModal } from '../components/settings/ConfirmModal';
 
 function formatBs(amount) {
   return `Bs ${Number(amount || 0).toFixed(2)}`;
@@ -488,6 +489,7 @@ export default function Sales() {
   const [dueDate, setDueDate] = useState('');
   const [showCartModal, setShowCartModal] = useState(false);
   const [showQrConfirmModal, setShowQrConfirmModal] = useState(false);
+  const [showClearCartConfirm, setShowClearCartConfirm] = useState(false);
   const [cartOpen, setCartOpen] = useState(true);
   // En escritorio el panel del carrito vive a la derecha; en móvil se abre
   // como modal. El botón flotante solo se oculta en escritorio con el panel
@@ -2566,22 +2568,7 @@ export default function Sales() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() => {
-                    if (confirm('¿Vaciar el carrito?')) {
-                      setCart({});
-                      setTypedClientName('');
-                      setSelectedCustomer(null);
-                      setIsCustomClient(false);
-                      setPaymentMethod('cash');
-                      setCashReceived('');
-                      setMixedCash('');
-                      setMixedQr('');
-                      setClientPhone('');
-                      setDueDate('');
-                      setShowCartModal(false);
-                      clearCartDraft(businessId, user.uid);
-                    }
-                  }}
+                  onClick={() => setShowClearCartConfirm(true)}
                   className="mg-checkout-ghost shrink-0 rounded-xl border px-4 py-3 text-sm font-bold transition-all active:scale-95"
                 >
                   Vaciar
@@ -3392,6 +3379,30 @@ export default function Sales() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showClearCartConfirm}
+        onClose={() => setShowClearCartConfirm(false)}
+        onConfirm={() => {
+          setCart({});
+          setTypedClientName('');
+          setSelectedCustomer(null);
+          setIsCustomClient(false);
+          setPaymentMethod('cash');
+          setCashReceived('');
+          setMixedCash('');
+          setMixedQr('');
+          setClientPhone('');
+          setDueDate('');
+          setShowCartModal(false);
+          clearCartDraft(businessId, user.uid);
+          setShowClearCartConfirm(false);
+        }}
+        title="Vaciar carrito"
+        message="Se quitarán todos los productos y datos del cobro actual. Esta acción no se puede deshacer."
+        confirmText="Sí, vaciar"
+        danger
+      />
 
       {showQrConfirmModal && (
         <div 
