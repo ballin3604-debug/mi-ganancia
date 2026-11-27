@@ -2,19 +2,56 @@ import { useState, useEffect, useMemo } from 'react';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 200];
 
-function loadVisibleColumns(storageKey, columns) {
+function loadColumnState(storageKey, columns) {
+  const validKeys = columns.map((c) => c.key);
+  const validSet = new Set(validKeys);
   const defaults = columns.filter((c) => c.defaultVisible !== false).map((c) => c.key);
-  if (!storageKey) return defaults;
+
+  if (!storageKey) return { visible: defaults, known: validKeys };
+
   try {
     const raw = localStorage.getItem(storageKey);
     if (raw) {
       const saved = JSON.parse(raw);
-      const validKeys = new Set(columns.map((c) => c.key));
-      const filtered = saved.filter((k) => validKeys.has(k));
-      if (filtered.length > 0) return filtered;
+      // Formato nuevo: { v: 1, visible: [...], known: [...] }
+      if (saved && !Array.isArray(saved) && Array.isArray(saved.visible)) {
+        const known = Array.isArray(saved.known) ? saved.known.filter((k) => validSet.has(k)) : [];
+        const knownSet = new Set(known);
+        const visible = saved.visible.filter((k) => validSet.has(k));
+        const visibleSet = new Set(visible);
+        // Columnas nuevas (no conocidas antes): se agregan si son visibles por defecto.
+        validKeys.forEach((k) => {
+          if (!knownSet.has(k)) {
+            known.push(k);
+            knownSet.add(k);
+            const col = columns.find((c) => c.key === k);
+            if (col?.defaultVisible !== false) {
+              visible.push(k);
+              visibleSet.add(k);
+            }
+          }
+        });
+        if (visible.length > 0) return { visible, known };
+      }
+      // Formato anterior: array de columnas visibles.
+      if (Array.isArray(saved)) {
+        const visible = saved.filter((k) => validSet.has(k));
+        const visibleSet = new Set(visible);
+        // Las columnas actuales no presentes en el array antiguo se tratan como nuevas
+        // y se agregan si son visibles por defecto; las ocultadas por el usuario se preservan.
+        const known = [...validKeys];
+        validKeys.forEach((k) => {
+          if (!visibleSet.has(k) && !saved.includes(k)) {
+            const col = columns.find((c) => c.key === k);
+            if (col?.defaultVisible !== false) visible.push(k);
+          }
+        });
+        if (visible.length > 0) return { visible, known };
+      }
     }
   } catch { /* localStorage no disponible, usar default */ }
-  return defaults;
+
+  return { visible: defaults, known: validKeys };
 }
 
 export default function DataTable({
@@ -28,7 +65,8 @@ export default function DataTable({
   onSortChange,
   initialSort = null,
 }) {
-  const [visibleKeys, setVisibleKeys] = useState(() => loadVisibleColumns(storageKey, columns));
+  const [columnState, setColumnState] = useState(() => loadColumnState(storageKey, columns));
+  const visibleKeys = columnState.visible;
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -53,17 +91,17 @@ export default function DataTable({
   useEffect(() => {
     if (!storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(visibleKeys));
+      localStorage.setItem(storageKey, JSON.stringify({ v: 1, visible: columnState.visible, known: columnState.known }));
     } catch { /* ignore */ }
-  }, [storageKey, visibleKeys]);
+  }, [storageKey, columnState]);
 
   function toggleColumn(key) {
-    setVisibleKeys((prev) => {
-      if (prev.includes(key)) {
-        if (prev.length === 1) return prev; // siempre queda al menos una columna visible
-        return prev.filter((k) => k !== key);
-      }
-      return [...prev, key];
+    setColumnState((prev) => {
+      const visible = prev.visible.includes(key)
+        ? (prev.visible.length === 1 ? prev.visible : prev.visible.filter((k) => k !== key))
+        : [...prev.visible, key];
+      if (visible === prev.visible) return prev;
+      return { ...prev, visible };
     });
   }
 
