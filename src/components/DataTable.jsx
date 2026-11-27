@@ -156,7 +156,7 @@ export default function DataTable({
                 <div className="flex items-center gap-2 px-2.5 pb-2 mb-1 border-b border-[var(--mg-border)]">
                   <button
                     type="button"
-                    onClick={() => setVisibleKeys(columns.map((c) => c.key))}
+                    onClick={() => setColumnState((prev) => ({ ...prev, visible: columns.map((c) => c.key) }))}
                     className="text-[11px] font-bold text-[var(--mg-accent-text)] hover:underline"
                   >
                     Seleccionar todo
@@ -164,7 +164,7 @@ export default function DataTable({
                   <span className="text-[var(--mg-text-faint)] text-[11px]">|</span>
                   <button
                     type="button"
-                    onClick={() => setVisibleKeys([columns[0].key])}
+                    onClick={() => setColumnState((prev) => ({ ...prev, visible: columns[0] ? [columns[0].key] : prev.visible }))}
                     className="text-[11px] font-bold text-[var(--mg-text-muted)] hover:underline"
                   >
                     Deseleccionar todo
