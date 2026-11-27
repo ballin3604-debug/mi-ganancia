@@ -95,6 +95,27 @@ export default function DataTable({
     } catch { /* ignore */ }
   }, [storageKey, columnState]);
 
+  const columnKeySig = columns.map((c) => c.key).join('\0');
+  useEffect(() => {
+    const validKeys = columns.map((c) => c.key);
+    setColumnState((prev) => {
+      const knownSet = new Set(prev.known);
+      let visible = prev.visible;
+      let known = prev.known;
+      let changed = false;
+      validKeys.forEach((k) => {
+        if (!knownSet.has(k)) {
+          if (!changed) { visible = [...visible]; known = [...known]; changed = true; }
+          known.push(k);
+          knownSet.add(k);
+          const col = columns.find((c) => c.key === k);
+          if (col?.defaultVisible !== false) visible.push(k);
+        }
+      });
+      return changed ? { ...prev, visible, known } : prev;
+    });
+  }, [columnKeySig]);
+
   function toggleColumn(key) {
     setColumnState((prev) => {
       const visible = prev.visible.includes(key)
